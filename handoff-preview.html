@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>dsh-im-companion — 11项最大全集视觉总览</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f6f8fa;color:#1f2329;font-family:Inter,ui-sans-system,-apple-system,Segoe UI,Helvetica,Arial,sans-serif;line-height:1.6}
+a{color:#1677ff;text-decoration:none}
+.hero{background:linear-gradient(135deg,#0f1e3a 0%,#1e40af 55%,#0ea5e9 100%);color:#fff;padding:28px 24px 22px;position:sticky;top:0;z-index:10;backdrop-filter:blur(6px)}
+.hero h1{margin:0;font-size:22px;letter-spacing:.02em}
+.hero p{margin:6px 0 0;opacity:.92;font-size:13px}
+.hero .meta{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.badge{padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22)}
+.badge.on{background:#eef2ff;color:#1e40af;border-color:#c7d2fe}
+.wrap{max-width:1100px;margin:0 auto;padding:18px 16px 40px}
+.card{background:#fff;border:1px solid #e5e6eb;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(31,35,41,.06);margin-bottom:14px}
+.cardHead{display:flex;align-items:center;gap:10px;padding:12px 14px;background:#f7f8fa;border-bottom:1px solid #eef0f3}
+.k{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;flex:none}
+.k.a{background:linear-gradient(135deg,#2563eb,#06b6d4)} .k.b{background:linear-gradient(135deg,#059669,#10b981)} .k.c{background:linear-gradient(135deg,#7c3aed,#a78bfa)} .k.d{background:linear-gradient(135deg,#ea580c,#f59e0b)} .k.e{background:linear-gradient(135deg,#e11d48,#f472b6)}
+.cardHead h3{margin:0;font-size:14px}
+.cardHead small{color:#646a73;font-weight:400}
+.pill{margin-left:auto;padding:2px 8px;border-radius:999px;font-size:11px;background:#eef2ff;color:#1e40af;border:1px solid #c7d2fe;white-space:nowrap}
+.grid2{display:grid;grid-template-columns:1.15fr .85fr;gap:12px;padding:12px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.mock{border:1px solid #e5e6eb;border-radius:10px;background:#fff;overflow:hidden}
+.mockHd{padding:6px 8px;background:#f7f8fa;border-bottom:1px solid #eef0f3;font-size:11px;color:#646a73;display:flex;justify-content:space-between}
+.mockBd{padding:8px}
+.row{display:flex;gap:8px;align-items:center}
+.avatar{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#fff;font-weight:800;background:linear-gradient(135deg,#12213f,#3964fe)}
+.dot{width:8px;height:8px;border-radius:50%}.dot.on{background:#20a162;box-shadow:0 0 0 4px rgba(32,161,98,.15);animation:bre 1.6s infinite}.dot.off{background:#d92d20}
+@keyframes bre{0%{box-shadow:0 0 0 0 rgba(32,161,98,.6)}70%{box-shadow:0 0 0 8px rgba(32,161,98,0)}100%{box-shadow:0 0 0 0 rgba(32,161,98,0)}}
+.tab{padding:4px 8px;border:1px solid #dfe1e5;border-radius:999px;background:#fff;font-size:11px;cursor:pointer;margin-right:6px}
+.tab.on{background:#1677ff;color:#fff;border-color:#1677ff}
+.ws{padding:6px 8px;border-radius:7px;font-size:11px;display:flex;gap:8px;align-items:center}
+.ws.on{background:rgba(22,119,255,.12);border:1px solid rgba(22,119,255,.25)}
+.badge2{margin-left:auto;padding:1px 6px;border-radius:999px;background:#238636;color:#fff;font-size:10px}
+.btn{padding:4px 8px;border:1px solid #dfe1e5;border-radius:8px;background:#fff;font-size:11px;cursor:pointer}
+.btn.pri{background:#1677ff;color:#fff;border-color:#1677ff}
+.tbl{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th,.tbl td{padding:5px 6px;border:1px solid #eef0f3;text-align:center}
+.tbl th{background:#f7f8fa}
+.note{font-size:11px;color:#646a73;line-height:1.6}
+.hr{height:1px;background:#eef0f3;margin:8px 0}
+</style>
+</head>
+<body>
+<div class="hero">
+  <h1>dsh-im-companion <span style="font-weight:400;opacity:.9">· 11项最大全集</span> <span style="font-size:11px;padding:2px 8px;border-radius:999px;background:#22c55e;color:#0f1e3a;margin-left:6px">解耦外挂 · 不改 dsh-im</span></h1>
+  <p>几十个机器人 + 几十个工作区：从“找不到小帅的家、分不清线上/本地”到“推入口即认人”。下面每张卡 = 一个可独立落地的最小探针（点即验），按一次一卡实现。</p>
+  <div class="meta">
+    <span class="badge">A 聚合</span><span class="badge">B 左侧/顶部</span><span class="badge">C 舰队</span><span class="badge">D 反向</span><span class="badge">E 彩蛋</span>
+    <span class="badge on">● dsh-im-companion · desktop 已挂载</span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- A1 - 以 Agent 为核心（重做） -->
+  <div class="card" style="border:2px solid #2563eb;box-shadow:0 4px 16px rgba(37,99,235,.12)">
+    <div class="cardHead" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-bottom:1px solid #bfdbfe"><div class="k a">A1</div><h3>以 Agent 为核心 <small>创建小帅 → 选家 → 添加接入</small></h3><span class="pill" style="background:#2563eb;color:#fff;border-color:#2563eb">★ 第一入口</span></div>
+    <div class="grid2">
+      <div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <span style="flex:1;display:flex;gap:6px;align-items:center;padding:6px 8px;border:2px solid #2563eb;border-radius:10px;background:#fff;font-size:12px;font-weight:700;color:#1e40af">＋ 新建 Agent <span style="font-weight:400;color:#646a73">创建“小帅”</span></span>
+          <span style="padding:6px 10px;border:1px solid #e5e6eb;border-radius:999px;background:#fff;font-size:11px;color:#646a73">搜 Agent...</span>
+        </div>
+        <div class="mock" style="border:1px solid #bfdbfe"><div class="mockHd" style="background:#eff6ff;color:#1e40af;font-weight:700">Agent 列表（以人为一级）<span style="color:#2563eb">● 以人为主键</span></div><div class="mockBd" style="display:grid;gap:6px">
+          <div style="border:1px solid #bfdbfe;border-radius:10px;padding:8px;background:#f0f7ff">
+            <div style="display:flex;gap:8px;align-items:center"><div class="avatar">帅</div><div style="flex:1"><b>小帅</b> <span style="font-size:10px;padding:1px 6px;border-radius:999px;background:#eef2ff;color:#1e40af;border:1px solid #c7d2fe">新建·三步完成</span><div style="font-size:11px;color:#646a73">① 人：小帅 → ② 家：.../agents/xiaoshuai → ③ 入口：<span style="color:#20a162">飞书●</span> <span style="color:#646a73">微信○</span> <span style="color:#1677ff">＋添加接入</span></div></div><span class="dot on"></span></div>
+            <div style="margin-top:6px;display:flex;gap:6px"><span style="font-size:10px;padding:2px 6px;border-radius:999px;background:#fff;border:1px solid #bfdbfe">选择目录</span><span style="font-size:10px;padding:2px 6px;border-radius:999px;background:#1e40af;color:#fff">绑定飞书</span></div>
+          </div>
+          <div style="border:1px solid #e5e6eb;border-radius:9px;padding:8px;display:flex;gap:8px;align-items:center;opacity:.9"><div class="avatar" style="background:linear-gradient(135deg,#1e40af,#60a5fa)">火</div><div style="flex:1"><b>星火</b><div style="font-size:11px;color:#646a73">家：.../xinghuo · 入口：飞书●</div></div><span class="dot on"></span></div>
+        </div></div>
+        <p class="note"><b>你的流程：</b>① 输入“小帅” → ② 弹出图2目录选择器选家 → ③ 勾飞书/微信接入（D1）。<b>效果：</b>创建即完成绑定，不用先去飞书扫码再想起选目录。<br><b>真数据：</b>外挂调 `dsh-im` 的 `bot.workspace.set` + `provision.begin`，不改本体。</p>
+        <div style="margin-top:6px;display:flex;gap:6px"><span style="font-size:10px;padding:2px 6px;border-radius:999px;background:#f7f8fa;border:1px dashed #c7d2fe;color:#646a73">也可切换：按渠道 / 按工作区（次入口）</span></div>
+      </div>
+      <div class="mock"><div class="mockHd">为什么以人为一级？</div><div class="mockBd note">原来左侧是“按渠道”（飞书/微信...），现在左侧是“按人”（小帅/星火...）。<br><br>• 找人不用记渠道<br>• 一个人可挂多接入（飞书+QQ）<br>• 新人三步完成：人→家→入口<br><br><span style="color:#2563eb;font-weight:700">本外挂在 dsh-im 上加一层 Agent 抽象（botId→Agent 映射），dsh-im 仍管单渠道 bot，外挂管“人”。</span></div></div>
+    </div>
+  </div>
+
+  <!-- B1 -->
+  <div class="card">
+    <div class="cardHead"><div class="k b">B1</div><h3>左侧徽标 + 呼吸灯 <small>全页面左侧工作区列表</small></h3><span class="pill">全页面</span></div>
+    <div class="grid2">
+      <div class="mock" style="background:#0f1115;color:#c9d1d9"><div class="mockHd" style="color:#8b949e;background:#0f1115;border-color:#21262d">工作区 <span>6个</span></div><div class="mockBd" style="display:grid;gap:4px">
+        <div class="ws on">📁 xiaoshuai <span style="margin-left:auto;color:#8b949e;font-size:11px">小帅</span><span class="badge2">飞书·在线</span></div>
+        <div class="ws on">📁 xinghuo <span style="margin-left:auto;color:#8b949e;font-size:11px">星火</span><span class="badge2">飞书·在线</span></div>
+        <div class="ws">📁 dsh-im <span style="margin-left:auto;color:#8b949e;font-size:11px">未绑定</span></div>
+      </div></div>
+      <div>
+        <p class="note"><b>想法：</b>把运维信息带到你天天盯的左侧，用动效代替“运行正常”四字。<b>效果：</b>一眼区分“线上有人值班”vs“本地草稿”，掉线时整行抖 0.3s。<br><b>探针：</b>试验田内“注入真实徽标”按钮已操作真实左侧（`MutationObserver`），完全不改 dsh-im。<br>真数据：`~/.dsh/integrations/*/workspaces.json` + `health`。</p>
+        <div style="display:flex;gap:6px;margin-top:6px"><span class="dot on"></span> 在线呼吸 <span class="dot off" style="margin-left:8px"></span> 离线</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- B2 -->
+  <div class="card">
+    <div class="cardHead"><div class="k b">B2</div><h3>筛选条 <small>已绑定 / 未绑定</small></h3><span class="pill">左侧顶部</span></div>
+    <div class="grid2">
+      <div style="display:flex;gap:6px"><span class="btn pri" style="flex:1">全部(6)</span><span class="btn" style="flex:1">已绑定(3)</span><span class="btn" style="flex:1">未绑定(3)</span></div>
+      <p class="note">场景：几十个时一键只看待领养的空闲目录。<b>效果：</b>批量整理，心智“有主 vs 空闲”。已更名“已托管→已绑定”。</p>
+    </div>
+  </div>
+
+  <!-- B3 -->
+  <div class="card">
+    <div class="cardHead"><div class="k b">B3</div><h3>Header 浮层 <small>中间对话区顶部</small></h3><span class="pill">&lt;dsh_im_source&gt; 上</span></div>
+    <div class="grid2">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;border:1px dashed #1677ff;border-radius:8px;background:#eef4ff;font-size:12px">
+        <span>📁 当前：<b>xiaoshuai</b></span><span style="display:flex;gap:6px;align-items:center"><span class="dot on"></span>小帅·飞书在线</span><span><span class="btn" style="padding:2px 6px">检查连接</span> <span class="btn pri" style="padding:2px 6px">去设置</span></span>
+      </div>
+      <p class="note">想法：在上下文中给状态，不用跳设置。效果：在干活的地方就知道这家伙在线与否。</p>
+    </div>
+  </div>
+
+  <!-- C1a -->
+  <div class="card">
+    <div class="cardHead"><div class="k c">C1a</div><h3>Fleet 大卡详情 <small>点矩阵行滑出抽屉</small></h3><span class="pill">试验田抽屉</span></div>
+    <div class="grid2">
+      <div style="border:1px solid #e5e6eb;border-radius:10px;padding:10px;display:grid;gap:6px">
+        <div class="row"><div class="avatar">帅</div><div style="flex:1"><b>小帅</b><div style="font-size:11px;color:#646a73">D:\...\xiaoshuai · PTC</div></div><span class="dot on"></span></div>
+        <div style="font-size:11px">入口：<span style="padding:2px 6px;border-radius:999px;background:#eef4ff;border:1px solid #c7d2fe;color:#1e40af">飞书 ●在线</span> <span style="padding:2px 6px;border-radius:999px;background:#fff;border:1px solid #e5e6eb">QQ ○离线</span> <span style="color:#1677ff">＋添加入口</span></div>
+        <div style="display:flex;gap:6px"><span class="btn pri">打开工作区</span><span class="btn">发测试消息</span></div>
+      </div>
+      <p class="note"><b>以人为视角：</b>点一个人，看一家、几个接入、快捷操作。适合管1个人。</p>
+    </div>
+  </div>
+
+  <!-- C1b -->
+  <div class="card">
+    <div class="cardHead"><div class="k c">C1b</div><h3>Fleet 矩阵总览 <small>Agent×渠道</small></h3><span class="pill">试验田总览 / 右Dock</span></div>
+    <div class="grid2">
+      <table class="tbl"><thead><tr><th>Agent\渠道</th><th>飞书</th><th>微信</th><th>QQ</th></tr></thead><tbody><tr><td>小帅</td><td style="color:#20a162">●在线</td><td>—</td><td style="color:#da3633">○离线</td></tr><tr><td>星火</td><td style="color:#20a162">●在线</td><td>—</td><td>—</td></tr><tr><td>小孙</td><td>未绑定</td><td>—</td><td>—</td></tr></tbody></table>
+      <p class="note"><b>以舰队视角：</b> 1屏扫几十人谁掉线，谁缺入口。点一行滑出 C1a 抽屉。</p>
+    </div>
+  </div>
+
+  <!-- D1 -->
+  <div class="card">
+    <div class="cardHead"><div class="k d">D1</div><h3>反向声明 <small>工作区右键 / Fleet 详情</small></h3><span class="pill">右键菜单</span></div>
+    <div class="grid2">
+      <div style="display:grid;gap:6px">
+        <label style="display:flex;justify-content:space-between;padding:8px;border:1px solid #e5e6eb;border-radius:8px"><span>飞书接入</span><input type="checkbox"></label>
+        <label style="display:flex;justify-content:space-between;padding:8px;border:1px solid #e5e6eb;border-radius:8px"><span>微信接入</span><input type="checkbox" checked></label>
+      </div>
+      <p class="note">想法：去小孙家入口口挂牌，而非去市政厅查册。点右键 `xiaoshuai` → `绑定到机器人...` 弹图2目录选择器。<br><b>约束：</b>1工作区=1Agent（已确认）。</p>
+    </div>
+  </div>
+
+  <!-- E2 -->
+  <div class="card">
+    <div class="cardHead"><div class="k e">E2</div><h3>拖拽领养 <small>九宫格 + Drop 区</small></h3><span class="pill">九宫格</span></div>
+    <div class="grid2">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+        <div style="padding:8px;border:1px solid #e5e6eb;border-radius:10px;text-align:center;font-size:11px">📁<div>dsh-im</div><div style="color:#8b949e">拖飞书来绑定</div></div>
+        <div style="padding:8px;border:1px solid #e5e6eb;border-radius:10px;text-align:center;font-size:11px">📁<div>matt-demo</div></div>
+        <div style="padding:8px;border:1px dashed #e5e6eb;border-radius:10px;text-align:center;background:#f7f8fa">＋<div>新建</div></div>
+      </div>
+      <p class="note">把蓝芯片拖到虚线框即绑定，已接 `drop` 探针，下一步 `drop→bot.workspace.set` 真绑定。批量最快。<br><b>外挂可调 dsh-im：</b> `connection.rpc.call('/feishu','bot.workspace.set')` 正道。</p>
+    </div>
+  </div>
+
+  <!-- E3 -->
+  <div class="card">
+    <div class="cardHead"><div class="k e">E3</div><h3>会话路由预览 <small>飞书会话 → session</small></h3><span class="pill">路由卡</span></div>
+    <div class="grid2">
+      <div style="display:grid;gap:6px">
+        <div style="padding:8px;border:1px solid #eef0f3;border-radius:8px;background:#fff;font-size:12px;display:flex;justify-content:space-between"><span><b>小帅·私聊@张三</b><div style="font-size:11px;color:#646a73">最近 11:06</div></span><span style="padding:2px 6px;border-radius:999px;background:#f2f3f5;font-size:11px">sess-aaa</span></div>
+        <div style="padding:8px;border:1px solid #eef0f3;border-radius:8px;background:#fff;font-size:12px;display:flex;justify-content:space-between"><span><b>小帅·群聊@小帅</b><div style="font-size:11px;color:#646a73">最近 10:52</div></span><span style="padding:2px 6px;border-radius:999px;background:#f2f3f5;font-size:11px">sess-bbb</span></div>
+      </div>
+      <p class="note">飞书里给小帅发私聊/群@，映射到 Harness 的哪个 `sessionId`，点“在中间打开”直跳。排障黑盒变白盒。<br>真数据：`StateStore.sessionFor(key)`。</p>
+    </div>
+  </div>
+
+  <!-- E4 -->
+  <div class="card">
+    <div class="cardHead"><div class="k e">E4</div><h3>欢迎横幅 <small>对话区顶部 80px 可收起</small></h3><span class="pill">仅已绑定</span></div>
+    <div class="grid2">
+      <div style="border:1px solid #e5e6eb;border-radius:10px;padding:10px;background:#fff"><div style="font-weight:800">👋 小帅的家</div><div style="font-size:12px;color:#646a73">家：D:\...\xiaoshuai · PTC · 飞书在线</div><div style="margin-top:6px"><span class="btn pri" style="padding:2px 6px">发测试消息</span> <span class="btn" style="padding:2px 6px">查看路由</span></div></div>
+      <p class="note"><b>场景：</b>点 `xiaoshuai` 会话，顶部 0.5s 看到“人在家、灯亮着、接入正常”，从“查工单”变“推入口回家”。<br>不写 `README.md`，是 `conversation.view` 横幅，可收起，仅已绑定显示。</p>
+    </div>
+  </div>
+
+  <div style="padding:12px;border:1px dashed #c7d2fe;border-radius:12px;background:#eef2ff;color:#1e40af;font-size:12px">全部 11 项（C1拆2后净11，砍掉 Ctrl+K/根README）· 解耦外挂 <b>@dsh-external/dsh-im-companion</b> · 搜 <b>dsh-im</b> 紧随第二 · 一次一卡实现，验完即增强</div>
+
+</div>
+</body>
+</html>

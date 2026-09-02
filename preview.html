@@ -1,0 +1,107 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>IM机器人辅助 - 预览</title>
+<style>
+body{margin:0;padding:16px;background:#f6f8fa;font-family:sans-serif}
+.af-page{width:100%;max-width:1100px;margin:0 auto;padding:8px 0 40px;color:#1f2329;line-height:1.5}
+.af-hero{display:flex;justify-content:space-between;gap:16px;margin:0 0 14px;padding:14px 16px;border:1px solid #e5e6eb;border-radius:14px;background:#f0f5ff}
+.af-card{border:1px solid #e5e6eb;border-radius:12px;background:#fff;overflow:hidden;margin-bottom:12px}
+.af-cardHead{display:flex;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #eef0f3;background:#f7f8fa;font-weight:700;font-size:13px}
+.af-cardBody{padding:12px}
+.af-checklist{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.af-check{display:flex;gap:8px;padding:6px 8px;border:1px solid #eef0f3;border-radius:8px;background:#fff;font-size:12px}
+.af-tab{padding:6px 10px;border:1px solid #dfe1e5;border-radius:999px;background:#fff;font-size:12px;cursor:pointer;margin-right:6px}
+.af-tab.active{background:#1677ff;color:#fff;border-color:#1677ff}
+.af-agentCard{display:grid;gap:8px;padding:10px 12px;border:1px solid #e5e6eb;border-radius:10px;background:#fff;margin-bottom:8px}
+.af-row{display:flex;gap:8px;align-items:center}
+.af-avatar{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:linear-gradient(135deg,#12213f,#3964fe);color:#fff;font-weight:800}
+.af-dot{width:10px;height:10px;border-radius:50%}
+.af-dot.online{background:#20a162;animation:afB 1.6s infinite}
+@keyframes afB{0%{box-shadow:0 0 0 0 rgba(32,161,98,.6)}70%{box-shadow:0 0 0 8px rgba(32,161,98,0)}100%{box-shadow:0 0 0 0 rgba(32,161,98,0)}}
+.af-dot.offline{background:#d92d20}
+.af-workspaceRow{display:grid;grid-template-columns:1fr auto;gap:8px;padding:8px 10px;border:1px solid #eef0f3;border-radius:9px;background:#f7f8fa;font-size:12px;margin-bottom:6px}
+.af-workspaceRow.managed{background:#eef4ff;border-color:#b6c8ff}
+.af-matrix{width:100%;border-collapse:collapse;font-size:12px}
+.af-matrix th,.af-matrix td{padding:6px 8px;border:1px solid #eef0f3;text-align:center}
+.af-matrix th{background:#f7f8fa}
+.af-btn{padding:6px 10px;border:1px solid #dfe1e5;border-radius:8px;background:#fff;font-size:12px;cursor:pointer}
+.af-btn.primary{background:#1677ff;color:#fff;border-color:#1677ff}
+.af-note{color:#646a73;font-size:11px}
+</style>
+<div class="af-page">
+<div class="af-hero"><div><h2 style="margin:0">IM机器人辅助 <span style="font-weight:400;color:#646a73;font-size:12px">v0.0.1 · 10合1 最大合集</span></h2><p style="margin:0;color:#646a73;font-size:12px">解耦伴生插件，不改 dsh-im 一行代码。下面 10 项全部可点、全部可验证。</p></div><div style="text-align:right"><span style="padding:4px 8px;border-radius:999px;background:#eef2ff;color:#3355ff;font-size:11px">● 解耦外挂</span><div style="font-size:11px;color:#646a73">D:\dsh-plugin\dsh-im-companion</div></div></div>
+
+<div class="af-card"><div class="af-cardHead">☑️ 10项试验清单</div><div class="af-cardBody"><ul class="af-checklist">
+<li class="af-check"><input type="checkbox"> A1 设置页 按Agent/渠道/工作区 聚合视图</li>
+<li class="af-check"><input type="checkbox"> B1 左侧工作区 IM徽标装饰（在线/离线）</li>
+<li class="af-check"><input type="checkbox"> B2 左侧工作区筛选条（全部/已托管/未托管）</li>
+<li class="af-check"><input type="checkbox"> B3 工作区 Header 浮层（当前Agent状态+快捷）</li>
+<li class="af-check"><input type="checkbox"> C1 Agent Fleet 控制室（大卡+矩阵）</li>
+<li class="af-check"><input type="checkbox"> D1 工作区反向声明（工作区设置里管入口）</li>
+<li class="af-check"><input type="checkbox"> E1 在场感呼吸灯 + 断线动效</li>
+<li class="af-check"><input type="checkbox"> E2 一键领养/拖拽批量绑定九宫格</li>
+<li class="af-check"><input type="checkbox"> E3 会话路由预览（私聊/群聊→session）</li>
+<li class="af-check"><input type="checkbox"> E4 拟人化Home/自动建家/命令面板</li>
+</ul></div></div>
+
+<div class="af-card"><div class="af-cardHead">A1 聚合视图 <span style="font-weight:400;color:#646a73;font-size:11px">三 Tab 切换</span></div><div class="af-cardBody">
+<div><button class="af-tab active">按Agent</button><button class="af-tab">按渠道</button><button class="af-tab">按工作区</button></div>
+<div class="af-agentCard" style="margin-top:8px"><div class="af-row"><div class="af-avatar">帅</div><div style="flex:1"><strong>小帅</strong><div style="font-size:11px;color:#646a73">D:\3DeepSeekHarness\agents\xiaoshuai</div></div><span class="af-dot online"></span>在线</div><div style="font-size:11px;color:#646a73">🎭 PTC 模式 (ptc) · 飞书 ●在线  QQ ○离线</div></div>
+<div class="af-agentCard"><div class="af-row"><div class="af-avatar">火</div><div style="flex:1"><strong>星火</strong><div style="font-size:11px;color:#646a73">D:\3DeepSeekHarness\agents\xinghuo</div></div><span class="af-dot online"></span>在线</div><div style="font-size:11px;color:#646a73">🎭 PTC 模式 (ptc) · 飞书 ●在线</div></div>
+</div></div>
+
+<div class="af-card"><div class="af-cardHead">B1 左侧工作区徽标装饰</div><div class="af-cardBody">
+<div style="border:1px solid #e5e6eb;border-radius:10px;overflow:hidden;background:#0f1115;color:#c9d1d9;padding:8px">
+<div style="display:flex;justify-content:space-between;font-size:12px;color:#8b949e">工作区（Mock）<span>6个</span></div>
+<div style="margin-top:6px;display:grid;gap:3px">
+<div style="display:flex;gap:8px;padding:6px 8px;border-radius:7px;background:rgba(22,119,255,.15);border:1px solid rgba(22,119,255,.25);font-size:12px">📁 xiaoshuai <span style="margin-left:auto;color:#8b949e;font-size:11px">小帅</span><span style="padding:2px 6px;border-radius:999px;background:#238636;color:#fff;font-size:10px">飞书·在线</span></div>
+<div style="display:flex;gap:8px;padding:6px 8px;border-radius:7px;background:rgba(22,119,255,.15);border:1px solid rgba(22,119,255,.25);font-size:12px">📁 xinghuo <span style="margin-left:auto;color:#8b949e;font-size:11px">星火</span><span style="padding:2px 6px;border-radius:999px;background:#238636;color:#fff;font-size:10px">飞书·在线</span></div>
+<div style="display:flex;gap:8px;padding:6px 8px;border-radius:7px;font-size:12px">📁 dsh-im <span style="margin-left:auto;color:#8b949e;font-size:11px">未托管</span></div>
+</div>
+</div>
+<div style="margin-top:8px;display:flex;gap:8px"><button class="af-btn primary">注入真实徽标（探针）</button><button class="af-btn">清除</button></div>
+<div class="af-note">原理：MutationObserver 叠加徽标，完全不改 dsh-im。</div>
+</div></div>
+
+<div class="af-card"><div class="af-cardHead">B2 筛选条</div><div class="af-cardBody">
+<div style="display:flex;gap:6px;padding:6px;background:#f7f8fa;border-radius:8px;margin-bottom:6px"><button class="af-btn primary" style="flex:1">全部(6)</button><button class="af-btn" style="flex:1">已托管(3)</button><button class="af-btn" style="flex:1">未托管(3)</button></div>
+<div class="af-workspaceRow managed"><span>D:\...\\xiaoshuai</span><span>已托管·小帅</span></div>
+<div class="af-workspaceRow"><span>D:\...\\dsh-im</span><span><button class="af-btn" style="padding:2px 6px;font-size:11px">领养</button></span></div>
+</div></div>
+
+<div class="af-card"><div class="af-cardHead">B3 工作区 Header 浮层</div><div class="af-cardBody">
+<div style="display:flex;justify-content:space-between;padding:8px 10px;border:1px dashed #1677ff;border-radius:8px;background:#eef4ff;font-size:12px">
+<span>📁 当前：<b>xiaoshuai</b></span><span style="display:flex;gap:6px;align-items:center"><span class="af-dot online"></span>小帅·飞书在线</span><span><button class="af-btn" style="padding:2px 6px">检查连接</button> <button class="af-btn primary" style="padding:2px 6px">去设置</button></span>
+</div>
+</div></div>
+
+<div class="af-card"><div class="af-cardHead">C1 Fleet 控制室</div><div class="af-cardBody">
+<div class="af-agentCard"><div class="af-row"><div class="af-avatar">帅</div><div style="flex:1"><strong>小帅</strong><div style="font-size:11px;color:#646a73">D:\...\\xiaoshuai</div></div><span class="af-dot online"></span></div><div style="font-size:11px">入口：飞书 ●在线  QQ ○离线 <span style="color:#1677ff">＋添加入口</span></div></div>
+<table class="af-matrix" style="margin-top:8px"><thead><tr><th>Agent\渠道</th><th>飞书</th><th>微信</th><th>QQ</th></tr></thead><tbody><tr><td>小帅</td><td style="color:#20a162">●在线</td><td>—</td><td style="color:#da3633">○离线</td></tr><tr><td>星火</td><td style="color:#20a162">●在线</td><td>—</td><td>—</td></tr></tbody></table>
+</div></div>
+
+<div class="af-card"><div class="af-cardHead">D1 工作区反向声明</div><div class="af-cardBody">
+<div style="font-size:12px;margin-bottom:8px">在工作区「xiaosun」设置页直接管理入口：</div>
+<label style="display:flex;justify-content:space-between;padding:8px;border:1px solid #e5e6eb;border-radius:8px;margin-bottom:6px"><span>飞书接入</span><input type="checkbox"></label>
+<label style="display:flex;justify-content:space-between;padding:8px;border:1px solid #e5e6eb;border-radius:8px;margin-bottom:6px"><span>微信接入</span><input type="checkbox" checked></label>
+</div></div>
+
+<div class="af-card"><div class="af-cardHead">E1 在场感呼吸灯</div><div class="af-cardBody" style="display:flex;gap:12px;align-items:center"><span class="af-dot online" style="width:12px;height:12px"></span>在线呼吸<span class="af-dot offline" style="width:12px;height:12px"></span>离线<span style="font-size:11px;color:#646a73">断线抖动 0.3s</span></div></div>
+
+<div class="af-card"><div class="af-cardHead">E2 一键领养/拖拽</div><div class="af-cardBody">
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px"><div style="padding:8px;border:1px solid #e5e6eb;border-radius:10px;text-align:center;font-size:11px">📁<div>dsh-im</div><div style="color:#8b949e">拖飞书来绑定</div></div><div style="padding:8px;border:1px solid #e5e6eb;border-radius:10px;text-align:center;font-size:11px">📁<div>matt-demo</div></div><div style="padding:8px;border:1px dashed #e5e6eb;border-radius:10px;text-align:center;background:#f7f8fa">＋<div>新建</div></div></div>
+<div style="margin-top:8px;padding:12px;border:2px dashed #1677ff;border-radius:10px;text-align:center;background:#eef4ff;font-size:12px">把「飞书」芯片拖到此处批量绑定</div>
+</div></div>
+
+<div class="af-card"><div class="af-cardHead">E3 会话路由预览</div><div class="af-cardBody" style="display:grid;gap:6px">
+<div style="padding:8px 10px;border:1px solid #eef0f3;border-radius:8px;background:#fff;font-size:12px"><div style="display:flex;justify-content:space-between"><b>小帅 · 飞书私聊@张三</b><span style="padding:2px 6px;border-radius:999px;background:#f2f3f5;font-size:11px">sess-aaa</span></div><div style="font-size:11px;color:#646a73">最近 11:06 · <a href="#">在中间打开</a></div></div>
+<div style="padding:8px 10px;border:1px solid #eef0f3;border-radius:8px;background:#fff;font-size:12px"><div style="display:flex;justify-content:space-between"><b>小帅 · 群聊@小帅</b><span style="padding:2px 6px;border-radius:999px;background:#f2f3f5;font-size:11px">sess-bbb</span></div><div style="font-size:11px;color:#646a73">最近 10:52 · <a href="#">在中间打开</a></div></div>
+</div></div>
+
+<div class="af-card"><div class="af-cardHead">E4 拟人化Home / 自动建家</div><div class="af-cardBody">
+<div style="padding:10px;border:1px solid #e5e6eb;border-radius:10px;background:#fff"><div style="font-weight:700">👋 小帅的名片</div><div style="font-size:12px;color:#646a73">家：D:\...\\xiaoshuai · PTC · 飞书在线</div></div>
+<div style="margin-top:8px"><button class="af-btn">为小孙自动建家</button> <span style="font-size:11px;color:#646a73">检测目录不存在即提示</span></div>
+<div style="margin-top:8px;font-size:12px">命令面板：<span style="padding:1px 5px;border:1px solid #d0d7de;border-radius:4px;background:#f6f8fa;font:11px monospace">Ctrl+K</span> → 输入 <span style="padding:1px 5px;border:1px solid #d0d7de;border-radius:4px;background:#f6f8fa;font:11px monospace">小帅</span> → 跳转</div>
+</div></div>
+
+</div>
