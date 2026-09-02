@@ -1,22 +1,26 @@
-export const name = "dsh-im-companion"
-export const inject = []
+/** dsh-im-companion host 后端：元数据持久化 + /im-companion RPC 桥（client 经 ctx.connection.rpc 调用）。 */
+import { homedir } from 'node:os'
+import path from 'node:path'
+import { AgentMetaStore } from './host/meta-store.js'
+import { createAgentFleetHandler } from './host/rpc.js'
+
+export const name = 'dsh-im-companion'
+export const inject = ['connection']
 
 export function apply(ctx: any, config: any = {}) {
   const logger = typeof ctx?.logger === 'function' ? ctx.logger(name) : (ctx?.logger ?? console)
-  logger.info?.('[agent-fleet] host 启动（解耦伴生，不触碰 dsh-im）')
-  ctx.effect(() => {
-    if (typeof ctx.provide === 'function') {
-      try {
-        ctx.provide('agentFleet', {
-          version: '0.0.1',
-          note: 'dsh-im 解耦伴生，10合1IM机器人辅助 host 已就绪',
-          async listMock() {
-            return { ok: true, agents: ['小帅','星火','小孙'] }
-          }
-        })
-      } catch {}
-    }
-    return () => {}
-  }, 'agent-fleet: host service')
-  logger.info?.('[agent-fleet] host apply 完成，等待 client UI 试验')
+  const dshHome = String(config.dshHome ?? process.env.DSH_HOME ?? path.join(homedir(), '.dsh'))
+  const store = new AgentMetaStore(path.join(dshHome, 'integrations', 'dsh-im-companion', 'meta.json'))
+  void store.load()
+
+  const CHANNEL = '/im-companion'
+  const dispose = ctx.connection.rpc.handle(CHANNEL, createAgentFleetHandler(store))
+  ctx.effect(() => () => dispose(), 'dsh-im-companion: rpc channel cleanup')
+
+  try {
+    ctx.provide?.('agentFleet', { version: '0.0.2', meta: store })
+  } catch {
+    /* 服务已被占用时跳过 */
+  }
+  logger.info?.('[agent-fleet] host ready, rpc channel ' + CHANNEL)
 }

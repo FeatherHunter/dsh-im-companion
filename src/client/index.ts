@@ -1,33 +1,53 @@
-/**
- * @dsh-external/dsh-agent-fleet — client 面板（conversation.view slot）。
- * 构建：npm run build:client（tsdown，产物 lib/client.js，ModuleLoader.load 注册）。
- * ⚠️ 两个必坑（2026-08 实测）：① apply 用 ctx.slots 必须 export const inject
- * = ['slots']（服务注入声明）；② register 必须带 name 字段（= slot 名，
- * 如 conversation.view）——缺 name 报 "slot undefined is not declared"。
- */
-import type { SlotsService } from '@deepseek-ai/dsh-client-ui-slots'
+/** dsh-im-companion client 入口：注册设置面板（settings.section, order 22）。
+ * 铁律：settings.section 注册组件必须返回 React 元素 —— 用 React 外壳挂载命令式 FleetPanel。 */
+import * as React from 'react'
+import { installStyles } from './theme'
+import { FleetPanel } from './components/panel'
 
-type ClientContext = {
-  slots: SlotsService
-}
+export const inject = ['slots', 'connection']
 
-export const inject = ['slots']
+export function apply(ctx: any): void {
+  const PLUGIN_ID = 'dsh-im-companion'
 
-export function apply(ctx: ClientContext): void {
-  ctx.effect(() => ctx.slots.inject('conversation.view', () =>
+  const disposeStyles = installStyles()
+
+  const FleetSettingsTab: React.FC = () => {
+    const ref = React.useRef<HTMLDivElement | null>(null)
+    React.useEffect(() => {
+      const mount = ref.current
+      if (!mount) return
+      let panel: HTMLElement | null = null
+      try {
+        mount.replaceChildren()
+        panel = FleetPanel(ctx)
+        mount.appendChild(panel)
+      } catch (e) {
+        console.error('[dsh-im-companion] mount error', e)
+        const box = document.createElement('div')
+        box.textContent = 'IM机器人辅助 加载失败：' + String((e as Error)?.message ?? e)
+        box.style.cssText = 'padding:20px;color:var(--dsw-alias-state-error-primary);'
+        mount.replaceChildren(box)
+      }
+      return () => {
+        try {
+          ;(panel as unknown as { __afDispose?: () => void })?.__afDispose?.()
+        } catch {
+          /* noop */
+        }
+        mount.replaceChildren()
+      }
+    }, [])
+    return React.createElement('div', { ref, style: { background: 'transparent' } })
+  }
+
+  ctx.effect(() => () => disposeStyles(), 'dsh-im-companion: styles')
+  ctx.slots.inject('settings.section', () =>
     ctx.slots.register({
-      name: 'conversation.view',
-      id: '@dsh-external/dsh-agent-fleet-panel',
-      label: () => "@dsh-external/dsh-agent-fleet",
-      component: () => ({
-        render() {
-          const el = document.createElement('div')
-          el.textContent = "@dsh-external/dsh-agent-fleet" + ' 面板（host API: /@dsh-external/dsh-agent-fleet/api）'
-          el.style.padding = '12px'
-          el.style.fontFamily = 'monospace'
-          return el
-        },
-      }),
-    }),
-  ), '@dsh-external/dsh-agent-fleet: panel')
+      name: 'settings.section',
+      id: PLUGIN_ID,
+      order: 22,
+      label: () => 'IM机器人辅助',
+      inject: () => ({}),
+    }, FleetSettingsTab),
+  )
 }

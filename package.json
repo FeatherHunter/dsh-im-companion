@@ -14,6 +14,21 @@
     "lib"
   ],
   "license": "BSD-3-Clause",
+  "devDependencies": {
+    "@types/node": "26.4.1",
+    "@types/react": "19.2.18",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsdown": "0.22.14",
+    "typescript": "7.0.2"
+  },
+  "scripts": {
+    "build": "npm run build:host && npm run build:client",
+    "build:host": "tsc -p tsconfig.json",
+    "build:client": "tsdown",
+    "typecheck": "tsc -p tsconfig.client.json",
+    "verify": "node tools/verify/render-client.ts"
+  },
   "dsh": {
     "client": {
       "inject": [

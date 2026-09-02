@@ -15,5 +15,6 @@
     "forceConsistentCasingInFileNames": true,
     "sourceMap": true
   },
-  "include": ["src"]
+  "include": ["src/index.ts", "src/host"],
+  "exclude": ["src/client"]
 }

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>AF preview</title>
+<style>
+  html,body{margin:0;background:#101012;color:#f5f5f7;font-family:-apple-system,"PingFang SC","Segoe UI",sans-serif}
+  :root{
+    --dsw-alias-bg-base:#101012;
+    --dsw-alias-label-primary:#f5f5f7;
+    --dsw-alias-label-secondary:#a1a1a6;
+    --dsw-alias-label-tertiary:#6e6e73;
+    --dsw-alias-border-l2:#2c2c2e;
+    --dsw-alias-state-success-primary:#30d158;
+    --dsw-alias-state-warn-primary:#ff9f0a;
+    --dsw-alias-state-error-primary:#ff453a;
+    --dsw-alias-brand-primary:#0a84ff;
+    --dsw-alias-bg-module-platform:#1c1c1e;
+  }
+  body.light{background:#f2f2f7;color:#1c1c1e;--dsw-alias-bg-base:#ffffff;--dsw-alias-label-primary:#1c1c1e;--dsw-alias-label-secondary:#6e6e73;--dsw-alias-label-tertiary:#98989d;--dsw-alias-border-l2:#e5e5ea;--dsw-alias-state-success-primary:#34c759;--dsw-alias-state-warn-primary:#ff9500;--dsw-alias-state-error-primary:#ff3b30;--dsw-alias-brand-primary:#007aff;--dsw-alias-bg-module-platform:#f2f2f7}
+  #app{max-width:820px;margin:0 auto;padding:8px 16px 64px}
+  .hint{position:fixed;right:12px;top:10px;font-size:12px;color:#8e8e93;z-index:9}
+  .hint a{color:#0a84ff}
+</style>
+</head>
+<body>
+<div class="hint">预览 harness（调试用，非交付）：<a href="/.scratch/preview-af.html">深色</a> · <a href="/.scratch/preview-af.html?theme=light">浅色</a></div>
+<div id="app"></div>
+<script src="/tools/preview/af-harness.iife.js"></script>
+</body>
+</html>
