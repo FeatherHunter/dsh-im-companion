@@ -3,7 +3,29 @@
  * meta 身份、routes.list 路由投影；无时间、无昵称、无跳转（session 已脱敏），
  * 所有“不知道”都以 null/空表达，由视图转为静态文案，绝不谎报。 */
 import { channelLabel, HEALTH_LABELS, type HealthKind } from "../../client/data/config";
-import { buildModel } from "../../client/data/model";
+import { basenameOf, buildModel } from "../../client/data/model";
+
+export interface WsCandidate {
+  path: string;
+  name: string;
+}
+
+/** 工作区 label 反查路径（hero chip 文本 → 全路径）：名/基名/后缀逐级收敛，
+ * 歧义或无匹配一律回 null（宁缺勿错配，错配=把别人的欢迎挂到当前会话）。 */
+export function matchWorkspaceLabel(label: string, candidates: WsCandidate[]): string | null {
+  const t = (label ?? "").trim();
+  if (!t) return null;
+  const list = (candidates ?? []).filter((c) => c && typeof c.path === "string" && c.path);
+  const byName = list.filter((c) => c.name === t);
+  if (byName.length === 1) return byName[0].path;
+  if (byName.length > 1) return null;
+  const byBase = list.filter((c) => basenameOf(c.path) === t);
+  if (byBase.length === 1) return byBase[0].path;
+  if (byBase.length > 1) return null;
+  const bySuffix = list.filter((c) => c.path === t || c.path.endsWith("/" + t) || c.path.endsWith("\\" + t));
+  if (bySuffix.length === 1) return bySuffix[0].path;
+  return null;
+}
 import type { AgentMetaDoc } from "../../client/data/meta";
 import type { AgentPresetCatalog, BotSnap } from "../../client/data/fleet-api";
 

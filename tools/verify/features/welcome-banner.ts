@@ -2,7 +2,7 @@
 // 做法：用仓库自带 tsc 把特性链转译到临时目录，再断言转译产物。
 // 覆盖定稿：时段问候边界、路由计数（无时间不断言活跃）、Top3 余数、双槽位无死按钮、
 // 横幅模型（身份/预设标签/上下文/缺席回 null）、路由读取静默失败、样式 wb- 命名空间、注册表收录。
-import { mkdtempSync, rmSync, existsSync, symlinkSync, readFileSync as readSrcFile } from "node:fs";
+import { mkdtempSync, rmSync, readFileSync as readSrcFile } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
@@ -21,8 +21,8 @@ const ENTRIES = [
   join(DATA, "bindings.ts"),
   join(DATA, "meta.ts"),
   join(REPO, "src", "client", "dom.ts"),
-  join(DATA, "header-overlay.ts"),
   join(WB, "data.ts"),
+  join(WB, "anchor.ts"),
   join(WB, "styles.ts"),
   join(WB, "view.ts"),
   join(WB, "manifest.ts"),
@@ -43,8 +43,6 @@ try {
   console.error("TRANPILE-FAIL " + String((e as any).stdout ?? "") + String((e as any).stderr ?? (e as Error).message));
   process.exit(1);
 }
-// react 解析：tmp 内 junction 回仓库 node_modules（随 tmp 同生共死）。
-if (!existsSync(join(tmp, "node_modules"))) symlinkSync(join(REPO, "node_modules"), join(tmp, "node_modules"), "junction");
 const req = createRequire(join(tmp, "run.cjs"));
 const indexSrc = readSrcFile(join(FEAT, "index.ts"), "utf8");
 const data: any = req("./features/welcome-banner/data.js");
@@ -273,37 +271,104 @@ test("渲染类名全在 wb- 命名空间", () => {
   for (const cls of seen) assert.ok(css.indexOf("." + cls) >= 0, "渲染类 ." + cls + " 必须在 styles.ts 有定义");
 });
 
-test("槽位注册与卸载（真槽位 conversation.session）", () => {
-  const calls: any[] = [];
-  let disposed = false;
-  const fctx: any = {
-    rpc: null,
-    subscribe: () => () => undefined,
-    refresh: async () => undefined,
-    meta: { loadMeta: async () => ({ names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }) },
-    get: () => undefined,
-    slots: {
-      inject: (name: string, fn: any) => { calls.push(["inject", name]); return fn(); },
-      register: (opts: any, comp: any) => {
-        calls.push(["register", opts.name, opts.id, opts.key, typeof comp]);
-        return () => { disposed = true; };
-      },
-    },
-  };
-  const stop = view.mountBanner(fctx);
-  assert.deepEqual(calls.map((c) => c[0]), ["inject", "register"]);
-  assert.equal(calls[1][1], "conversation.session");
-  assert.equal(calls[1][2], "dsh-im-companion:welcome-banner");
-  assert.equal(calls[1][3], "dsh-im-companion:welcome-banner");
-  assert.equal(calls[1][4], "function");
-  stop();
-  assert.equal(disposed, true);
+test("label 反查路径（歧义宁缺勿错配）", () => {
+  const cands = [
+    { path: "D:\\agents\\xiaoshuai", name: "小帅" },
+    { path: "D:\\agents\\xinghuo", name: "星火" },
+  ];
+  assert.equal(data.matchWorkspaceLabel("小帅", cands), "D:\\agents\\xiaoshuai");
+  assert.equal(data.matchWorkspaceLabel("xiaoshuai", cands), "D:\\agents\\xiaoshuai");
+  assert.equal(data.matchWorkspaceLabel("agents\\xiaoshuai", cands), "D:\\agents\\xiaoshuai");
+  assert.equal(data.matchWorkspaceLabel("不存在", cands), null);
+  assert.equal(data.matchWorkspaceLabel("", cands), null);
+  assert.equal(data.matchWorkspaceLabel("小帅", [
+    { path: "D:\\a\\same", name: "小帅" },
+    { path: "D:\\b\\same", name: "小帅" },
+  ]), null);
+  assert.equal(data.matchWorkspaceLabel("same", [
+    { path: "D:\\a\\same", name: "甲" },
+    { path: "D:\\b\\same", name: "乙" },
+  ]), null);
 });
 
-test("无槽位服务静默无挂载", () => {
-  const stop = view.mountBanner({ slots: {} });
+test("hero 三信号确认", () => {
+  assert.equal(view.heroConfirmed("hero", "探索未至之境 预览版 other"), true);
+  assert.equal(view.heroConfirmed("hero", "Into the Unknown Preview"), true);
+  assert.equal(view.heroConfirmed("active", "探索未至之境 预览版"), false);
+  assert.equal(view.heroConfirmed("hero", "探索未至之境"), false);
+  assert.equal(view.heroConfirmed("hero", "预览版"), false);
+  assert.equal(view.heroConfirmed(null, "探索未至之境 预览版"), false);
+});
+
+test("hero chip 文本读取", () => {
+  const root = (label: string | null) => ({
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 && label !== null
+      ? { textContent: "  " + label + "  " }
+      : (sel.indexOf("Choose workspace") >= 0 && label !== null ? { textContent: label } : null),
+  });
+  assert.equal(view.heroWorkspaceLabel(root("xiaoshuai")), "xiaoshuai");
+  assert.equal(view.heroWorkspaceLabel(root(null)), "");
+  assert.equal(view.heroWorkspaceLabel(null), "");
+  assert.equal(view.heroWorkspaceLabel({}), "");
+});
+
+test("挂载永不抛错（ hostile 环境全静默）", () => {
+  const badCtx: any = {
+    rpc: null,
+    subscribe: () => { throw new Error("no sub"); },
+    refresh: async () => { throw new Error("no refresh"); },
+    meta: { loadMeta: async () => { throw new Error("no meta"); } },
+    get: () => { throw new Error("no get"); },
+    slots: { inject: () => { throw new Error("must never be called"); } },
+  };
+  const stop = view.mountBanner(badCtx);
   assert.equal(typeof stop, "function");
   stop();
+  const stop2 = view.mountBanner({} as any);
+  assert.equal(typeof stop2, "function");
+  stop2();
+});
+
+test("DOM 叠加挂载：hero 下出现横幅、卸载即净", async () => {
+  const inserted: any[] = [];
+  const removed: any[] = [];
+  const parentStub: any = {
+    insertBefore: (n: any) => { inserted.push(n); },
+    removeChild: (n: any) => { removed.push(n); },
+  };
+  const heroStub: any = {
+    textContent: "探索未至之境 预览版 选择工作区 xiaoshuai",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "xiaoshuai" } : null,
+    parentNode: parentStub,
+  };
+  (globalThis as any).document = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel === '[data-phase="hero"]' ? [heroStub] : [],
+  };
+  const subFns: any[] = [];
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      subFns.push(fn);
+      fn({ bots: [snap({})], failed: [], updatedAt: 1, catalogs: CATALOGS });
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => META },
+    get: () => undefined,
+    slots: { inject: () => { throw new Error("zero-slot: must never touch slots"); } },
+  };
+  const stop = view.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(inserted.length >= 1, "至少绘制一次");
+  const card = inserted[inserted.length - 1];
+  assert.ok(String(card.className).split(" ").includes("wb-banner"));
+  const names = card.querySelectorAll(".wb-name").map((n: any) => n.textContent);
+  assert.ok(names.some((t: string) => t.indexOf("小帅") >= 0), "meta 到达后应显示自定义名：" + names.join("|"));
+  stop();
+  assert.equal(removed.length, inserted.length, "每次绘制都要在卸载时回收");
 });
 
 rmSync(tmp, { recursive: true, force: true });
