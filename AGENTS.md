@@ -69,7 +69,7 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 - ⑧ **开发产物同步解耦**：每功能的验证/原型/模拟数据归入自己的命名空间——`tools/verify/features/<id>.ts`、`prototypes/<id>/`、preview mock 按功能注册；禁止向共享的 render-client / preview-host / 根目录原型"追加再追加"；共享开发文件同样只允许加"注册点"。
 - ⑨ 合并协议（并发正确性）：先合并点单 PR 先行入库；追加共享文件前先 `git pull`；merge 冲突时以"双方追加都保留"为准重做；契约先行——改共享协议必须先更新契约再改码。
 
-**开工四步**：① 读票 + `docs/features-contract.md`（§0/§1）② `gh issue edit <n> --add-assignee @me` 认领 ③ 只写自己的目录（开发产物同）+ 单文件 ≤300 行 ④ `npm run check` 全绿 → 提审（证据：截图/verify 输出/边界报告）→ 用户点头后才关闭。
+**开工四步**：① 读票 + `docs/features-contract.md`（§0/§1）② `gh issue edit <n> --add-assignee @me` 认领 ③ 只写自己的目录（开发产物同）+ 单文件 ≤300 行 ④ `npm run check` 全绿 → 提审（证据：截图/verify 输出/触碰面自述（改动清单 + 对照 R5 表））→ 用户点头后才关闭。
 
 **提审两闸门**：原型、真机验收均需用户确认；未过不关闭、不写实现。
 

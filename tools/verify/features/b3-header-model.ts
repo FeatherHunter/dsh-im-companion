@@ -38,6 +38,7 @@ try {
 }
 const mod = (f: string) => import(pathToFileURL(join(tmp, f)).href);
 const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, SEND_TEST_EVENT } = await mod('header-overlay.js');
+const { mergeStaleBots } = await mod('fleet-api.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over: Record<string, unknown> = {}) => ({
@@ -148,6 +149,19 @@ test('runTestSend：全路径如实（无 rpc/无 bot/无目标/成功/失败）
   assert.equal(lost.ok, false);
   assert.match(lost.text, /bot-not-connected/);
   assert.equal(lost.event, undefined);
+});
+
+test('mergeStaleBots：失败渠道保留旧快照标 stale；权威空不保留', () => {
+  const prev = [snap({ channel: 'qq', botId: 'q9', lastCheckedAt: 1000 })];
+  const kept = mergeStaleBots(prev, [], ['qq']);
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0].stale, true);
+  assert.equal(kept[0].lastCheckedAt, 1000); // 时间冻结
+  const fresh = [snap({ channel: 'qq', botId: 'q9', lastCheckedAt: 3000 })];
+  const replaced = mergeStaleBots(prev, fresh, ['qq']);
+  assert.equal(replaced.length, 1);
+  assert.equal(replaced[0].lastCheckedAt, 3000); // 新快照优先
+  assert.equal(mergeStaleBots(prev, [], []).length, 0); // 无失败无保留
 });
 
 console.log('header-overlay-model: ALL PASS');
