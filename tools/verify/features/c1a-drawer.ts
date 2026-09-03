@@ -58,6 +58,7 @@ const doc: any = createDocument();
 };
 (globalThis as any).document = (globalThis as any).document ?? doc;
 const view: any = req('./features/c1a/view.js');
+const drawerMod: any = req('./features/c1a/drawer.js');
 const sheet: any = req('./client/ui/sheet.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
@@ -194,4 +195,15 @@ test('view：B 变体渲染含摘要直改 + 折叠详情 + 空路由席位', ()
   }
   assert.ok(findByClass(root, 'c1a-summary').length >= 1);
   assert.ok(all.includes('随 E3（#14）落地'));
+});
+
+test('drawer：抽屉贴面板右沿几何（视口右沿兜底）', () => {
+  assert.deepEqual(
+    drawerMod.sheetGeometry({ top: 60, right: 1200, bottom: 800, left: 220 }, { width: 1600, height: 900 }),
+    { top: 60, right: 400, bottom: 100, width: 360 },
+  );
+  const narrow = drawerMod.sheetGeometry({ top: 0, right: 300, bottom: 600, left: 0 }, { width: 1440, height: 900 });
+  assert.equal(narrow.width, 300);
+  assert.equal(drawerMod.sheetGeometry(null, { width: 1600, height: 900 }), null);
+  assert.equal(drawerMod.sheetGeometry({ top: 0, right: 0, bottom: 0, left: 0 }, { width: 1600, height: 900 }), null);
 });

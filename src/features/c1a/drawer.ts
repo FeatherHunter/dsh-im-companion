@@ -10,6 +10,34 @@ import { renderDrawerContent, type DrawerCallbacks } from './view'
 
 let currentClose: (() => void) | null = null
 
+export interface PanelRect {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+export interface SheetGeom {
+  top: number
+  right: number
+  bottom: number
+  width: number
+}
+
+/** 抽屉贴设置面板右沿（真机体验反馈）：fixed 相对视口，用面板矩形反推四边；面板找不到回 null（调用方保持视口右沿兜底）。 */
+export function sheetGeometry(panel: PanelRect | null, viewport: { width: number; height: number }): SheetGeom | null {
+  if (!panel || !(viewport.width > 0 && viewport.height > 0)) return null
+  const pw = panel.right - panel.left
+  if (!(pw > 0)) return null
+  const width = pw < 420 ? Math.max(0, pw) : 360
+  return {
+    top: Math.max(0, Math.round(panel.top)),
+    right: Math.max(0, Math.round(viewport.width - panel.right)),
+    bottom: Math.max(0, Math.round(viewport.height - panel.bottom)),
+    width: Math.round(width),
+  }
+}
+
 export function mountDrawer(fctx: FeatureCtx): () => void {
   const onEvent = (e: Event): void => {
     try {
@@ -74,6 +102,11 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         } catch {
           /* ignore */
         }
+        try {
+          window.removeEventListener('resize', onResize)
+        } catch {
+          /* ignore */
+        }
         if (currentClose === closeAll) currentClose = null
       },
     })
@@ -82,6 +115,33 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     return
   }
   currentClose = closeAll
+  const placeSheet = (): void => {
+    try {
+      if (!sheet || typeof window === 'undefined' || typeof document === 'undefined') return
+      const el = document.querySelector('.af-root') as HTMLElement | null
+      const r = el && typeof el.getBoundingClientRect === 'function' ? el.getBoundingClientRect() : null
+      const g = sheetGeometry(
+        r ? { top: r.top, right: r.right, bottom: r.bottom, left: r.left } : null,
+        { width: window.innerWidth || 0, height: window.innerHeight || 0 },
+      )
+      if (!g || !sheet) return
+      sheet.panel.style.top = g.top + 'px'
+      sheet.panel.style.right = g.right + 'px'
+      sheet.panel.style.bottom = g.bottom + 'px'
+      sheet.panel.style.width = g.width + 'px'
+    } catch {
+      /* 定位失败保持视口右沿兜底 */
+    }
+  }
+  const onResize = (): void => {
+    if (!closed) placeSheet()
+  }
+  placeSheet()
+  try {
+    window.addEventListener('resize', onResize)
+  } catch {
+    /* 监听失败忽略（位置定格） */
+  }
   const paint = (): void => {
     if (closed || !meta || !sheet) return
     const model = buildDrawerModel(lastBots, meta, key)
