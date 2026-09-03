@@ -5,9 +5,12 @@ import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import { createDocument, El } from '../dom-shim.ts';
 
-const BASE = 'D:/0Tools/DSH Desktop/resources/app.asar.unpacked/node_modules';
+const REPO = process.cwd();
+const UNPACKED = process.env.DSH_DESKTOP_UNPACKED ?? 'D:/0Tools/DSH Desktop/resources/app.asar.unpacked';
+const BASE = UNPACKED + '/node_modules';
 const req = createRequire(import.meta.url);
-const code = readFileSync('D:/dsh-plugin/dsh-im-companion/lib/client.js', 'utf8');
+import { join as joinPath } from 'node:path';
+const code = readFileSync(joinPath(REPO, 'lib/client.js'), 'utf8');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const W2 = 'D:\\agents\\dsh-im';
@@ -86,6 +89,7 @@ const ctx = {
 const checks: [string, boolean][] = [];
 const header = regs.find((r) => String(r.opts?.id ?? '').includes('b3-header'));
 checks.push(['header 槽位已注册', !!header]);
+checks.push(['样式含呼吸 keyframes（防回归）', code.includes('@keyframes b3-header-breathe') && code.includes('b3-header-dotbtn')]);
 checks.push(['header 槽名正确', header?.opts?.name === 'conversation.session.header.utilities']);
 checks.push(['settings 面板注册未受影响', regs.some((r) => r.opts?.name === 'settings.section')]);
 

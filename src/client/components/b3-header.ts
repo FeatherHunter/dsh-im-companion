@@ -1,24 +1,25 @@
 /** B3 Header 浮层（C 变体 verdict #8）：conversation.session.header.utilities 呼吸点 + 详情。
  * 平时仅圆点零打扰；点击展开详情（Agent 健康 + 绑定渠道 + 打开工作区/发测试消息）。
- * 防御式：任何异常只隐藏自己，绝不影响原生 Header；卸载即净（轮询随组件走）。
+ * 防御式：任何异常只隐藏自己，绝不影响原生 Header；订阅 stream 纯渲染，卸载即退订。
  * 点击只读：打开工作区派发 OPEN_AGENT_EVENT（与 B1 同缝）；发测试消息只走 dsh-im
  * 已保存目标（无目标不清谎报发送，只给去配置指引），成功同时派发 SEND_TEST_EVENT。 */
 import * as React from 'react'
-import { OPEN_AGENT_EVENT } from '../data/badges'
-import { fetchBots, mergeStaleBots, type BotSnap, type RpcCall } from '../data/fleet-api'
+import { OPEN_AGENT_EVENT } from '../data/bindings'
+import type { BotSnap, RpcCall } from '../data/fleet-api'
+import type { StreamSnapshot } from '../data/connection-stream'
 import {
   SEND_TEST_EVENT,
-  chooseBot,
   headerOverlayFor,
   runTestSend,
   type DotKind,
 } from '../data/header-overlay'
 
-const POLL_MS = 15000
-
 export interface B3HeaderDeps {
   sessionId: string
   getWorkspacePath: (sessionId: string) => string | undefined
+  /** 单份 stream 订阅（index 单例）；首轮快照到达前不绘制。 */
+  subscribe: (fn: (snap: StreamSnapshot) => void) => () => void
+  /** 仅发测试消息写路径使用；读快照一律走 subscribe。 */
   createRpc: () => RpcCall | null
 }
 
@@ -38,46 +39,65 @@ function dotTitle(dot: DotKind): string {
   return '未绑定'
 }
 
-export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspacePath, createRpc }) => {
+export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspacePath, subscribe, createRpc }) => {
   const [bots, setBots] = React.useState<BotSnap[]>([])
-  const [loaded, setLoaded] = React.useState(false)
+  const [hasSnap, setHasSnap] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
   const [result, setResult] = React.useState<{ ok: boolean; text: string } | null>(null)
 
   React.useEffect(() => {
-    let disposed = false
-    let timer: ReturnType<typeof setInterval> | undefined
-    const poll = async (): Promise<void> => {
-      const rpc = createRpc()
-      if (!rpc || disposed) return
-      try {
-        const next = await fetchBots(rpc)
-        if (disposed) return
-        botsRef.current = mergeStaleBots(botsRef.current, next.bots, next.failed)
-        setBots(botsRef.current)
-        setLoaded(true)
-      } catch {
-        /* 静默失败保留旧状态（stale 语义在 fetchBots 内） */
-      }
-    }
-    const botsRef = { current: [] as BotSnap[] }
-    void poll()
+    let unsub: (() => void) | null = null
     try {
-      if (typeof setInterval !== 'undefined') timer = setInterval(() => void poll(), POLL_MS)
+      unsub = subscribe((snap) => {
+        setBots(snap.bots)
+        setHasSnap(snap.updatedAt > 0)
+      })
     } catch {
-      /* 无定时器就只拉一次 */
+      unsub = null
     }
     return () => {
-      disposed = true
       try {
-        if (timer !== undefined) clearInterval(timer)
+        unsub?.()
       } catch {
         /* 清理失败忽略 */
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionId])
+  }, [sessionId, subscribe])
+
+  React.useEffect(() => {
+    if (!open || typeof document === 'undefined') return
+    const onDoc = (ev: Event): void => {
+      try {
+        const t = ev.target as { closest?: (s: string) => unknown } | null
+        if (t && typeof t.closest === 'function' && t.closest('.b3-header-pop,.b3-header-dotbtn')) return
+        setOpen(false)
+      } catch {
+        setOpen(false)
+      }
+    }
+    const onKey = (ev: KeyboardEvent): void => {
+      if (ev.key === 'Escape') setOpen(false)
+    }
+    try {
+      document.addEventListener('mousedown', onDoc, true)
+      document.addEventListener('keydown', onKey, true)
+    } catch {
+      return
+    }
+    return () => {
+      try {
+        document.removeEventListener('mousedown', onDoc, true)
+      } catch {
+        /* 清理失败忽略 */
+      }
+      try {
+        document.removeEventListener('keydown', onKey, true)
+      } catch {
+        /* 清理失败忽略 */
+      }
+    }
+  }, [open])
 
   let workspacePath: string | undefined
   try {
@@ -85,10 +105,10 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   } catch {
     workspacePath = undefined
   }
-  const overlay = loaded ? headerOverlayFor(workspacePath, bots, Date.now()) : null
+  const overlay = hasSnap ? headerOverlayFor(workspacePath, bots, Date.now()) : null
   if (!overlay || overlay.mode === 'hidden') return null
 
-  const bot = overlay.mode === 'full' ? (overlay.bot ?? chooseBot(bots, workspacePath ?? '')) : null
+  const bot = overlay.mode === 'full' ? overlay.bot : null
 
   const onOpenWorkspace = (): void => {
     emit(OPEN_AGENT_EVENT, { workspace: workspacePath ?? '', agent: overlay.agent })

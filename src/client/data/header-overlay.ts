@@ -2,8 +2,8 @@
  * 时机三态：工作区不可解析 → hidden（不注入）；已知无绑定 → unbound（灰色提示）；
  * 已绑定 → full（呼吸点 + 详情）。健康语义复用 B1（任一在线即在线，失败按未知）。
  * 发测试消息只走 dsh-im 已保存目标（PROACTIVE_DELIVERY 契约）：无目标不谎报发送。 */
-import { badgeForWorkspace, type BadgeKind } from './badges'
-import type { RpcCall } from './fleet-api'
+import { badgeForWorkspace, type BadgeKind } from './bindings'
+import type { BotSnap, RpcCall } from './fleet-api'
 
 /** 发测试消息意图事件名：detail = { workspace, agent, botId, channel, targetId }（只读意图，见组件）。 */
 export const SEND_TEST_EVENT = 'dsh-im-companion:send-test'
@@ -46,13 +46,13 @@ export interface HeaderOverlay {
   tooltip: string
   dotKind: DotKind
   /** full 态下首选 Bot（优先在线），其余态为 null。 */
-  bot: import('./fleet-api').BotSnap | null
+  bot: BotSnap | null
 }
 
 /** 当前工作区浮层状态：纯函数，调用方按 mode 决定渲染（hidden 返回 null）。 */
 export function headerOverlayFor(
   workspacePath: string | undefined,
-  bots: import('./fleet-api').BotSnap[],
+  bots: BotSnap[],
   nowMs = Date.now(),
 ): HeaderOverlay {
   if (!workspacePath) {
@@ -74,9 +74,9 @@ export function headerOverlayFor(
 
 /** 首选 Bot：优先在线绑定，否则首个绑定；无绑定为 null（调用方走 unbound）。 */
 export function chooseBot(
-  bots: import('./fleet-api').BotSnap[],
+  bots: BotSnap[],
   workspacePath: string,
-): import('./fleet-api').BotSnap | null {
+): BotSnap | null {
   const bound = (bots ?? []).filter((b) => b && b.workspace === workspacePath)
   if (!bound.length) return null
   return bound.find((b) => b.healthKind === 'online') ?? bound[0]
@@ -130,12 +130,16 @@ export interface TestSendOutcome {
 
 export async function runTestSend(
   rpc: RpcCall | null,
-  bot: import('./fleet-api').BotSnap | null,
+  bot: BotSnap | null,
   workspacePath: string,
   agent: string,
 ): Promise<TestSendOutcome> {
   if (!rpc) return { ok: false, text: '无法连接 Host 连接服务，稍后重试。' }
   if (!bot) return { ok: false, text: '该工作区尚未绑定机器人，先去绑定后再试。' }
+  if (bot.healthKind === 'offline' || bot.connected === false) {
+    return { ok: false, text: '该机器人当前离线，恢复连接后重试。' }
+  }
+  if (bot.stale) return { ok: false, text: '该机器人状态待确认（轮询失败），请稍后重试。' }
   try {
     const targets = await listTargets(rpc, bot.botId)
     if (!targets.length) {

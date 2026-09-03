@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 
 const REPO = process.cwd();
 const SRC = join(REPO, 'src', 'client', 'data');
-const FILES = ['config.ts', 'fleet-api.ts', 'badges.ts', 'header-overlay.ts'];
+const FILES = ['config.ts', 'fleet-api.ts', 'bindings.ts', 'header-overlay.ts'];
 
 const stage = mkdtempSync(join(tmpdir(), 'b3-src-'));
 for (const f of FILES) {
@@ -162,6 +162,20 @@ test('mergeStaleBots：失败渠道保留旧快照标 stale；权威空不保留
   assert.equal(replaced.length, 1);
   assert.equal(replaced[0].lastCheckedAt, 3000); // 新快照优先
   assert.equal(mergeStaleBots(prev, [], []).length, 0); // 无失败无保留
+});
+
+test('runTestSend：离线/待确认预检 direct 返回，不调 rpc', async () => {
+  let calls = 0;
+  const rpc = async () => { calls++; return {}; };
+  const off = snap({ botId: 'b1', healthKind: 'offline', healthStatus: 'offline', connected: false });
+  const r1 = await runTestSend(rpc as any, off, W1, '小帅');
+  assert.equal(r1.ok, false);
+  assert.match(r1.text, /离线/);
+  const stale = snap({ botId: 'b1', stale: true, healthKind: 'warn' });
+  const r2 = await runTestSend(rpc as any, stale, W1, '小帅');
+  assert.equal(r2.ok, false);
+  assert.match(r2.text, /待确认/);
+  assert.equal(calls, 0); // 预检拦截，零 RPC
 });
 
 console.log('header-overlay-model: ALL PASS');
