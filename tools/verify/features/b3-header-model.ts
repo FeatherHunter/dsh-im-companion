@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 
 const REPO = process.cwd();
 const SRC = join(REPO, 'src', 'client', 'data');
-const FILES = ['config.ts', 'fleet-api.ts', 'bindings.ts', 'header-overlay.ts'];
+const FILES = ['config.ts', 'fleet-api.ts', 'bindings.ts', 'header-overlay.ts', 'model.ts', 'meta.ts'];
 
 const stage = mkdtempSync(join(tmpdir(), 'b3-src-'));
 for (const f of FILES) {
@@ -39,6 +39,7 @@ try {
 const mod = (f: string) => import(pathToFileURL(join(tmp, f)).href);
 const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, sendToSuggestion, listSuggestions, testDraftTarget, suggestionLabel, SEND_TEST_EVENT } = await mod('header-overlay.js');
 const { mergeStaleBots } = await mod('fleet-api.js');
+const { buildModel } = await mod('model.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over: Record<string, unknown> = {}) => ({
@@ -219,6 +220,19 @@ test('runTestSend 无目标分支：1 个直发 / N 个回列表 / 0 个给指�
   const win = await sendToSuggestion(one as any, bot, { kind: 'user', route: { openId: 'ou_x' } }, W1, '小帅');
   assert.equal(win.ok, true);
   assert.match(win.text, /草稿测试/);
+});
+
+test('同名目录不串名：全路径键隔离，旧 basename 键兼容', () => {
+  const a = snap({ workspace: 'D:\\a\\xiaoshuai', botId: 'a1' });
+  const b = snap({ workspace: 'D:\\b\\xiaoshuai', botId: 'b1' });
+  const meta = { names: { 'D:\\a\\xiaoshuai': '小帅', 'xiaoshuai': '旧名' }, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
+  const m = buildModel([a, b], meta, 'agent', '');
+  const va = m.agents.find((v) => v.workspace === 'D:\\a\\xiaoshuai');
+  const vb = m.agents.find((v) => v.workspace === 'D:\\b\\xiaoshuai');
+  assert.equal(va.name, '小帅'); // 全路径键优先
+  assert.equal(vb.name, '旧名'); // 无全路径键时旧键仍生效，不丢数据
+  const m2 = buildModel([a, b], { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }, 'agent', '');
+  assert.equal(m2.agents.find((v) => v.workspace === 'D:\\a\\xiaoshuai').name, 'Xiaoshuai'); // 无名时目录名首字母大写
 });
 
 console.log('header-overlay-model: ALL PASS');

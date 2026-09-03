@@ -47,7 +47,7 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
   async function rename(view: AgentView, next: string): Promise<void> {
     try {
       if (view.isLocal) await deps.getStore()?.renameLocal(view.name, next)
-      else if (view.base) await deps.getStore()?.rename(view.base, next)
+      else if (view.workspace || view.base) await deps.getStore()?.rename(view.workspace || view.base, next)
       else {
         toast('请先接入渠道指定工作区后再命名')
         return
@@ -88,8 +88,9 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
   }
 
   function avatarMenu(view: AgentView, anchor: HTMLElement): void {
-    const key = view.isLocal ? localAvatarKey(view) : view.base
-    const hasCustom = !!key && !!deps.getMeta().avatars[key]
+    const key = view.isLocal ? localAvatarKey(view) : (view.workspace || view.base)
+    const metaAvatars = deps.getMeta().avatars
+    const hasCustom = !!key && (!!metaAvatars[key] || (!!view.base && !!metaAvatars[view.base]))
     const items: { label: string; iconName: 'camera' | 'trash'; danger?: boolean; onSelect: (() => void) | (() => Promise<void>) }[] = [
       { label: '上传图片', iconName: 'camera', onSelect: () => pickAvatar(view) },
     ]
@@ -115,7 +116,7 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
         return
       }
       const dataUrl = await downscaleImage(file)
-      const key = view.isLocal ? localAvatarKey(view) : view.base
+      const key = view.isLocal ? localAvatarKey(view) : (view.workspace || view.base)
       if (!key) {
         toast('该 Agent 暂不支持设置头像')
         return
@@ -130,7 +131,7 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
   }
 
   async function clearAvatar(view: AgentView): Promise<void> {
-    const key = view.isLocal ? localAvatarKey(view) : view.base
+    const key = view.isLocal ? localAvatarKey(view) : (view.workspace || view.base)
     if (!key) return
     await deps.getStore()?.clearAvatar(key)
     await deps.loadMeta()

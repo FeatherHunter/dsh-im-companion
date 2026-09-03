@@ -77,9 +77,18 @@ function mergeStatus(kinds: HealthKind[]): HealthKind {
   return kinds.length ? 'offline' : 'offline'
 }
 
-function viewName(base: string, meta: AgentMetaDoc, fallback: string): string {
-  if (!base) return fallback
-  return meta.names[base] ?? fallbackName(base)
+/* 家的身份键 = 工作区全路径；同名目录不再串名。读兼容旧 basename 键（先写的新键优先）。 */
+function viewName(base: string, meta: AgentMetaDoc, fallback: string, path = ''): string {
+  if (!base && !path) return fallback
+  if (path && meta.names[path]) return meta.names[path]
+  if (base && meta.names[base]) return meta.names[base]
+  return fallbackName(base || path)
+}
+
+function avatarOf(path: string, base: string, meta: AgentMetaDoc): string | null {
+  if (path && meta.avatars[path]) return meta.avatars[path]
+  if (base && meta.avatars[base]) return meta.avatars[base]
+  return null
 }
 
 function matchQuery(view: AgentView, query: string): boolean {
@@ -129,8 +138,8 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
     const path = wsKey.startsWith('unbound:') ? '' : wsKey
     const base = basenameOf(path)
     const status = mergeStatus(snaps.map((s) => s.healthKind))
-    const name = viewName(base, meta, snaps[0]?.botName || '未命名 Agent')
-    const avatar = (base && meta.avatars[base]) || snaps[0]?.avatarUrl || null
+    const name = viewName(base, meta, snaps[0]?.botName || '未命名 Agent', path)
+    const avatar = avatarOf(path, base, meta) || snaps[0]?.avatarUrl || null
     const channels = channelsOf(snaps)
     agents.push({
       key: wsKey,
@@ -185,7 +194,7 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
       const base = basenameOf(path)
       const first = list[0]
       const status = mergeStatus(list.map((s) => s.healthKind))
-      const name = viewName(base, meta, first.botName || '未命名 Agent')
+      const name = viewName(base, meta, first.botName || '未命名 Agent', path)
       const avatar = list.map((s) => s.avatarUrl).find(Boolean) ?? null
       return {
         key: 'ch:' + ch + ':' + wsKey,
