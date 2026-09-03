@@ -39,6 +39,7 @@ const bindings: any = req('./client/data/bindings.js');
 const view: any = req('./features/left-badges/view.js');
 const styles: any = req('./features/left-badges/styles.js');
 const registry: any = req('./features/index.js');
+const dbgReport: any = req('./features/left-badges/debug-report.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over = {}) => ({
@@ -204,6 +205,12 @@ test('view：行装饰 + 点击只读事件 + 无变化不碰 DOM', () => {
     delete (globalThis as any).window;
     delete (globalThis as any).MutationObserver;
   }
+});
+
+test('debug-report（TEMP-DEBUG）：无 DOM 归零 + rpc 空 no-op 不抛', () => {
+  assert.deepEqual(dbgReport.collectCensus(), { treeitem: 0, expanded: 0, selected: 0, badges: 0 });
+  dbgReport.reportDebug(null, { kind: 't' });
+  dbgReport.reportDebug(undefined, { kind: 't' });
 });
 
 rmSync(tmp, { recursive: true, force: true });

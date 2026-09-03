@@ -22,6 +22,19 @@ async function listDirectories(dir: string): Promise<{ name: string; path: strin
   return entries.map((d) => ({ name: d.name, path: path.join(dir, d.name) }))
 }
 
+/** TEMP-DEBUG(#6)：诊断上报字段白名单 + 上限，定位后删除。 */
+function pickDebug(p: RpcPayload): Record<string, string | number | boolean> {
+  const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+  const str = (v: unknown, max = 120): string => (typeof v === 'string' ? v.slice(0, max) : '')
+  return {
+    kind: str(p.kind, 16), rows: num(p.rows), decorated: num(p.decorated),
+    treeitem: num(p.treeitem), expanded: num(p.expanded), selected: num(p.selected),
+    badges: num(p.badges), bots: num(p.bots), failed: num(p.failed),
+    updatedAt: num(p.updatedAt), hasSnap: p.hasSnap === true,
+    rpcNull: p.rpcNull === true, err: str(p.err, 300),
+  }
+}
+
 export function createAgentFleetHandler(store: AgentMetaStore): (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null) => Promise<RpcResult> {
   return async (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null): Promise<RpcResult> => {
     if (signal?.aborted) return fail('cancelled', '已取消')
@@ -93,6 +106,18 @@ export function createAgentFleetHandler(store: AgentMetaStore): (endpoint: strin
           if (!dir || !path.isAbsolute(dir)) return fail('bad-request', '需要绝对路径')
           const entries = await listDirectories(dir)
           return ok({ path: dir, parent: path.dirname(dir) === dir ? null : path.dirname(dir), entries })
+        }
+        case '__badgeDebug': { // TEMP-DEBUG(#6)：左栏徽标真机普查落盘，定位后删除
+          const dir = path.join(homedir(), '.dsh', 'integrations', 'dsh-im-companion')
+          const file = path.join(dir, 'badge-debug.log')
+          const line = JSON.stringify({ t: Date.now(), ...pickDebug(p) })
+          await fs.mkdir(dir, { recursive: true })
+          let prev = ''
+          try { prev = await fs.readFile(file, 'utf8') } catch { prev = '' }
+          const kept = prev.split('\n').filter(Boolean).slice(-199)
+          kept.push(line)
+          await fs.writeFile(file, kept.join('\n') + '\n', 'utf8')
+          return ok({ received: true })
         }
         default:
           return fail('bad-request', '未知端点: ' + endpoint)

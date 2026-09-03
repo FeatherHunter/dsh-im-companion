@@ -2,7 +2,8 @@
  * 防御式挂载（选择器命中不了就静默），无自有轮询（数据唯一来源 connection-stream），
  * 点击只读：派发 OPEN_AGENT_EVENT，不做任何 mutation。 */
 import { OPEN_AGENT_EVENT, badgeForWorkspace } from '../../client/data/bindings'
-import type { BotSnap } from '../../client/data/fleet-api'
+import type { BotSnap, RpcCall } from '../../client/data/fleet-api'
+import { collectCensus, reportDebug } from './debug-report'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
 
@@ -19,6 +20,9 @@ const KEY_ATTR = 'data-left-badges'
 let scope: Element | null = null
 let loggedFirstHit = false
 let lastRowTotal = -1
+/* TEMP-DEBUG(#6)：上报用（定位后删除） */
+let debugRpc: RpcCall | null = null
+let lastPaintKey = ''
 
 function info(msg: string): void {
   try {
@@ -172,6 +176,16 @@ function paint(bots: BotSnap[], nowMs: number): void {
       /* 单行失败不影响其他行 */
     }
   }
+  /* TEMP-DEBUG(#6)：行数/已饰变化即上报一行（定位后删除） */
+  try {
+    const pk = rows.length + ':' + decorated
+    if (pk !== lastPaintKey) {
+      lastPaintKey = pk
+      reportDebug(debugRpc, { kind: 'paint', rows: rows.length, decorated, ...collectCensus() })
+    }
+  } catch {
+    /* 上报失败静默 */
+  }
   if (!loggedFirstHit) {
     loggedFirstHit = true
     info('命中 ' + rows.length + ' 行，开始装饰')
@@ -226,11 +240,26 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     }
   }
   info('已挂载（选择器 ' + ROW_SELECTORS.join(' / ') + '，等 stream 首轮快照）')
+  /* TEMP-DEBUG(#6)：挂载普查（定位后删除） */
+  try {
+    debugRpc = ctx.rpc ? ctx.rpc : null
+    const noRpc = ctx.rpc ? false : true
+    reportDebug(debugRpc, { kind: 'mount', rpcNull: noRpc, ...collectCensus() })
+  } catch {
+    /* 上报失败静默 */
+  }
   let unsub: (() => void) | null = null
   try {
     unsub = ctx.subscribe((snap: StreamSnapshot) => {
       current = snap.bots
       hasSnap = snap.updatedAt > 0
+      /* TEMP-DEBUG(#6)：快照到达即上报（定位后删除） */
+      try {
+        const nfail = snap.failed ? snap.failed.length : 0
+        reportDebug(debugRpc, { kind: 'snap', updatedAt: snap.updatedAt, bots: snap.bots.length, failed: nfail, hasSnap, ...collectCensus() })
+      } catch {
+        /* 上报失败静默 */
+      }
       repaint()
     })
   } catch {
