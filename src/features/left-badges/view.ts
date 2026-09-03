@@ -1,16 +1,17 @@
-/** B1 左栏徽标叠加引擎：MutationObserver 把 IM 徽标装饰到 DSH 左侧工作区列表。
- * 约束：左侧无官方 Slot，只能叠加（R2 结论）；与 better-sidebar 共存（单 observer + 变化才重绘）；
- * 防御式挂载——选择器命中不了 / 非浏览器环境就静默无操作，绝不影响设置面板。
- * 独立于设置面板运行：自带 15s 轮询（与面板同频），复用 fetchBots 的 stale 语义。
- * 点击只读：派发 OPEN_AGENT_EVENT（detail = { workspace, agent }），不做任何 mutation。 */
-import { OPEN_AGENT_EVENT, badgeForWorkspace } from '../data/badges'
-import { CONNECTION_POLL_MS } from '../data/rpc'
-import { fetchBots, mergeStaleBots, type BotSnap, type RpcCall } from '../data/fleet-api'
+/** left-badges 叠加视图：订阅 stream 快照 → MutationObserver 装饰左侧工作区行。
+ * 防御式挂载（选择器命中不了就静默），无自有轮询（数据唯一来源 connection-stream），
+ * 点击只读：派发 OPEN_AGENT_EVENT，不做任何 mutation。 */
+import { OPEN_AGENT_EVENT, badgeForWorkspace } from '../../client/data/bindings'
+import type { BotSnap } from '../../client/data/fleet-api'
+import type { StreamSnapshot } from '../../client/data/connection-stream'
+import type { FeatureCtx } from '../protocol'
 
 /** 左侧工作区行的候选钩子（逐个尝试；命中即用，未命中静默）。 */
 const ROW_SELECTORS = ['[data-workspace-id]', '[data-workspace-path]']
-const BADGE_CLASS = 'af-left-badge'
-const BADGE_KEY_ATTR = 'data-af-badge'
+const BADGE_CLASS = 'left-badges-badge'
+const DOT_CLASS = 'left-badges-dot'
+const LABEL_CLASS = 'left-badges-label'
+const KEY_ATTR = 'data-left-badges'
 
 function eachRow(fn: (row: Element) => void): void {
   try {
@@ -42,7 +43,7 @@ function normPath(s: string): string {
   return String(s ?? '').replace(/\\/g, '/').toLowerCase()
 }
 
-/** key（行属性，可能是全路径或 id/简称）→ bots 中的规范 workspace 路径；找不到就原样返回（判未绑定）。 */
+/** key（行属性，可能是全路径或简称）→ bots 中的规范 workspace 路径；找不到就原样返回（判未绑定）。 */
 export function resolveWorkspace(key: string, bots: BotSnap[]): string {
   const k = normPath(key).trim()
   if (!k) return key
@@ -89,7 +90,7 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): void {
   if (el) {
     let prev = ''
     try {
-      prev = el.getAttribute?.(BADGE_KEY_ATTR) ?? ''
+      prev = el.getAttribute?.(KEY_ATTR) ?? ''
     } catch {
       prev = ''
     }
@@ -97,11 +98,11 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): void {
     try {
       el.setAttribute('class', BADGE_CLASS + ' ' + badge.kind)
       el.setAttribute('title', badge.tooltip)
-      el.setAttribute(BADGE_KEY_ATTR, paintKey)
-      const label = el.querySelector?.('.af-left-label')
+      el.setAttribute(KEY_ATTR, paintKey)
+      const label = el.querySelector?.('.' + LABEL_CLASS)
       if (label) label.textContent = badge.label
     } catch {
-      /* 更新失败下次轮询再试 */
+      /* 更新失败下次快照再试 */
     }
     return
   }
@@ -110,11 +111,11 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): void {
     const host = document.createElement('span')
     host.setAttribute('class', BADGE_CLASS + ' ' + badge.kind)
     host.setAttribute('title', badge.tooltip)
-    host.setAttribute(BADGE_KEY_ATTR, paintKey)
+    host.setAttribute(KEY_ATTR, paintKey)
     const dot = document.createElement('span')
-    dot.setAttribute('class', 'af-left-dot')
+    dot.setAttribute('class', DOT_CLASS)
     const label = document.createElement('span')
-    label.setAttribute('class', 'af-left-label')
+    label.setAttribute('class', LABEL_CLASS)
     label.textContent = badge.label
     host.appendChild(dot)
     host.appendChild(label)
@@ -128,7 +129,7 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): void {
     })
     row.appendChild(host)
   } catch {
-    /* 创建失败下次轮询再试 */
+    /* 创建失败下次快照再试 */
   }
 }
 
@@ -142,54 +143,43 @@ function paint(bots: BotSnap[], nowMs: number): void {
   })
 }
 
-/** 启动左栏叠加引擎；返回清理函数。首轮 poll 完成前不绘制（避免“未检查”闪成“未绑定”）。 */
-export function startLeftBadges(rpc: RpcCall | null): () => void {
-  let disposed = false
-  let loaded = false
-  let bots: BotSnap[] = []
-  let timer: ReturnType<typeof setInterval> | undefined
-  let observer: MutationObserver | undefined
+/** 挂载：订阅 stream + observer 重绘；首轮快照到达前不绘制（避免“未检查”闪成“未绑定”）。 */
+export function mountLeftBadges(ctx: FeatureCtx): () => void {
   const noop = (): void => {}
   if (typeof document === 'undefined') return noop
-
-  const refresh = (): void => {
-    if (!loaded || disposed) return
+  let current: BotSnap[] = []
+  let hasSnap = false
+  let observer: MutationObserver | undefined
+  const repaint = (): void => {
+    if (!hasSnap) return
     try {
-      paint(bots, Date.now())
+      paint(current, Date.now())
     } catch {
       /* 绘制失败下次再试 */
     }
   }
-  const poll = async (): Promise<void> => {
-    if (!rpc || disposed) return
-    try {
-      const result = await fetchBots(rpc)
-      if (disposed) return
-      bots = mergeStaleBots(bots, result.bots, result.failed)
-      loaded = true
-      refresh()
-    } catch {
-      /* 静默失败保留旧徽标 */
-    }
-  };
+  let unsub: (() => void) | null = null
+  try {
+    unsub = ctx.subscribe((snap: StreamSnapshot) => {
+      current = snap.bots
+      hasSnap = snap.updatedAt > 0
+      repaint()
+    })
+  } catch {
+    /* 订阅失败即不挂载 */
+    return noop
+  }
   try {
     if (typeof MutationObserver !== 'undefined') {
-      observer = new MutationObserver(() => refresh())
+      observer = new MutationObserver(() => repaint())
       observer.observe(document.body ?? document.documentElement, { childList: true, subtree: true })
     }
   } catch {
-    /* 无 observer 就只靠轮询重绘 */
+    /* 无 observer 就只靠快照重绘 */
   }
-  try {
-    if (typeof setInterval !== 'undefined') timer = setInterval(() => void poll(), CONNECTION_POLL_MS)
-  } catch {
-    /* 无定时器就只画一次 */
-  }
-  void poll()
   return () => {
-    disposed = true
     try {
-      if (timer !== undefined) clearInterval(timer)
+      unsub?.()
     } catch {
       /* 清理失败忽略 */
     }

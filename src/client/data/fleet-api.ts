@@ -131,6 +131,6 @@ export function mergeStaleBots(prev: BotSnap[], fresh: BotSnap[], failed: readon
   const seen = new Set(fresh.map((b) => b.channel + '\0' + b.botId))
   const retained = (prev ?? []).filter(
     (b) => b && failed.includes(b.channel) && !seen.has(b.channel + '\0' + b.botId),
-  ).map((b) => ({ ...b, stale: true }))
+  ).map((b): BotSnap => ({ ...b, stale: true, healthKind: 'warn' }))
   return [...fresh, ...retained]
 }
