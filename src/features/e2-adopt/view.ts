@@ -113,8 +113,8 @@ function ensureEntry(ctx: FeatureCtx, g: number): void {
     if (header.querySelector('.' + ENTRY_CLASS)) return
     const btn = h('button', {
       className: ENTRY_CLASS,
-      title: '分身份：打开面板，把机器人换到别的归属（拖拽即换绑）',
-      'aria-label': '分身份：重新分配机器人归属',
+      title: '串门：看看各家机器人，拖一拖就搬家',
+      'aria-label': '串门：重新分配机器人归属',
       onClick: () => { if (alive(g)) openPanel(ctx) },
       html: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="9" width="12" height="9" rx="2.5"/><circle cx="10" cy="13.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="14" cy="13.5" r="1.1" fill="currentColor" stroke="none"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1"/><path d="M3.5 20c1.5-1.2 3-1.7 4.5-1.7M20.5 20c-1.5-1.2-3-1.7-4.5-1.7"/></svg>',
     }) as HTMLElement

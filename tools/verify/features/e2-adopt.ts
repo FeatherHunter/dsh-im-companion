@@ -274,7 +274,7 @@ const findTextBtn = (root: any, text: string): any => {
 const bodyText = () => e2Doc.body.textContent ?? '';
 const openPanel = () => {
   const btn = findClass(e2Header, 'e2-entry')[0];
-  assert.ok(btn, '头栏应有分身份入口按钮');
+  assert.ok(btn, '头栏应有串门入口按钮');
   btn.listeners.click[0]();
   const overlay = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-overlay'));
   assert.ok(overlay, '面板应打开');
@@ -286,12 +286,12 @@ const panelSections = () => {
 };
 const sectionRows = (sec: any) => findClass(sec, 'e2-row');
 
-test('view：头栏安装分身份入口，点击开面板（含未分配组）', async () => {
+test('view：头栏安装串门入口，点击开面板（含未分配组）', async () => {
   mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
   await sleep(10);
   const btn = findClass(e2Header, 'e2-entry')[0];
-  assert.ok(String(btn.attrs?.title ?? '').includes('分身份'));
+  assert.ok(String(btn.attrs?.title ?? '').includes('串门'));
   assert.ok(String(btn.innerHTML ?? '').includes('<svg'));
   openPanel();
   const secs = panelSections();
@@ -304,12 +304,10 @@ test('view：头栏安装分身份入口，点击开面板（含未分配组）'
   assert.ok(!bodyText().includes('联系方式'), '计数按机器人，不按联系方式');
   assert.ok(bodyText().includes('2 个机器人'), '未分配组照常计数');
   assert.ok(bodyText().includes('共 2 户 · 4 个机器人'), '人口普查 footer');
-  const chs = findClass(e2Doc.body, 'e2-ch');
-  const qq = chs.find((c: any) => String(c.textContent).includes('QQ'));
-  assert.ok(qq && String(qq.style?.color ?? '').toLowerCase().includes('12b7f5'), '渠道名按品牌色');
-  assert.ok(bodyText().includes('2 个'), '未分配组照常计数');
-  const faces = findClass(e2Doc.body, 'e2-face');
-  assert.ok(faces.some((f: any) => f.textContent === '小'), '门牌有首字头像');
+  const caps = findClass(e2Doc.body, 'e2-cap');
+  assert.ok(caps.some((c: any) => String(c.textContent).includes('QQ')), '成员小传含渠道');
+  const tapes = findClass(e2Doc.body, 'e2-tape');
+  assert.ok(tapes.some((t: any) => t.textContent === '小帅2'), '胶带门牌中文名');
   const dots = findClass(e2Doc.body, 'e2-hdot');
   assert.ok(dots.some((d: any) => String(d.attrs?.class ?? '').split(' ').includes('e2-h-online')), '在线成员亮绿灯');
 });
@@ -335,14 +333,13 @@ test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async ()
   assert.deepEqual(e2RpcCalls[1]?.payload, { botId: 'q1', workspace: W_A });
 });
 
-test('view：地盘带归属色 + “＋ 新地盘”经目录选择绑定空人', async () => {
+test('view：胶带门牌 + “＋ 安新家”经目录选择绑定空人', async () => {
   mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
   openPanel();
   const secs = panelSections();
-  const avs = secs.filter((s: any) => s.getAttribute('data-e2-ws')).map((s: any) => (String(s.attrs?.class ?? '').split(' ').find((c: string) => /^e2-av-\d$/.test(c)) ?? ''));
-  assert.ok(avs[0], '分组应有归属色');
-  assert.ok(new Set(avs).size >= 2, '不同组颜色不同');
+  const tapes = findClass(e2Doc.body, 'e2-tape').map((t: any) => t.textContent);
+  assert.ok(tapes.includes('小帅2') && tapes.includes('阿梨'), '每家有胶带门牌');
   const plus = secs.find((s: any) => String(s.attrs?.class ?? '').split(' ').includes('e2-sec-new'));
   assert.ok(plus, '应有新地盘兜底区');
   e2PickDir = 'D:\\agents\\newbie';
