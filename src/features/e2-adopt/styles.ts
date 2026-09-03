@@ -2,7 +2,6 @@
 export const CSS = [
   '.e2-pool{margin:8px 0;padding:10px 12px;border:1px dashed rgba(127,127,127,.45);border-radius:12px;background:transparent}',
   '.e2-pool-title{font-size:12px;font-weight:700;opacity:.75;margin-bottom:8px}',
-  '.e2-pool-empty{font-size:12px;opacity:.6}',
   '.e2-chip{display:inline-block;font-size:12px;font-weight:700;border:1px solid rgba(127,127,127,.5);background:var(--dsw-alias-bg-base,#fff);border-radius:999px;padding:4px 10px;margin:0 6px 6px 0;cursor:grab}',
   '.e2-chip[draggable="false"]{opacity:.45;cursor:default}',
   '.e2-drop-ok{outline:2px solid #1a9e54 !important;outline-offset:-2px}',

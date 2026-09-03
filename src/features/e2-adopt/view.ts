@@ -88,7 +88,7 @@ function showUndo(ctx: FeatureCtx, channel: string, botId: string, from: string,
     }, '撤销')
     undoEl = h('div', { className: 'e2-undo', role: 'status' }, msg, btn) as HTMLElement
     document.body.appendChild(undoEl)
-    undoTimer = setTimeout(() => { dismissUndo(); toast('绑定已落定') }, UNDO_WINDOW_MS)
+    undoTimer = setTimeout(() => { dismissUndo(); toast('撤销超时，绑定已生效') }, UNDO_WINDOW_MS)
   } catch { /* 提示失败不阻断已落地绑定 */ }
 }
 
@@ -121,6 +121,12 @@ function paint(ctx: FeatureCtx, bots: BotSnap[]): void {
   lastSig = sig
   try {
     if (typeof document === 'undefined') return
+    /* 空池不占位：无未绑定则整条摘除，有了再回来。 */
+    if (!unboundBots(bots).length) {
+      try { pool?.remove() } catch { /* 忽略 */ }
+      pool = null
+      return
+    }
     const groups = document.querySelectorAll(GROUP_SEL)
     if (!groups.length) return
     const section = groups[0].parentElement
@@ -134,14 +140,8 @@ function paint(ctx: FeatureCtx, bots: BotSnap[]): void {
     const title = document.createElement('div')
     title.setAttribute('class', 'e2-pool-title')
     const unbound = unboundBots(bots)
-    title.textContent = '待领养（未绑定 ' + unbound.length + '）— 拖到工作区行上岗'
+    title.textContent = '未绑定 ' + unbound.length + ' 个 — 拖到工作区完成绑定'
     pool.appendChild(title)
-    if (!unbound.length) {
-      const empty = document.createElement('div')
-      empty.setAttribute('class', 'e2-pool-empty')
-      empty.textContent = '全部已上岗'
-      pool.appendChild(empty)
-    }
     const writable = !!ctx.rpc
     for (const b of unbound) {
       const chip = document.createElement('span')
@@ -149,7 +149,7 @@ function paint(ctx: FeatureCtx, bots: BotSnap[]): void {
       chip.setAttribute('draggable', writable ? 'true' : 'false')
       chip.setAttribute('data-e2-bot', b.botId)
       chip.setAttribute('data-e2-channel', b.channel)
-      chip.title = writable ? '拖到左栏工作区行完成绑定' : '连接服务不可用，暂不能分配'
+      chip.title = writable ? '拖到工作区完成绑定' : '连接服务不可用，暂不能分配'
       chip.textContent = (b.botName || b.botId) + ' · ' + channelLabel(b.channel)
       pool.appendChild(chip)
     }
@@ -214,12 +214,12 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       const bot = { botId: desc.botId, channel: desc.channel, workspace: live?.workspace ?? '' }
       dragId = null
       if (!row) {
-        toast('空白处不可放：拖到工作区行上完成绑定')
+        toast('空白处不可放，请拖到工作区上')
         return
       }
       const to = resolveRowWorkspace(textOf(row), lastBots)
       if (!to) {
-        toast('未能识别该工作区，未绑定任何内容')
+        toast('没认出这个工作区，没有绑定')
         return
       }
       const v = resolveDrop(bot, { kind: 'workspace', workspace: to })
@@ -236,7 +236,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       } else if (v.kind === 'noop') {
         toast('它已经在这里了')
       } else {
-        toast('空白处不可放：拖到工作区行上完成绑定')
+        toast('空白处不可放，请拖到工作区上')
       }
     } catch { /* 忽略 */ }
   };

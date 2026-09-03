@@ -253,7 +253,16 @@ const poolChips = () => {
   return out;
 };
 
-test('view：待领养池列出未绑定 Bot（rpc 可用时可拖）', () => {
+test('view：空池整条隐藏、不占位', () => {
+  const { mkrow } = mountStage(okRpc);
+  mkrow(W_B);
+  e2Emit!({ bots: bots.map((b) => ({ ...b, workspace: b.workspace || W_A })) });
+  const pools = e2Nodes.filter((x) => String(x.attrs?.class ?? '').split(' ').includes('e2-pool'));
+  assert.equal(pools.length, 0);
+  assert.equal(poolChips().length, 0);
+});
+
+test('view：未绑定条列出未绑定 Bot（rpc 可用时可拖）', () => {
   const { mkrow } = mountStage(okRpc);
   mkrow(W_B);
   e2Emit!({ bots: stageBots() });
@@ -261,6 +270,8 @@ test('view：待领养池列出未绑定 Bot（rpc 可用时可拖）', () => {
   assert.equal(chips.length, 2);
   assert.equal(chips[0].getAttribute('draggable'), 'true');
   assert.ok(String(chips[0].textContent).includes('f1'));
+  const pool = e2Nodes.filter((x) => String(x.attrs?.class ?? '').split(' ').includes('e2-pool')).pop();
+  assert.ok(String(pool.children[0]?.textContent).includes('未绑定 2 个'));
 });
 
 test('view：rpc 不可用时池不可拖', () => {
@@ -329,7 +340,7 @@ test('view：撤销窗过期 → 落定提示且窗消失（G1）', async () => 
     const t = timers.filter((x) => x.ms === 5000).pop();
     assert.ok(t, '应有 5s 过期定时器');
     t.cb();
-    assert.ok(bodyText().includes('绑定已落定'));
+    assert.ok(bodyText().includes('撤销超时，绑定已生效'));
     assert.equal(e2Doc.body.children.filter((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-undo')).length, 0);
   } finally {
     (globalThis as any).setTimeout = realSetTimeout;
@@ -343,7 +354,7 @@ test('view：无法识别的行 → 拒绝且不写（M2）', async () => {
   fireDrop(row, { botId: 'f1', channel: 'feishu' });
   await sleep(10);
   assert.equal(e2RpcCalls.length, 0);
-  assert.ok(bodyText().includes('未能识别该工作区'));
+  assert.ok(bodyText().includes('没认出这个工作区'));
 });
 
 test('view：有拿起无放下 → 取消提示且不写（G3）', async () => {
