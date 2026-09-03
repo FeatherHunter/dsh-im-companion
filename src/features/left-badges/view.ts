@@ -23,6 +23,10 @@ let lastRowTotal = -1
 /* TEMP-DEBUG(#6)：上报用（定位后删除） */
 let debugRpc: RpcCall | null = null
 let lastPaintKey = ''
+/* 代际哨兵：热更新/双挂载堆叠时只有最新一代画画（老代永久静默，防新旧打架闪烁）。 */
+let activeGen = 0
+const claimGen = (): number => { try { const w = window as unknown as Record<string, number>; w.__lbGen = (w.__lbGen || 0) + 1; return w.__lbGen } catch { return 1 } }
+const genAlive = (g: number): boolean => { try { return (window as unknown as Record<string, number>).__lbGen === g } catch { return true } }
 
 function info(msg: string): void {
   try {
@@ -167,6 +171,7 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): boolean {
 }
 
 function paint(bots: BotSnap[], nowMs: number): void {
+  if (!genAlive(activeGen)) return
   const rows = collectRows()
   if (!rows.length) return
   let decorated = 0
@@ -249,11 +254,13 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
   } catch {
     /* 上报失败静默 */
   }
+  activeGen = claimGen()
   let unsub: (() => void) | null = null
   try {
     unsub = ctx.subscribe((snap: StreamSnapshot) => {
       current = snap.bots
       hasSnap = snap.updatedAt > 0
+      if (!genAlive(activeGen)) return
       /* TEMP-DEBUG(#6)：快照到达即上报（定位后删除） */
       try {
         const nfail = snap.failed ? snap.failed.length : 0

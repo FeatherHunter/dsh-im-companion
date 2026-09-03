@@ -207,6 +207,45 @@ test('view：行装饰 + 点击只读事件 + 无变化不碰 DOM', () => {
   }
 });
 
+test('view：老代挂载在新代出现后静默（代际哨兵）', () => {
+  const stubEl: any = (tag: string) => ({
+    tag, attrs: {} as Record<string, string>, children: [] as any[], text: '',
+    setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
+    getAttribute(k: string) { return this.attrs[k] ?? null; },
+    appendChild(c: any) { this.children.push(c); return c; },
+    addEventListener() {},
+    querySelector(sel: string) {
+      const cls = sel.startsWith('.') ? sel.slice(1) : sel;
+      return this.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)) ?? null;
+    },
+    get textContent() { return this.text; },
+    set textContent(v: string) { this.text = String(v); },
+  });
+  const row = stubEl('div');
+  row.textContent = 'xiaoshuai';
+  const win: any = {};
+  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body') };
+  (globalThis as any).document = docStub;
+  (globalThis as any).window = win;
+  (globalThis as any).MutationObserver = class { constructor(_cb: any) {} observe() {} disconnect() {} };
+  try {
+    let fn: any = null;
+    const ctx: any = { subscribe: (f: any) => { fn = f; f({ bots: [snap({ lastCheckedAt: 5000 })], failed: [], updatedAt: 60000 }); return () => {}; } };
+    const dispose = view.mountLeftBadges(ctx);
+    const badge = row.querySelector('.left-badges-badge');
+    assert.ok(badge, '首轮画上徽标');
+    assert.match(String(badge.attrs.class), /online/);
+    win.__lbGen = 999;
+    fn({ bots: [snap({ lastCheckedAt: 5000, healthKind: 'offline', healthStatus: 'offline', connected: false })], failed: [], updatedAt: 61000 });
+    assert.match(String(row.querySelector('.left-badges-badge').attrs.class), /online/, '老代不再重绘');
+    dispose();
+  } finally {
+    delete (globalThis as any).document;
+    delete (globalThis as any).window;
+    delete (globalThis as any).MutationObserver;
+  }
+});
+
 test('view：未绑定不行徽标（残留旧徽标摘除）', () => {
   const stubEl: any = (tag: string) => ({
     tag, attrs: {} as Record<string, string>, children: [] as any[], text: '',
