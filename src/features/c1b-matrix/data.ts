@@ -89,6 +89,13 @@ export function strings(lang: Lang): MatrixStrings {
   return STRINGS[lang]
 }
 
+/** 语言归一（纯函数，可测）：DSH 只发 zh/en（zh-CN 归 zh）；空/未知按中文兜底（插件历史 UI 全中文）。 */
+export function langOf(tag: string | null | undefined): Lang {
+  const t = String(tag ?? '').toLowerCase()
+  if (!t || t.startsWith('zh')) return 'zh'
+  return 'en'
+}
+
 export function metaLine(agents: number, channels: number, bots: number, lang: Lang): string {
   return lang === 'en'
     ? agents + ' agents × ' + channels + ' channels · ' + bots + ' bots'

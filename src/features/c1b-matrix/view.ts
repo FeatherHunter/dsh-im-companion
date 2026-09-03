@@ -2,17 +2,19 @@
  * 事件制（C1a 抽屉同款）：A1 船按钮经 FLEET_VIEW_EVENT 派发，本特性监听后居中弹模态；
  * 弹窗挂 body（宽版一次放下 9 列），Esc/点外部/关闭键三路可关；开弹窗才订阅、关即退订。
  * 数据：单份 stream 订阅 + meta 读取；无自有轮询；点格派发 OPEN_DRAWER_EVENT（C1a 真消费者）。
- * 双语：header 中文/EN 开关 + data.ts 字典，全表切换。 */
+ * 双语：跟随 DSH 系统语言（documentElement.lang + 属性监听即时跟随，无开关）+ data.ts 字典。
+ * LOGO：渠道 glyph（dsh-im 同款字符串，C1a 同渲染模式 html 注入）+ 文字，表头同；未知渠道只剩文字。 */
 import { h, mount } from '../../client/dom'
 import { EMPTY_META } from '../../client/data/meta'
 import { FLEET_VIEW_EVENT, OPEN_DRAWER_EVENT, type FleetViewDetail, type OpenDrawerDetail } from '../../client/data/config'
 import { showSheet } from '../../client/ui/sheet'
+import { channelGlyphSvg } from '../../client/icons'
 import { makeEmpty } from '../../client/ui/empty'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
 import {
-  buildMatrix, drillEventFor, footAllLine, footSomeLine, healthLabel, metaLine,
+  buildMatrix, drillEventFor, footAllLine, footSomeLine, healthLabel, langOf, metaLine,
   statusText, strings, type Lang, type MatrixCell, type MatrixModel, type MatrixRow,
 } from './data'
 
@@ -34,6 +36,27 @@ function emitDrawer(key: string): void {
   }
 }
 
+/** 跟随 DSH 系统语言（locale 插件把语言同步到 html lang；取不到按中文）。 */
+function docLang(): Lang {
+  try {
+    if (typeof document === 'undefined') return 'zh'
+    return langOf(document.documentElement?.lang)
+  } catch {
+    return 'zh'
+  }
+}
+
+/** 渠道 LOGO 节点（未知渠道回 null，调用方只剩文字）。 */
+function logoNode(channel: string): HTMLElement | null {
+  try {
+    const svg = channelGlyphSvg(channel, 14)
+    if (!svg) return null
+    return h('span', { className: 'c1bm-logo', html: svg }) as HTMLElement
+  } catch {
+    return null
+  }
+}
+
 function cellLabel(cell: MatrixCell, lang: Lang): string {
   if (cell.health === 'empty') return healthLabel('empty', lang)
   return statusText(cell.health, cell.bound, lang)
@@ -47,12 +70,16 @@ function cellTitle(cell: MatrixCell, lang: Lang): string {
 
 function renderCell(row: MatrixRow, cell: MatrixCell, lang: Lang): HTMLElement {
   const cls = 'c1bm-cell' + (cell.health === 'empty' ? ' ghost' : cell.bound ? '' : ' unbound')
+  const kids: (HTMLElement | string)[] = [h('span', { className: 'c1bm-dot ' + cell.health })]
+  const logo = logoNode(cell.channel)
+  if (logo) kids.push(logo)
+  kids.push(cell.health === 'empty' ? '—' : cellLabel(cell, lang))
   return h('button', {
     type: 'button',
     className: cls,
     title: cellTitle(cell, lang),
     onClick: () => emitDrawer(row.key),
-  }, h('span', { className: 'c1bm-dot ' + cell.health }), cell.health === 'empty' ? '—' : cellLabel(cell, lang)) as HTMLElement
+  }, ...kids) as HTMLElement
 }
 
 function renderAgentHead(row: MatrixRow, lang: Lang): HTMLElement {
@@ -69,7 +96,10 @@ function renderAgentHead(row: MatrixRow, lang: Lang): HTMLElement {
 function renderTable(model: MatrixModel, lang: Lang): HTMLElement {
   const t = strings(lang)
   const head: HTMLElement[] = [h('th', { style: { textAlign: 'left' } }, t.agentCol) as HTMLElement]
-  for (const c of model.cols) head.push(h('th', null, c.label) as HTMLElement)
+  for (const c of model.cols) {
+    const logo = logoNode(c.id)
+    head.push(h('th', null, ...(logo ? [logo, c.label] : [c.label])) as HTMLElement)
+  }
   head.push(h('th', null, t.summaryCol) as HTMLElement)
   const body = model.rows.map((row) => {
     const tds: HTMLElement[] = [h('th', null, renderAgentHead(row, lang)) as HTMLElement]
@@ -86,22 +116,15 @@ function renderTable(model: MatrixModel, lang: Lang): HTMLElement {
 export interface RadarCallbacks {
   onRefresh(): void
   onClose(): void
-  onLang(next: Lang): void
 }
 
 function renderInto(root: HTMLElement, model: MatrixModel, updatedAt: number, lang: Lang, cbs: RadarCallbacks): void {
   const t = strings(lang)
-  const langBtn = (id: Lang, text: string): HTMLElement =>
-    h('button', {
-      type: 'button', className: 'c1bm-lang' + (lang === id ? ' on' : ''),
-      onClick: () => cbs.onLang(id),
-    }, text) as HTMLElement
   const hd = h('div', { className: 'c1bm-hd' },
     h('button', { type: 'button', className: 'c1bm-close', title: t.close, onClick: cbs.onClose }, '× ' + t.close),
     h('h2', { className: 'c1bm-title' }, t.title),
     h('span', { className: 'c1bm-meta' }, metaLine(model.counts.agents, model.counts.channels, model.counts.bots, lang)),
     h('span', { className: 'c1bm-sp' }),
-    langBtn('zh', '中文'), langBtn('en', 'EN'),
     h('button', { type: 'button', className: 'c1bm-refresh', title: t.refresh, onClick: cbs.onRefresh }, t.refresh)) as HTMLElement
   if (updatedAt === 0 && model.rows.length === 0) {
     mount(root, [hd, h('div', { className: 'c1bm-loading' }, t.loading)])
@@ -119,21 +142,30 @@ function renderInto(root: HTMLElement, model: MatrixModel, updatedAt: number, la
 /** 雷达挂载（命令式：订阅 + paint + 退订清 DOM；弹窗/行内两种容器通用）。 */
 export function mountRadarView(fctx: FeatureCtx, root: HTMLElement, opts: { onClose(): void }): () => void {
   let dead = false
-  let lang: Lang = 'zh'
   let meta: AgentMetaDoc = EMPTY_META
   let bots: BotSnap[] = []
   let updatedAt = 0
   const paint = (): void => {
     if (dead) return
+    const lang = docLang()
     try {
       renderInto(root, buildMatrix(bots, meta, lang), updatedAt, lang, {
         onRefresh: () => void fctx.refresh().catch(() => {}),
         onClose: () => opts.onClose(),
-        onLang: (next) => { lang = next; paint() },
       })
     } catch {
       /* 渲染失败保留旧帧 */
     }
+  }
+  /* 系统语言切换即时跟随：locale 插件改 html lang 属性即重绘；无监听环境靠下次 paint 跟随。 */
+  let langMo: MutationObserver | null = null
+  try {
+    if (typeof MutationObserver !== 'undefined' && typeof document !== 'undefined' && document.documentElement) {
+      langMo = new MutationObserver(() => paint())
+      langMo.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] })
+    }
+  } catch {
+    /* ignore */
   }
   let unsub: (() => void) | null = null
   try {
@@ -156,6 +188,7 @@ export function mountRadarView(fctx: FeatureCtx, root: HTMLElement, opts: { onCl
   return () => {
     dead = true
     try { unsub?.() } catch { /* ignore */ }
+    try { langMo?.disconnect() } catch { /* ignore */ }
   }
 }
 

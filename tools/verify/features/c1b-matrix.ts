@@ -12,6 +12,7 @@ const REPO = process.cwd();
 const FEAT = join(REPO, 'src', 'features', 'c1b-matrix');
 const ENTRIES = [
   join(REPO, 'src', 'client', 'data', 'config.ts'),
+  join(REPO, 'src', 'client', 'icons.ts'),
   join(REPO, 'src', 'client', 'data', 'fleet-api.ts'),
   join(REPO, 'src', 'client', 'data', 'meta.ts'),
   join(REPO, 'src', 'client', 'data', 'model.ts'),
@@ -40,6 +41,7 @@ try {
 const req = createRequire(join(tmp, 'run.cjs'));
 const data: any = req('./features/c1b-matrix/data.js');
 const config: any = req('./client/data/config.js');
+const iconsMod: any = req('./client/icons.js');
 const manifestSrc = readFileSync(join(FEAT, 'manifest.ts'), 'utf8');
 const stylesSrc = readFileSync(join(FEAT, 'styles.ts'), 'utf8');
 
@@ -117,12 +119,37 @@ test('双语：字典/状态词/渠道名 EN（默认 zh 保持旧断言）', ()
   assert.equal(mEn.cols[0].label, 'Feishu');
 });
 
+test('语言跟随：langOf 归一（DSH 只发 zh/en，空按中文兜底）', () => {
+  assert.equal(data.langOf('zh-CN'), 'zh');
+  assert.equal(data.langOf('zh'), 'zh');
+  assert.equal(data.langOf('en'), 'en');
+  assert.equal(data.langOf(''), 'zh');
+  assert.equal(data.langOf(null), 'zh');
+  assert.equal(data.langOf(undefined), 'zh');
+});
+
+test('LOGO：9 渠道全覆盖 + 未知回退（dsh-im 同款 glyph）', () => {
+  for (const id of config.CHANNEL_ORDER) {
+    const svg = iconsMod.channelGlyphSvg(id, 14);
+    assert.equal(typeof svg, 'string', id);
+    assert.match(svg, /<svg/);
+    assert.match(svg, /<path/);
+  }
+  assert.equal(iconsMod.channelGlyphSvg('nope-channel', 14), null);
+});
+
 test('大弹窗装配：矩阵自管模态 + 装配层零感知 + A1 船按钮间距（源码断言）', () => {
   const viewSrc = readFileSync(join(FEAT, 'view.ts'), 'utf8');
   assert.match(viewSrc, /showSheet\(\{ overlayClass: 'c1bm-overlay', panelClass: 'c1bm-modal'/);
   assert.match(viewSrc, /FLEET_VIEW_EVENT/);
   assert.match(viewSrc, /mountRadarView/);
   assert.match(viewSrc, /openRadar/);
+  assert.match(viewSrc, /docLang/);
+  assert.match(viewSrc, /MutationObserver/);
+  assert.match(viewSrc, /channelGlyphSvg/);
+  assert.match(viewSrc, /c1bm-logo/);
+  assert.doesNotMatch(viewSrc, /onLang/);
+  assert.doesNotMatch(viewSrc, /c1bm-lang/);
   assert.doesNotMatch(viewSrc, /slots\.inject/);
   assert.doesNotMatch(viewSrc, /from 'react'/);
   assert.match(manifestSrc, /mountRadar/);
@@ -144,7 +171,9 @@ test('注册：id/槽位目标 + 样式命名空间（转译已过，此处源�
   assert.match(manifestSrc, /installFeatureStyles\('c1b-matrix'/);
   assert.match(stylesSrc, /\.c1bm-table/);
   assert.match(stylesSrc, /\.c1bm-cell/);
-  assert.match(stylesSrc, /\.c1bm-lang/);
+  assert.match(stylesSrc, /\.c1bm-logo/);
+  assert.match(stylesSrc, /\.c1bm-modal/);
+  assert.doesNotMatch(stylesSrc, /\.c1bm-lang/);
   assert.doesNotMatch(stylesSrc, /\.af-[a-z]/);
   assert.doesNotMatch(stylesSrc, /\.sp\b/);
 });
