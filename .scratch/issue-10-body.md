@@ -50,15 +50,27 @@ Part of #1
 
 ## 单入口改造（用户反馈双入口太多 → 小船方案，已锁定实现）
 
-形态：单 section（IM机器人辅助）+ A1 toolbar 扬帆 SVG 小船按钮 → FLEET_VIEW_EVENT 事件 → 装配层显隐切换（列表/雷达）；雷达页头自带‹ 返回 + 中文/EN 开关 + 刷新。左栏回到 1 个入口。
+形态（终版）：单 section（IM机器人辅助）+ A1 toolbar 小船按钮（与刷新间距 12px）→ FLEET_VIEW_EVENT 事件 → DSH 正中大弹窗（宽版一次放下 9 列、无横向滚动；Esc/点外部/× 三路可关；开窗才订阅、关即退订）。装配层已还原零感知（例外收敛到只剩 A1 6 行）。
 
 改名：矩阵总览 → 舰队雷达 Fleet Radar（tab/块标题/验收手册同步）。
 
-双语（全 UI）：header 中文/EN 开关，字典驱动（data.ts 纯函数）：在线 Online、待确认 Pending、离线 Offline、未绑定 Unbound、未接入 Not connected、汇总 Summary、刷新 Refresh、返回 Back、9 渠道英文名。
+双语（跟随 DSH 系统语言，无手动开关）：读 documentElement.lang（locale 插件同步点）+ 属性监听即时跟随，无则中文兜底；字典仍在 data.ts 纯函数：在线 Online、待确认 Pending、离线 Offline、未绑定 Unbound、未接入 Not connected、汇总 Summary、刷新 Refresh、关闭 Close、9 渠道英文名。
 
-触碰面（契约 §10 例外，用户即审批人）：A1 panel.ts 仅加船按钮 + 事件派发（不引矩阵、不改 mode）；icons.ts 加 ship 导出；config.ts 加 FLEET_VIEW_EVENT；index.ts 装配层加显隐（约 30 行）；矩阵注销独立 section（manifest 保留归属声明）。typecheck 零新增报错（仍仅 B1 预存 2 错）；render-client 全过（含雷达节渲染）；自验证 9/9；guard 全绿。
+LOGO：表头文字前加 dsh-im 同款渠道 LOGO（9/9 全覆盖、未知回退纯文字；C1a 同渲染模式 html 注入）。修过一轮全白问题：7 枚单色 glyph 是 currentColor，跟深色文字一起变白；现配品牌色圆角底 + 白 glyph（dsh-im 设置页同款，飞书/企微白底衬多色标），提交 a5a88c5。再修一轮降噪：LOGO 只留表头做列锚，格子只剩圆点 + 文字（列身份已由表头建立，格内重复即噪音）；关闭钮移到刷新右边。提交 6b63c2b。
 
-提交：master b93d504。验收手册：prototypes/c1b-matrix/acceptance-c1b-matrix.html（入口改小船、改名、加双语场景 7 步骤）。
+触碰面（契约 §10 例外，用户即审批人）：A1 panel.ts 仅加船按钮 + 事件派发 + 间距（不引矩阵、不改 mode）；icons.ts 加 ship 导出；config.ts 加 FLEET_VIEW_EVENT；index.ts 已还原零感知；矩阵事件制自管大弹窗（manifest 保留归属声明）。typecheck 零新增报错（仍仅 B1 预存 2 错）；render-client 全过；自验证 11/11；guard 全绿。
+
+提交：master b93d504；c88a4ae（语言跟随 + LOGO）；a5a88c5（品牌色 LOGO 底）；6b63c2b（关闭右置 + 格子去 LOGO）。验收手册：prototypes/c1b-matrix/acceptance-c1b-matrix.html（绝对路径 D:\dsh-plugin\dsh-im-companion\prototypes\c1b-matrix\acceptance-c1b-matrix.html）。
+
+原型归档：A/B/C 三变体原型 prototypes/c1b-matrix/prototype-c1b-matrix.html 留在主树（本仓惯例，契约 §8 prototypes/<id>/ 常驻； won A 已折叠进真代码）。
+
+真机验收（用户多轮真机反馈即验收）：小船位置与手感 ✓、EN 跟随 ✓、彩色 LOGO ✓（返修过全白）、关闭右置 ✓、格子降噪 ✓。用户 2026-09-04 确认“本次需求开发完成”。
+
+## 进度：100%
+
+下一步：无（已关闭）。后续 LOGO 色差微调另开小票。
+
+待确认：无（用户已终验点头）。
 
 阻塞（非本票）：typecheck / verify 全链被 B1 hover-card.ts 预存 UIEvent 类型错挡住（clean HEAD 同红，他票文件，本票零新增报错、未碰）。
 
