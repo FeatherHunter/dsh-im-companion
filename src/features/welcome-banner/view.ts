@@ -263,7 +263,7 @@ export function mountBanner(fctx: FeatureCtx): () => void {
     try {
       injected = slots.inject(SLOT_NAME, () => {
         const r = slots.register?.(
-          { name: SLOT_NAME, id: ENTRY_ID, order: 10, inject: () => ({}) }, comp);
+          { name: SLOT_NAME, id: ENTRY_ID, key: ENTRY_ID, order: 10, inject: () => ({}) }, comp);
         if (typeof r === "function") unregister = r as () => void;
         return unregister;
       });

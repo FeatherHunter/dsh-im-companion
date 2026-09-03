@@ -285,7 +285,7 @@ test("槽位注册与卸载（真槽位 conversation.session）", () => {
     slots: {
       inject: (name: string, fn: any) => { calls.push(["inject", name]); return fn(); },
       register: (opts: any, comp: any) => {
-        calls.push(["register", opts.name, opts.id, typeof comp]);
+        calls.push(["register", opts.name, opts.id, opts.key, typeof comp]);
         return () => { disposed = true; };
       },
     },
@@ -294,7 +294,8 @@ test("槽位注册与卸载（真槽位 conversation.session）", () => {
   assert.deepEqual(calls.map((c) => c[0]), ["inject", "register"]);
   assert.equal(calls[1][1], "conversation.session");
   assert.equal(calls[1][2], "dsh-im-companion:welcome-banner");
-  assert.equal(calls[1][3], "function");
+  assert.equal(calls[1][3], "dsh-im-companion:welcome-banner");
+  assert.equal(calls[1][4], "function");
   stop();
   assert.equal(disposed, true);
 });
