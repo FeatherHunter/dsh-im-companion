@@ -57,9 +57,9 @@ const registry: any = req('./features/index.js');
 const W_A = 'D:\\agents\\xiaoshuai';
 const W_B = 'D:\\agents\\ali';
 const bots = [
-  { channel: 'feishu', botId: 'f1', workspace: '', botName: '', connected: false },
-  { channel: 'qq', botId: 'q1', workspace: W_A, botName: '小帅', connected: true },
-  { channel: 'feishu', botId: 'f2', workspace: W_B, botName: '阿梨', connected: true },
+  { channel: 'feishu', botId: 'f1', workspace: '', botName: '', connected: false, healthKind: 'offline' },
+  { channel: 'qq', botId: 'q1', workspace: W_A, botName: '小帅', connected: true, healthKind: 'online' },
+  { channel: 'feishu', botId: 'f2', workspace: W_B, botName: '阿梨', connected: true, healthKind: 'warn' },
 ];
 const byId = (id: string) => bots.find((b) => b.botId === id);
 
@@ -98,6 +98,18 @@ test('面板分组：未分配置顶（无则省略）+ 按归属聚合保序', 
   const none = model.boardGroups(bots.map((b) => ({ ...b, workspace: b.workspace || W_A })));
   assert.deepEqual(none.unbound, []);
   assert.deepEqual(none.groups.map((g: any) => g.workspace), [W_A, W_B]);
+});
+
+test('门牌：设置中文名优先，头像字与色板稳定', () => {
+  const p = model.homePlate(W_A, { names: { xiaoshuai: '小帅2' } });
+  assert.equal(p.name, '小帅2');
+  assert.equal(p.sub, 'xiaoshuai');
+  assert.equal(p.initial, '小');
+  assert.ok(p.color >= 0 && p.color <= 7);
+  assert.equal(model.homePlate(W_A, { names: { xiaoshuai: '小帅2' } }).color, p.color);
+  const q = model.homePlate(W_B, { names: {} });
+  assert.equal(q.name, 'Ali');
+  assert.equal(q.sub, 'ali');
 });
 
 test('manifest 注册：workspace-rail 槽位 + 进 FEATURES', () => {
@@ -199,6 +211,7 @@ let e2Emit: ((snap: any) => void) | null = null;
 let e2RpcCalls: any[] = [];
 let e2RefreshCalls = 0;
 let e2PickDir: string | null = W_B;
+let e2Meta: any = { names: { xiaoshuai: '小帅2', ali: '阿梨' }, avatars: {} };
 let e2Unmount: (() => void) | null = null;
 let nonce = 0;
 let e2Header: any = null;
@@ -233,7 +246,7 @@ const mountStage = (rpc: any) => {
     rpc,
     subscribe: (fn: any) => { e2Emit = fn; return () => { e2Emit = null; }; },
     refresh: async () => { e2RefreshCalls++; },
-    meta: {}, slots: {}, get: (name: string) => (name === 'uiWorkspace' ? { pickDirectory: async () => e2PickDir } : undefined),
+    meta: { loadMeta: async () => e2Meta }, slots: {}, get: (name: string) => (name === 'uiWorkspace' ? { pickDirectory: async () => e2PickDir } : undefined),
   };
   e2Unmount = view.mountE2Adopt(ctx);
   return {};
@@ -273,9 +286,13 @@ const panelSections = () => {
 };
 const sectionRows = (sec: any) => findClass(sec, 'e2-row');
 
-test('view：头栏安装分身份入口，点击开面板（含未分配组）', () => {
+test('view：头栏安装分身份入口，点击开面板（含未分配组）', async () => {
   mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
+  await sleep(10);
+  const btn = findClass(e2Header, 'e2-entry')[0];
+  assert.ok(String(btn.attrs?.title ?? '').includes('分身份'));
+  assert.ok(String(btn.innerHTML ?? '').includes('<svg'));
   openPanel();
   const secs = panelSections();
   assert.equal(secs.length, 4);
@@ -283,6 +300,11 @@ test('view：头栏安装分身份入口，点击开面板（含未分配组）'
   assert.equal(sectionRows(secs[0]).length, 2);
   assert.equal(sectionRows(secs[1]).length, 1);
   assert.ok(String(secs[3].attrs?.class ?? '').split(' ').includes('e2-sec-new'));
+  assert.ok(bodyText().includes('小帅2'), '门牌用设置里的中文名');
+  const faces = findClass(e2Doc.body, 'e2-face');
+  assert.ok(faces.some((f: any) => f.textContent === '小'), '门牌有首字头像');
+  const dots = findClass(e2Doc.body, 'e2-hdot');
+  assert.ok(dots.some((d: any) => String(d.attrs?.class ?? '').split(' ').includes('e2-h-online')), '在线成员亮绿灯');
 });
 
 test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async () => {
@@ -311,9 +333,9 @@ test('view：地盘带归属色 + “＋ 新地盘”经目录选择绑定空人
   e2Emit!({ bots: stageBots() });
   openPanel();
   const secs = panelSections();
-  const colors = secs.filter((s: any) => s.getAttribute('data-e2-ws')).map((s: any) => s.style['--e2-c']);
-  assert.ok(colors[0], '分组应有归属色');
-  assert.ok(new Set(colors).size >= 2, '不同组颜色不同');
+  const avs = secs.filter((s: any) => s.getAttribute('data-e2-ws')).map((s: any) => (String(s.attrs?.class ?? '').split(' ').find((c: string) => /^e2-av-\d$/.test(c)) ?? ''));
+  assert.ok(avs[0], '分组应有归属色');
+  assert.ok(new Set(avs).size >= 2, '不同组颜色不同');
   const plus = secs.find((s: any) => String(s.attrs?.class ?? '').split(' ').includes('e2-sec-new'));
   assert.ok(plus, '应有新地盘兜底区');
   e2PickDir = 'D:\\agents\\newbie';

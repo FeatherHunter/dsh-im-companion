@@ -1,6 +1,8 @@
 /** e2-adopt 纯逻辑（可单测）：放置目标判定 + 撤销口径 + 分组/展示选择器。无 DOM；判定 lift 自 #13 原型 verdict。
  * 上游事实（dsh-im workspace-rpc）：workspace 必须非空绝对路径 → 新绑无无损撤销，只有换绑可撤销。 */
 import type { BotSnap } from '../../client/data/fleet-api'
+import type { AgentMetaDoc } from '../../client/data/meta'
+import { initialOf, paletteOf, viewName } from '../../client/data/model'
 
 /** 撤销窗口：走查 verdict，5 秒。 */
 export const UNDO_WINDOW_MS = 5000
@@ -44,6 +46,33 @@ function basenameOf(ws: string): string {
 
 export function shortName(ws: string): string {
   return basenameOf(ws) || ws
+}
+
+export function baseOf(ws: string): string {
+  return basenameOf(ws)
+}
+
+/* 家的门牌（评审声明：展示名口径复用共享 viewName，与左栏徽标/抽屉同一套 meta.names）。 */
+export interface HomePlate {
+  /** 门牌大名：用户在设置里起的中文名，无则回退目录名。 */
+  name: string
+  /** 副名：目录基名（与大名相同时为空，不重复展示）。 */
+  sub: string
+  /** 头像字：大名首字。 */
+  initial: string
+  /** 色板序号（paletteOf，跨渲染稳定，同一家恒同色）。 */
+  color: number
+}
+
+export function homePlate(workspace: string, meta: AgentMetaDoc | null): HomePlate {
+  const base = basenameOf(workspace)
+  const name = viewName(base, meta ?? { names: {} } as AgentMetaDoc, base || workspace, workspace)
+  return {
+    name,
+    sub: base && base !== name ? base : '',
+    initial: initialOf(name),
+    color: paletteOf(workspace || name),
+  }
 }
 
 export interface BoardGroup { workspace: string; name: string; bots: BotSnap[] }

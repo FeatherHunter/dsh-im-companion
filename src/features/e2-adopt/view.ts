@@ -2,10 +2,13 @@
  * 自有 DOM（e2-*）+ 共享 modal/toast/dir-picker 原语；宿主只读（头栏定位复用 B2 口径），不行行业务节点。无自有轮询；写走渠道 RPC + 写后立刷。 */
 import { h } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
+import type { AgentMetaDoc } from '../../client/data/meta'
+import { installFeatureStyles } from '../../client/theme'
 import { toast } from '../../client/ui/toast'
 import type { FeatureCtx } from '../protocol'
 import { actDrop, dismissUndo, pickDir } from './acts'
 import { openBoard, type BoardHandle } from './panel'
+import { CSS } from './styles'
 
 const MIME = 'application/x-e2-adopt-bot'
 const ENTRY_CLASS = 'e2-entry'
@@ -18,6 +21,16 @@ const GROUP_SEL = 'div[role="treeitem"][aria-expanded]'
 let entryBtn: HTMLElement | null = null
 let board: BoardHandle | null = null
 let lastBots: BotSnap[] = []
+let lastMeta: AgentMetaDoc | null = null
+
+function reloadMeta(ctx: FeatureCtx): void {
+  try {
+    void ctx.meta.loadMeta().then((doc) => {
+      lastMeta = doc
+      try { board?.repaint(lastBots) } catch { /* 忽略 */ }
+    }, () => undefined)
+  } catch { /* 读不到昵称就用目录名（fail-closed 展示） */ }
+}
 let dragId: string | null = null
 let dragEl: Element | null = null
 let hadDrag = false
@@ -74,10 +87,13 @@ function hasMime(e: DragEvent): boolean {
 
 function openPanel(ctx: FeatureCtx): void {
   try {
+    /* 样式兜底重装（幂等：同名标签复写；覆盖 HMR/新 fiber 漏装。CSS 失效首先怀疑 lib 未重新构建）。 */
+    try { installFeatureStyles('e2-adopt', CSS) } catch { /* 忽略 */ }
     try { board?.close() } catch { /* 忽略 */ }
     board = null
-    board = openBoard(ctx)
+    board = openBoard(ctx, lastMeta)
     board.repaint(lastBots)
+    reloadMeta(ctx)
   } catch { /* 打不开就不开 */ }
 }
 
@@ -96,9 +112,11 @@ function ensureEntry(ctx: FeatureCtx, g: number): void {
     if (header.querySelector('.' + ENTRY_CLASS)) return
     const btn = h('button', {
       className: ENTRY_CLASS,
-      title: '打开重新分配面板（把机器人换到别的归属）',
+      title: '分身份：打开面板，把机器人换到别的归属（拖拽即换绑）',
+      'aria-label': '分身份：重新分配机器人归属',
       onClick: () => { if (alive(g)) openPanel(ctx) },
-    }, '分身份') as HTMLElement
+      html: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="9" width="12" height="9" rx="2.5"/><circle cx="10" cy="13.5" r="1.1" fill="currentColor" stroke="none"/><circle cx="14" cy="13.5" r="1.1" fill="currentColor" stroke="none"/><path d="M12 9V5"/><circle cx="12" cy="4" r="1"/><path d="M3.5 20c1.5-1.2 3-1.7 4.5-1.7M20.5 20c-1.5-1.2-3-1.7-4.5-1.7"/></svg>',
+    }) as HTMLElement
     header.appendChild(btn)
     entryBtn = btn
   } catch { /* 找不到头栏就不放入口（fail-closed） */ }
@@ -111,6 +129,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   dragId = null
   dragEl = null
   try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
+  reloadMeta(ctx)
   const off = ctx.subscribe((snap) => {
     if (!alive(g)) return
     lastBots = snap.bots
