@@ -5,7 +5,7 @@
  * 点击只读：派发 OPEN_AGENT_EVENT（detail = { workspace, agent }），不做任何 mutation。 */
 import { OPEN_AGENT_EVENT, badgeForWorkspace } from '../data/badges'
 import { CONNECTION_POLL_MS } from '../data/rpc'
-import { fetchBots, type BotSnap, type RpcCall } from '../data/fleet-api'
+import { fetchBots, mergeStaleBots, type BotSnap, type RpcCall } from '../data/fleet-api'
 
 /** 左侧工作区行的候选钩子（逐个尝试；命中即用，未命中静默）。 */
 const ROW_SELECTORS = ['[data-workspace-id]', '[data-workspace-path]']
@@ -163,9 +163,9 @@ export function startLeftBadges(rpc: RpcCall | null): () => void {
   const poll = async (): Promise<void> => {
     if (!rpc || disposed) return
     try {
-      const result = await fetchBots(rpc, bots)
+      const result = await fetchBots(rpc)
       if (disposed) return
-      bots = result.bots
+      bots = mergeStaleBots(bots, result.bots, result.failed)
       loaded = true
       refresh()
     } catch {

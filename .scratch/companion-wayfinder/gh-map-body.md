@@ -9,6 +9,7 @@
 ## Notes
 
 - **开工必读**：docs/features-contract.md（§0 第一原则·充分解耦含开发产物 + §1 解耦九律）——每个 session 开工前先读，AGENTS.md 自动注入指针（军规 v2，2026-09-02）。
+- **裁定（2026-09-02）**：解耦合规不设代码检查/自动扫描（撤销 check-boundaries 方案）——评审制：军规注入 + 提审材料（清单/触碰面自述/可移除性验证）+ 评审把关；自动检查仅保留构建/类型/断言/300 行红线。
 
 - 领域：CONTEXT.md（Agent/Workspace/Bot/Channel/Session/Health/Binding/Fleet）+ 新增 Feature/契约/红线 术语。
 - 技能：每票必读 dsh-plugin-ui-debug（真机闭环）、codebase-design + domain-modeling（解耦）、prototype（交互稿）；研究类用 research。

@@ -45,11 +45,11 @@ export function badgeForWorkspace(workspacePath: string, bots: BotSnap[], nowMs 
       agent,
     }
   }
-  const kinds = bound.map((b) => healthOf(b.healthStatus, b.connected, b.stale))
+  const kinds = bound.map((b) => (b.stale ? 'warn' : healthOf(b.healthStatus, b.connected)))
   const kind: HealthKind = kinds.includes('online') ? 'online' : kinds.includes('warn') ? 'warn' : 'offline'
   const parts = bound.map((b) => {
     if (b.stale) return channelLabel(b.channel) + ' · 未知（轮询失败）'
-    return channelLabel(b.channel) + ' · ' + HEALTH_LABELS[healthOf(b.healthStatus, b.connected, false)]
+    return channelLabel(b.channel) + ' · ' + HEALTH_LABELS[b.stale ? 'warn' : healthOf(b.healthStatus, b.connected)]
   })
   const last = Math.max(...bound.map((b) => b.lastCheckedAt ?? 0))
   if (last > 0) {

@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
-import { createDocument, El } from './dom-shim.ts';
+import { createDocument, El } from '../dom-shim.ts';
 
 const BASE = 'D:/0Tools/DSH Desktop/resources/app.asar.unpacked/node_modules';
 const req = createRequire(import.meta.url);
@@ -107,7 +107,7 @@ async function renderSession(sessionId: string): Promise<{ text: string; btn: an
     }
     return null;
   };
-  const btn = findByClass(container, 'af-b3-dotbtn');
+  const btn = findByClass(container, 'b3-header-dotbtn');
   root.unmount();
   return { text, btn };
 }

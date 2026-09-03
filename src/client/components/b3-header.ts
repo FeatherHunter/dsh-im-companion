@@ -5,7 +5,7 @@
  * 已保存目标（无目标不清谎报发送，只给去配置指引），成功同时派发 SEND_TEST_EVENT。 */
 import * as React from 'react'
 import { OPEN_AGENT_EVENT } from '../data/badges'
-import { fetchBots, type BotSnap, type RpcCall } from '../data/fleet-api'
+import { fetchBots, mergeStaleBots, type BotSnap, type RpcCall } from '../data/fleet-api'
 import {
   SEND_TEST_EVENT,
   chooseBot,
@@ -52,10 +52,10 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
       const rpc = createRpc()
       if (!rpc || disposed) return
       try {
-        const next = await fetchBots(rpc, botsRef.current)
+        const next = await fetchBots(rpc)
         if (disposed) return
-        botsRef.current = next.bots
-        setBots(next.bots)
+        botsRef.current = mergeStaleBots(botsRef.current, next.bots, next.failed)
+        setBots(botsRef.current)
         setLoaded(true)
       } catch {
         /* 静默失败保留旧状态（stale 语义在 fetchBots 内） */
@@ -106,12 +106,12 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
     }
   }
 
-  const dotCls = 'af-b3-dot ' + overlay.dotKind
+  const dotCls = 'b3-header-dot ' + overlay.dotKind
   const btn = React.createElement(
     'button',
     {
       type: 'button',
-      className: 'af-b3-dotbtn ' + overlay.dotKind,
+      className: 'b3-header-dotbtn ' + overlay.dotKind,
       title: overlay.mode === 'unbound' ? '未绑定：点击去设置' : overlay.agent + ' · ' + overlay.label + '（点击查看详情）',
       'aria-label': overlay.mode === 'unbound' ? '未绑定，点击去设置' : overlay.agent + dotTitle(overlay.dotKind as DotKind),
       onClick: () => {
@@ -122,33 +122,33 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
     React.createElement('span', { className: dotCls }),
   )
 
-  if (!open) return React.createElement('span', { className: 'af-b3' }, btn)
+  if (!open) return React.createElement('span', { className: 'b3-header' }, btn)
 
   const detail = overlay.mode === 'unbound'
-    ? React.createElement('div', { className: 'af-b3-sub' }, '该工作区尚未绑定机器人。')
-    : React.createElement('div', { className: 'af-b3-sub', title: overlay.tooltip }, overlay.agent + ' · ' + overlay.label)
+    ? React.createElement('div', { className: 'b3-header-sub' }, '该工作区尚未绑定机器人。')
+    : React.createElement('div', { className: 'b3-header-sub', title: overlay.tooltip }, overlay.agent + ' · ' + overlay.label)
 
   const actions = overlay.mode === 'unbound'
-    ? React.createElement('button', { type: 'button', className: 'af-b3-btn primary', onClick: onOpenWorkspace }, '去设置')
+    ? React.createElement('button', { type: 'button', className: 'b3-header-btn primary', onClick: onOpenWorkspace }, '去设置')
     : React.createElement(
         React.Fragment,
         null,
-        React.createElement('button', { type: 'button', className: 'af-b3-btn', onClick: onOpenWorkspace }, '打开工作区'),
+        React.createElement('button', { type: 'button', className: 'b3-header-btn', onClick: onOpenWorkspace }, '打开工作区'),
         React.createElement(
           'button',
-          { type: 'button', className: 'af-b3-btn primary', disabled: busy, onClick: () => void onSendTest() },
+          { type: 'button', className: 'b3-header-btn primary', disabled: busy, onClick: () => void onSendTest() },
           busy ? '发送中…' : '发测试消息',
         ),
       )
 
   const pop = React.createElement(
     'div',
-    { className: 'af-b3-pop', role: 'dialog', 'aria-label': overlay.agent + ' 状态详情' },
-    React.createElement('div', { className: 'af-b3-title' }, overlay.mode === 'unbound' ? '未绑定' : overlay.agent + ' · ' + overlay.label),
+    { className: 'b3-header-pop', role: 'dialog', 'aria-label': overlay.agent + ' 状态详情' },
+    React.createElement('div', { className: 'b3-header-title' }, overlay.mode === 'unbound' ? '未绑定' : overlay.agent + ' · ' + overlay.label),
     detail,
-    React.createElement('div', { className: 'af-b3-row' }, actions),
-    result ? React.createElement('div', { className: 'af-b3-result ' + (result.ok ? 'ok' : 'err') }, result.text) : null,
+    React.createElement('div', { className: 'b3-header-row' }, actions),
+    result ? React.createElement('div', { className: 'b3-header-result ' + (result.ok ? 'ok' : 'err') }, result.text) : null,
   )
 
-  return React.createElement('span', { className: 'af-b3' }, btn, pop)
+  return React.createElement('span', { className: 'b3-header' }, btn, pop)
 }

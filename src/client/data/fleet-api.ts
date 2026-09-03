@@ -123,3 +123,14 @@ export async function fetchBots(rpc: RpcCall): Promise<{ bots: BotSnap[]; failed
   })
   return { bots, failed }
 }
+
+/** B1 verdict 延续（connection-stream 落地前各调用方复用）：传输失败的渠道保留上一轮快照
+ * 并标 stale（时间冻结、按未知展示），而不是丢弃谎报离线；ok:false 是权威空，不保留。 */
+export function mergeStaleBots(prev: BotSnap[], fresh: BotSnap[], failed: readonly string[]): BotSnap[] {
+  if (!failed.length) return fresh
+  const seen = new Set(fresh.map((b) => b.channel + '\0' + b.botId))
+  const retained = (prev ?? []).filter(
+    (b) => b && failed.includes(b.channel) && !seen.has(b.channel + '\0' + b.botId),
+  ).map((b) => ({ ...b, stale: true }))
+  return [...fresh, ...retained]
+}
