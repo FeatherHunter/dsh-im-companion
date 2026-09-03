@@ -39,6 +39,70 @@ export interface MatrixModel {
   counts: { agents: number; channels: number; bots: number }
 }
 
+export type Lang = 'zh' | 'en'
+
+const EN_CHANNELS: Record<string, string> = {
+  feishu: 'Feishu', weixin: 'WeChat', qq: 'QQ', slack: 'Slack', telegram: 'Telegram',
+  discord: 'Discord', whatsapp: 'WhatsApp', dingtalk: 'DingTalk', wecom: 'WeCom',
+}
+
+/** 渠道列名（双语）：中文走共享 channelLabel，英文走本表（共享层只有中文名，不碰共享）。 */
+export function matrixChannelLabel(id: string, lang: Lang): string {
+  return lang === 'en' ? (EN_CHANNELS[id] ?? id) : channelLabel(id)
+}
+
+const EN_HEALTH: Record<HealthKind, string> = { online: 'Online', warn: 'Pending', offline: 'Offline' }
+
+/** 格健康词（双语）：empty 中文“未接入”/英文“Not connected”。 */
+export function healthLabel(health: CellHealth, lang: Lang): string {
+  if (health === 'empty') return lang === 'en' ? 'Not connected' : '未接入'
+  return lang === 'en' ? EN_HEALTH[health] : HEALTH_LABELS[health]
+}
+
+export interface MatrixStrings {
+  title: string
+  back: string
+  refresh: string
+  loading: string
+  emptyTitle: string
+  emptySub: string
+  agentCol: string
+  summaryCol: string
+  drillHint: string
+  staleNote: string
+}
+
+const STRINGS: Record<Lang, MatrixStrings> = {
+  zh: {
+    title: '舰队雷达', back: '‹ 返回列表', refresh: '刷新', loading: '矩阵加载中…',
+    emptyTitle: '还没有 Agent', emptySub: '新建 Agent 并接入任意渠道后，这里会出现矩阵',
+    agentCol: 'Agent ＼ 渠道', summaryCol: '汇总', drillHint: '点击钻取详情', staleNote: '（数据过期）',
+  },
+  en: {
+    title: 'Fleet Radar', back: '‹ Back', refresh: 'Refresh', loading: 'Loading matrix…',
+    emptyTitle: 'No agents yet', emptySub: 'Create an agent and connect a channel, and the matrix will appear here',
+    agentCol: 'Agent ＼ Channel', summaryCol: 'Summary', drillHint: 'Click for details', staleNote: '(stale)',
+  },
+}
+
+export function strings(lang: Lang): MatrixStrings {
+  return STRINGS[lang]
+}
+
+export function metaLine(agents: number, channels: number, bots: number, lang: Lang): string {
+  return lang === 'en'
+    ? agents + ' agents × ' + channels + ' channels · ' + bots + ' bots'
+    : agents + ' 个 Agent × ' + channels + ' 渠道 · ' + bots + ' 个机器人'
+}
+
+export function footAllLine(channels: number, lang: Lang): string {
+  return lang === 'en' ? 'All ' + channels + ' channels connected' : channels + ' 渠道均有接入'
+}
+
+export function footSomeLine(names: string[], lang: Lang): string {
+  return names.join(lang === 'en' ? ', ' : '、') + (lang === 'en' ? ' not connected' : ' 暂无接入')
+}
+
 const RANK: Record<HealthKind, number> = { online: 0, warn: 1, offline: 2 }
 
 /** 行排序（锁定规格）：未绑定独立沉底 → 健康 rank → 按名（中文）。 */
@@ -53,8 +117,8 @@ export function compareRows(
 }
 
 /** 状态文案（DOM-free，可测）：健康 label + 未绑定后缀；汇总列与单元格共用，消除三重复。 */
-export function statusText(status: HealthKind, bound: boolean): string {
-  return HEALTH_LABELS[status] + (bound ? '' : '·未绑定')
+export function statusText(status: HealthKind, bound: boolean, lang: Lang = 'zh'): string {
+  return healthLabel(status, lang) + (bound ? '' : lang === 'en' ? ' · Unbound' : '·未绑定')
 }
 
 export function cellFor(view: AgentView, snaps: BotSnap[], channel: string): MatrixCell {
@@ -67,9 +131,9 @@ export function cellFor(view: AgentView, snaps: BotSnap[], channel: string): Mat
   return { channel, label: ch.label, botId: ref.botId, health: ch.status, bound, stale: snap?.stale === true }
 }
 
-export function buildMatrix(bots: BotSnap[], meta: AgentMetaDoc): MatrixModel {
+export function buildMatrix(bots: BotSnap[], meta: AgentMetaDoc, lang: Lang = 'zh'): MatrixModel {
   const fleet = buildModel(bots, meta, 'agent', '')
-  const cols = CHANNEL_ORDER.map((id) => ({ id, label: channelLabel(id) }))
+  const cols = CHANNEL_ORDER.map((id) => ({ id, label: matrixChannelLabel(id, lang) }))
   const rows = fleet.agents.map((v) => ({
     key: v.key,
     name: v.name,

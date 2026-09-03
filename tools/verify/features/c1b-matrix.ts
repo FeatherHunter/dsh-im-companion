@@ -103,13 +103,42 @@ test('状态文案：健康 label + 未绑定后缀（单元格/汇总共用）'
   assert.equal(data.statusText('offline', true), '离线');
 });
 
-test('注册：id/order/槽位目标 + 样式命名空间（转译已过，此处源码断言）', () => {
+test('双语：字典/状态词/渠道名 EN（默认 zh 保持旧断言）', () => {
+  assert.equal(data.statusText('online', true), '在线');
+  assert.equal(data.statusText('online', true, 'en'), 'Online');
+  assert.equal(data.statusText('warn', false, 'en'), 'Pending · Unbound');
+  assert.equal(data.healthLabel('empty', 'en'), 'Not connected');
+  assert.equal(data.matrixChannelLabel('feishu', 'en'), 'Feishu');
+  assert.equal(data.matrixChannelLabel('weixin', 'zh'), '微信');
+  assert.equal(data.strings('en').title, 'Fleet Radar');
+  assert.equal(data.strings('zh').title, '舰队雷达');
+  assert.match(data.metaLine(3, 9, 5, 'en'), /3 agents/);
+  const mEn = data.buildMatrix([snap('feishu', 'b1', 'D:/ws/a', 'online')], META, 'en');
+  assert.equal(mEn.cols[0].label, 'Feishu');
+});
+
+test('单入口装配：无独立 section 注册 + index 显隐 + A1 船按钮（源码断言）', () => {
+  assert.doesNotMatch(manifestSrc, /slots\.inject/);
+  assert.doesNotMatch(manifestSrc, /order: 23,[\s\S]*label/);
+  const indexSrc = readFileSync(join(REPO, 'src', 'client', 'index.ts'), 'utf8');
+  assert.match(indexSrc, /MatrixSection/);
+  assert.match(indexSrc, /FLEET_VIEW_EVENT/);
+  assert.match(indexSrc, /hidden: fleetView !== 'list'/);
+  assert.match(indexSrc, /hidden: fleetView !== 'radar'/);
+  const panelSrc = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
+  assert.match(panelSrc, /iconName: 'ship'/);
+  assert.match(panelSrc, /emitFleetView\('radar'\)/);
+  assert.doesNotMatch(panelSrc, /c1b-matrix/);
+});
+
+test('注册：id/槽位目标 + 样式命名空间（转译已过，此处源码断言）', () => {
   assert.match(manifestSrc, /id: 'c1b-matrix'/);
-  assert.match(manifestSrc, /order: 23/);
+  assert.match(manifestSrc, /name: '舰队雷达'/);
   assert.match(manifestSrc, /target: 'settings.section'/);
   assert.match(manifestSrc, /installFeatureStyles\('c1b-matrix'/);
   assert.match(stylesSrc, /\.c1bm-table/);
   assert.match(stylesSrc, /\.c1bm-cell/);
+  assert.match(stylesSrc, /\.c1bm-lang/);
   assert.doesNotMatch(stylesSrc, /\.af-[a-z]/);
   assert.doesNotMatch(stylesSrc, /\.sp\b/);
 });

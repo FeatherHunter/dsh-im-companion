@@ -5,7 +5,13 @@ export const CSS = `
 .c1bm-title { margin: 0; font-size: 17px; line-height: 22px; font-weight: 700; color: var(--dsw-alias-label-primary,#1c1c1e); }
 .c1bm-meta { font-size: 12px; color: var(--dsw-alias-label-tertiary,#98989d); font-variant-numeric: tabular-nums; }
 .c1bm-hd .c1bm-sp { flex: 1; }
-.c1bm-refresh { font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 9px; border: 1px solid var(--dsw-alias-separator,#dfe1e5); background: var(--dsw-alias-bg-base,#fff); color: var(--dsw-alias-label-secondary,#6e6e73); cursor: pointer; }
+.c1bm-back { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--dsw-alias-label-secondary,#6e6e73); cursor: pointer; }
+.c1bm-back:hover { color: var(--dsw-alias-brand-primary,#0a84ff); }
+.c1bm-lang { font: inherit; font-size: 11px; padding: 4px 9px; border: 1px solid var(--dsw-alias-separator,#dfe1e5); background: var(--dsw-alias-bg-base,#fff); color: var(--dsw-alias-label-secondary,#6e6e73); cursor: pointer; }
+.c1bm-lang:first-of-type { border-radius: 8px 0 0 8px; }
+.c1bm-lang:last-of-type { border-radius: 0 8px 8px 0; margin-left: -1px; }
+.c1bm-lang.on { background: var(--dsw-alias-brand-primary,#0a84ff); border-color: var(--dsw-alias-brand-primary,#0a84ff); color: #fff; font-weight: 700; }
+.c1bm-refresh { font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 9px; border: 1px solid var(--dsw-alias-separator,#dfe1e5); background: var(--dsw-alias-bg-base,#fff); color: var(--dsw-alias-label-secondary,#6e6e73); cursor: pointer; margin-left: 6px; }
 .c1bm-refresh:hover { color: var(--dsw-alias-brand-primary,#0a84ff); border-color: var(--dsw-alias-brand-primary,#0a84ff); }
 .c1bm-scroll { overflow-x: auto; border: 1px solid var(--dsw-alias-separator,#e5e6eb); border-radius: 12px; background: var(--dsw-alias-bg-base,#fff); }
 .c1bm-table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 760px; font-size: 12px; }

@@ -25,6 +25,13 @@ export interface OpenDrawerDetail {
   key: string
 }
 
+/** 舰队视图切换事件名：detail = { view }（A1 船按钮/矩阵返回按钮派发，装配层监听做显隐切换；C1a 抽屉同款事件制）。 */
+export const FLEET_VIEW_EVENT = 'dsh-im-companion:fleet-view'
+
+export interface FleetViewDetail {
+  view: 'list' | 'radar'
+}
+
 export function healthOf(status?: string | null, connected?: boolean): HealthKind {
   const s = String(status ?? '').toLowerCase()
   if (s === 'healthy' || s === 'online' || s === 'connected' || s === 'ok') return 'online'

@@ -3,6 +3,7 @@
 import { h } from '../dom'
 import type { RpcCall } from '../data/fleet-api'
 import type { AgentView, ViewMode } from '../data/model'
+import { FLEET_VIEW_EVENT, type FleetViewDetail } from '../data/config'
 import { makeIconButton } from '../ui/button'
 import { makeSearchField } from '../ui/field'
 import { makeSegmented, type SegHandle } from '../ui/segmented'
@@ -37,7 +38,12 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     bodyModule.render()
   })
   const refreshBtn = makeIconButton({ iconName: 'refresh', label: '刷新', title: '立即刷新', onClick: () => void data.load(true) })
-  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto' } }, refreshBtn))
+  /* 舰队雷达入口（#10 例外单 PR：只加按钮+事件派发，不引矩阵、不改 mode 语义；矩阵显隐由装配层接管）。 */
+  const radarBtn = makeIconButton({
+    iconName: 'ship', label: '舰队雷达', title: '舰队雷达 Fleet Radar',
+    onClick: () => emitFleetView('radar'),
+  })
+  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto' } }, radarBtn, refreshBtn))
   const compose = makeComposeBar((name) => void actions.create(name))
   const body = h('div', { className: 'af-body' })
   const root = h('div', { className: 'af-root' }, hd, toolbar, compose.el, body)
@@ -82,6 +88,15 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     if (pollTimer) clearInterval(pollTimer)
   }
   return root
+}
+
+function emitFleetView(view: FleetViewDetail['view']): void {
+  try {
+    if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
+    window.dispatchEvent(new window.CustomEvent<FleetViewDetail>(FLEET_VIEW_EVENT, { detail: { view } }))
+  } catch {
+    /* 派发失败不影响列表 */
+  }
 }
 
 function extractRpc(ctx: unknown): RpcCall | null {

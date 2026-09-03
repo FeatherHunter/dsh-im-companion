@@ -8,6 +8,8 @@ import { extractRpc } from './data/rpc'
 import { createConnectionStream, type StreamSnapshot } from './data/connection-stream'
 import { createMetaStore, type MetaStore } from './data/meta'
 import { resolveWorkspacePath, type WorkspaceItem } from './data/header-overlay'
+import { FLEET_VIEW_EVENT, type FleetViewDetail } from './data/config'
+import { MatrixSection } from '../features/c1b-matrix/view'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
 
 /* 注：workspaces 经 ctx.get 惰性可选查找（无需声明）；声明会引入 provider 卸载连带，不声明更稳。 */
@@ -51,8 +53,32 @@ export function apply(ctx: any): void {
     }
   }
 
+  /* 单入口双视角（#10 小船方案，契约例外：只加装配，A1/矩阵互不知晓，显隐切换）：
+   * A1 船按钮/矩阵返回键经 FLEET_VIEW_EVENT 派发，本层只翻 hidden；两根订阅常活（单 stream，本就广播）。 */
   const FleetSettingsTab: React.FC = () => {
     const ref = React.useRef<HTMLDivElement | null>(null)
+    const [fleetView, setFleetView] = React.useState<'list' | 'radar'>('list')
+    React.useEffect(() => {
+      const onFleet = (e: Event): void => {
+        try {
+          const v = (e as CustomEvent)?.detail as Partial<FleetViewDetail> | undefined
+          if (v?.view === 'radar' || v?.view === 'list') setFleetView(v.view)
+        } catch {
+          /* ignore */
+        }
+      }
+      try {
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+          window.addEventListener(FLEET_VIEW_EVENT, onFleet as EventListener)
+          return () => {
+            try { window.removeEventListener(FLEET_VIEW_EVENT, onFleet as EventListener) } catch { /* ignore */ }
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      return () => {}
+    }, [])
     React.useEffect(() => {
       const mount = ref.current
       if (!mount) return
@@ -77,7 +103,10 @@ export function apply(ctx: any): void {
         mount.replaceChildren()
       }
     }, [])
-    return React.createElement('div', { ref, style: { background: 'transparent' } })
+    return React.createElement(React.Fragment, null,
+      React.createElement('div', { ref, hidden: fleetView !== 'list', style: { background: 'transparent' } }),
+      React.createElement(MatrixSection, { fctx: featureCtx, hidden: fleetView !== 'radar' }),
+    )
   }
 
   ctx.effect(() => () => {

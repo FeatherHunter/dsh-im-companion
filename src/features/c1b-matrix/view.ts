@@ -1,16 +1,19 @@
-/** C1b 矩阵视图（A 稠密表 verdict #10）：自注册 settings.section（order 23）+ 命令式稠密表。
- * 归属：特性自注册独立 section（零 A1 触碰，解耦优先于同 panel；健康/绑定语义与 A1 同源 buildModel）。
+/** C1b 舰队雷达（A 稠密表 verdict #10；单入口：由装配层统一挂载，见 client/index）。
+ * 归属：渲染归本特性，显隐归装配层（FLEET_VIEW_EVENT 事件制，C1a 抽屉同款）；A1 仅多一个船按钮。
  * 数据：单份 stream 订阅 + meta 读取；无自有轮询；点格派发 OPEN_DRAWER_EVENT（C1a 真消费者）。
- * 窄屏：横滚 + 首列冻结（thead sticky）；空态：makeEmpty 共享原语。 */
+ * 双语：header 中文/EN 开关 + data.ts 字典，全表切换；窄屏横滚 + 首列冻结；空态走共享原语。 */
 import * as React from 'react'
 import { h, mount } from '../../client/dom'
 import { EMPTY_META } from '../../client/data/meta'
-import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../../client/data/config'
+import { FLEET_VIEW_EVENT, OPEN_DRAWER_EVENT, type FleetViewDetail, type OpenDrawerDetail } from '../../client/data/config'
 import { makeEmpty } from '../../client/ui/empty'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
-import { buildMatrix, drillEventFor, statusText, type MatrixCell, type MatrixModel, type MatrixRow } from './data'
+import {
+  buildMatrix, drillEventFor, footAllLine, footSomeLine, healthLabel, metaLine,
+  statusText, strings, type Lang, type MatrixCell, type MatrixModel, type MatrixRow,
+} from './data'
 
 const AVATAR_COLORS = ['#3964fe', '#07c160', '#e8890c', '#8e44ad', '#12b7f5', '#d92d20', '#00b386', '#5865f2']
 
@@ -30,52 +33,56 @@ function emitDrawer(key: string): void {
   }
 }
 
-function cellLabel(cell: MatrixCell): string {
-  if (cell.health === 'empty') return '未接入'
-  return statusText(cell.health, cell.bound)
-}
-
-function cellTitle(cell: MatrixCell): string {
-  if (cell.health === 'empty') return cell.label + '：未接入，点击可添加接入'
-  return cell.label + ' ' + cell.botId + ' · ' + cellLabel(cell) + (cell.stale ? '（数据过期）' : '') + '，点击钻取详情'
-}
-
-function renderCell(row: MatrixRow, cell: MatrixCell): HTMLElement {
-  if (cell.health === 'empty') {
-    return h('button', {
-      type: 'button',
-      className: 'c1bm-cell ghost',
-      title: cellTitle(cell),
-      onClick: () => emitDrawer(row.key),
-    }, h('span', { className: 'c1bm-dot empty' }), '—') as HTMLElement
+function emitView(view: FleetViewDetail['view']): void {
+  try {
+    if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
+    window.dispatchEvent(new window.CustomEvent<FleetViewDetail>(FLEET_VIEW_EVENT, { detail: { view } }))
+  } catch {
+    /* 派发失败不影响展示 */
   }
+}
+
+function cellLabel(cell: MatrixCell, lang: Lang): string {
+  if (cell.health === 'empty') return healthLabel('empty', lang)
+  return statusText(cell.health, cell.bound, lang)
+}
+
+function cellTitle(cell: MatrixCell, lang: Lang): string {
+  const t = strings(lang)
+  if (cell.health === 'empty') return cell.label + '：' + healthLabel('empty', lang) + '，' + t.drillHint
+  return cell.label + ' ' + cell.botId + ' · ' + cellLabel(cell, lang) + (cell.stale ? t.staleNote : '') + '，' + t.drillHint
+}
+
+function renderCell(row: MatrixRow, cell: MatrixCell, lang: Lang): HTMLElement {
+  const cls = 'c1bm-cell' + (cell.health === 'empty' ? ' ghost' : cell.bound ? '' : ' unbound')
   return h('button', {
     type: 'button',
-    className: 'c1bm-cell' + (cell.bound ? '' : ' unbound'),
-    title: cellTitle(cell),
+    className: cls,
+    title: cellTitle(cell, lang),
     onClick: () => emitDrawer(row.key),
-  }, h('span', { className: 'c1bm-dot ' + cell.health }), cellLabel(cell)) as HTMLElement
+  }, h('span', { className: 'c1bm-dot ' + cell.health }), cell.health === 'empty' ? '—' : cellLabel(cell, lang)) as HTMLElement
 }
 
-function renderAgentHead(row: MatrixRow): HTMLElement {
+function renderAgentHead(row: MatrixRow, lang: Lang): HTMLElement {
   const av = h('span', { className: 'c1bm-av', style: { background: avatarColor(row.key) } }, row.name.charAt(0).toUpperCase()) as HTMLElement
   return h('button', {
     type: 'button',
     className: 'c1bm-rowbtn',
-    title: row.name + '，点击钻取详情',
+    title: row.name + '，' + strings(lang).drillHint,
     onClick: () => emitDrawer(row.key),
   }, h('span', { className: 'c1bm-agent' }, av,
     h('span', null, h('div', { className: 'c1bm-nm' }, row.name), h('div', { className: 'c1bm-bs' }, row.base || row.key)))) as unknown as HTMLElement
 }
 
-function renderTable(model: MatrixModel): HTMLElement {
-  const head: HTMLElement[] = [h('th', { style: { textAlign: 'left' } }, 'Agent ＼ 渠道') as HTMLElement]
+function renderTable(model: MatrixModel, lang: Lang): HTMLElement {
+  const t = strings(lang)
+  const head: HTMLElement[] = [h('th', { style: { textAlign: 'left' } }, t.agentCol) as HTMLElement]
   for (const c of model.cols) head.push(h('th', null, c.label) as HTMLElement)
-  head.push(h('th', null, '汇总') as HTMLElement)
+  head.push(h('th', null, t.summaryCol) as HTMLElement)
   const body = model.rows.map((row) => {
-    const tds: HTMLElement[] = [h('th', null, renderAgentHead(row)) as HTMLElement]
-    for (const cell of row.cells) tds.push(h('td', null, renderCell(row, cell)) as HTMLElement)
-    const agg = row.botCount === 0 ? '未接入' : statusText(row.status, row.bound)
+    const tds: HTMLElement[] = [h('th', null, renderAgentHead(row, lang)) as HTMLElement]
+    for (const cell of row.cells) tds.push(h('td', null, renderCell(row, cell, lang)) as HTMLElement)
+    const agg = row.botCount === 0 ? healthLabel('empty', lang) : statusText(row.status, row.bound, lang)
     tds.push(h('td', null, h('span', { className: 'c1bm-agg' },
       h('span', { className: 'c1bm-dot ' + (row.botCount === 0 ? 'empty' : row.status) }), agg)) as HTMLElement)
     return h('tr', null, ...tds)
@@ -84,29 +91,44 @@ function renderTable(model: MatrixModel): HTMLElement {
     h('table', { className: 'c1bm-table' }, h('thead', null, h('tr', null, ...head)), h('tbody', null, ...body))) as HTMLElement
 }
 
-function renderInto(root: HTMLElement, model: MatrixModel, updatedAt: number, onRefresh: () => void): void {
+export interface RadarCallbacks {
+  onRefresh(): void
+  onBack(): void
+  onLang(next: Lang): void
+}
+
+function renderInto(root: HTMLElement, model: MatrixModel, updatedAt: number, lang: Lang, cbs: RadarCallbacks): void {
+  const t = strings(lang)
+  const langBtn = (id: Lang, text: string): HTMLElement =>
+    h('button', {
+      type: 'button', className: 'c1bm-lang' + (lang === id ? ' on' : ''),
+      onClick: () => cbs.onLang(id),
+    }, text) as HTMLElement
   const hd = h('div', { className: 'c1bm-hd' },
-    h('h2', { className: 'c1bm-title' }, 'Fleet 矩阵总览'),
-    h('span', { className: 'c1bm-meta' }, model.counts.agents + ' 个 Agent × ' + model.counts.channels + ' 渠道 · ' + model.counts.bots + ' 个机器人'),
+    h('button', { type: 'button', className: 'c1bm-back', title: t.back, onClick: cbs.onBack }, t.back),
+    h('h2', { className: 'c1bm-title' }, t.title),
+    h('span', { className: 'c1bm-meta' }, metaLine(model.counts.agents, model.counts.channels, model.counts.bots, lang)),
     h('span', { className: 'c1bm-sp' }),
-    h('button', { type: 'button', className: 'c1bm-refresh', title: '立即刷新单份轮询', onClick: onRefresh }, '刷新')) as HTMLElement
+    langBtn('zh', '中文'), langBtn('en', 'EN'),
+    h('button', { type: 'button', className: 'c1bm-refresh', title: t.refresh, onClick: cbs.onRefresh }, t.refresh)) as HTMLElement
   if (updatedAt === 0 && model.rows.length === 0) {
-    mount(root, [hd, h('div', { className: 'c1bm-loading' }, '矩阵加载中…')])
+    mount(root, [hd, h('div', { className: 'c1bm-loading' }, t.loading)])
     return
   }
   if (model.rows.length === 0) {
-    mount(root, [hd, makeEmpty({ iconName: 'person', title: '还没有 Agent', sub: '新建 Agent 并接入任意渠道后，这里会出现矩阵' }) as unknown as HTMLElement])
+    mount(root, [hd, makeEmpty({ iconName: 'person', title: t.emptyTitle, sub: t.emptySub }) as unknown as HTMLElement])
     return
   }
-  const foot = model.emptyColumns.length
-    ? model.emptyColumns.join('、') + ' 暂无接入'
-    : model.counts.channels + ' 渠道均有接入'
-  mount(root, [hd, renderTable(model), h('div', { className: 'c1bm-foot' }, foot)])
+  const names = model.emptyColumns.map((id) => model.cols.find((c) => c.id === id)?.label ?? id)
+  const foot = model.emptyColumns.length ? footSomeLine(names, lang) : footAllLine(model.counts.channels, lang)
+  mount(root, [hd, renderTable(model, lang), h('div', { className: 'c1bm-foot' }, foot)])
 }
 
-function MatrixSection(props: { fctx: FeatureCtx }): React.ReactElement {
+/** 雷达节（装配层挂载：显隐由 hidden 控制，订阅常活；卸载时退订清 DOM）。 */
+export function MatrixSection(props: { fctx: FeatureCtx; hidden: boolean }): React.ReactElement {
   const ref = React.useRef<HTMLDivElement | null>(null)
   const fctx = props.fctx
+  const [lang, setLang] = React.useState<Lang>('zh')
   React.useEffect(() => {
     const el = ref.current
     if (!el) return
@@ -117,11 +139,16 @@ function MatrixSection(props: { fctx: FeatureCtx }): React.ReactElement {
     const paint = (): void => {
       if (dead || !ref.current) return
       try {
-        renderInto(ref.current, buildMatrix(bots, meta), updatedAt, () => void fctx.refresh().catch(() => {}))
+        renderInto(ref.current, buildMatrix(bots, meta, langRef.current), updatedAt, langRef.current, {
+          onRefresh: () => void fctx.refresh().catch(() => {}),
+          onBack: () => emitView('list'),
+          onLang: (next) => setLang(next),
+        })
       } catch {
         /* 渲染失败保留旧帧 */
       }
     }
+    const langRef = { current: lang }
     let unsub: (() => void) | null = null
     try {
       unsub = fctx.subscribe((snap) => {
@@ -145,28 +172,6 @@ function MatrixSection(props: { fctx: FeatureCtx }): React.ReactElement {
       try { unsub?.() } catch { /* ignore */ }
       try { el.replaceChildren() } catch { /* ignore */ }
     }
-  }, [fctx])
-  return React.createElement('div', { ref, className: 'c1bm-root' })
-}
-
-/** 挂载：自注册独立 settings.section（order 23，紧随 IM机器人辅助 22）。
- * 注册与 B3/A1 同 API；注册项随宿主会话存活（同 B3/A1 先例不注销），
- * 订阅/DOM 由 React effect 清理，卸载即净。 */
-export function mountMatrix(fctx: FeatureCtx): () => void {
-  try {
-    const slots = fctx.slots as unknown as {
-      inject(name: string, fn: () => unknown): unknown
-      register(info: Record<string, unknown>, comp: unknown): unknown
-    }
-    slots.inject('settings.section', () => slots.register({
-      name: 'settings.section',
-      id: 'dsh-im-companion:c1b-matrix',
-      order: 23,
-      label: () => 'Fleet 矩阵总览',
-      inject: () => ({}),
-    }, () => React.createElement(MatrixSection, { fctx })))
-  } catch {
-    /* 老宿主无该槽位就跳过（A1 面板不受影响） */
-  }
-  return () => {}
+  }, [fctx, lang])
+  return React.createElement('div', { ref, className: 'c1bm-root', hidden: props.hidden })
 }

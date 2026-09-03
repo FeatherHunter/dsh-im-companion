@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>C1b 舰队雷达 · 真机验收手册（7 场景）</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f2f3f5; color: #1c1c1e; font: 14px/1.8 -apple-system, "PingFang SC", "Noto Sans SC", "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 16px 80px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; color: #fff; background: #0a84ff; border-radius: 6px; padding: 3px 10px; letter-spacing: .05em; }
+  h1 { font-size: 24px; margin: 10px 0 4px; }
+  .lede { color: #555; margin: 0 0 16px; }
+  .card { background: #fff; border: 1px solid rgba(0,0,0,.08); border-radius: 14px; margin: 0 0 14px; overflow: hidden; }
+  .card-hd { padding: 12px 18px; border-bottom: 1px solid rgba(0,0,0,.07); font-weight: 800; font-size: 16px; }
+  .card-hd .no { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #0a84ff; color: #fff; font-size: 14px; margin-right: 8px; }
+  .card-hd.prep .no { background: #6e6e73; }
+  .card-bd { padding: 14px 18px; }
+  h3 { font-size: 13px; color: #0a84ff; margin: 14px 0 6px; }
+  h3:first-child { margin-top: 0; }
+  ol, ul { margin: 6px 0; padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  code, kbd { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; background: rgba(0,0,0,.06); border-radius: 5px; padding: 1px 6px; }
+  .exp { background: #eef7ee; border: 1px solid #1a9e54; border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  .exp b { color: #1a9e54; }
+  .adv { background: #fff7e6; border: 1px solid #e6a700; border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  .adv b { color: #8a5a00; }
+  .fail { background: #fdf1f0; border: 1px solid #b42318; border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  .fail b { color: #b42318; }
+  table.legend { border-collapse: collapse; width: 100%; font-size: 13px; margin: 8px 0; }
+  table.legend th, table.legend td { border: 1px solid #e3e4e6; padding: 6px 10px; text-align: left; }
+  table.legend th { background: #f5f6f7; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; }
+  .check { display: flex; gap: 8px; align-items: flex-start; margin: 4px 0; }
+  .check input { margin-top: 6px; }
+  @media print { body { background: #fff; } .card { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="tag">C1b · 真机验收手册 · 给零基础测试者</span>
+  <h1>舰队雷达 · 7 场景验收</h1>
+  <p class="lede">你要验收的是 DSH 设置页「IM机器人辅助」里的一张表 <b>「舰队雷达」</b>（进法见准备工作第 3 步）：<b>行 = 每个 Agent（一行就是一个助理）</b>，<b>行 = 每个 Agent（一行就是一个助理）</b>，<b>列 = 9 个 IM 渠道</b>（飞书 / 微信 / QQ / Slack / Telegram / Discord / WhatsApp / 钉钉 / 企业微信），<b>格子 = 该 Agent 在该渠道的机器人状态</b>。页头有 <b>中文 / EN 开关</b>，一点整表切英文。可打印本页逐项打勾。</p>
+
+  <div class="card"><div class="card-hd prep"><span class="no">0</span>准备工作（必做，否则看到的可能是旧版本）</div><div class="card-bd">
+    <ol>
+      <li><b>完全退出</b> DSH Desktop（托盘图标右键退出，不是点窗口 ×），再重新打开。</li>
+      <li>在 DSH 主界面按 <kbd>Ctrl+F5</kbd> 强制刷新一次。</li>
+      <li>打开 DSH 的<b>设置页</b>（齿轮图标），向下滚动，找到 <b>「IM机器人辅助」</b> 区域（Agent 列表那块）。看它顶部工具条：搜索框、分段控件旁边有<b>刷新按钮</b>，刷新左边应该多了一只<b>扬帆小船图标按钮</b>（悬停显示「舰队雷达 Fleet Radar」）。<b>点击小船</b> → 列表隐去，出现「舰队雷达」矩阵页（标题 + 返回 + 中文/EN + 刷新）。点矩阵页头的 <b>‹ 返回列表</b> 可回来——来回切两次确认都正常。</li>
+    </ol>
+    <div class="fail"><b>没看到小船按钮？停下来，不要继续。</b>说明新功能没加载成功。请截图设置页 + 记录这一步，然后按文末模板上报。</div>
+  </div></div>
+
+  <div class="card"><div class="card-hd prep"><span class="no">读</span>先读懂格子（后面所有场景都依赖这张对照表）</div><div class="card-bd">
+    <table class="legend">
+      <tr><th>看到的样子</th><th>含义</th></tr>
+      <tr><td><span class="dot" style="background:#30d158"></span>在线</td><td>该渠道机器人活着，能收发消息</td></tr>
+      <tr><td><span class="dot" style="background:#ff9f0a"></span>待确认</td><td>状态未知（检测中或数据过期），不是离线，别慌</td></tr>
+      <tr><td><span class="dot" style="background:#ff453a"></span>离线</td><td>该渠道机器人掉线了</td></tr>
+      <tr><td><span class="dot" style="background:#30d158"></span>在线·未绑定（虚线框）</td><td>机器人活着，但还没认领到任何工作区（孤儿）</td></tr>
+      <tr><td><span class="dot" style="background:transparent;border:1.5px dashed #888;width:7px;height:7px"></span>—</td><td>该 Agent 在这个渠道根本没接入（空位，不是故障）</td></tr>
+      <tr><td>最右「汇总」列</td><td>这一行的总体健康（取最亮的那盏灯；整行无接入则显示"未接入"）</td></tr>
+    </table>
+  </div></div>
+
+  <div class="card"><div class="card-hd"><span class="no">1</span>入口切换与标题计数</div><div class="card-bd">
+    <h3>目标</h3><p>确认单入口切换通畅（小船去、返回回），标题和计数行正确，左栏只有 1 个入口。</p>
+    <h3>步骤</h3><ol>
+      <li>确认左侧设置栏里 <b>只有 1 个</b>相关入口（IM机器人辅助），没有第二个「Fleet 矩阵总览」入口。</li>
+      <li>读出雷达标题下一行的灰色小字，形如 <code>3 个 Agent × 9 渠道 · 5 个机器人</code>。</li>
+      <li>数一数表里实际的数据行数（不含表头），和"× 前面的数字"对比。</li>
+      <li>数一数表头渠道列数（"Agent＼渠道"和"汇总"之间），应为 9 列。</li>
+      <li>点击标题右侧的 <b>刷新</b> 按钮一次。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>行数 = "N 个 Agent"的 N；渠道列 = 9；点刷新后面板不白屏、不报错（数字可能几秒后微调，那是轮询回来了，正常）。</div>
+    <div class="adv"><b>对抗检查：</b>如果行数对不上，先等 20 秒再数一次（首轮 15 秒轮询可能还没到）。如果点刷新后整块消失或出现红色报错，直接记 fail——这是真 bug 信号。</div>
+  </div></div>
+
+  <div class="card"><div class="card-hd"><span class="no">2</span>格子语义全覆盖</div><div class="card-bd">
+    <h3>目标</h3><p>把对照表里的每一种格子都在真表里找到一个实例（找不到某种就记下来，属于"无数据"而非失败）。</p>
+    <h3>步骤</h3><ol>
+      <li>逐行扫表，对每种样子（在线 / 待确认 / 离线 / 未绑定虚线 / —）记下它在哪一行哪一列。</li>
+      <li>把鼠标<b>悬停</b>在一个"在线"格上 1 秒，看浮动提示：应含渠道名、bot 编号、"点击钻取详情"。</li>
+      <li>悬停在一个"—"格上：提示应为"未接入，点击可添加接入"。</li>
+      <li>看最右汇总列：挑一行，确认它的灯 = 该行所有格子里"最亮"的那盏（在线 &gt; 待确认 &gt; 离线）。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>提示文案与格子状态一致；汇总灯符合"取最亮"规则；"—"格是虚线灰框、不可误读为离线红灯。</div>
+    <div class="adv"><b>对抗检查：</b>最容易误判的是把"—"（没接入）当"离线"（接入了但掉了）——看颜色：灰虚线 vs 红灯，二者必须肉眼可分。如果某行明明有红灯、汇总却显示在线，记 fail。</div>
+  </div></div>
+
+  <div class="card"><div class="card-hd"><span class="no">3</span>行排序（在线在上，未绑定沉底）</div><div class="card-bd">
+    <h3>目标</h3><p>确认行的排列遵守：<b>已绑定的按健康排（在线 → 待确认 → 离线），未绑定的全部沉底</b>，同档按名字排。</p>
+    <h3>步骤</h3><ol>
+      <li>从上到下抄下每行的"汇总"状态 + 是否带"·未绑定"，记成一列（如：在线 / 在线 / 待确认 / 离线 / 在线·未绑定）。</li>
+      <li>检查：所有<b>不带</b>"·未绑定"的行，顺序是否为 在线→待确认→离线（允许缺档）。</li>
+      <li>检查：所有带"·未绑定"的行是否都在最底部（在线的未绑定也必须在离线已绑定之下）。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>两条都成立。如果你的环境里全是在线已绑定（很常见），只验证"按名字拼音/笔画有序"即可，在上报里注明"排序场景数据不足，只验了同档有序"。</div>
+    <div class="adv"><b>对抗检查：</b>这是数据依赖型场景——没有未绑定/离线数据时<b>不要硬判失败</b>。真正的 fail 信号只有一种：在数据齐全时顺序错乱（如离线排到了在线上面）。</div>
+  </div></div>
+
+  <div class="card"><div class="card-hd"><span class="no">4</span>点格钻取抽屉（核心链路，连做 3 次）</div><div class="card-bd">
+    <h3>目标</h3><p>确认点击能跳到该行的 Agent 详情（C1a 抽屉），且三种点法都通。</p>
+    <h3>步骤</h3><ol>
+      <li>记住第 1 行行首的 Agent 名字（如"小帅"）。<b>点击</b>该行任意一个"在线/离线"格 → 右侧应滑出详情抽屉，且抽屉里显示的是<b>同一个名字</b>。</li>
+      <li>用 <kbd>Esc</kbd> 关闭抽屉。<b>点击</b>同一行的一个"—"空格 → 同样应打开<b>同一 Agent</b> 的抽屉。</li>
+      <li>点击抽屉外深色区域关闭。<b>直接点击行首的名字/头像区</b> → 同样应打开该行抽屉。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>三次打开的都是同一 Agent；抽屉可正常关闭，关闭后矩阵原样不动。</div>
+    <div class="fail"><b>Fail 信号：</b>点了没反应；打开的是别家 Agent 的详情；抽屉打不开还把矩阵卡死。出现任一即记 fail 并注明是第几次点击。</div>
+    <div class="adv"><b>对抗检查：</b>点"—"空格开抽屉是<b>故意</b>设计的（空格也属于该行），不要当成 bug 报。反过来，悬停提示必须和点击结果一致（提示"点击钻取"就必须真能钻）。</div>
+  </div></div>
+
+  <div class="card"><div class="card-hd"><span class="no">5</span>空态与脚注交叉验证</div><div class="card-bd">
+    <h3>目标</h3><p>确认"没有数据时"和"表底小字"都是诚实的。</p>
+    <h3>步骤</h3><ol>
+      <li>如果你的环境一个 Agent 都没有：应看到"还没有 Agent"空态图 + "新建 Agent 并接入任意渠道…"，且<b>看不到空表头</b>。有数据则跳过此条并注明。</li>
+      <li>读表底最后一行小字：要么是 <code>9 渠道均有接入</code>，要么是 <code>某某、某某 暂无接入</code>。</li>
+      <li>交叉验证：对小字里点名的每个渠道，纵向扫它整列——必须<b>全列都是"—"</b>；若小字说"均有接入"，则每一列至少有一个非"—"格。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>小字与整列实际完全对得上；空态不露空表头。</div>
+    <div class="adv"><b>对抗检查：</b>这是"自己证明自己"的断言，最容易藏谎报 bug——必须真的一列一列数，不要只看小字就打勾。</div>
+  </div></div>
+
+  <div class="card"><div class="card-hd"><span class="no">6</span>窄屏：横滚 + 首列/表头冻结</div><div class="card-bd">
+    <h3>目标</h3><p>确认 9 列在窄窗口下不挤变形，而是横向滚动且首列钉住。</p>
+    <h3>步骤</h3><ol>
+      <li>把 DSH 窗口拖窄（或把设置页侧栏拉宽挤它），直到表格底部出现<b>横向滚动条</b>。</li>
+      <li>拖动横向滚动条向右：第一列（Agent 名字列）应<b>钉在原地不动</b>，只有渠道列在走。</li>
+      <li>上下滚动页面：表头行（渠道名那一行）应<b>吸顶</b>，左上角"Agent＼渠道"角格在横滚时也不滑走。</li>
+      <li>把窗口拖回正常宽度，确认表格恢复、无错位残留。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>窄屏有横滚条、无文字挤叠；首列/表头/角格三处冻结；恢复宽度后正常。</div>
+    <div class="fail"><b>Fail 信号：</b>格子文字被压成多行/重叠；横滚时名字列跟着跑掉导致对不上行；恢复后表头错位。</div>
+  </div></div>
+
+  <div class="card"><div class="card-hd"><span class="no">7</span>刷新稳定性 + 深浅主题跟随 + 中英切换</div><div class="card-bd">
+    <h3>目标</h3><p>确认日常操作下不崩、主题切换不瞎。</p>
+    <h3>步骤</h3><ol>
+      <li>连续点 <b>刷新</b> 按钮 3 次（每次隔 2 秒）：面板不应白屏、不应报错、不应丢行。</li>
+      <li>去 DSH 设置里把主题切到<b>深色模式</b>：矩阵底色应变暗、文字仍清晰可读，格子颜色语义不变（绿仍是绿）。</li>
+      <li>切回浅色，确认恢复。</li>
+      <li>鼠标在一行上悬停：整行应有浅色高亮；悬停在格子按钮上：边框应变蓝。</li>
+      <li>点页头的 <b>EN</b>：标题变 Fleet Radar，计数变英文（<code>3 agents × 9 channels · 5 bots</code>），格子变 Online/Pending/Offline/Unbound/Not connected，表头变英文，按钮变 Back/Refresh。再点<b>中文</b>切回来。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>无白屏无报错；深色下无"黑字压黑底/白字压白底"；微交互（行高亮、按钮描蓝）正常；<b>英文模式无中文残留</b>（Agent 名字是用户数据，保持原样不算残留；QQ/Slack 等品牌名中英同形不算残留）。</div>
+    <div class="adv"><b>对抗检查：</b>深色模式重点看"—"虚线格和灰色小字——这两处最容易对比度不足。如果刷新后数字短暂闪动，那是轮询特性不是 bug；只有"行消失/报错/卡死"才算 fail。</div>
+  </div></div>
+
+  <div class="card"><div class="card-hd prep"><span class="no">✓</span>通过标准与上报模板</div><div class="card-bd">
+    <h3>通过标准</h3><p>场景 0–2、4、6 必须全过；场景 3、5 允许因环境无数据而"有条件通过"（注明缺哪种数据）；场景 7 全过。任一 <b>Fail 信号</b>出现即整体不通过。</p>
+    <h3>上报模板（复制填写）</h3>
+    <ul>
+      <li>结果：通过 / 有条件通过 / 不通过</li>
+      <li>逐场景：1__ 2__ 3__ 4__ 5__ 6__ 7__（填 ✓ / ✗ / 跳过+原因）</li>
+      <li>环境：Agent 数__、含离线？__、含未绑定？__、深色测过？__</li>
+      <li>失败详情（✗必填）：场景编号 + 哪一步 + 看到了什么 + 截图</li>
+    </ul>
+  </div></div>
+</div>
+</body>
+</html>
