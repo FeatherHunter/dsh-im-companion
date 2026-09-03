@@ -31,6 +31,7 @@ export const CSS = [
   '.e2-row{display:flex;align-items:center;gap:8px;font-size:13px;border:1px solid rgba(127,127,127,.25);border-radius:10px;padding:7px 10px;margin:0 0 6px;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1c1c1e);cursor:grab}',
   '.e2-row[draggable="false"]{opacity:.45;cursor:default}',
   '.e2-row.e2-dragging{opacity:.45}',
+  '.e2-row.e2-ph{opacity:.5;transform:rotate(-3.5deg);border-style:dashed;pointer-events:none}',
   '.e2-row{transition:transform .12s ease,box-shadow .12s ease,border-color .12s ease,background .12s ease}',
   '.e2-row:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(0,0,0,.14);border-color:var(--e2-c,#0a84ff)}',
   '.e2-hdot{width:8px;height:8px;border-radius:50%;flex:none;background:#b0b3b8}',

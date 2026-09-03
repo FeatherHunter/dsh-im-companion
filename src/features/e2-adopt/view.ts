@@ -33,6 +33,7 @@ function reloadMeta(ctx: FeatureCtx): void {
 }
 let dragId: string | null = null
 let dragEl: Element | null = null
+let dragPh: Element | null = null
 let hadDrag = false
 let dropped = false
 const claim = (): number => {
@@ -128,6 +129,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   dropped = false
   dragId = null
   dragEl = null
+  dragPh = null
   try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
   reloadMeta(ctx)
   const off = ctx.subscribe((snap) => {
@@ -148,6 +150,18 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       dragId = row.getAttribute('data-e2-bot')
       dragEl = row
       try { row.classList.add('e2-dragging') } catch { /* 忽略 */ }
+      /* 原牌隐身 + 歪斜占位符：setTimeout 让浏览器先抓完原生拖影再藏，否则拖影是空的（Firefox 会直接取消拖拽）。 */
+      setTimeout(() => {
+        try {
+          row.style.display = 'none'
+          const ph = document.createElement('div')
+          ph.setAttribute('class', 'e2-row e2-ph')
+          const live = dragId ? lastBots.find((b) => b.botId === dragId) : undefined
+          ph.textContent = live?.botName || dragId || ''
+          row.parentNode?.insertBefore(ph, row.nextSibling)
+          dragPh = ph
+        } catch { /* 占位失败不阻断拖拽 */ }
+      }, 0)
       de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') }))
       de.dataTransfer.effectAllowed = 'move'
     } catch { /* 忽略 */ }
@@ -181,7 +195,10 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   }
   function clearGhost(): void {
     try { dragEl?.classList.remove('e2-dragging') } catch { /* 忽略 */ }
+    try { (dragEl as HTMLElement | null)?.style && ((dragEl as HTMLElement).style.display = '') } catch { /* 忽略 */ }
+    try { dragPh?.remove() } catch { /* 忽略 */ }
     dragEl = null
+    dragPh = null
   }
 
   const onDrop = (e: Event): void => {

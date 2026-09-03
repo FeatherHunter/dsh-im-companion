@@ -379,8 +379,13 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取
   const rowF = sectionRows(secs[0])[0];
   lastDoc('dragstart')({ target: rowF, dataTransfer: { setData() {}, effectAllowed: '' } });
   assert.ok(rowF.classList.contains('e2-dragging'), '拖起应有 ghost 态');
+  await sleep(10);
+  assert.equal(rowF.style.display, 'none', '原牌隐身');
+  assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '只留一块歪斜影子');
   lastDoc('dragend')();
   await sleep(10);
+  assert.equal(rowF.style.display, '', '取消后原牌回来');
+  assert.equal(findClass(e2Doc.body, 'e2-ph').length, 0, '影子清理');
   assert.ok(!rowF.classList.contains('e2-dragging'), '放下/取消后 ghost 态清除');
   assert.ok(bodyText().includes('已取消拖拽'));
 });
