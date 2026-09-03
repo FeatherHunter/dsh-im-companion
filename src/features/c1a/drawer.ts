@@ -2,13 +2,13 @@
  * A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写；host 自持账本弃用不断路。 */
 import { mount } from '../../client/dom'
 import { openDirPicker } from '../../client/ui/dir-picker'
+import { showSheet } from '../../client/ui/sheet'
 import { toast } from '../../client/ui/toast'
 import { chooseBot, runTestSend } from '../../client/data/header-overlay'
 import type { AgentPresetCatalog } from '../../client/data/fleet-api'
 import type { FeatureCtx } from '../protocol'
 import { channelLabel, type OpenDrawerDetail } from '../../client/data/config'
 import { applyPersonality, rpcOf, writeBots, type WriteDeps } from './actions'
-import { showPanelSheet } from './position'
 import {
   OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, fetchRoutes, loadingModel,
   presetPayloadFor, type DrawerModel, type RouteEntry,
@@ -55,7 +55,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     toast('身份配置不可用，稍后重试')
     return
   }
-  let sheet: ReturnType<typeof showPanelSheet> | null = null
+  let sheet: ReturnType<typeof showSheet> | null = null
   let closed = false
   let lastBots: SnapBots = []
   let lastCatalogs: Record<string, AgentPresetCatalog> = {}
@@ -68,7 +68,9 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     }
   }
   try {
-    sheet = showPanelSheet({
+    sheet = showSheet({
+      overlayClass: 'c1a-overlay',
+      panelClass: 'c1a-sheet',
       label: 'Agent 详情抽屉',
       onClose: () => {
         closed = true
