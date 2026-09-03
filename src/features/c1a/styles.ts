@@ -1,7 +1,7 @@
 /** c1a 命名空间样式：只出现 c1a-* 类；颜色全部走 DSH 主题别名（深色自动跟随，fallback 浅色）。 */
 export const CSS = [
-'.c1a-overlay{position:fixed;inset:0;z-index:1200;background:rgba(0,0,0,.45)}',
-'.c1a-sheet{position:fixed;top:0;right:0;bottom:0;width:min(360px,94%);z-index:1200;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1c1c1e);border-left:1px solid var(--dsw-alias-separator,#ddd);box-shadow:-16px 0 32px rgba(0,0,0,.2);display:flex;flex-direction:column;overflow:hidden;font-size:13px}',
+'.c1a-overlay{position:absolute;inset:0;z-index:1200;background:rgba(0,0,0,.45)}',
+'.c1a-sheet{position:absolute;top:0;right:0;bottom:0;width:min(360px,94%);z-index:1200;background:var(--dsw-alias-bg-base,#fff);color:var(--dsw-alias-label-primary,#1c1c1e);border-left:1px solid var(--dsw-alias-separator,#ddd);box-shadow:-16px 0 32px rgba(0,0,0,.2);display:flex;flex-direction:column;overflow:hidden;font-size:13px}',
 '.c1a-drawer{display:flex;flex-direction:column;height:100%;min-height:0}',
 '.c1a-dhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--dsw-alias-separator,#eee);font-weight:700}',
 '.c1a-dbody{flex:1;overflow-y:auto;padding:12px 14px;display:grid;gap:10px;align-content:start}',
