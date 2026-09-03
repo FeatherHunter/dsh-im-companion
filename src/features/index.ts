@@ -5,8 +5,9 @@ import { feature as leftFilter } from './left-filter/manifest'
 import { feature as e2Adopt } from './e2-adopt/manifest'
 import { feature as presence } from './presence/manifest'
 import { feature as welcomeBanner } from './welcome-banner/manifest'
+import { feature as c1bMatrix } from './c1b-matrix/manifest'
 import type { FeatureManifest } from './protocol'
 
-export const FEATURES: FeatureManifest[] = [c1aDrawer, leftBadges, leftFilter, e2Adopt, presence, welcomeBanner].sort((a, b) => a.order - b.order)
+export const FEATURES: FeatureManifest[] = [c1aDrawer, leftBadges, leftFilter, e2Adopt, presence, welcomeBanner, c1bMatrix].sort((a, b) => a.order - b.order)
 
 export type { FeatureCtx, FeatureManifest, FeatureSlot, SlotTarget, SlotsService } from './protocol'
