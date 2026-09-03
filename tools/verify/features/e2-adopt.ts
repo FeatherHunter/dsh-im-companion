@@ -1,5 +1,5 @@
-// E2 自验证（F0 每功能自验证）：拖拽领养纯逻辑 + 注册/样式断言（node --test，零第三方依赖）。
-// 只测外部行为：给定绑定关系 + 放置目标 → 断言用户可见结论，不断言内部形状。
+// E2 自验证（F0 每功能自验证）：拖拽领养纯逻辑 + 面板视图分支（node --test，零第三方依赖）。
+// 只测外部行为：给定绑定关系 + 动作 → 断言用户可见结论，不断言内部形状。
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,6 +26,7 @@ const ENTRIES = [
   join(CLIENT, 'theme.ts'),
   join(CLIENT, 'icons.ts'),
   join(CLIENT, 'ui', 'modal.ts'),
+  join(CLIENT, 'ui', 'sheet.ts'),
   join(CLIENT, 'ui', 'toast.ts'),
 ];
 
@@ -59,7 +60,7 @@ const bots = [
 ];
 const byId = (id: string) => bots.find((b) => b.botId === id);
 
-test('未绑定 Bot 放到工作区行 → 直绑', () => {
+test('未绑定 Bot 放到分组 → 直绑', () => {
   assert.deepEqual(model.resolveDrop(byId('f1'), { kind: 'workspace', workspace: W_B }), { kind: 'bind', botId: 'f1', to: W_B });
 });
 
@@ -72,7 +73,7 @@ test('放到空白处 → 拒绝且关系不变', () => {
   assert.deepEqual(model.resolveDrop(byId('q1'), { kind: 'empty' }), { kind: 'reject', reason: 'empty' });
 });
 
-test('放回自己所在工作区 → 无操作', () => {
+test('放回自己所在分组 → 无操作', () => {
   assert.deepEqual(model.resolveDrop(byId('q1'), { kind: 'workspace', workspace: W_A }), { kind: 'noop', botId: 'q1' });
 });
 
@@ -85,19 +86,15 @@ test('撤销口径：换绑可撤销（回到 from），新绑无无损落点（
   assert.equal(model.undoTarget(''), null);
 });
 
-test('未绑定池只含未绑定 Bot', () => {
-  assert.deepEqual(model.unboundBots(bots).map((b: any) => b.botId), ['f1']);
-});
-
-test('行文本映射到规范工作区路径（未知/歧义一律 null，调用方拒绝）', () => {
-  assert.equal(model.resolveRowWorkspace('小帅', bots), W_A);
-  assert.equal(model.resolveRowWorkspace(W_B, bots), W_B);
-  assert.equal(model.resolveRowWorkspace('不存在的行', bots), null);
-  const dup = [
-    { channel: 'feishu', botId: 'a', workspace: 'D:\\x\\same', botName: '', connected: true },
-    { channel: 'qq', botId: 'b', workspace: 'D:\\y\\same', botName: '', connected: true },
-  ];
-  assert.equal(model.resolveRowWorkspace('same', dup), null);
+test('面板分组：未分配置顶（无则省略）+ 按归属聚合保序', () => {
+  const full = model.boardGroups(bots);
+  assert.deepEqual(full.unbound.map((b: any) => b.botId), ['f1']);
+  assert.deepEqual(full.groups.map((g: any) => g.workspace), [W_A, W_B]);
+  assert.equal(full.groups[0].name, 'xiaoshuai');
+  assert.deepEqual(full.groups[0].bots.map((b: any) => b.botId), ['q1']);
+  const none = model.boardGroups(bots.map((b) => ({ ...b, workspace: b.workspace || W_A })));
+  assert.deepEqual(none.unbound, []);
+  assert.deepEqual(none.groups.map((g: any) => g.workspace), [W_A, W_B]);
 });
 
 test('manifest 注册：workspace-rail 槽位 + 进 FEATURES', () => {
@@ -115,7 +112,7 @@ test('视图暴露挂载入口', () => {
   assert.equal(typeof view.mountE2Adopt, 'function');
 });
 
-/* ---- E2 视图分支：最小 DOM 桩（仿 left-filter 范例，只断言外部行为）---- */
+/* ---- E2 面板视图分支：最小 DOM 桩（只断言外部行为）---- */
 const MIME = 'application/x-e2-adopt-bot';
 const GROUP_SEL = 'div[role="treeitem"][aria-expanded]';
 const e2Nodes: any[] = [];
@@ -147,25 +144,27 @@ const e2StubNode: any = (tag: string) => {
     },
     replaceChildren() { for (const c of [...n.children]) n.removeChild(c); },
     closest(sel: string) {
-      if (sel === GROUP_SEL && n.attrs['data-e2-row'] === '1') return n;
       if (sel.startsWith('.') && String(n.attrs?.class ?? '').split(' ').includes(sel.slice(1))) return n;
       const p = n.parentElement;
       return p && typeof p.closest === 'function' ? p.closest(sel) : null;
     },
+    querySelector(sel: string) {
+      const all = n.querySelectorAll(sel);
+      return all.length ? all[0] : null;
+    },
     querySelectorAll(sel: string) {
-      const parts = sel.split(',').map((s) => s.trim()).filter(Boolean);
       const out: any[] = [];
-      const walk = (x: any) => {
-        for (const c of x.children ?? []) {
-          for (const p of parts) {
-            if (p.startsWith('.') && String(c.attrs?.class ?? '').split(' ').includes(p.slice(1))) { out.push(c); break; }
-          }
-          walk(c);
-        }
+      const match = (c: any): boolean => {
+        if (sel === 'button') return c.tagName === 'BUTTON';
+        if (sel === '[role="treeitem"]') return c.attrs?.role === 'treeitem';
+        if (sel.startsWith('.')) return String(c.attrs?.class ?? '').split(' ').includes(sel.slice(1));
+        return false;
       };
+      const walk = (x: any) => { for (const c of x.children ?? []) { if (match(c)) out.push(c); walk(c); } };
       walk(n);
       return out;
     },
+    contains(c: any) { let found = false; const walk = (x: any) => { for (const k of x.children ?? []) { if (k === c) found = true; walk(k); } }; walk(n); return found; },
     addEventListener(t: string, fn: any) { (n.listeners[t] || (n.listeners[t] = [])).push(fn); },
     removeEventListener(t: string, fn: any) { n.listeners[t] = (n.listeners[t] ?? []).filter((f: any) => f !== fn); },
   };
@@ -197,10 +196,11 @@ let e2RpcCalls: any[] = [];
 let e2RefreshCalls = 0;
 let e2Unmount: (() => void) | null = null;
 let nonce = 0;
-const stageBots = (extra = true) => {
+let e2Header: any = null;
+const stageBots = () => {
   nonce++;
   const list = bots.map((b) => ({ ...b }));
-  if (extra) list.push({ channel: 'wechat', botId: 'w' + nonce, workspace: '', botName: '', connected: false });
+  list.push({ channel: 'wechat', botId: 'w' + nonce, workspace: '', botName: '', connected: false });
   return list;
 };
 const mountStage = (rpc: any) => {
@@ -211,17 +211,19 @@ const mountStage = (rpc: any) => {
   e2RpcCalls = [];
   e2RefreshCalls = 0;
   e2Groups = [];
+  const page = e2StubNode('div');
+  e2Header = e2StubNode('div');
+  e2Header.appendChild(e2StubNode('button'));
+  page.appendChild(e2Header);
   const container = e2StubNode('div');
   const section = e2StubNode('section');
   container.appendChild(section);
-  const mkrow = (text: string) => {
-    const r = e2StubNode('div');
-    r.setAttribute('data-e2-row', '1');
-    r.textContent = text;
-    section.appendChild(r);
-    e2Groups.push(r);
-    return r;
-  };
+  page.appendChild(container);
+  const row = e2StubNode('div');
+  row.setAttribute('role', 'treeitem');
+  row.textContent = 'xiaoshuai';
+  section.appendChild(row);
+  e2Groups.push(row);
   const ctx: any = {
     rpc,
     subscribe: (fn: any) => { e2Emit = fn; return () => { e2Emit = null; }; },
@@ -229,12 +231,18 @@ const mountStage = (rpc: any) => {
     meta: {}, slots: {}, get: () => undefined,
   };
   e2Unmount = view.mountE2Adopt(ctx);
-  return { mkrow };
+  return {};
 };
 const okRpc = async (ch: string, ep: string, payload: any) => { e2RpcCalls.push({ ch, ep, payload }); return {}; };
 const lastDoc = (t: string) => (docListeners[t] ?? [])[(docListeners[t] ?? []).length - 1];
 const mkTransfer = (desc: any) => ({ types: [MIME], getData: () => JSON.stringify(desc), setData() {}, effectAllowed: '', dropEffect: '' });
 const fireDrop = (target: any, desc: any) => lastDoc('drop')({ target, preventDefault() {}, dataTransfer: mkTransfer(desc) });
+const findClass = (root: any, cls: string): any[] => {
+  const out: any[] = [];
+  const walk = (x: any) => { for (const c of x.children ?? []) { if (String(c.attrs?.class ?? '').split(' ').includes(cls)) out.push(c); walk(c); } };
+  walk(root);
+  return out;
+};
 const findTextBtn = (root: any, text: string): any => {
   let hit: any = null;
   const walk = (x: any) => {
@@ -246,64 +254,43 @@ const findTextBtn = (root: any, text: string): any => {
   return hit;
 };
 const bodyText = () => e2Doc.body.textContent ?? '';
-const poolChips = () => {
-  const pools = e2Nodes.filter((x) => String(x.attrs?.class ?? '').split(' ').includes('e2-pool'));
-  const out: any[] = [];
-  for (const p of pools) for (const c of p.children ?? []) if (String(c.attrs?.class ?? '').split(' ').includes('e2-chip')) out.push(c);
-  return out;
+const openPanel = () => {
+  const btn = findClass(e2Header, 'e2-entry')[0];
+  assert.ok(btn, '头栏应有分身份入口按钮');
+  btn.listeners.click[0]();
+  const overlay = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-overlay'));
+  assert.ok(overlay, '面板应打开');
+  return overlay;
 };
+const panelSections = () => {
+  const overlay = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-overlay'));
+  return findClass(overlay, 'e2-sec');
+};
+const sectionRows = (sec: any) => findClass(sec, 'e2-row');
 
-test('view：空池整条隐藏、不占位', () => {
-  const { mkrow } = mountStage(okRpc);
-  mkrow(W_B);
-  e2Emit!({ bots: bots.map((b) => ({ ...b, workspace: b.workspace || W_A })) });
-  const pools = e2Nodes.filter((x) => String(x.attrs?.class ?? '').split(' ').includes('e2-pool'));
-  assert.equal(pools.length, 0);
-  assert.equal(poolChips().length, 0);
+test('view：头栏安装分身份入口，点击开面板（含未分配组）', () => {
+  mountStage(okRpc);
+  e2Emit!({ bots: stageBots() });
+  openPanel();
+  const secs = panelSections();
+  assert.equal(secs.length, 3);
+  assert.ok(String(secs[0].attrs?.class ?? '').split(' ').includes('e2-sec-unbound'));
+  assert.equal(sectionRows(secs[0]).length, 2);
+  assert.equal(sectionRows(secs[1]).length, 1);
 });
 
-test('view：未绑定条列出未绑定 Bot（rpc 可用时可拖）', () => {
-  const { mkrow } = mountStage(okRpc);
-  mkrow(W_B);
+test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async () => {
+  mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
-  const chips = poolChips();
-  assert.equal(chips.length, 2);
-  assert.equal(chips[0].getAttribute('draggable'), 'true');
-  assert.ok(String(chips[0].textContent).includes('f1'));
-  const pool = e2Nodes.filter((x) => String(x.attrs?.class ?? '').split(' ').includes('e2-pool')).pop();
-  assert.ok(String(pool.children[0]?.textContent).includes('未绑定 2 个'));
-});
-
-test('view：rpc 不可用时池不可拖', () => {
-  const { mkrow } = mountStage(null);
-  mkrow(W_B);
-  e2Emit!({ bots: stageBots() });
-  const chips = poolChips();
-  assert.ok(chips.length >= 1);
-  assert.ok(chips.every((c: any) => c.getAttribute('draggable') === 'false'));
-});
-
-test('view：未绑定 drop 到行 → 写 workspace.set + 刷新', async () => {
-  const { mkrow } = mountStage(okRpc);
-  const row = mkrow(W_B);
-  e2Emit!({ bots: stageBots() });
-  fireDrop(row, { botId: 'f1', channel: 'feishu' });
-  await sleep(20);
-  assert.deepEqual(e2RpcCalls[0], { ch: '/feishu', ep: 'bot.workspace.set', payload: { botId: 'f1', workspace: W_B } });
-  assert.equal(e2RefreshCalls, 1);
-});
-
-test('view：已属 A drop 到 B → 弹确认、不先写；确认后换绑 + 撤销窗；撤销滚回 A', async () => {
-  const { mkrow } = mountStage(okRpc);
-  mkrow(W_B);
-  e2Emit!({ bots: stageBots() });
-  const rowB = e2Groups[e2Groups.length - 1];
-  fireDrop(rowB, { botId: 'q1', channel: 'qq' });
+  openPanel();
+  const secs = panelSections();
+  const secB = secs[2];
+  const rowQ = sectionRows(secs[1]).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
+  assert.ok(rowQ, 'A 组应有 q1');
+  fireDrop(secB, { botId: 'q1', channel: 'qq' });
   await sleep(20);
   assert.equal(e2RpcCalls.length, 0);
-  const overlay = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('af-overlay'));
-  assert.ok(overlay, '确认弹窗应打开');
-  findTextBtn(overlay, '确认换绑').listeners.click[0]();
+  findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
   await sleep(20);
   assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
   const undo = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-undo'));
@@ -313,28 +300,65 @@ test('view：已属 A drop 到 B → 弹确认、不先写；确认后换绑 + �
   assert.deepEqual(e2RpcCalls[1]?.payload, { botId: 'q1', workspace: W_A });
 });
 
-test('view：放回原地 / 空白处 → 不写', async () => {
-  const { mkrow } = mountStage(okRpc);
-  const rowA = mkrow(W_A);
+test('view：行内“移交给”下拉 → 同确认流程', async () => {
+  mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
-  fireDrop(rowA, { botId: 'q1', channel: 'qq' });
+  openPanel();
+  const secs = panelSections();
+  const rowQ = sectionRows(secs[1]).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
+  const sel = rowQ.children.find((c: any) => c.tagName === 'SELECT');
+  assert.ok(sel, '行应有移交给下拉');
+  const vals = sel.children.filter((c: any) => c.tagName === 'OPTION').map((c: any) => c.value);
+  assert.ok(vals.includes(W_B));
+  sel.value = W_B;
+  sel.listeners.change[0]();
+  await sleep(20);
+  findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
+  await sleep(20);
+  assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
+});
+
+test('view：全已分配 → 无未分配组；组内放下 → 不写', async () => {
+  mountStage(okRpc);
+  e2Emit!({ bots: bots.map((b) => ({ ...b, workspace: b.workspace || W_A })) });
+  openPanel();
+  const secs = panelSections();
+  assert.equal(secs.length, 2);
+  const secA = secs[0];
+  const rowQ = sectionRows(secA).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
+  fireDrop(secA, { botId: 'q1', channel: 'qq' });
   await sleep(10);
-  const stray = e2StubNode('div');
-  fireDrop(stray, { botId: 'f1', channel: 'feishu' });
-  await sleep(10);
+  void rowQ;
   assert.equal(e2RpcCalls.length, 0);
 });
 
-test('view：撤销窗过期 → 落定提示且窗消失（G1）', async () => {
+test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取消提示', async () => {
+  mountStage(okRpc);
+  e2Emit!({ bots: stageBots() });
+  openPanel();
+  const overlay = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-overlay'));
+  fireDrop(overlay, { botId: 'f1', channel: 'feishu' });
+  await sleep(10);
+  assert.equal(e2RpcCalls.length, 0);
+  assert.ok(bodyText().includes('空白处不可放'));
+  const secs = panelSections();
+  const rowF = sectionRows(secs[0])[0];
+  lastDoc('dragstart')({ target: rowF, dataTransfer: { setData() {}, effectAllowed: '' } });
+  lastDoc('dragend')();
+  await sleep(10);
+  assert.ok(bodyText().includes('已取消拖拽'));
+});
+
+test('view：撤销窗过期 → 落定提示且窗消失', async () => {
   const realSetTimeout = globalThis.setTimeout;
   const timers: any[] = [];
   (globalThis as any).setTimeout = ((cb: any, ms: number) => { timers.push({ cb, ms }); return 0; }) as any;
   try {
-    const { mkrow } = mountStage(okRpc);
-    mkrow(W_B);
+    mountStage(okRpc);
     e2Emit!({ bots: stageBots() });
-    const rowB = e2Groups[e2Groups.length - 1];
-    fireDrop(rowB, { botId: 'q1', channel: 'qq' });
+    openPanel();
+    const secs = panelSections();
+    fireDrop(secs[2], { botId: 'q1', channel: 'qq' });
     findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
     await new Promise((r) => realSetTimeout(r, 20));
     const t = timers.filter((x) => x.ms === 5000).pop();
@@ -345,26 +369,4 @@ test('view：撤销窗过期 → 落定提示且窗消失（G1）', async () => 
   } finally {
     (globalThis as any).setTimeout = realSetTimeout;
   }
-});
-
-test('view：无法识别的行 → 拒绝且不写（M2）', async () => {
-  const { mkrow } = mountStage(okRpc);
-  const row = mkrow('不存在的行');
-  e2Emit!({ bots: stageBots() });
-  fireDrop(row, { botId: 'f1', channel: 'feishu' });
-  await sleep(10);
-  assert.equal(e2RpcCalls.length, 0);
-  assert.ok(bodyText().includes('没认出这个工作区'));
-});
-
-test('view：有拿起无放下 → 取消提示且不写（G3）', async () => {
-  const { mkrow } = mountStage(okRpc);
-  mkrow(W_B);
-  e2Emit!({ bots: stageBots() });
-  const chip = poolChips()[0];
-  lastDoc('dragstart')({ target: chip, dataTransfer: { setData() {}, effectAllowed: '' } });
-  lastDoc('dragend')();
-  await sleep(10);
-  assert.equal(e2RpcCalls.length, 0);
-  assert.ok(bodyText().includes('已取消拖拽'));
 });
