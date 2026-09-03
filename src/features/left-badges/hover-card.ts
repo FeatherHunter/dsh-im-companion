@@ -80,7 +80,6 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
   let card: HTMLElement | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   let pending: Element | null = null
-  let cursor = { x: 0, y: 0 }
   const clearTimer = (): void => {
     try {
       if (timer !== undefined) clearTimeout(timer)
@@ -105,7 +104,7 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       return false
     }
   }
-  const place = (): void => {
+  const place = (anchor: Element | null): void => {
     try {
       if (!card) return
       const c = card as unknown as { offsetWidth?: number; offsetHeight?: number; style?: { left?: string; top?: string; visibility?: string } }
@@ -113,10 +112,24 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       const h = c.offsetHeight || 120
       const W = typeof window === 'undefined' ? 0 : window.innerWidth || 0
       const H = typeof window === 'undefined' ? 0 : window.innerHeight || 0
-      let x = cursor.x + 14
-      let y = cursor.y + 16
+      let edge = W > 0 ? W - 8 : 320
+      let top = 8
+      let bottom = top + 34
+      try {
+        if (anchor && typeof anchor.getBoundingClientRect === 'function') {
+          const r = anchor.getBoundingClientRect()
+          edge = r.right
+          top = r.top
+          bottom = r.bottom
+        }
+      } catch {
+        /* 取行几何失败就用视口缺省 */
+      }
+      let x = edge - w
       if (W > 0) x = Math.max(8, Math.min(x, W - w - 8))
-      if (H > 0) y = y + h + 8 > H ? Math.max(8, cursor.y - h - 10) : y
+      let y = top - h - 8
+      if (y < 8) y = bottom + 8
+      if (H > 0) y = Math.max(8, Math.min(y, H - h - 8))
       if (c.style) {
         c.style.left = Math.max(0, x) + 'px'
         c.style.top = Math.max(0, y) + 'px'
@@ -189,15 +202,14 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       const data = deps.resolve(row)
       if (!data) return
       if (!fill(data)) return
-      place()
+      place(row)
     } catch {
       /* 展示失败静默 */
     }
   }
   const onOver = (ev: unknown): void => {
     try {
-      const e = ev as { target?: Element | null; clientX?: number; clientY?: number }
-      if (typeof e.clientX === 'number') cursor = { x: e.clientX, y: typeof e.clientY === 'number' ? e.clientY : 0 }
+      const e = ev as { target?: Element | null }
       if (inCard(e.target)) return
       const row = deps.matchRow(e.target ?? null)
       if (!row) {
