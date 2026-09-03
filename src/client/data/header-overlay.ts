@@ -103,12 +103,14 @@ export function channelsOf(bound: BotSnap[]): OverlayChannel[] {
   })
 }
 
-/** 首选 Bot：优先在线绑定，否则首个绑定；无绑定为 null（调用方走 unbound）。 */
+/** 首选 Bot：优先在线绑定，否则首个绑定；无绑定为 null（调用方走 unbound）。
+ * 传 channel 则只在该渠道内选（多渠道发送前由调用方先选渠道）。 */
 export function chooseBot(
   bots: BotSnap[],
   workspacePath: string,
+  channel?: string,
 ): BotSnap | null {
-  const bound = (bots ?? []).filter((b) => b && b.workspace === workspacePath)
+  const bound = (bots ?? []).filter((b) => b && b.workspace === workspacePath && (!channel || b.channel === channel))
   if (!bound.length) return null
   return bound.find((b) => b.healthKind === 'online') ?? bound[0]
 }

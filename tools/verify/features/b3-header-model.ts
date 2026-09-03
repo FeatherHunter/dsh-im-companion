@@ -282,4 +282,28 @@ test('channelGlyphSvg：九渠道全覆盖，未知回 null（回退首字徽标
   assert.match(channelGlyphSvg('feishu'), /#00D6B9/); // 品牌色保留
 });
 
+test('chooseBot 传渠道：只在该渠道内选', () => {
+  const bots = [
+    snap({ botId: 'f1', channel: 'feishu' }),
+    snap({ botId: 'q1', channel: 'qq', healthKind: 'offline', healthStatus: 'offline', connected: false }),
+    snap({ botId: 'q2', channel: 'qq' }),
+  ];
+  assert.equal(chooseBot(bots, W1, 'qq')?.botId, 'q2'); // QQ 内优先在线
+  assert.equal(chooseBot(bots, W1, 'feishu')?.botId, 'f1');
+  assert.equal(chooseBot(bots, W1, 'nope'), null);
+  assert.equal(chooseBot(bots, W1)?.botId, 'f1'); // 不传渠道保持原行为
+});
+
+test('多渠道发送：显式 Bot 决定走谁的目标', async () => {
+  const seen: string[] = [];
+  const rpc = async (_ch: string, ep: string, payload: any) => {
+    if (ep === 'target.list') { seen.push(payload.botId); return { ok: true, value: { targets: [{ targetId: 't1' }] } }; }
+    return { ok: true, value: { sent: true } };
+  };
+  const qq = snap({ botId: 'q1', channel: 'qq' });
+  const r = await runTestSend(rpc as any, qq, W1, '小帅');
+  assert.equal(r.ok, true);
+  assert.deepEqual(seen, ['q1']); // 查的是 QQ 这台的目标，不是首台
+});
+
 console.log('header-overlay-model: ALL PASS');

@@ -13,8 +13,10 @@ import {
   runTestSend,
   sendToSuggestion,
   suggestionLabel,
+  chooseBot,
   type DeliverySuggestion,
   type DotKind,
+  type OverlayChannel,
 } from '../data/header-overlay'
 
 export interface B3HeaderDeps {
@@ -51,6 +53,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   const [busy, setBusy] = React.useState(false)
   const [result, setResult] = React.useState<{ ok: boolean; text: string } | null>(null)
   const [sgList, setSgList] = React.useState<DeliverySuggestion[] | null>(null)
+  const [chPick, setChPick] = React.useState<OverlayChannel[] | null>(null)
 
   const [names, setNames] = React.useState<Record<string, string>>({})
   React.useEffect(() => {
@@ -88,6 +91,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
     setOpen(false)
     setResult(null)
     setSgList(null)
+    setChPick(null)
   }, [sessionId])
 
   React.useEffect(() => {
@@ -135,17 +139,33 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
 
   const bot = overlay.mode === 'full' ? overlay.bot : null
 
-  const onSendTest = async (): Promise<void> => {
+  const sendViaBot = async (target: BotSnap | null): Promise<void> => {
     if (busy) return
     setBusy(true)
     try {
-      const outcome = await runTestSend(createRpc(), bot, workspacePath ?? '', overlay.agent)
+      const outcome = await runTestSend(createRpc(), target, workspacePath ?? '', overlay.agent)
       if (outcome.event) emit(SEND_TEST_EVENT, outcome.event)
       setSgList(outcome.suggestions ?? null)
       setResult({ ok: outcome.ok, text: outcome.text })
     } finally {
       setBusy(false)
     }
+  }
+
+  const onSendTest = async (): Promise<void> => {
+    if (busy) return
+    if (overlay.mode === 'full' && overlay.channels.length > 1) {
+      setResult(null)
+      setSgList(null)
+      setChPick(overlay.channels)
+      return
+    }
+    await sendViaBot(bot)
+  }
+
+  const onPickChannel = (channel: string): void => {
+    setChPick(null)
+    void sendViaBot(chooseBot(bots, workspacePath ?? '', channel))
   }
 
   const onPickSg = async (sg: DeliverySuggestion): Promise<void> => {
@@ -176,6 +196,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
       onClick: () => {
         setResult(null)
         setSgList(null)
+        setChPick(null)
         setOpen(!open)
       },
     },
@@ -244,12 +265,32 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
     )
     : null
 
+  const chPicker = chPick && chPick.length > 1 && overlay.mode === 'full'
+    ? React.createElement(
+      'div',
+      null,
+      React.createElement('div', { className: 'b3-header-sub' }, '选择发送渠道：'),
+      React.createElement(
+        'div',
+        { className: 'b3-header-row' },
+        ...chPick.map((ch) =>
+          React.createElement(
+            'button',
+            { type: 'button', key: ch.channel, className: 'b3-header-btn', disabled: busy, onClick: () => onPickChannel(ch.channel) },
+            ch.label,
+          ),
+        ),
+      ),
+    )
+    : null
+
   const pop = React.createElement(
     'div',
     { className: 'b3-header-pop', role: 'dialog', 'aria-label': overlay.agent + ' 状态详情' },
     React.createElement('div', { className: 'b3-header-title' }, overlay.mode === 'unbound' ? '未绑定' : overlay.agent + ' · ' + overlay.label),
     detail,
     sendBtn ? React.createElement('div', { className: 'b3-header-row' }, sendBtn) : null,
+    chPicker,
     sgBtns,
     result ? React.createElement('div', { className: 'b3-header-result ' + (result.ok ? 'ok' : 'err') }, result.text) : null,
   )
