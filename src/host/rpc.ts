@@ -89,6 +89,14 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: { dshHome?:
           await store.setCtx(key, { enabled: p.enabled, level: p.level })
           return ok({})
         }
+        case 'meta.welcomed.set': {
+          const workspace = String(p.workspace ?? '')
+          if (!workspace || typeof p.seen === 'undefined') {
+            return fail('bad-request', 'workspace/seen 必填')
+          }
+          await store.setWelcomed(workspace, p.seen === true)
+          return ok({})
+        }
         case 'routes.list': {
           const bots = Array.isArray(p.bots) ? p.bots as { channel?: unknown; botId?: unknown }[] : null
           if (!bots) return fail('bad-request', 'bots 数组必填')

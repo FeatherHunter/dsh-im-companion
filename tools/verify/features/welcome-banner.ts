@@ -220,9 +220,10 @@ function stubEl(tag: string): any {
     tag, nodeType: 1, children: [] as any[], attrs: {} as Record<string, string>,
     className: "", style: {} as Record<string, string>, dataset: {} as Record<string, string>,
     parentNode: null as any,
+    _listeners: {} as Record<string, ((...a: any[]) => void)>[],
     setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
     getAttribute(k: string) { return this.attrs[k] ?? null; },
-    addEventListener() {},
+    addEventListener(type: string, fn: (...a: any[]) => void) { (this._listeners[type] = this._listeners[type] || []).push(fn); },
     appendChild(c: any) { c.parentNode = this; this.children.push(c); return c; },
     replaceChildren() { this.children = []; },
     textContent: "",
@@ -478,6 +479,143 @@ test("换一句回绕：三套之后回到第一句", () => {
   assert.equal(data.copyFor(seg, 3).idx, 0);
   const titles = [0, 1, 2].map((i) => data.copyFor(seg, i).t);
   assert.equal(new Set(titles).size, 3, "同段三句互不相同");
+});
+
+test("welcomedOf 旧快照兜底", () => {
+  assert.deepEqual(data.welcomedOf(null), {});
+  assert.deepEqual(data.welcomedOf({}), {});
+  assert.deepEqual(data.welcomedOf({ welcomed: { [W1]: true } }), { [W1]: true });
+  assert.deepEqual(data.welcomedOf({ welcomed: null }), {});
+});
+
+test("pruneWelcomed 只清无机器人的家", () => {
+  const r = data.pruneWelcomed({ [W1]: true, "D:\\gone": true }, [W1]);
+  assert.deepEqual(r.kept, { [W1]: true });
+  assert.deepEqual(r.dropped, ["D:\\gone"]);
+  assert.deepEqual(data.pruneWelcomed({}, []).kept, {});
+  assert.deepEqual(data.pruneWelcomed({ [W1]: true }, new Set([W1])).dropped, []);
+});
+
+test("播种零绘制：欢迎过的家不再出现", async () => {
+  const inserted: any[] = [];
+  const W2 = "D:\\agents\\laoer";
+  const META2 = { names: { [W2]: "老二" }, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: { [W2]: true } };
+  const snap2 = { channel: "feishu", botId: "b2", workspace: W2, connected: true, healthStatus: "healthy", healthKind: "online", botName: "", avatarUrl: "", healthSummary: "", lastCheckedAt: 1000, stale: false };
+  const heroStub: any = {
+    textContent: "探索未至之境 预览版 选择工作区 laoer",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "laoer" } : null,
+    getBoundingClientRect: () => ({ width: 600, height: 200 }),
+    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: () => {} },
+  };
+  (globalThis as any).document = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+  };
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      fn({ bots: [snap2], failed: [], updatedAt: 5, catalogs: {} });
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => META2 },
+    get: () => undefined,
+    slots: {},
+  };
+  const stop = overlay.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(inserted.length, 0, "持久化欢迎过必须零绘制");
+  stop();
+});
+
+test("进门持久化：点击回家即记 welcomed", async () => {
+  const inserted: any[] = [];
+  const removed: any[] = [];
+  const saved: any[] = [];
+  const heroStub: any = {
+    textContent: "探索未至之境 预览版 选择工作区 xiaoshuai",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "xiaoshuai" } : null,
+    getBoundingClientRect: () => ({ width: 600, height: 200 }),
+    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
+  };
+  (globalThis as any).document = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+  };
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      fn({ bots: [snap({})], failed: [], updatedAt: 6, catalogs: CATALOGS });
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => META, setWelcomed: async (w: string, s: boolean) => { saved.push({ w, seen: s }); } },
+    get: () => undefined,
+    slots: {},
+  };
+  const stop = overlay.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(inserted.length, 1, "首次进入应出现");
+  const card = inserted[0];
+  const btn = card.querySelector(".wb-enter");
+  assert.ok(btn, "进门按钮必须存在");
+  for (const fn of (btn._listeners.click ?? [])) fn();
+  assert.ok(saved.some((r) => r.w === W1 && r.seen === true), "必须持久化 welcomed：" + JSON.stringify(saved));
+  assert.ok(removed.includes(card), "点击后卡片必须移除");
+  stop();
+});
+
+test("删光重现：解绑清记忆，重绑再欢迎", async () => {
+  const W4 = "D:\\agents\\lingshi";
+  const META4 = { names: { [W4]: "老四" }, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
+  const snap4 = { channel: "feishu", botId: "b9", workspace: W4, connected: true, healthStatus: "healthy", healthKind: "online", botName: "", avatarUrl: "", healthSummary: "", lastCheckedAt: 1000, stale: false };
+  const inserted: any[] = [];
+  const removed: any[] = [];
+  const saved: any[] = [];
+  const heroStub: any = {
+    textContent: "探索未至之境 预览版 选择工作区 lingshi",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "lingshi" } : null,
+    getBoundingClientRect: () => ({ width: 600, height: 200 }),
+    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
+  };
+  (globalThis as any).document = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+  };
+  let subFn: any = null;
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      subFn = fn;
+      fn({ bots: [snap4], failed: [], updatedAt: 7, catalogs: {} });
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => META4, setWelcomed: async (w: string, s: boolean) => { saved.push({ w, seen: s }); } },
+    get: () => undefined,
+    slots: {},
+  };
+  const stop = overlay.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(inserted.length >= 1, "绑定后首次进入应出现");
+  const first = inserted[inserted.length - 1];
+  for (const fn of (first.querySelector(".wb-enter")._listeners.click ?? [])) fn();
+  assert.ok(saved.some((r) => r.w === W4 && r.seen === true), "进门应记 true");
+  subFn({ bots: [], failed: [], updatedAt: 8, catalogs: {} });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(saved.some((r) => r.w === W4 && r.seen === false), "删光应清 false：" + JSON.stringify(saved));
+  const beforeRebind = inserted.length;
+  subFn({ bots: [snap4], failed: [], updatedAt: 9, catalogs: {} });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(inserted.length > beforeRebind, "重绑后应重现");
+  assert.ok(inserted[inserted.length - 1].querySelector(".wb-title"), "重现的必须是完整 P 卡");
+  stop();
 });
 
 rmSync(tmp, { recursive: true, force: true });

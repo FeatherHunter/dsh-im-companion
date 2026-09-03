@@ -20,9 +20,11 @@ export interface AgentMetaDoc {
   /** C1a 身份配置（companion 自持；dsh-im 侧能力 research 并行）：预设单选/custom:名前缀，上下文开关+三档。 */
   presets: Record<string, string>
   ctxEnhance: Record<string, CtxEnhance>
+  /** E4 P 进门记忆（工作区全路径 → true；旧 meta.json 缺字段时读方兜底 {}）。 */
+  welcomed: Record<string, boolean>
 }
 
-const EMPTY: AgentMetaDoc = { version: 1, names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }
+const EMPTY: AgentMetaDoc = { version: 1, names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: {} }
 
 function sanitizeString(value: unknown, max = 512): string {
   if (typeof value !== 'string') return ''
@@ -49,6 +51,7 @@ export class AgentMetaStore {
       locals: this.doc.locals.map((l) => ({ ...l })),
       presets: { ...this.doc.presets },
       ctxEnhance: Object.fromEntries(Object.entries(this.doc.ctxEnhance).map(([k, v]) => [k, { ...v }])),
+      welcomed: { ...this.doc.welcomed },
     }
   }
 
@@ -63,6 +66,7 @@ export class AgentMetaStore {
           avatars: cleanRecord(parsed.avatars),
           presets: cleanRecord(parsed.presets),
           ctxEnhance: cleanCtxRecord(parsed.ctxEnhance),
+          welcomed: cleanWelcomedRecord(parsed.welcomed),
           locals: Array.isArray(parsed.locals)
             ? parsed.locals
                 .filter((l) => l && typeof l.name === 'string')
@@ -149,6 +153,15 @@ export class AgentMetaStore {
     this.doc.ctxEnhance[k] = { enabled: cfg?.enabled === true, level }
     await this.persist()
   }
+
+  async setWelcomed(workspace: string, seen: boolean): Promise<void> {
+    await this.load()
+    const k = sanitizeString(workspace, 1024)
+    if (!k) return
+    if (seen === true) this.doc.welcomed[k] = true
+    else delete this.doc.welcomed[k]
+    await this.persist()
+  }
 }
 
 const PRESET_IDS = ['default', 'cs', 'coder']
@@ -170,6 +183,16 @@ function cleanCtxRecord(input: unknown): Record<string, CtxEnhance> {
       const row = v as { enabled?: unknown; level?: unknown } | null
       const level = typeof row?.level === 'string' && CTX_LEVELS.includes(row.level) ? row.level : null
       if (k && level) out[k] = { enabled: row?.enabled === true, level }
+    }
+  }
+  return out
+}
+
+function cleanWelcomedRecord(input: unknown): Record<string, boolean> {
+  const out: Record<string, boolean> = {}
+  if (input && typeof input === 'object') {
+    for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+      if (k && v === true) out[sanitizeString(k, 1024)] = true
     }
   }
   return out

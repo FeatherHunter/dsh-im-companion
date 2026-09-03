@@ -170,6 +170,34 @@ export function displaySub(rawSub: string, total: number | null, agentName?: str
   return suffix;
 }
 
+/** 进门记忆读：旧快照缺 welcomed 字段回空（读方兜底，零破坏）。 */
+export function welcomedOf(doc: AgentMetaDoc | null): Record<string, boolean> {
+  const w = doc?.welcomed;
+  if (!w || typeof w !== "object") return {};
+  const out: Record<string, boolean> = {};
+  for (const [k, v] of Object.entries(w)) {
+    if (k && v === true) out[k] = true;
+  }
+  return out;
+}
+
+/** 解绑清除：welcomed 里已无机器人（不在存活路径集）的记录即“无家可归”，予以清除。
+ * 返回保留集与被清路径（调用方对被清路径逐个持久化 seen=false，重绑后 welcome 重现）。 */
+export function pruneWelcomed(
+  welcomed: Record<string, boolean>,
+  alivePaths: string[] | Set<string>,
+): { kept: Record<string, boolean>; dropped: string[] } {
+  const alive = Array.isArray(alivePaths) ? new Set(alivePaths) : alivePaths ?? new Set<string>();
+  const kept: Record<string, boolean> = {};
+  const dropped: string[] = [];
+  for (const [k, v] of Object.entries(welcomed ?? {})) {
+    if (v !== true) continue;
+    if (k && alive.has(k)) kept[k] = true;
+    else if (k) dropped.push(k);
+  }
+  return { kept, dropped };
+}
+
 export interface BannerChannel {
   id: string;
   label: string;
