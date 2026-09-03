@@ -54,7 +54,7 @@ export function badgeForWorkspace(workspacePath: string, bots: BotSnap[], nowMs 
   const kinds = bound.map(kindOf)
   const kind: HealthKind = kinds.includes('online') ? 'online' : kinds.includes('warn') ? 'warn' : 'offline'
   const label = HEALTH_LABELS[kind]
-  const lines = [label + ' · ' + agent]
+  const lines = [agent || label]
   for (const b of bound) {
     lines.push(b.stale ? channelLabel(b.channel) + ' · 未知（轮询失败）' : channelLabel(b.channel) + ' · ' + HEALTH_LABELS[kindOf(b)])
   }

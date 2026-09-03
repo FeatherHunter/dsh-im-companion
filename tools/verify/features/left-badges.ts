@@ -148,6 +148,8 @@ test('bindings：四态 + tooltip 最后检测 + 暂无占位', () => {
   ], now);
   assert.equal(on.kind, 'online');
   assert.match(on.tooltip, /最后检测/);
+  assert.equal(on.tooltip.match(/在线/g)?.length ?? 0, 1, '状态词不复读');
+  assert.equal(on.tooltip.split('\n')[0], 'xiaoshuai', '首行是名字不是状态');
   const stale = bindings.badgeForWorkspace(W1, [
     snap({ stale: true, healthKind: 'warn', lastCheckedAt: 1000 }),
     snap({ channel: 'qq', botId: 'q', healthKind: 'offline', healthStatus: 'offline', connected: false }),
