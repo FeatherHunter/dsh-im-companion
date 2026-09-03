@@ -207,6 +207,40 @@ test('view：行装饰 + 点击只读事件 + 无变化不碰 DOM', () => {
   }
 });
 
+test('view：未绑定不行徽标（残留旧徽标摘除）', () => {
+  const stubEl: any = (tag: string) => ({
+    tag, attrs: {} as Record<string, string>, children: [] as any[], text: '',
+    setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
+    getAttribute(k: string) { return this.attrs[k] ?? null; },
+    appendChild(c: any) { this.children.push(c); return c; },
+    querySelector(sel: string) {
+      const cls = sel.startsWith('.') ? sel.slice(1) : sel;
+      return this.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)) ?? null;
+    },
+    get textContent() { return this.text; },
+    set textContent(v: string) { this.text = String(v); },
+  });
+  const row = stubEl('div');
+  row.textContent = 'dsh-im';
+  const old = stubEl('span');
+  old.setAttribute('class', 'left-badges-badge unbound');
+  old.remove = () => { row.children = row.children.filter((c: any) => c !== old); };
+  row.children.push(old);
+  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body') };
+  (globalThis as any).document = docStub;
+  (globalThis as any).MutationObserver = class { constructor(_cb: any) {} observe() {} disconnect() {} };
+  try {
+    const ctx: any = { subscribe: (fn: any) => { fn({ bots: [snap({})], failed: [], updatedAt: 60000 }); return () => {}; } };
+    const dispose = view.mountLeftBadges(ctx);
+    assert.equal(row.querySelector('.left-badges-badge'), null);
+    assert.equal(row.children.length, 0);
+    dispose();
+  } finally {
+    delete (globalThis as any).document;
+    delete (globalThis as any).MutationObserver;
+  }
+});
+
 test('debug-report（TEMP-DEBUG）：无 DOM 归零 + rpc 空 no-op 不抛', () => {
   assert.deepEqual(dbgReport.collectCensus(), { treeitem: 0, expanded: 0, selected: 0, badges: 0 });
   dbgReport.reportDebug(null, { kind: 't' });

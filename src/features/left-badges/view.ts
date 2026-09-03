@@ -100,6 +100,16 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): boolean {
   if (!key) return false
   const ws = resolveWorkspace(key, bots)
   const badge = badgeForWorkspace(ws, bots, nowMs)
+  /* 用户裁定：未绑定不行徽标（缺席不占坑）；残留旧徽标则摘除。数据层仍判 unbound，B3 头部提示不受影响。 */
+  if (badge.kind === 'unbound') {
+    try {
+      const old = typeof row.querySelector === 'function' ? row.querySelector('.' + BADGE_CLASS) : null
+      if (old) old.remove()
+    } catch {
+      return false
+    }
+    return true
+  }
   const paintKey = badge.kind + '|' + badge.label + '|' + badge.tooltip
   let el: Element | null = null
   try {
