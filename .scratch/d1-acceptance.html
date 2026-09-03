@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>D1「在家管」验收手册：7 个场景照着点</title>
+<style>
+  body{margin:0;background:#f6f8fa;color:#1f2329;font-family:-apple-system,"PingFang SC","Noto Sans SC","Segoe UI",Roboto,sans-serif;line-height:1.75}
+  .page{max-width:860px;margin:0 auto;padding:28px 20px 80px}
+  .hero{background:#fff;border:1px solid #e5e6eb;border-radius:14px;padding:20px 22px;margin-bottom:18px}
+  .hero h1{margin:0 0 6px;font-size:22px}
+  .hero p{margin:4px 0;color:#646a73;font-size:14px}
+  .prep{background:#eef4ff;border:1px solid #b6c8ff;border-radius:14px;padding:16px 20px;margin-bottom:18px;font-size:14px}
+  .prep ol{margin:8px 0 0;padding-left:22px}
+  .scene{background:#fff;border:1px solid #e5e6eb;border-radius:14px;padding:18px 22px;margin-bottom:16px}
+  .scene h2{margin:0 0 4px;font-size:18px}
+  .tag{display:inline-block;font-size:12px;background:#eef2ff;color:#3355ff;border-radius:999px;padding:1px 10px;margin-right:8px}
+  .why{font-size:13px;color:#646a73;margin:6px 0 10px}
+  .scene h3{font-size:14px;margin:14px 0 4px}
+  .scene ol,.scene ul{margin:6px 0;padding-left:22px;font-size:14px}
+  .scene li{margin:3px 0}
+  .expect{background:#f0faf2;border:1px solid #b9e4c5;border-radius:10px;padding:10px 14px;font-size:14px;margin-top:10px}
+  .fail{background:#fef2f2;border:1px solid #f3b8b8;border-radius:10px;padding:10px 14px;font-size:14px;margin-top:8px}
+  code{background:#f1f2f4;border-radius:6px;padding:0 6px;font-size:13px}
+  .foot{font-size:13px;color:#646a73}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin-top:8px}
+  th,td{border:1px solid #e5e6eb;padding:6px 10px;text-align:left}
+  th{background:#f7f8fa}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="hero">
+<h1>D1「在家管」验收手册</h1>
+<p>给完全不了解实现的人：7 个场景，从头点到尾。每个场景都是独立的，做完一个再做下一个。</p>
+<p>一句话功能说明：以前你要换机器人的归属，得去机器人堆里翻；现在在<strong>设置页最下方</strong>有一段“花名册”，列出每家每台机器人，点一下就能换家，换错 5 秒内可撤销。</p>
+</div>
+
+<div class="prep">
+<strong>开始前只做一次（3 步）：</strong>
+<ol>
+<li>把 DSH Desktop <strong>完全退出</strong>（托盘也退掉），重新打开。</li>
+<li>在 DSH 里按 <code>Ctrl+F5</code> 强制刷新一次。</li>
+<li>打开 <strong>设置 → IM机器人辅助</strong>，把页面<strong>拉到最底</strong>，找到一段标题叫 <code>我这一屋 · 花名册</code> 的区域。如果没看到，先停下来告诉我（说明功能没挂载成功，后面不用测了）。</li>
+</ol>
+</div>
+
+<div class="scene">
+<h2><span class="tag">场景 1</span>看全：每家有哪些机器人，一眼看清</h2>
+<p class="why">测的是“看”的部分：不用去别处翻，在自己家就把名下全部机器人看完。</p>
+<h3>步骤</h3>
+<ol>
+<li>打开 <strong>设置 → IM机器人辅助</strong>，拉到最底的花名册区域。</li>
+<li>数一数有几个“家”（每个家是一个小分组，标题是人名，右边写着 <code>N 台</code>）。</li>
+<li>点开每个家，看每台机器人那一行：有没有 <strong>渠道名</strong>（如飞书/QQ）+ <strong>状态</strong>（在线/待确认/离线/未知）。</li>
+<li>对照你记忆中各家的机器人，看看有没有少谁、有没有多谁。</li>
+</ol>
+<div class="expect"><strong>通过标准：</strong>每个家都在，台数对得上，每行都有渠道名和状态；标题下还有一行小字“只看管谁归谁；开除不在这里”。</div>
+<div class="fail"><strong>算失败：</strong>少了一家/少了一台；某行没有状态；或者花名册里出现了 <code>开除/删除</code> 按钮（家里不许放开除，有就是错）。</div>
+</div>
+
+<div class="scene">
+<h2><span class="tag">场景 2</span>换家：把一台机器人转给别家（主流程）</h2>
+<p class="why">测的是“换”的部分，也是最常用的动作：人不合适，顺手转交。</p>
+<h3>步骤</h3>
+<ol>
+<li>在花名册里挑一台你<strong>舍得动</strong>的机器人（建议先拿测试用的动），点它那行的 <code>换家…</code> 按钮。</li>
+<li>弹出“选择目录”框：选一个<strong>别家</strong>的文件夹（不要选它现在的家），点确认/选择此目录。</li>
+<li>弹出二次确认框，内容类似“把‘某某’从 A 家换到 B 家？”：<strong>逐字核对两家名字</strong>，确认是从谁家到谁家。</li>
+<li>点 <code>确认换家</code>。</li>
+<li>观察：页面顶部/底部是否弹出成功提示 + 一个带 <code>撤销</code> 按钮的横条。</li>
+<li><strong>先别点撤销</strong>，去看花名册：这台机器人是不是已经出现在 B 家分组里了？再去左栏看看对应行的状态徽标变没变。</li>
+</ol>
+<div class="expect"><strong>通过标准：</strong>确认框两家名字写得明白；点确认后机器人真的搬到了 B 家；设置页和左栏两边都刷新了，所见即所得。</div>
+<div class="fail"><strong>算失败：</strong>确认框没出现就直接搬了；两家名字写反/含糊；搬完名单没变（要手动刷新才变也算失败）。</div>
+</div>
+
+<div class="scene">
+<h2><span class="tag">场景 3</span>反悔：确认框里点“取消”，一切不动</h2>
+<p class="why">对抗式检查：零成本反悔必须真的零成本，取消不能偷偷写一半。</p>
+<h3>步骤</h3>
+<ol>
+<li>重复场景 2 的第 1～3 步，走到二次确认框。</li>
+<li>这次点 <code>取消</code>（或者按键盘 <code>Esc</code>，或者点框外面的阴影，再试一次，三种取消方式轮着来）。</li>
+<li>看提示：应该有一句“已取消，原样不动”之类的。</li>
+<li>检查花名册：这台机器人还在原来家里，位置、数量都没变。</li>
+</ol>
+<div class="expect"><strong>通过标准：</strong>三种取消方式都好用；取消后提示明确；机器人纹丝不动。</div>
+<div class="fail"><strong>算失败：</strong>点了取消还搬家了；提示含糊不清；框关不掉。</div>
+</div>
+
+<div class="scene">
+<h2><span class="tag">场景 4</span>救火：换错了，5 秒内点“撤销”搬回来</h2>
+<p class="why">测安全网：手滑换错家，一键挽回。注意这个场景和场景 2 是连着的。</p>
+<h3>步骤</h3>
+<ol>
+<li>故意把一台机器人换到一个<strong>错的家</strong>（走完确认）。</li>
+<li>成功提示横条还在时，立刻点上面的 <code>撤销</code>。</li>
+<li>看提示：“已撤销，回到某某家”。</li>
+<li>检查花名册：机器人回到了原来的家。</li>
+<li>再做一次换家，这次<strong>等 6 秒以上</strong>（横条自己消失），然后回忆：横条上应该有一句“撤销超时，换家已落定”之类的提示。</li>
+</ol>
+<div class="expect"><strong>通过标准：</strong>5 秒内撤销秒回原家；超时后明确告诉你“已落定”，不会假装还能撤。</div>
+<div class="fail"><strong>算失败：</strong>撤销没反应 / 撤到了错误的家；超时了还显示能撤销；或者超时后没有任何交代。</div>
+</div>
+
+<div class="scene">
+<h2><span class="tag">场景 5</span>瞎点：换回自己家、连换多台</h2>
+<p class="why">对抗式检查：无效操作要被温柔拦下；连续干活不能互相打架。</p>
+<h3>步骤</h3>
+<ol>
+<li>挑一台机器人点 <code>换家…</code>，在选目录时<strong>故意选它现在的家</strong>，看系统说什么（应该提示“它已经在这里了”，不弹确认框）。</li>
+<li>连续把 <strong>2～3 台</strong>机器人逐个换给不同的家（一次走完一台再走下一台），每台都确认成功。</li>
+<li>最后检查：每台都在目标家里，数量对得上，没有串家。</li>
+</ol>
+<div class="expect"><strong>通过标准：</strong>换回自己家被拦下且有提示；连换多台各就各位。</div>
+<div class="fail"><strong>算失败：</strong>换回自己家也弹确认框走流程；连换后某台不见了或去了错的家。</div>
+</div>
+
+<div class="scene">
+<h2><span class="tag">场景 6</span>左栏小房子：路过看一眼，动手去大的地方</h2>
+<p class="why">测左栏入口：行里地方小，只许看、不许动手，动手请去设置页。</p>
+<h3>步骤</h3>
+<ol>
+<li>看 DSH 左边工作区列表的<strong>顶部头栏</strong>，找一个房子形状的小图标按钮（鼠标悬停显示“在家管”）。</li>
+<li>点它：弹出一个只读小浮层，列出各家和台数。</li>
+<li>检查浮层里：<strong>没有任何按钮能换家/删除</strong>，只能看；底部有一行指引“动手换家去：设置 → IM机器人辅助 → 花名册”。</li>
+<li>按 <code>Esc</code> 或点浮层外阴影或点右上角 <code>×</code>，浮层关闭。</li>
+</ol>
+<div class="expect"><strong>通过标准：</strong>小房子找得到；浮层内容和设置页花名册对得上；纯只读，有指引，三种关闭方式都好用。</div>
+<div class="fail"><strong>算失败：</strong>找不到小房子；浮层里能动手改东西；内容和设置页对不上；关不掉。</div>
+</div>
+
+<div class="scene">
+<h2><span class="tag">场景 7</span>极端情况：名下没机器人 / 显示慢半拍</h2>
+<p class="why">对抗式检查：空的时候不许白屏；数据过期时不许瞎写。</p>
+<h3>步骤（空态）</h3>
+<ol>
+<li>如果你有名下没有机器人的环境（比如全新测试区），打开设置页花名册：应该看到明确的空提示“名下还没有机器人”+ 一句去哪领人的指引，而不是空白一片。</li>
+<li>如果当前每家都有机器人，<strong>跳过空态这一步</strong>（告诉我一声，我帮你造这个环境），不要为了测而删机器。</li>
+</ol>
+<h3>步骤（慢半拍）</h3>
+<ol>
+<li>留意机器人行里的状态：如果某行显示 <code>未知（轮询失败）</code>，点它的 <code>换家…</code> 走完全流程。</li>
+<li>系统应该<strong>拒绝动手</strong>并提示你刷新后再试，而不是顶着过期数据硬写。</li>
+<li>如果所有行状态都正常，说明网络很好，这一步记“未触发”，也告诉我。</li>
+</ol>
+<div class="expect"><strong>通过标准：</strong>空态有文案有指引；过期数据下写操作被拦住且理由说得清。</div>
+<div class="fail"><strong>算失败：</strong>空态白屏；顶着“未知”状态照写不误；拦截提示不知所云。</div>
+</div>
+
+<div class="scene">
+<h2> result 回报模板（测完复制给我）</h2>
+<table>
+<tr><th>场景</th><th>结果</th><th>备注</th></tr>
+<tr><td>场景 1 看全</td><td>通过 / 失败 / 未测</td><td></td></tr>
+<tr><td>场景 2 换家</td><td>通过 / 失败 / 未测</td><td></td></tr>
+<tr><td>场景 3 取消</td><td>通过 / 失败 / 未测</td><td></td></tr>
+<tr><td>场景 4 撤销</td><td>通过 / 失败 / 未测</td><td></td></tr>
+<tr><td>场景 5 瞎点连换</td><td>通过 / 失败 / 未测</td><td></td></tr>
+<tr><td>场景 6 左栏入口</td><td>通过 / 失败 / 未测</td><td></td></tr>
+<tr><td>场景 7 极端情况</td><td>通过 / 失败 / 未触发</td><td></td></tr>
+</table>
+<p class="foot">失败请附：当时点的哪台机器人、从哪家到哪家、看到的原话提示、截图。文案别扭也算问题，直接写原话+你的改法。</p>
+</div>
+
+</div>
+</body>
+</html>
