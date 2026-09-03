@@ -53,7 +53,8 @@
   .dot.offline { background:var(--bad); }
   .dot.degraded { background:var(--warn); }
   @keyframes bl { 0%{box-shadow:0 0 0 0 rgba(32,161,98,.5)} 70%{box-shadow:0 0 0 7px rgba(32,161,98,0)} 100%{box-shadow:0 0 0 0 rgba(32,161,98,0)} }
-  .rowacts { margin-left:auto; display:flex; gap:6px; flex:none; }
+  .rowacts { margin-left:auto; display:flex; gap:6px; flex:none; align-items:center; }
+  .rowacts .asub { min-width:70px; text-align:right; }
   .sheet { position:absolute; top:0; right:0; bottom:0; width:min(360px,94%); z-index:5; border-left:1px solid var(--line); background:var(--bg); display:flex; flex-direction:column; overflow:hidden; box-shadow:-16px 0 32px rgba(0,0,0,.20); }
   .sheet.closed { display:none; }
   .sheetHd { padding:10px 12px; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; background:var(--panel); }
@@ -187,7 +188,7 @@ function rowHTML(){
     const a = db[k], isCur = k === agentKey;
     const chips = a.channels.map(c=>'<span class="chip"><span class="dot '+c.status+'"></span>'+esc(c.label)+'</span>').join("");
     if (variant === "A") return '<div class="arow'+(isCur?" cur":"")+'"><div class="avatar">'+esc(a.name[0]||"?")+'</div><div><div class="aname">'+esc(a.name)+'</div><div class="asub"><span class="dot '+a.status+'"></span> '+esc(a.statusLabel)+'</div></div><div class="rowacts"><button class="btn sm" data-open="'+k+'">接入</button><button class="btn sm primary" data-open="'+k+'">详情</button></div></div>';
-    return '<div class="arow'+(isCur?" cur":"")+'"><div class="avatar">'+esc(a.name[0]||"?")+'</div><div style="min-width:0"><div class="aname">'+esc(a.name)+' <span style="font-weight:400;color:var(--mut);font-size:11px">✎</span></div><div class="chips">'+(chips||'<span class="chip">尚未接入渠道</span>')+'</div><div class="asub">'+esc(a.ws ? "工作区 · " + a.ws : "未绑定工作区")+'</div></div><div class="rowacts"><span class="asub"><span class="dot '+a.status+'"></span> '+esc(a.statusLabel)+'</span><button class="btn sm" data-open="'+k+'">接入</button>'+(variant==="C"?"":'<button class="btn sm ghost" data-open="'+k+'">换绑</button>')+'<button class="btn sm primary" data-open="'+k+'">'+(variant==="C"?"矩阵管理":"… 详情")+'</button></div></div>';
+    return '<div class="arow'+(isCur?" cur":"")+'"><div class="avatar">'+esc(a.name[0]||"?")+'</div><div style="min-width:0"><div class="aname">'+esc(a.name)+' <span style="font-weight:400;color:var(--mut);font-size:11px">✎</span></div><div class="chips">'+(chips||'<span class="chip">尚未接入渠道</span>')+'</div><div class="asub">'+esc(a.ws ? "工作区 · " + a.ws : "未绑定工作区")+'</div></div><div class="rowacts"><span class="asub"><span class="dot '+a.status+'"></span> '+esc(a.statusLabel)+'</span><button class="btn sm" data-open="'+k+'">接入</button>'+(variant==="C"?"":'<button class="btn sm ghost" data-open="'+k+'">换绑</button>')+'<button class="btn sm primary" data-open="'+k+'">'+(variant==="C"?"矩阵管理":"详情")+'</button></div></div>';
   }).join("");
 }
 // --- 抽屉 ---
