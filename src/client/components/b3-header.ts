@@ -192,22 +192,32 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
       ...overlay.channels.map((ch) =>
         React.createElement(
           'div',
-          { className: 'b3-header-chrow', key: ch.channel },
-          (() => {
-            const logo = channelGlyphSvg(ch.channel, 18)
-            if (logo) {
-              return React.createElement('span', {
-                className: 'b3-header-chlogo',
-                dangerouslySetInnerHTML: { __html: logo },
-              })
-            }
-            return React.createElement(
-              'span',
-              { className: 'b3-header-chbadge', style: { background: ch.color } },
-              ch.label.charAt(0) || '?',
-            )
-          })(),
-          React.createElement('span', null, ch.label + ' · ' + ch.statusText),
+          {
+            className: 'b3-header-chrow',
+            key: ch.channel,
+            title: ch.label + ' · ' + ch.statusText,
+            'aria-label': ch.label + ch.statusText,
+          },
+          React.createElement(
+            'span',
+            { className: 'b3-header-chlogo' },
+            (() => {
+              const logo = channelGlyphSvg(ch.channel, 18)
+              if (logo) {
+                return React.createElement('span', {
+                  className: 'b3-header-chlogoin',
+                  dangerouslySetInnerHTML: { __html: logo },
+                })
+              }
+              return React.createElement(
+                'span',
+                { className: 'b3-header-chbadge', style: { background: ch.color } },
+                ch.label.charAt(0) || '?',
+              )
+            })(),
+            React.createElement('span', { className: 'b3-header-chst ' + ch.kind }),
+          ),
+          React.createElement('span', null, ch.label),
         ),
       ),
     )
