@@ -252,8 +252,8 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
 test('view：路由行渲染脱敏映射 + 幽灵告警 + 复制按钮', () => {
   const catalogs = { feishu: { defaultId: '', items: [] } };
   const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs, [
-    { chat: '私聊 ou_zha…', sessionId: 'sess-aaa…', channel: 'feishu' },
-    { chat: '旧映射 ou_gho…', sessionId: 'sess-leg…', ghost: true, channel: 'feishu' },
+    { chat: '私聊 ou_zhangsan01', sessionId: 'sess-aaa…', channel: 'feishu' },
+    { chat: '旧映射 ou_ghost01', sessionId: 'sess-leg…', ghost: true, channel: 'feishu' },
   ]);
   const noop = () => {};
   const root = view.renderDrawerContent(model, {
@@ -263,7 +263,7 @@ test('view：路由行渲染脱敏映射 + 幽灵告警 + 复制按钮', () => {
   });
   const all = texts(root).join('|');
   assert.ok(all.includes('会话路由摘要（2）'));
-  assert.ok(all.includes('飞书·私聊 ou_zha…'));
+  assert.ok(all.includes('飞书·私聊 ou_zhangsan01'));
   assert.ok(all.includes('sess-aaa…'));
   assert.ok(all.includes('旧映射'));
   assert.ok(all.includes('复制'));
@@ -374,11 +374,11 @@ test('data：路由取数经自有通道，失败静默空数组', async () => {
   const calls: any[] = [];
   const fakeRpc = async (ch: string, ep: string, p: any) => {
     calls.push([ch, ep, p]);
-    return { ok: true, value: { routes: [{ channel: 'feishu', botId: 'b1', chat: '私聊 ou_zha…', session: 'sess-aaa…', ghost: false }], skipped: [] } };
+    return { ok: true, value: { routes: [{ channel: 'feishu', botId: 'b1', chat: '私聊 ou_zhangsan01', session: 'sess-aaa…', ghost: false }], skipped: [] } };
   };
   const bots = [{ channel: 'feishu', botId: 'b1' }];
   assert.deepEqual(await data.fetchRoutes(fakeRpc, bots), [
-    { chat: '私聊 ou_zha…', sessionId: 'sess-aaa…', ghost: false, channel: 'feishu' },
+    { chat: '私聊 ou_zhangsan01', sessionId: 'sess-aaa…', ghost: false, channel: 'feishu' },
   ]);
   assert.deepEqual(await data.fetchRoutes(async () => ({ ok: true, value: { routes: [{ chat: 'x' }] } }), bots), []);
   assert.deepEqual(calls[0][0], '/im-companion');
@@ -417,9 +417,10 @@ test('routes：落盘解析只收字符串映射，其余丢弃', () => {
   assert.deepEqual(routesMod.parseSessionsText('{"sessions":[]}'), {});
 });
 
-test('routes：脱敏只露种类+头部，sess 截断 8 位', () => {
-  assert.equal(routesMod.maskChat('p2p:ou_zhangsan01'), '私聊 ou_zha…');
-  assert.equal(routesMod.maskChat('group:oc_project9'), '群聊 oc_pro…');
+test('routes：脱敏只露种类+头部，sess 16 位截断', () => {
+  assert.equal(routesMod.maskChat('p2p:ou_zhangsan01'), '私聊 ou_zhangsan01');
+  assert.equal(routesMod.maskChat('group:oc_project9'), '群聊 oc_project9');
+  assert.equal(routesMod.maskChat('p2p:ou_zhangsan0123456789'), '私聊 ou_zhangsan0…');
   assert.equal(routesMod.maskChat('direct:ou_zhangsan01', 'feishu'), '旧映射 ou_zha…');
   assert.equal(routesMod.maskChat('direct:12345', 'telegram'), '会话 12345');
   assert.equal(routesMod.isGhost('direct:ou_1', 'feishu'), true);
@@ -466,9 +467,9 @@ test('routes：聚合读盘跳过缺失/损坏，direct 标幽灵', async () => 
     ]);
     assert.equal(out.routes.length, 3);
     const byChat = Object.fromEntries(out.routes.map((r: any) => [r.chat, r]));
-    assert.deepEqual(byChat['私聊 ou_zha…'], { channel: 'feishu', botId: 'b1', chat: '私聊 ou_zha…', session: 'sess-aaa11111', ghost: false });
-    assert.equal(byChat['旧映射 ou_gho…'].ghost, true);
-    assert.equal(byChat['旧映射 ou_gho…'].session, 'sess-legacy9');
+    assert.deepEqual(byChat['私聊 ou_zhangsan01'], { channel: 'feishu', botId: 'b1', chat: '私聊 ou_zhangsan01', session: 'sess-aaa11111', ghost: false });
+    assert.equal(byChat['旧映射 ou_ghost01'].ghost, true);
+    assert.equal(byChat['旧映射 ou_ghost01'].session, 'sess-legacy9');
     assert.deepEqual(byChat['会话 12345'], { channel: 'qq', botId: 'b9', chat: '会话 12345', session: 'sess-qq00001', ghost: false });
     assert.deepEqual(out.skipped, [{ channel: 'qq', botId: 'nobody', reason: 'no-state' }]);
   } finally {
@@ -487,7 +488,7 @@ test('routes.list：端点只读聚合，缺席不炸', async () => {
     const res = await handler('routes.list', { bots: [{ channel: 'feishu', botId: 'b1' }] });
     assert.equal(res.ok, true);
     assert.deepEqual(res.value.routes, [
-      { channel: 'feishu', botId: 'b1', chat: '群聊 oc_pro…', session: 'sess-ccc33333', ghost: false },
+      { channel: 'feishu', botId: 'b1', chat: '群聊 oc_proj9', session: 'sess-ccc33333', ghost: false },
     ]);
     assert.deepEqual(res.value.skipped, []);
     const empty = await handler('routes.list', { bots: [] });

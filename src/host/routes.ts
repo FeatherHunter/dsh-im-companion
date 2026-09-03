@@ -58,14 +58,16 @@ function head(id: string, n: number): string {
   return id.length > n + 1 ? id.slice(0, n) + '…' : id
 }
 
-/** 会话展示脱敏：种类 + id 头部（现状无昵称来源）。 */
+/** 会话展示脱敏：种类 + id 头部（现状无昵称来源）。
+ * 头部放宽到 12 位：真机 openId 前缀噪音大（ou_ 占 3 位），6 位时行行长得一样；
+ * 这是用户自己面板内的自展数据，12 位仍不露全 id，长度红线内可辨识即可。 */
 export function maskChat(key: string, channel = ''): string {
   const cut = key.indexOf(':')
   const pre = cut < 0 ? '' : key.slice(0, cut)
   const id = cut < 0 ? key : key.slice(cut + 1)
-  if (pre === 'p2p') return '私聊 ' + head(id, 6)
-  if (pre === 'group') return '群聊 ' + head(id, 6)
-  if (pre === 'direct') return (channel === 'feishu' ? '旧映射 ' : '会话 ') + head(id, 6)
+  if (pre === 'p2p') return '私聊 ' + head(id, 12)
+  if (pre === 'group') return '群聊 ' + head(id, 12)
+  if (pre === 'direct') return (channel === 'feishu' ? '旧映射 ' : '会话 ') + head(id, 12)
   return '其他 ' + (key.length > 10 ? key.slice(0, 10) + '…' : key)
 }
 
