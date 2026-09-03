@@ -301,7 +301,12 @@ test('view：头栏安装分身份入口，点击开面板（含未分配组）'
   assert.equal(sectionRows(secs[1]).length, 1);
   assert.ok(String(secs[3].attrs?.class ?? '').split(' ').includes('e2-sec-new'));
   assert.ok(bodyText().includes('小帅2'), '门牌用设置里的中文名');
-  assert.ok(!bodyText().includes('1 个联系方式'), '独部电话不重复计数');
+  assert.ok(!bodyText().includes('联系方式'), '计数按机器人，不按联系方式');
+  assert.ok(bodyText().includes('2 个机器人'), '未分配组照常计数');
+  assert.ok(bodyText().includes('共 2 户 · 4 个机器人'), '人口普查 footer');
+  const chs = findClass(e2Doc.body, 'e2-ch');
+  const qq = chs.find((c: any) => String(c.textContent).includes('QQ'));
+  assert.ok(qq && String(qq.style?.color ?? '').toLowerCase().includes('12b7f5'), '渠道名按品牌色');
   assert.ok(bodyText().includes('2 个'), '未分配组照常计数');
   const faces = findClass(e2Doc.body, 'e2-face');
   assert.ok(faces.some((f: any) => f.textContent === '小'), '门牌有首字头像');

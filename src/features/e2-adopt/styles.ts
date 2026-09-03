@@ -38,6 +38,8 @@ export const CSS = [
   '.e2-row .e2-who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
   '.e2-row::after{content:"⋮⋮";font-size:10px;letter-spacing:-1px;opacity:.35;flex:none}',
   '.e2-plus-hint{font-size:12px;opacity:.6;line-height:1.6}',
+  '.e2-ch{font-size:12px;flex:none}',
+  '.e2-foot{font-size:12px;opacity:.6;text-align:center;margin-top:2px}',
   '.e2-drop-ok{outline:2px solid #1a9e54 !important;outline-offset:-2px}',
   '.e2-drop-warn{outline:2px solid #e6a700 !important;outline-offset:-2px}',
   '.e2-undo{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:10px;font-size:13px;padding:10px 14px;border-radius:12px;background:#1c1c1e;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3)}',
