@@ -25,5 +25,9 @@ export const CSS = [
 '.c1a-foot{display:flex;gap:8px}',
 '.c1a-empty{font-size:12px;color:var(--dsw-alias-label-secondary,#888)}',
 '.c1a-ws{font-size:12px;word-break:break-all}',
+'.c1a-chlogo{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;flex:none}',
+'.c1a-chlogo svg{width:16px;height:16px;display:block}',
+'.c1a-chbadge{border-radius:50%;background:var(--dsw-alias-brand-primary,#1677ff);color:#fff;font-size:10px;font-weight:700}',
+'.c1a-chctx{border-top:1px dashed var(--dsw-alias-separator,#eee);padding:6px 0;display:grid;gap:4px}',
 '.c1a-note{font-size:12px;word-break:break-all;background:var(--dsw-alias-bg-base,#fff);border:1px dashed var(--dsw-alias-separator,#ddd);border-radius:8px;padding:6px 8px}',
 ].join('');

@@ -1,15 +1,17 @@
 /** C1a 抽屉容器：事件开合 + 真系统写透 + stream 保活（P0-3）。
  * A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写；host 自持账本弃用不断路。 */
 import { mount } from '../../client/dom'
+import { openDirPicker } from '../../client/ui/dir-picker'
 import { showSheet } from '../../client/ui/sheet'
 import { toast } from '../../client/ui/toast'
 import { chooseBot, runTestSend } from '../../client/data/header-overlay'
 import type { AgentPresetCatalog } from '../../client/data/fleet-api'
 import type { FeatureCtx } from '../protocol'
-import type { OpenDrawerDetail } from '../../client/data/config'
+import { channelLabel, type OpenDrawerDetail } from '../../client/data/config'
+import { rpcOf, writeBots, type WriteDeps } from './actions'
 import {
   OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, loadingModel,
-  presetPayloadFor, sheetGeometry, unwrapRpc, type DrawerBot, type DrawerModel,
+  presetPayloadFor, sheetGeometry, type DrawerModel,
 } from './data'
 import { quietCallbacks, renderDrawerContent, type DrawerCallbacks } from './view'
 
@@ -166,7 +168,9 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     settled = true
     clearGiveUp()
     try {
-      mount(sheet.panel, renderDrawerContent(model, cbs(model)))
+      const target = chooseBot(lastBots, model.workspace)
+      const targetLabel = target ? channelLabel(target.channel) : null
+      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, targetLabel))
     } catch {
       /* keep old frame */
     }
@@ -178,58 +182,26 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       /* keep old meta */
     }
   }
-  /** 逐渠道写透：部分失败如实透出（失败渠道名），成功后 refresh 广播。 */
-  const writeBots = async (
-    model: DrawerModel, kind: string, run: (b: DrawerBot) => Promise<void>, note = '，新会话生效',
-  ): Promise<void> => {
-    if (!fctx.rpc) {
-      toast('连接服务不可用')
-      return
-    }
-    if (!model.bots.length) {
-      toast('该 Agent 尚未绑定机器人')
-      return
-    }
-    const fails: string[] = []
-    let ok = 0
-    let lastErr = ''
-    for (const b of model.bots) {
-      try {
-        await run(b)
-        ok++
-      } catch (e) {
-        fails.push(b.channel)
-        lastErr = String((e as Error)?.message ?? e)
-      }
-    }
-    if (!fails.length) toast(kind + '已写入真系统' + note, 'check')
-    else if (ok > 0) toast(kind + '部分写入（成功 ' + ok + ' 个），失败：' + fails.join('、'))
-    else toast(kind + '写入失败：' + lastErr)
-    try {
-      await reloadMeta()
-      await fctx.refresh()
-    } catch {
-      /* 刷新失败忽略（下轮 15s 自愈） */
-    }
-    paint()
-  }
-  const rpcOf = (channel: string, endpoint: string, payload: Record<string, unknown>): Promise<void> => {
-    const rpc = fctx.rpc
-    if (!rpc) return Promise.reject(new Error('连接服务不可用'))
-    return rpc('/' + channel, endpoint, payload, AbortSignal.timeout(8000)).then((raw) => unwrapRpc(raw))
-  }
+  let draftWs: string | null = null
+  const deps = (): WriteDeps => ({ rpc: fctx.rpc, refresh: () => fctx.refresh(), reloadMeta, paint, notify: toast })
   const cbs = (model: DrawerModel): DrawerCallbacks => {
-    const flipCtx = (which: 'group' | 'direct', kind: string): void => {
-      if (!model.ctxReady) {
-        toast('上下文配置尚未读到，稍后再试（防覆盖已有配置）')
+    const flipOne = (channel: string, botId: string, which: 'group' | 'direct'): void => {
+      const target = model.bots.find((b) => b.channel === channel && b.botId === botId)
+      if (!target || target.ctx === undefined) {
+        toast('本渠道真值尚未读到，稍后再试（防覆盖已有配置）')
         return
       }
-      const cur = which === 'group' ? model.ctxGroup : model.ctxDirect
-      void writeBots(model, kind, (b) => {
-        const cfg = ctxPayloadFor(b.ctx, which, cur !== true)
-        if (!cfg) return Promise.reject(new Error('上下文真值缺失'))
-        return rpcOf(b.channel, 'bot.context-enhancement.set', { botId: b.botId, config: cfg })
-      })
+      const cur = target.ctx
+      const on = cur !== null && (which === 'group' ? cur.groupEnabled : cur.directEnabled) === true
+      const cfg = ctxPayloadFor(cur, which, !on)
+      if (!cfg) {
+        toast('本渠道真值缺失，稍后再试')
+        return
+      }
+      const single: DrawerModel = { ...model, bots: [target] }
+      const kind = channelLabel(channel) + (which === 'group' ? '群聊增强' : '私聊增强')
+      void writeBots(single, deps(), kind,
+        () => rpcOf(fctx.rpc, channel, 'bot.context-enhancement.set', { botId: botId, config: cfg }))
     }
     return {
     onPreset: (id) => {
@@ -240,21 +212,51 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         paint()
         return
       }
-      void writeBots(model, '预设', (b) => {
+      void writeBots(model, deps(), '预设', (b) => {
         const p = presetPayloadFor(b.botId, id)
         if (!p) return Promise.reject(new Error('预设 id 非法'))
-        return rpcOf(b.channel, 'bot.preset.set', p)
+        return rpcOf(fctx.rpc, b.channel, 'bot.preset.set', p)
       })
     },
-    onToggleGroup: () => flipCtx('group', '群聊增强'),
-    onToggleDirect: () => flipCtx('direct', '私聊增强'),
+    onToggleGroup: (channel, botId) => flipOne(channel, botId, 'group'),
+    onToggleDirect: (channel, botId) => flipOne(channel, botId, 'direct'),
     onSaveWorkspace: (path) => {
       const ws = path.trim()
       if (!ws || !(ws.startsWith('/') || /^[A-Za-z]:[\\/]/.test(ws))) {
         toast('请输入绝对路径形式的工作区目录')
         return
       }
-      void writeBots(model, '绑定工作区', (b) => rpcOf(b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }), '')
+      void (async () => {
+        await writeBots(model, deps(), '绑定工作区',
+          (b) => rpcOf(fctx.rpc, b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }), '')
+        draftWs = null
+        paint()
+      })()
+    },
+    onBrowseWorkspace: () => {
+      if (!fctx.rpc) {
+        toast('连接服务不可用')
+        return
+      }
+      const svc: unknown = typeof fctx.get === 'function' ? fctx.get('uiWorkspace') : undefined
+      const anySvc: any = svc
+      const native = anySvc && typeof anySvc.pickDirectory === 'function'
+        ? () => Promise.resolve(anySvc.pickDirectory()).then((p: unknown) => (typeof p === 'string' ? p : null))
+        : undefined
+      void (async () => {
+        try {
+          const picked = await openDirPicker(fctx.rpc, draftWs ?? model.workspace, native).promise
+          if (picked) {
+            draftWs = picked
+            paint()
+          }
+        } catch {
+          /* 用户取消 */
+        }
+      })()
+    },
+    onDraftWorkspace: (v) => {
+      draftWs = v
     },
     onRemoveBot: (channel, botId) => {
       if (!fctx.rpc) {
@@ -263,7 +265,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       }
       void (async () => {
         try {
-          await rpcOf(channel, 'bot.delete', { botId, confirm: true })
+          await rpcOf(fctx.rpc, channel, 'bot.delete', { botId, confirm: true })
           toast('渠道机器人已移除', 'check')
           await fctx.refresh()
         } catch (e) {

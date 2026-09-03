@@ -22,7 +22,11 @@ const ENTRIES = [
   join(DATA, 'model.ts'),
   join(DATA, 'header-overlay.ts'),
   join(UI, 'sheet.ts'),
+  join(UI, 'modal.ts'),
+  join(UI, 'dir-picker.ts'),
+  join(REPO, 'src', 'client', 'icons.ts'),
   join(FEAT, 'data.ts'),
+  join(FEAT, 'actions.ts'),
   join(FEAT, 'drawer.ts'),
   join(FEAT, 'view.ts'),
   join(FEAT, 'manifest.ts'),
@@ -48,7 +52,10 @@ const storeMod: any = req('./host/meta-store.js');
 const config: any = req('./client/data/config.js');
 const clientMeta: any = req('./client/data/meta.js');
 const data: any = req('./features/c1a/data.js');
+const actions: any = req('./features/c1a/actions.js');
+const picker: any = req('./client/ui/dir-picker.js');
 const fleetApi: any = req('./client/data/fleet-api.js');
+const modelMod: any = req('./client/data/model.js');
 const styles: any = req('./features/c1a/styles.js');
 const registry: any = req('./features/index.js');
 
@@ -141,11 +148,8 @@ test('data：抽屉模型派生自上游真值（一致/混合/未读/未知键/
   assert.equal(m0.preset, data.PRESET_FOLLOW);
   assert.equal(m0.presetReady, true);
   assert.equal(m0.presetCatalog.items.length, 1);
-  assert.equal(m0.ctxGroup, false);
-  assert.equal(m0.ctxDirect, true);
   assert.equal(m0.ctxReady, true);
-  assert.deepEqual(m0.ctxFields, ['senderId']);
-  assert.equal(m0.ctxGuidance, 'hi');
+  assert.deepEqual(m0.channels[0].ctx, { groupEnabled: false, directEnabled: true, fields: ['senderId'], guidance: 'hi' });
   assert.equal(m0.bound, true);
   assert.deepEqual(m0.routes, []);
   assert.equal(m0.channels.length, 1);
@@ -158,7 +162,7 @@ test('data：抽屉模型派生自上游真值（一致/混合/未读/未知键/
   const unread = data.buildDrawerModel([bot({ agentPreset: undefined, contextEnhancement: undefined })], metaDoc(), W1, catalogs);
   assert.equal(unread.presetReady, false);
   assert.equal(unread.ctxReady, false);
-  assert.equal(unread.ctxGroup, null);
+  assert.equal(unread.channels[0].ctx, undefined);
   assert.equal(typeof data.OPEN_DRAWER_EVENT ?? config.OPEN_DRAWER_EVENT, 'string');
   assert.equal(config.OPEN_DRAWER_EVENT, 'dsh-im-companion:open-drawer');
 });
@@ -226,10 +230,11 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
   const noop = () => {};
   const root = view.renderDrawerContent(model, {
     onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
-    onSaveWorkspace: noop, onRemoveBot: noop, onTestSend: noop, onClose: noop,
+    onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
+    onRemoveBot: noop, onTestSend: noop, onClose: noop,
   });
   const all = texts(root).join('|');
-  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '群聊增强', '私聊增强', '只读', '新会话生效', '绑定工作区', '会话路由摘要', '渠道管理', '发测试消息']) {
+  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文增强', 'senderId', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '发测试消息']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
   assert.ok(findByClass(root, 'c1a-summary').length >= 1);
@@ -262,4 +267,63 @@ test('drawer：抽屉贴面板右沿几何（视口右沿兜底）', () => {
   assert.equal(narrow.width, 300);
   assert.equal(data.sheetGeometry(null, { width: 1600, height: 900 }), null);
   assert.equal(data.sheetGeometry({ top: 0, right: 0, bottom: 0, left: 0 }, { width: 1600, height: 900 }), null);
+});
+
+test('model：按渠道视图优先用户头像（与按Agent一致）', () => {
+  const m = modelMod.buildModel([bot({ avatarUrl: 'chan.png' })], metaDoc({ avatars: { [W1]: 'user.png' } }), 'channel', '');
+  assert.equal(m.channelGroups[0].views[0].avatar, 'user.png');
+  const m2 = modelMod.buildModel([bot({ avatarUrl: 'chan.png' })], metaDoc(), 'channel', '');
+  assert.equal(m2.channelGroups[0].views[0].avatar, 'chan.png');
+});
+
+test('actions：逐渠道写透部分失败点名渠道', async () => {
+  const notes: string[] = [];
+  let refreshed = 0;
+  const deps = {
+    rpc: async (ch: string) => {
+      if (ch === '/qq') throw new Error('nope');
+      return { ok: true, value: {} };
+    },
+    refresh: async () => { refreshed++; },
+    reloadMeta: async () => undefined,
+    paint: () => undefined,
+    notify: (msg: string) => { notes.push(msg); },
+  };
+  const m = { bots: [{ channel: 'feishu', botId: 'b1' }, { channel: 'qq', botId: 'b2' }] };
+  await actions.writeBots(m, deps, '预设', (b: any) => actions.rpcOf(deps.rpc, b.channel, 'bot.preset.set', { botId: b.botId }));
+  assert.ok(notes.join('|').includes('部分写入'));
+  assert.ok(notes.join('|').includes('qq'));
+  assert.equal(refreshed, 1);
+});
+
+test('dir-picker：列出子目录并可取消', async () => {
+  const fakeRpc = async (_ch: string, ep: string) => {
+    if (ep === 'fs.defaultRoot') return { ok: true, value: { path: '/root' } };
+    return { ok: true, value: { path: '/root', parent: '/', entries: [{ name: 'a', path: '/root/a' }] } };
+  };
+  const { promise, el } = picker.openDirPicker(fakeRpc, '');
+  await new Promise((r) => setTimeout(r, 30));
+  const all = texts(el).join('|');
+  assert.ok(all.includes('选择目录'));
+  assert.ok(all.includes('/root'));
+  const btns = el.querySelectorAll('.af-btn');
+  const cancel = btns.find((b: any) => b.textContent === '取消');
+  assert.ok(cancel);
+  cancel.dispatchEvent({ type: 'click' });
+  assert.equal(await promise, null);
+});
+
+test('view：发送按钮预告目标渠道', () => {
+  const catalogs = { feishu: { defaultId: '', items: [] } };
+  const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs);
+  const noop = () => {};
+  const cbs = {
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
+    onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
+    onRemoveBot: noop, onTestSend: noop, onClose: noop,
+  };
+  const withTarget = texts(view.renderDrawerContent(model, cbs, null, '飞书')).join('|');
+  assert.ok(withTarget.includes('发测试消息（→飞书）'));
+  const withoutTarget = texts(view.renderDrawerContent(model, cbs)).join('|');
+  assert.ok(withoutTarget.includes('发测试消息'));
 });

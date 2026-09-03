@@ -242,6 +242,7 @@ const CSS = `
 .af-diritem { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; cursor: pointer; font-size: 13px; color: var(--af-primary); }
 .af-diritem:hover { background: var(--af-surface-2); }
 .af-diritem svg { color: var(--af-tertiary); flex: none; }
+.af-actions { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; flex: none; }
 .af-more-btn {
   border: 0; background: transparent; color: var(--af-tertiary); width: 30px; height: 30px; flex: none;
   border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
@@ -259,7 +260,7 @@ const CSS = `
   background: color-mix(in srgb, var(--af-primary) 86%, var(--af-bg)); color: var(--af-bg);
   font-size: 13px; line-height: 18px; font-weight: 500; padding: 9px 16px; border-radius: 999px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, .3); transition: opacity .18s ease, transform .18s ease;
-  z-index: 1100; pointer-events: none; font-family: -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
+  z-index: 1300; pointer-events: none; font-family: -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
 }
 .af-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 

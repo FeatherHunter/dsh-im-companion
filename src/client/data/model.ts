@@ -180,7 +180,7 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
   agents.sort((a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] || a.name.localeCompare(b.name, 'zh'))
   counts.agents = agents.length
 
-  /* ---- 按渠道：渠道分区头 + 组内 Agent 列表（头像与 dsh-im 一致=渠道头像；不提供改名/头像菜单） ---- */
+  /* ---- 按渠道：渠道分区头 + 组内 Agent 列表（头像优先用户设置，其次渠道头像；不提供改名/头像菜单） ---- */
   const byCh = new Map<string, BotSnap[]>()
   for (const b of bots) byCh.set(b.channel, [...(byCh.get(b.channel) ?? []), b])
   const channelGroups: ChannelGroup[] = [...byCh.entries()].map(([ch, snaps]) => {
@@ -195,7 +195,7 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
       const first = list[0]
       const status = mergeStatus(list.map((s) => s.healthKind))
       const name = viewName(base, meta, first.botName || '未命名 Agent', path)
-      const avatar = list.map((s) => s.avatarUrl).find(Boolean) ?? null
+      const avatar = avatarOf(path, base, meta) || (list.map((s) => s.avatarUrl).find(Boolean) ?? null)
       return {
         key: 'ch:' + ch + ':' + wsKey,
         base,

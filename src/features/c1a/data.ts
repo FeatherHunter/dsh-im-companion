@@ -24,6 +24,15 @@ export interface DrawerBot {
   ctx: UpstreamCtx | null | undefined
 }
 
+export interface DrawerChannel {
+  id: string
+  label: string
+  status: HealthKind
+  botId: string
+  /** 该渠道真值：undefined = 本轮未读到（该行开关禁用）；null = 上游缺席（按双关理解）。 */
+  ctx: UpstreamCtx | null | undefined
+}
+
 export interface DrawerModel {
   key: string
   name: string
@@ -36,13 +45,9 @@ export interface DrawerModel {
   presetCatalog: AgentPresetCatalog
   /** false = 还有渠道没读到真值，下拉禁用（只读展示）。 */
   presetReady: boolean
-  /** null = 未读到/不一致（开关禁用或标不一致）；布尔 = 各渠道一致当前值。 */
-  ctxGroup: boolean | null
-  ctxDirect: boolean | null
+  /** false = 还有渠道没读到上下文真值，该渠道行开关禁用（防盲写）。 */
   ctxReady: boolean
-  ctxFields: string[]
-  ctxGuidance: string
-  channels: { id: string; label: string; status: HealthKind; botId: string }[]
+  channels: DrawerChannel[]
   bots: DrawerBot[]
   routes: RouteEntry[]
 }
@@ -72,7 +77,7 @@ export function loadingModel(key: string): DrawerModel {
   return {
     key, name: '加载中', workspace: '', statusLabel: '等待数据', status: 'warn',
     bound: false, preset: PRESET_FOLLOW, presetCatalog: { defaultId: '', items: [] }, presetReady: false,
-    ctxGroup: null, ctxDirect: null, ctxReady: false, ctxFields: [], ctxGuidance: '',
+    ctxReady: false,
     channels: [], bots: [], routes: [],
   }
 }
@@ -137,9 +142,8 @@ export function buildDrawerModel(
   const pvals = [...new Set(dbots.map((b) => (b.preset ?? null) as string | null))]
   const preset = !presetReady ? PRESET_FOLLOW : pvals.length === 1 ? (pvals[0] ?? PRESET_FOLLOW) : PRESET_MIXED
   const ctxReady = dbots.length > 0 && dbots.every((b) => b.ctx !== undefined)
-  const groups = [...new Set(dbots.map((b) => (b.ctx as UpstreamCtx | null)?.groupEnabled === true))]
-  const directs = [...new Set(dbots.map((b) => (b.ctx as UpstreamCtx | null)?.directEnabled === true))]
-  const firstCtx = (dbots[0]?.ctx as UpstreamCtx | null) ?? null
+  const ctxOf = (channel: string, botId: string): UpstreamCtx | null | undefined =>
+    dbots.find((b) => b.channel === channel && b.botId === botId)?.ctx
   return {
     key: view.key,
     name: view.name,
@@ -150,15 +154,11 @@ export function buildDrawerModel(
     preset: preset === '' ? PRESET_FOLLOW : preset,
     presetCatalog: mergeCatalogs(view.channels.map((c) => c.id), catalogs),
     presetReady,
-    ctxGroup: !ctxReady ? null : groups.length === 1 ? groups[0] : null,
-    ctxDirect: !ctxReady ? null : directs.length === 1 ? directs[0] : null,
     ctxReady,
-    ctxFields: firstCtx?.fields ?? [],
-    ctxGuidance: firstCtx?.guidance ?? '',
-    channels: view.channels.map((c) => ({
-      id: c.id, label: c.label, status: c.status,
-      botId: view.bots.find((b) => b.channel === c.id)?.botId ?? '',
-    })),
+    channels: view.channels.map((c) => {
+      const botId = view.bots.find((b) => b.channel === c.id)?.botId ?? ''
+      return { id: c.id, label: c.label, status: c.status, botId, ctx: ctxOf(c.id, botId) }
+    }),
     bots: dbots,
     routes: fetchRoutesFor(),
   }
