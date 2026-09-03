@@ -40,6 +40,7 @@ const view: any = req('./features/left-badges/view.js');
 const styles: any = req('./features/left-badges/styles.js');
 const registry: any = req('./features/index.js');
 const dbgReport: any = req('./features/left-badges/debug-report.js');
+const hover: any = req('./features/left-badges/hover-card.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over = {}) => ({
@@ -69,6 +70,7 @@ const stubEl: any = (tag: string) => ({
     return this.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)) ?? null;
   },
   getBoundingClientRect() { return { top: 10, left: 10, right: 200, bottom: 44, width: 190, height: 34 }; },
+  closest(s: string) { return this; },
   get textContent() { return this.text; },
   set textContent(v: string) { this.text = String(v); },
 });
@@ -160,6 +162,9 @@ test('bindings：四态 + tooltip 最后检测 + 暂无占位', () => {
   assert.equal(off.kind, 'offline');
   const noTime = bindings.badgeForWorkspace(W1, [snap({ lastCheckedAt: null })], now);
   assert.match(noTime.tooltip, /最后检测 暂无/);
+  assert.equal(bindings.lastCheckedText([snap({ lastCheckedAt: 5000 })]), '最后检测 ' + new Date(5000).toLocaleTimeString('zh-CN', { hour12: false }));
+  assert.equal(bindings.lastCheckedText([snap({ lastCheckedAt: null })]), '最后检测 暂无');
+  assert.equal(bindings.lastCheckedText([]), '最后检测 暂无');
 });
 
 test('view：resolveWorkspace 名称匹配（basename/Bot名/大小写）', () => {
@@ -189,7 +194,8 @@ test('styles：命名空间前缀，不占 .af-', () => {
 test('view：行属性徽标 + 悬停标题 + 复写幂等', () => {
   const row = stubEl('div');
   row.textContent = 'xiaoshuai';
-  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body'), addEventListener() {}, removeEventListener() {} };
+  const heardDoc: string[] = [];
+  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body'), addEventListener(t: string) { heardDoc.push(t); }, removeEventListener() {} };
   const events: any[] = [];
   const winStub: any = {
     CustomEvent: class { type: string; detail: any; constructor(t: string, o: any) { this.type = t; this.detail = o?.detail; } },
@@ -206,11 +212,12 @@ test('view：行属性徽标 + 悬停标题 + 复写幂等', () => {
     const dispose = view.mountLeftBadges(ctx);
     assert.equal(row.getAttribute('data-lb-kind'), 'online');
     assert.equal(row.getAttribute('data-lb-label'), '在线');
-    assert.match(String(row.getAttribute('title')), /最后检测/);
+    assert.equal(row.getAttribute('title'), null, '原生title让位自画卡');
     assert.equal(row.children.length, 0, '行内不增节点');
     heard[0]({ bots: [snap({ lastCheckedAt: 5000 })], failed: [], updatedAt: 61000 });
     assert.equal(row.getAttribute('data-lb-kind'), 'online', '复写幂等');
     assert.equal(row.children.length, 0);
+    assert.ok(heardDoc.includes('mouseover') && heardDoc.includes('mouseout'), '悬停委托已注册');
     dispose();
   } finally {
     delete (globalThis as any).document;
@@ -260,6 +267,20 @@ test('view：未绑定无属性且行内不写节点', () => {
     delete (globalThis as any).document;
     delete (globalThis as any).MutationObserver;
   }
+});
+
+test('hover-card：卡片数据（未绑定null/渠道行/时间）', () => {
+  assert.equal(hover.buildCardData('dsh-im', []), null);
+  const d = hover.buildCardData(W1, [
+    snap({ lastCheckedAt: 5000 }),
+    snap({ channel: 'qq', botId: 'q', healthKind: 'offline', healthStatus: 'offline', connected: false }),
+  ]);
+  assert.equal(d.agent, 'xiaoshuai');
+  assert.equal(d.kind, 'online');
+  assert.equal(d.channels.length, 2);
+  assert.equal(d.channels[0].kind, 'online');
+  assert.ok(String(d.channels[0].glyph).includes('<svg'));
+  assert.match(d.time, /最后检测/);
 });
 
 test('debug-report（TEMP-DEBUG）：无 DOM 归零 + rpc 空 no-op 不抛', () => {

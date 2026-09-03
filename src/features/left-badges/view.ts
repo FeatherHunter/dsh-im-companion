@@ -4,6 +4,7 @@
 import { badgeForWorkspace } from '../../client/data/bindings'
 import type { BotSnap, RpcCall } from '../../client/data/fleet-api'
 import { collectCensus, reportDebug } from './debug-report'
+import { buildCardData, mountHoverCard } from './hover-card'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
 
@@ -102,15 +103,14 @@ function paint(bots: BotSnap[], nowMs: number): void {
       const badge = badgeForWorkspace(ws, bots, nowMs)
       if (typeof row.setAttribute !== 'function' || typeof row.removeAttribute !== 'function') continue
       if (badge.kind === 'unbound') {
-        const had = (typeof row.getAttribute === 'function' && row.getAttribute('data-lb-kind')) ? true : false
         row.removeAttribute('data-lb-kind')
         row.removeAttribute('data-lb-label')
-        if (had) row.removeAttribute('title')
+        row.removeAttribute('title')
         continue
       }
       row.setAttribute('data-lb-kind', badge.kind)
       row.setAttribute('data-lb-label', badge.label)
-      row.setAttribute('title', badge.tooltip)
+      row.removeAttribute('title')
       decorated++
     } catch {
       /* 单行失败不影响其他行 */
@@ -208,6 +208,38 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     /* 订阅失败即不挂载 */
     return noop
   }
+  let stopHover: (() => void) | null = null
+  try {
+    stopHover = mountHoverCard({
+      matchRow: (elm) => {
+        try {
+          if (!elm || typeof (elm as unknown as { closest?: unknown }).closest !== 'function') return null
+          for (const sel of ROW_SELECTORS) {
+            try {
+              const hit = (elm as unknown as { closest: (s: string) => Element | null }).closest(sel)
+              if (hit) return hit
+            } catch {
+              /* 该选择器跳过 */
+            }
+          }
+          return null
+        } catch {
+          return null
+        }
+      },
+      resolve: (row) => {
+        try {
+          const key = rowKey(row)
+          if (!key) return null
+          return buildCardData(resolveWorkspace(key, current), current)
+        } catch {
+          return null
+        }
+      },
+    })
+  } catch {
+    /* 悬浮卡失败不影响徽标 */
+  }
   try {
     if (typeof MutationObserver !== 'undefined') {
       observer = new MutationObserver(() => schedulePaint(current))
@@ -224,6 +256,11 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     }
     try {
       observer?.disconnect()
+    } catch {
+      /* 清理失败忽略 */
+    }
+    try {
+      if (typeof stopHover === 'function') stopHover()
     } catch {
       /* 清理失败忽略 */
     }

@@ -38,6 +38,12 @@ function timeText(ms: number): string {
   }
 }
 
+/** 卡片页脚检测时间（纯函数可单测；供 hover-card 复用）。 */
+export function lastCheckedText(bots: BotSnap[]): string {
+  const last = Math.max(0, ...bots.map((b) => b.lastCheckedAt ?? 0))
+  return last > 0 ? '最后检测 ' + timeText(last) : '最后检测 暂无'
+}
+
 /* nowMs 由调用方/测试注入“现在”，生产才走默认 Date.now()（默认参数读时钟，严格算副作用）。 */
 export function badgeForWorkspace(workspacePath: string, bots: BotSnap[], nowMs = Date.now()): LeftBadge {
   const agent = basenameOfPath(workspacePath)
@@ -58,7 +64,6 @@ export function badgeForWorkspace(workspacePath: string, bots: BotSnap[], nowMs 
   for (const b of bound) {
     lines.push(b.stale ? channelLabel(b.channel) + ' · 未知（轮询失败）' : channelLabel(b.channel) + ' · ' + HEALTH_LABELS[kindOf(b)])
   }
-  const last = Math.max(...bound.map((b) => b.lastCheckedAt ?? 0))
-  lines.push(last > 0 ? '最后检测 ' + timeText(last) : '最后检测 暂无')
+  lines.push(lastCheckedText(bound))
   return { kind, label, tooltip: lines.join('\n'), workspace: workspacePath, agent }
 }
