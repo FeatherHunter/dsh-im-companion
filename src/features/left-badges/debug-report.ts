@@ -26,7 +26,7 @@ export function collectCensus(): BadgeCensus {
       treeitem: n('div[role="treeitem"]'),
       expanded: n('div[role="treeitem"][aria-expanded]'),
       selected: n('div[role="treeitem"][aria-selected]'),
-      badges: n('.left-badges-badge'),
+      badges: n('div[role="treeitem"][data-lb-kind]'),
     }
   } catch {
     return zero

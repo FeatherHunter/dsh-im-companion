@@ -59,6 +59,7 @@ const stubEl: any = (tag: string) => ({
   offsetWidth: 64, offsetHeight: 18,
   setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
   getAttribute(k: string) { return this.attrs[k] ?? null; },
+  removeAttribute(k: string) { delete this.attrs[k]; },
   appendChild(c: any) { c.parentNode = this; this.children.push(c); return c; },
   removeChild(c: any) { this.children = this.children.filter((x: any) => x !== c); return c; },
   addEventListener(t: string, fn: any) { (this.listeners[t] || (this.listeners[t] = [])).push(fn); },
@@ -178,11 +179,12 @@ test('registry：left-badges 在列，带样式与槽位', () => {
 
 test('styles：命名空间前缀，不占 .af-', () => {
   assert.match(styles.CSS, /.left-badges-badge/);
-  assert.match(styles.CSS, /.left-badges-layer/);
+  assert.match(styles.CSS, /data-lb-kind/);
+  assert.match(styles.CSS, /::after/);
   assert.ok(!styles.CSS.includes('.af-'), '不得占用 .af-* 私有约定');
 });
 
-test('view：悬浮芯片 + 点击只读 + 同数据不增殖', () => {
+test('view：行属性徽标 + 悬停标题 + 复写幂等', () => {
   const row = stubEl('div');
   row.textContent = 'xiaoshuai';
   const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body'), addEventListener() {}, removeEventListener() {} };
@@ -200,19 +202,13 @@ test('view：悬浮芯片 + 点击只读 + 同数据不增殖', () => {
     const heard: any[] = [];
     const ctx: any = { subscribe: (fn: any) => { fn({ bots: [snap({ lastCheckedAt: 5000 })], failed: [], updatedAt: 60000 }); heard.push(fn); return () => {}; } };
     const dispose = view.mountLeftBadges(ctx);
-    const layer = layerOf(docStub.body);
-    assert.ok(layer, '建悬浮层');
-    const badge = chipOf(layer);
-    assert.ok(badge, '层上有在线芯片');
-    assert.match(String(badge.attrs.class), /online/);
-    assert.match(String(badge.attrs.title), /最后检测/);
-    assert.equal(layer.children.length, 1);
+    assert.equal(row.getAttribute('data-lb-kind'), 'online');
+    assert.equal(row.getAttribute('data-lb-label'), '在线');
+    assert.match(String(row.getAttribute('title')), /最后检测/);
+    assert.equal(row.children.length, 0, '行内不增节点');
     heard[0]({ bots: [snap({ lastCheckedAt: 5000 })], failed: [], updatedAt: 61000 });
-    assert.equal(layer.children.length, 1);
-    badge.listeners.click[0]();
-    assert.equal(events.length, 1);
-    assert.equal(events[0].type, 'dsh-im-companion:open-agent');
-    assert.equal(events[0].detail.workspace, W1);
+    assert.equal(row.getAttribute('data-lb-kind'), 'online', '复写幂等');
+    assert.equal(row.children.length, 0);
     dispose();
   } finally {
     delete (globalThis as any).document;
@@ -221,7 +217,7 @@ test('view：悬浮芯片 + 点击只读 + 同数据不增殖', () => {
   }
 });
 
-test('view：老代挂载在新代出现后摘层静默（代际哨兵）', () => {
+test('view：老代挂载在新代出现后不覆盖（代际哨兵）', () => {
   const row = stubEl('div');
   row.textContent = 'xiaoshuai';
   const win: any = {};
@@ -233,12 +229,10 @@ test('view：老代挂载在新代出现后摘层静默（代际哨兵）', () =
     let fn: any = null;
     const ctx: any = { subscribe: (f: any) => { fn = f; f({ bots: [snap({ lastCheckedAt: 5000 })], failed: [], updatedAt: 60000 }); return () => {}; } };
     const dispose = view.mountLeftBadges(ctx);
-    const badge = chipOf(layerOf(docStub.body));
-    assert.ok(badge, '首轮画上芯片');
-    assert.match(String(badge.attrs.class), /online/);
+    assert.equal(row.getAttribute('data-lb-kind'), 'online', '首轮打标');
     win.__lbGen = 999;
     fn({ bots: [snap({ lastCheckedAt: 5000, healthKind: 'offline', healthStatus: 'offline', connected: false })], failed: [], updatedAt: 61000 });
-    assert.equal(chipOf(layerOf(docStub.body)), null, '老代摘层静默');
+    assert.equal(row.getAttribute('data-lb-kind'), 'online', '老代不覆盖');
     dispose();
   } finally {
     delete (globalThis as any).document;
@@ -247,7 +241,7 @@ test('view：老代挂载在新代出现后摘层静默（代际哨兵）', () =
   }
 });
 
-test('view：未绑定无芯片且行内不写节点', () => {
+test('view：未绑定无属性且行内不写节点', () => {
   const row = stubEl('div');
   row.textContent = 'dsh-im';
   const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body'), addEventListener() {}, removeEventListener() {} };
@@ -256,7 +250,8 @@ test('view：未绑定无芯片且行内不写节点', () => {
   try {
     const ctx: any = { subscribe: (fn: any) => { fn({ bots: [snap({})], failed: [], updatedAt: 60000 }); return () => {}; } };
     const dispose = view.mountLeftBadges(ctx);
-    assert.equal(chipOf(layerOf(docStub.body)), null, '未绑定无芯片');
+    assert.equal(row.getAttribute('data-lb-kind'), null, '未绑定无属性');
+    assert.equal(row.getAttribute('title'), null, '未绑定无标题');
     assert.equal(row.children.length, 0, '行内不写节点');
     dispose();
   } finally {

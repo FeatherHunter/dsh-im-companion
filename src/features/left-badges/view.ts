@@ -1,10 +1,9 @@
-/** left-badges 悬浮层视图：订阅 stream 快照 → body 级 fixed 芯片按行几何呈现。
- * 只读行 DOM（文本匹配 + 取矩形），绝不向 React 管理的行内写节点。
- * 无自有轮询；点击只读：派发 OPEN_AGENT_EVENT。 */
+/** left-badges 行属性视图：订阅 stream 快照 → 给工作区行写 data-lb-* 属性，徽标由 CSS 伪元素呈现。
+ * 行上只读写三个无害属性（data-lb-kind/data-lb-label/title），不增删节点——重渲染无东西可吃。
+ * 无自有轮询；徽标纯展示不可点（用户裁定，点击事件已退役）。 */
 import { badgeForWorkspace } from '../../client/data/bindings'
 import type { BotSnap, RpcCall } from '../../client/data/fleet-api'
 import { collectCensus, reportDebug } from './debug-report'
-import { ensureLayer, removeLayer, reposition, syncChips, type ChipItem } from './overlay'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
 
@@ -91,7 +90,7 @@ function basenameOf(ws: string): string {
 function paint(bots: BotSnap[], nowMs: number): void {
   if (!genAlive(activeGen)) return
   const rows = collectRows()
-  const items: ChipItem[] = []
+  let decorated = 0
   const seenWs = new Set<string>()
   for (const row of rows) {
     try {
@@ -101,17 +100,21 @@ function paint(bots: BotSnap[], nowMs: number): void {
       if (seenWs.has(ws)) continue
       seenWs.add(ws)
       const badge = badgeForWorkspace(ws, bots, nowMs)
-      if (badge.kind === 'unbound') continue
-      items.push({ row, badge })
+      if (typeof row.setAttribute !== 'function' || typeof row.removeAttribute !== 'function') continue
+      if (badge.kind === 'unbound') {
+        const had = (typeof row.getAttribute === 'function' && row.getAttribute('data-lb-kind')) ? true : false
+        row.removeAttribute('data-lb-kind')
+        row.removeAttribute('data-lb-label')
+        if (had) row.removeAttribute('title')
+        continue
+      }
+      row.setAttribute('data-lb-kind', badge.kind)
+      row.setAttribute('data-lb-label', badge.label)
+      row.setAttribute('title', badge.tooltip)
+      decorated++
     } catch {
       /* 单行失败不影响其他行 */
     }
-  }
-  let decorated = 0
-  try {
-    decorated = syncChips(items)
-  } catch {
-    /* 同步失败下次再试 */
   }
   /* TEMP-DEBUG(#6)：行数/已饰变化即上报一行（定位后删除） */
   try {
@@ -161,36 +164,12 @@ function schedulePaint(bots: BotSnap[]): void {
   }
 }
 
-let rzQueued = false
-function scheduleReposition(): void {
-  const run = (): void => {
-    rzQueued = false
-    try {
-      reposition()
-    } catch {
-      /* 重定位失败忽略 */
-    }
-  }
-  try {
-    if (typeof requestAnimationFrame === 'function') {
-      if (rzQueued) return
-      rzQueued = true
-      requestAnimationFrame(() => run())
-    } else {
-      run()
-    }
-  } catch {
-    run()
-  }
-}
-
-/** 挂载：订阅 stream + observer/滚动/尺寸跟随；首轮快照到达前不绘制。 */
+/** 挂载：订阅 stream + observer 跟随行增减；首轮快照到达前不绘制。 */
 export function mountLeftBadges(ctx: FeatureCtx): () => void {
   const noop = (): void => {}
   if (typeof document === 'undefined') return noop
   let current: BotSnap[] = []
   let hasSnap = false
-  let dropped = false
   let observer: MutationObserver | undefined
   const repaint = (): void => {
     if (!hasSnap) return
@@ -210,27 +189,12 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     /* 上报失败静默 */
   }
   activeGen = claimGen()
-  try {
-    ensureLayer()
-  } catch {
-    /* 建层失败就只靠后续同步重试 */
-  }
   let unsub: (() => void) | null = null
   try {
     unsub = ctx.subscribe((snap: StreamSnapshot) => {
       current = snap.bots
       hasSnap = snap.updatedAt > 0
-      if (!genAlive(activeGen)) {
-        if (!dropped) {
-          dropped = true
-          try {
-            removeLayer()
-          } catch {
-            /* 摘层失败忽略 */
-          }
-        }
-        return
-      }
+      if (!genAlive(activeGen)) return
       /* TEMP-DEBUG(#6)：快照到达即上报（定位后删除） */
       try {
         const nfail = snap.failed ? snap.failed.length : 0
@@ -252,17 +216,6 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
   } catch {
     /* 无 observer 就只靠快照重绘 */
   }
-  const onMove = (): void => scheduleReposition()
-  try {
-    document.addEventListener('scroll', onMove, true)
-  } catch {
-    /* 旧宿主无捕获监听就跳过 */
-  }
-  try {
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('resize', onMove)
-  } catch {
-    /* 无 resize 监听就跳过 */
-  }
   return () => {
     try {
       unsub?.()
@@ -271,21 +224,6 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     }
     try {
       observer?.disconnect()
-    } catch {
-      /* 清理失败忽略 */
-    }
-    try {
-      document.removeEventListener('scroll', onMove, true)
-    } catch {
-      /* 清理失败忽略 */
-    }
-    try {
-      if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') window.removeEventListener('resize', onMove)
-    } catch {
-      /* 清理失败忽略 */
-    }
-    try {
-      removeLayer()
     } catch {
       /* 清理失败忽略 */
     }
