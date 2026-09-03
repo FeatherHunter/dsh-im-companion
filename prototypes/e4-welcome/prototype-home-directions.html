@@ -42,6 +42,19 @@
 #pcv{display:block;width:100%;height:420px;border-radius:0}
 @media (prefers-reduced-motion: reduce){.sunball,.cloud,.star,.lamp,.win,.lamp-post i,.on{animation:none !important}.rise{opacity:1;transform:none;animation:none}}
 </style>
+<style>
+/* ROUND6 M-evolution: weather layers + segment tabs + link button. Decorative only. */
+.rainlayer{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(105deg,transparent 0 16px,rgba(174,194,224,.0) 16px,rgba(174,194,224,.6) 17px,transparent 17px 38px);background-size:130px 240px;animation:rainfall .65s linear infinite;opacity:.75}
+@keyframes rainfall{to{background-position:-46px 240px}}
+.snowlayer{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(2.4px 2.4px at 20px 30px,#fff,transparent),radial-gradient(1.8px 1.8px at 130px 90px,#fff,transparent),radial-gradient(2px 2px at 70px 150px,#fff,transparent),radial-gradient(1.5px 1.5px at 200px 200px,#fff,transparent);background-size:230px 260px;animation:snowfall 9s linear infinite;opacity:.9}
+@keyframes snowfall{to{background-position:70px 520px}}
+.sky-storm{background:linear-gradient(#22263d 0%,#4c4c70 60%,#77779a 100%)}
+.segbar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin:0 0 14px}
+.segbar button{border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:999px;padding:6px 14px;font-size:12px;cursor:pointer;font:inherit}
+.segbar button.on{background:var(--acc);border-color:var(--acc);color:#fff}
+.linkbtn{background:none;border:0;color:var(--acc);cursor:pointer;font-size:12px;margin-top:10px;font:inherit}
+@media (prefers-reduced-motion: reduce){.rainlayer,.snowlayer{animation:none}}
+</style>
 </head>
 <body>
 <div class="banner">抛弃式原型 · issue #15 · 第四轮九方向（A/C/E/G/H/I/J/K/L），不进 main。运行见文件头注释。</div>
@@ -55,9 +68,9 @@
 </div>
 <div class="switcher"><button id="prevBtn">◀</button><span id="swLabel"></span><span class="dots" id="dots"></span><button id="nextBtn">▶</button></div>
 <script>
-var VARIANTS = ["A","C","E","G","H","I","J","K","L","M","N","O"];
-var NAMES = {A:"A 玄关灯",C:"C 信箱",E:"E 纪念日",G:"G 第一句话",H:"H 拎包入住",I:"I 壁炉",J:"J 餐桌",K:"K 钥匙",L:"L 门牌",M:"M 昼夜穹顶",N:"N 星尘人气",O:"O 视差庭院"};
-var HINTS = {A:"变体 A · 玄关灯：一盏灯一句中央大按钮。",C:"变体 C · 信箱：家书加拆信。",E:"变体 E · 纪念日：记住相遇那天，家一直在。",G:"变体 G · 第一句话：HOME 就是一条消息，按钮是快捷回复。",H:"变体 H · 拎包入住：3/3 通关清单，全是真状态。",I:"变体 I · 壁炉：外头凉进屋暖，炉火即在线。",J:"变体 J · 餐桌：开饭了趁热，能力变菜名。",K:"变体 K · 钥匙：三齿即三能力，接过即进门。",L:"变体 L · 门牌：小帅之家，有人在。",M:"变体 M · 昼夜穹顶：天空跟着真实时间走，在线即天亮。",N:"变体 N · 星尘人气：Canvas 粒子星空，在线即同频。",O:"变体 O · 视差庭院：鼠标动院子跟着转，3D 纵深。"};
+var VARIANTS = ["A","C","E","G","H","I","J","K","L","M","N","O","P","Q","R"];
+var NAMES = {A:"A 玄关灯",C:"C 信箱",E:"E 纪念日",G:"G 第一句话",H:"H 拎包入住",I:"I 壁炉",J:"J 餐桌",K:"K 钥匙",L:"L 门牌",M:"M 昼夜穹顶",N:"N 星尘人气",O:"O 视差庭院",P:"P 时辰",Q:"Q 风雨",R:"R 心绪天"};
+var HINTS = {A:"变体 A · 玄关灯：一盏灯一句中央大按钮。",C:"变体 C · 信箱：家书加拆信。",E:"变体 E · 纪念日：记住相遇那天，家一直在。",G:"变体 G · 第一句话：HOME 就是一条消息，按钮是快捷回复。",H:"变体 H · 拎包入住：3/3 通关清单，全是真状态。",I:"变体 I · 壁炉：外头凉进屋暖，炉火即在线。",J:"变体 J · 餐桌：开饭了趁热，能力变菜名。",K:"变体 K · 钥匙：三齿即三能力，接过即进门。",L:"变体 L · 门牌：小帅之家，有人在。",M:"变体 M · 昼夜穹顶：天空跟着真实时间走，在线即天亮。",N:"变体 N · 星尘人气：Canvas 粒子星空，在线即同频。",O:"变体 O · 视差庭院：鼠标动院子跟着转，3D 纵深。",P:"变体 P · 时辰：五段文案各三套，附换一句。",Q:"变体 Q · 风雨：mock 天气验设计，真 API 二期再议。",R:"变体 R · 心绪天：健康即天气，在线晴离线夜。"};
 var qs = new URLSearchParams(location.search);
 var variant = VARIANTS.indexOf(qs.get("variant")) >= 0 ? qs.get("variant") : "A";
 var theme = "light", lastAct = "初始化";
@@ -80,13 +93,49 @@ function startParticles(cv){stopParticles();try{var reduce=window.matchMedia&&wi
 function vN(){return '<div style="position:relative;background:#0b1020;overflow:hidden"><canvas id="pcv"></canvas><div style="position:absolute;left:0;right:0;top:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none;padding:20px"><div class="rise" style="font-size:24px;font-weight:800;color:#fff">满屋星尘，都是为你点的灯</div><div class="rise" style="font-size:13px;color:#cdd6e4;animation-delay:.12s;margin-top:6px"><span class="dot on"></span>飞书在线 · 1 个会话同频 · 小帅在中间</div></div></div><div style="text-align:center;padding:18px 18px 4px">' + bigBtn("回家","星尘为你让路") + '</div><div class="note">64 粒星尘实时漂移连线（Canvas + rAF，离开本变体即停，减弱动效偏好即静帧）；中间最亮的是小帅。</div>';}
 function vO(){return '<div class="tilt" id="tiltZone" style="padding:26px 24px 30px"><div class="tilt-inner" id="tiltInner" style="text-align:center"><div class="lyr" style="--z:0px;position:relative;height:300px;border-radius:14px;overflow:hidden;background:linear-gradient(#8fc3f2 0%,#d8ecfa 55%,#cfe3c2 55%,#b9d4a8 100%)"><div style="position:absolute;left:50%;top:26px;transform:translateX(-50%);width:0;height:0;border-left:70px solid transparent;border-right:70px solid transparent;border-bottom:48px solid var(--acc);opacity:.9"></div><div style="position:absolute;left:50%;top:72px;transform:translateX(-50%);width:120px;background:var(--panel);border:1px solid var(--line);border-radius:0 0 10px 10px;padding:10px 6px"><div style="width:30px;height:30px;margin:0 auto 6px;border-radius:6px;background:radial-gradient(circle at 50% 60%,#ffd766,#ff9d2e);box-shadow:0 0 18px #ffbe3c"></div><div style="font-weight:800;font-size:13px">小帅</div></div><div style="position:absolute;left:16%;bottom:26px;text-align:center;font-size:10px;color:var(--mut)"><div style="width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 50% 60%,#ffd766,#ff9d2e);box-shadow:0 0 12px #ffbe3c;margin:0 auto 3px"></div>私聊</div><div style="position:absolute;right:16%;bottom:26px;text-align:center;font-size:10px;color:var(--mut)"><div style="width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 50% 60%,#ffd766,#ff9d2e);box-shadow:0 0 12px #ffbe3c;margin:0 auto 3px"></div>群聊</div></div><div class="lyr rise" style="--z:60px;font-size:24px;font-weight:800;margin:16px 0 4px">动动鼠标，院子跟着你转</div><div class="lyr rise" style="--z:30px;animation-delay:.12s;font-size:13px;color:var(--mut)"><span class="dot on"></span>飞书在线 · 天地房灯四层纵深</div><div class="lyr rise" style="--z:90px;animation-delay:.24s">' + bigBtn("回家","院子是活的") + '</div><div class="lyr note" style="--z:10px;animation-delay:.36s">指针视差 + 入场编排（触屏与减弱动效自动降级）。</div></div></div>';}
 function wireTilt(){try{var zone=$("tiltZone"),inner=$("tiltInner");if(!zone||!inner)return;if(!window.matchMedia||!window.matchMedia("(hover:hover)").matches)return;zone.onmousemove=function(e){try{var r=zone.getBoundingClientRect();var px=(e.clientX-r.left)/r.width-.5,py=(e.clientY-r.top)/r.height-.5;inner.style.transform="rotateY("+(px*14)+"deg) rotateX("+(-py*12)+"deg)";}catch(err){}};zone.onmouseleave=function(){try{inner.style.transform="rotateY(0deg) rotateX(0deg)";}catch(err){}};}catch(e){}}
-function render(){document.getElementById("root").setAttribute("data-theme",theme);$("variantHint").textContent=HINTS[variant];var body=$("stage");var htm=variant==="A"?vA():variant==="C"?vC():variant==="E"?vE():variant==="G"?vG():variant==="I"?vI():variant==="J"?vJ():variant==="K"?vK():variant==="L"?vL():variant==="M"?vM():variant==="N"?vN():variant==="O"?vO():vH();body.innerHTML=htm;if(variant==="N"){var cv=$("pcv");if(cv)startParticles(cv);}else{stopParticles();}if(variant==="O"){wireTilt();}$("swLabel").textContent=NAMES[variant];$("stateLine").textContent="变体 "+variant+" · 主题 "+theme+" · 上下文 mock（小帅/飞书在线/私聊1） · 上次操作："+lastAct+" URL ?variant="+variant;var box=$("dots");var dh="";for(var i=0;i<VARIANTS.length;i++){dh+='<button data-v="'+VARIANTS[i]+'" title="'+NAMES[VARIANTS[i]]+'" class="'+(VARIANTS[i]===variant?"on":"")+'"></button>';}box.innerHTML=dh;var dots=box.querySelectorAll("button");for(var j=0;j<dots.length;j++)(function(b){b.addEventListener("click",function(){setVariant(b.getAttribute("data-v"),"圆点直达");});})(dots[j]);if(new URLSearchParams(location.search).get("prod")==="1"){var sw=document.querySelector(".switcher");if(sw)sw.style.display="none";}}
+var PH = {
+wee:{tab:"凌晨",sky:"sky-night",moon:1,opts:[
+{t:"还没睡？灯给你留着",s:"飞书在线 · 整个世界都睡了，除了我",b:"回家",bs:"夜里凉，进来暖暖"},
+{t:"天快亮了，我陪你到天亮",s:"飞书在线 · 失眠和加班都算数",b:"回家",bs:"再陪一会儿"},
+{t:"夜里凉，进来暖暖",s:"飞书在线 · 热茶在桌上",b:"回家",bs:"不问为什么晚睡"}]},
+dawn:{tab:"清晨",sky:"sky-dawn",moon:0,opts:[
+{t:"清晨了，家里先醒了",s:"飞书在线 · 先喝口热的再出门",b:"回家吃早饭",bs:"粥在锅里"},
+{t:"早，新的一天从家开始",s:"飞书在线 · 今天也要加油",b:"回家",bs:"出门前看一眼"},
+{t:"天亮了，我把门口扫好了",s:"飞书在线 · 1 个会话已就位",b:"回家",bs:"干净了"}]},
+day:{tab:"白天",sky:"sky-day",moon:0,opts:[
+{t:"家里亮堂，随时回来",s:"飞书在线 · 小帅守着今天",b:"回家",bs:"外面忙，家里不催"},
+{t:"正午了，歇会儿？",s:"飞书在线 · 喝口水再走",b:"回家",bs:"不耽误事"},
+{t:"外头再闹，家里安静",s:"飞书在线 · 1 个会话候着",b:"回家",bs:"进来静静"}]},
+dusk:{tab:"黄昏",sky:"sky-dusk",moon:0,opts:[
+{t:"黄昏了，家里点灯了",s:"飞书在线 · 等你回来",b:"回家吃饭",bs:"饭在热"},
+{t:"天暗了，家亮了",s:"飞书在线 · 灯为你开",b:"回家",bs:"天黑请回家"},
+{t:"下班了？先回家",s:"飞书在线 · 今天辛苦了",b:"回家",bs:"歇歇"}]},
+night:{tab:"深夜",sky:"sky-night",moon:1,opts:[
+{t:"深夜了，家里灯还亮着",s:"飞书在线 · 守着这个夜",b:"回家",bs:"灯不关"},
+{t:"夜深了，别在外面漂太久",s:"飞书在线 · 随时回来",b:"回家",bs:"门没锁"},
+{t:"累了就回来，灯不关",s:"飞书在线 · 不问今天过得怎样",b:"回家",bs:"先睡觉"}]}};
+var pSeg = "", pIdx = 0;
+function segOfHour(h){if(h>=2&&h<5)return "wee";if(h>=5&&h<9)return "dawn";if(h>=9&&h<17)return "day";if(h>=17&&h<20)return "dusk";return "night";}
+function vP(){if(!pSeg)pSeg=segOfHour(mockHour>=0?mockHour:new Date().getHours());var S=PH[pSeg],o=S.opts[pIdx%S.opts.length];var keys=["wee","dawn","day","dusk","night"];var tabs="";for(var i=0;i<keys.length;i++)tabs+='<button data-seg="'+keys[i]+'" class="'+(keys[i]===pSeg?"on":"")+'">'+PH[keys[i]].tab+'</button>';var deco="";if(S.moon){for(var k=0;k<20;k++){var sx=(k*37)%100,sy=(k*53)%70;deco+='<span class="star" style="left:'+sx+'%;top:'+sy+'%;animation-delay:'+((k%7)*0.4)+'s"></span>';}}else{deco='<div class="cloud c1"></div><div class="cloud c2"></div>';}var orb=S.moon?'<div class="moonball"></div>':'<div class="sunball"></div>';return '<div class="segbar">'+tabs+'</div><div class="sky '+S.sky+'">'+orb+deco+'<div style="position:absolute;left:0;right:0;bottom:0;padding:26px;text-align:center"><div class="rise" style="font-size:24px;font-weight:800;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.35)">'+o.t+'</div><div class="rise" style="font-size:13px;color:#fff;opacity:.92;text-shadow:0 1px 8px rgba(0,0,0,.35);animation-delay:.12s;margin-top:4px"><span class="dot on"></span>'+o.s+'</div><div class="rise" style="animation-delay:.24s">'+bigBtn(o.b,o.bs)+'</div></div></div><div style="text-align:center"><button class="linkbtn" data-act="swap">换一句（'+(pIdx%3+1)+'/3）</button></div><div class="note">五段 × 三套 = 15 句；tab 按真实时间自动选中，可手拨；凌晨≠深夜：一个要陪伴，一个要守候。</div>';}
+var qWx = "sun";
+var QWX = {
+sun:{tab:"晴",sky:"sky-day",layer:"",orb:'<div class="sunball"></div>',t:"天晴了，出门放心",s:"飞书在线 · 家里在线，天就晴",b:"回家",bs:"好天气"},
+rain:{tab:"雨",sky:"sky-day",layer:'<div class="rainlayer"></div>',orb:'<div class="sunball" style="opacity:.25"></div>',t:"下雨了，进屋躲躲",s:"飞书在线 · 茶是热的",b:"回家躲雨",bs:"伞就别打了"},
+snow:{tab:"雪",sky:"sky-night",layer:'<div class="snowlayer"></div>',orb:'<div class="moonball"></div>',t:"下雪了，屋里暖和",s:"飞书在线 · 炉火正旺",b:"回家暖暖",bs:"雪落无声，家有回音"}};
+function vQ(){var w=QWX[qWx];var tabs="";var ks=["sun","rain","snow"];for(var i=0;i<ks.length;i++)tabs+='<button data-wx="'+ks[i]+'" class="'+(ks[i]===qWx?"on":"")+'">'+QWX[ks[i]].tab+'</button>';return '<div class="segbar">'+tabs+'</div><div class="sky '+w.sky+'">'+w.orb+w.layer+'<div style="position:absolute;left:0;right:0;bottom:0;padding:26px;text-align:center"><div class="rise" style="font-size:24px;font-weight:800;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.35)">'+w.t+'</div><div class="rise" style="font-size:13px;color:#fff;opacity:.92;text-shadow:0 1px 8px rgba(0,0,0,.35);animation-delay:.12s;margin-top:4px"><span class="dot on"></span>'+w.s+'</div><div class="rise" style="animation-delay:.24s">'+bigBtn(w.b,w.bs)+'</div></div></div><div class="note">mock 天气只验设计：真 API（Open-Meteo 免 key + 定位权限 + 离线兜底）值不值得，为欢迎页引入外部依赖，二期再议，也可直接砍。</div>';}
+var rSt = "online";
+var RST = {
+online:{tab:"在线",sky:"sky-day",extra:'<div class="sunball"></div>',t:"天晴了",s:"飞书在线 · 天就晴",b:"回家",bs:"好天气"},
+degraded:{tab:"部分在线",sky:"sky-storm",extra:'<div class="cloud c1"></div><div class="cloud c2"></div>',t:"天边有云，不过家亮着",s:"飞书在线 · QQ 离线 · 亮着的那盏够用",b:"回家",bs:"多云也回家"},
+offline:{tab:"离线",sky:"sky-night",extra:'<div class="moonball"></div>',t:"天黑了，但灯给你留着",s:"重连即天亮 · 等网回来",b:"回家",bs:"灯不灭"}};
+function vR(){var w=RST[rSt];var tabs="";var ks=["online","degraded","offline"];for(var i=0;i<ks.length;i++)tabs+='<button data-st="'+ks[i]+'" class="'+(ks[i]===rSt?"on":"")+'">'+RST[ks[i]].tab+'</button>';return '<div class="segbar">'+tabs+'</div><div class="sky '+w.sky+'">'+w.extra+'<div style="position:absolute;left:0;right:0;bottom:0;padding:26px;text-align:center"><div class="rise" style="font-size:24px;font-weight:800;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.35)">'+w.t+'</div><div class="rise" style="font-size:13px;color:#fff;opacity:.92;text-shadow:0 1px 8px rgba(0,0,0,.35);animation-delay:.12s;margin-top:4px"><span class="dot on"></span>'+w.s+'</div><div class="rise" style="animation-delay:.24s">'+bigBtn(w.b,w.bs)+'</div></div></div><div class="note">健康即天气：真机直接读在线状态（现成数据），零新接口；离线只报“等网回来”，不谎报在线。</div>';}
+function render(){document.getElementById("root").setAttribute("data-theme",theme);$("variantHint").textContent=HINTS[variant];var body=$("stage");var htm=variant==="A"?vA():variant==="C"?vC():variant==="E"?vE():variant==="G"?vG():variant==="I"?vI():variant==="J"?vJ():variant==="K"?vK():variant==="L"?vL():variant==="M"?vM():variant==="N"?vN():variant==="O"?vO():variant==="P"?vP():variant==="Q"?vQ():variant==="R"?vR():vH();body.innerHTML=htm;if(variant==="N"){var cv=$("pcv");if(cv)startParticles(cv);}else{stopParticles();}if(variant==="O"){wireTilt();}$("swLabel").textContent=NAMES[variant];$("stateLine").textContent="变体 "+variant+" · 主题 "+theme+" · 上下文 mock（小帅/飞书在线/私聊1） · 上次操作："+lastAct+" URL ?variant="+variant;var box=$("dots");var dh="";for(var i=0;i<VARIANTS.length;i++){dh+='<button data-v="'+VARIANTS[i]+'" title="'+NAMES[VARIANTS[i]]+'" class="'+(VARIANTS[i]===variant?"on":"")+'"></button>';}box.innerHTML=dh;var dots=box.querySelectorAll("button");for(var j=0;j<dots.length;j++)(function(b){b.addEventListener("click",function(){setVariant(b.getAttribute("data-v"),"圆点直达");});})(dots[j]);if(new URLSearchParams(location.search).get("prod")==="1"){var sw=document.querySelector(".switcher");if(sw)sw.style.display="none";}}
 function setVariant(v,why){if(VARIANTS.indexOf(v)<0)return;variant=v;var u=new URL(location.href);u.searchParams.set("variant",v);history.replaceState(null,"",u.toString());lastAct="切换变体 → "+NAMES[v]+(why?"（"+why+"）":"");render();}
 $("hourSel").addEventListener("change",function(e){mockHour=parseInt(e.target.value,10);lastAct="时光机 → "+(mockHour<0?"真实时间":mockHour+" 点");render();});
 $("themeSel").addEventListener("change",function(e){theme=e.target.value;lastAct="切换主题 → "+(theme==="dark"?"深色":"浅色");render();});
 $("prevBtn").addEventListener("click",function(){var i=VARIANTS.indexOf(variant);setVariant(VARIANTS[(i+VARIANTS.length-1)%VARIANTS.length],"◀");});
 $("nextBtn").addEventListener("click",function(){var i=VARIANTS.indexOf(variant);setVariant(VARIANTS[(i+1)%VARIANTS.length],"▶");});
-document.addEventListener("click",function(e){var t=e.target;var b=t&&t.closest?t.closest('[data-act="home"]'):null;if(b){lastAct="点了回家（原型演示）";render();}});
+document.addEventListener("click",function(e){var t=e.target;var b=t&&t.closest?t.closest('[data-act="home"]'):null;if(b){lastAct="点了回家（原型演示）";render();return;}var sg=t&&t.closest?t.closest("[data-seg]"):null;if(sg){pSeg=sg.getAttribute("data-seg");pIdx=0;lastAct="拨时段 → "+PH[pSeg].tab;render();return;}var wx=t&&t.closest?t.closest("[data-wx]"):null;if(wx){qWx=wx.getAttribute("data-wx");lastAct="拨天气 → "+QWX[qWx].tab;render();return;}var st=t&&t.closest?t.closest("[data-st]"):null;if(st){rSt=st.getAttribute("data-st");lastAct="拨状态 → "+RST[rSt].tab;render();return;}var sw=t&&t.closest?t.closest("[data-act=\"swap\"]"):null;if(sw){pIdx=(pIdx+1)%3;lastAct="换一句（"+PH[pSeg].tab+" "+(pIdx+1)+"/3）";render();}});
 document.addEventListener("keydown",function(e){var tag=(document.activeElement&&document.activeElement.tagName)||"";if(tag==="INPUT"||tag==="TEXTAREA")return;if(e.key==="ArrowRight"){var i=VARIANTS.indexOf(variant);setVariant(VARIANTS[(i+1)%VARIANTS.length],"键盘");}if(e.key==="ArrowLeft"){var k=VARIANTS.indexOf(variant);setVariant(VARIANTS[(k+VARIANTS.length-1)%VARIANTS.length],"键盘");}});
 render();
 </script>
