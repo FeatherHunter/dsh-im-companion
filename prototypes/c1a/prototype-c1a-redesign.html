@@ -1,0 +1,295 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE for issue #9 (C1a 详情抽屉 redesign). Do NOT ship to main. -->
+<!-- Design Q: 当前抽屉（全面板宽）虚线多、对不齐、按钮没按钮样——2~4 个视觉方向，选一个再改造真代码。Branch: UI. -->
+<!-- Variants: A 卡片流 / B 设置列表 / C 分段聚焦；?variant=A|B|C + 底部悬浮条 + ←/→；深色默认；全可点+内存态+State外显。 -->
+<!-- Run: python -m http.server 8788 后访问 /prototypes/c1a/prototype-c1a-redesign.html?variant=A ；本文件永不进 main。 -->
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[PROTOTYPE #9] C1a 抽屉 redesign 三方向</title>
+<style>
+:root{color-scheme:light;--bg:#f2f4f7;--panel:#fff;--ink:#1f2329;--mut:#6b7280;--line:#e3e6eb;--acc:#1677ff;--ok:#20a162;--bad:#d92d20;--fill:#f6f8fa;--shadow:0 12px 40px rgba(0,0,0,.16)}
+[data-theme="dark"]{color-scheme:dark;--bg:#0f1115;--panel:#171b23;--ink:#e8edf3;--mut:#8b949e;--line:#262d38;--acc:#4493ff;--ok:#3fb950;--bad:#f85149;--fill:#1d232e;--shadow:0 12px 40px rgba(0,0,0,.5)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 -apple-system,"PingFang SC","Noto Sans SC",Segoe UI,Roboto,sans-serif}
+.proto-banner{background:#2a2100;color:#ffce6b;border-bottom:2px dashed #d29922;padding:8px 16px;font-size:12px}
+.wrap{max-width:1180px;margin:0 auto;padding:14px 16px 150px}
+h1{font-size:19px;margin:10px 0 2px}
+.q{color:var(--mut);font-size:13px;margin:0 0 12px;max-width:100ch}
+.q b{color:var(--ink)}
+.console{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px;font-size:12px;color:var(--mut)}
+.btn{padding:6px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--ink);cursor:pointer;font-size:12px}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
+.btn.cur{outline:2px solid var(--acc);outline-offset:1px}
+select,input[type=text],textarea{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 10px}
+/* ---- mock DSH shell: 左190 + 内容730 ---- */
+.dsh{max-width:980px;margin:0 auto;display:grid;grid-template-columns:190px 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);min-height:560px;box-shadow:var(--shadow)}
+.side{border-right:1px solid var(--line);padding:10px;font-size:12px;color:var(--mut)}
+.side .ni{padding:7px 9px;border-radius:8px;margin-bottom:2px}
+.side .ni.cur{background:var(--fill);color:var(--ink);font-weight:700}
+.fleet{position:relative;min-width:0;background:var(--panel);display:flex;flex-direction:column}
+.fleetHd{padding:14px 16px 0}
+.fleetHd h2{margin:0;font-size:21px}
+.fleetHd .sub{font-size:12px;color:var(--mut);margin:2px 0 10px}
+.arow{margin:0 16px 14px;border:1px solid var(--line);border-radius:11px;padding:11px 12px;display:flex;gap:10px;align-items:center}
+.avatar{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:800;background:linear-gradient(135deg,#12213f,#3964fe);flex:none}
+.aname{font-weight:700}
+.asub{font-size:11px;color:var(--mut)}
+.rowacts{margin-left:auto;display:flex;gap:6px;flex:none;align-items:center}
+/* ---- drawer: 占满内容区 ---- */
+.sheet{position:absolute;inset:0;z-index:5;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+.sheetHd{padding:12px 16px;border-bottom:1px solid var(--line);display:flex;gap:8px;align-items:center;background:var(--panel)}
+.sheetHd b{font-size:14px}
+.sheetBd{padding:14px 16px;overflow:auto;display:grid;gap:12px;align-content:start}
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 14px}
+.secT{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;margin:0 0 4px}
+.secT .n{width:19px;height:19px;border-radius:50%;background:var(--acc);color:#fff;font-size:11px;display:inline-grid;place-items:center;flex:none}
+.secT .tag{font-weight:400;font-size:11px;color:var(--mut)}
+.note{font-size:11.5px;color:var(--mut);margin:6px 0 0}
+.statRow{display:flex;gap:8px;margin-top:8px}
+.stat{flex:1;background:var(--fill);border-radius:9px;padding:7px 4px;text-align:center}
+.stat b{display:block;font-size:16px}
+.stat span{font-size:11px;color:var(--mut)}
+.kv{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.kv:first-of-type{border-top:0}
+.kv .k{color:var(--mut);flex:none;min-width:3em}
+.kv .v{margin-left:auto;display:flex;align-items:center;gap:8px}
+/* pill 开关 */
+.sw{position:relative;width:42px;height:24px;border-radius:999px;border:0;cursor:pointer;background:var(--mut);opacity:.55;flex:none;padding:0}
+.sw[aria-checked="true"]{background:var(--ok);opacity:1}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
+.sw[aria-checked="true"]::after{left:21px}
+.sw:disabled{cursor:not-allowed;opacity:.35}
+.swGhost{font-size:12px;color:var(--mut)}
+.guideBox{background:var(--fill);border-radius:9px;padding:8px 10px;font-size:12.5px;margin:6px 0;word-break:break-all}
+.chHead{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px;padding:9px 0 2px}
+.chLogo{width:20px;height:20px;border-radius:6px;display:inline-grid;place-items:center;color:#fff;font-size:11px;font-weight:800;flex:none}
+textarea{width:100%;min-height:78px;resize:vertical;font-size:13px}
+.wsPath{font-size:12.5px;word-break:break-all;margin:2px 0 8px}
+.toolbarRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+input[type=text].grow{flex:1;min-width:120px}
+/* 分段 */
+.segBar{display:flex;background:var(--fill);border-radius:11px;padding:3px;gap:2px}
+.segBar button{flex:1;border:0;background:transparent;color:var(--mut);font-size:13px;font-weight:700;padding:8px 0;border-radius:8px;cursor:pointer}
+.segBar button.cur{background:var(--panel);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.2)}
+.heroBtn{width:100%;padding:11px;border-radius:11px;font-size:14px}
+/* 悬浮条 + state + toast */
+.floatBar{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:50;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 10px;display:flex;gap:8px;align-items:center;box-shadow:var(--shadow);font-size:12px}
+.stateWrap{max-width:980px;margin:12px auto 0}
+#state{background:#0d1117;color:#c9e1ff;border-radius:10px;padding:10px 12px;font:11px/1.6 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow:auto}
+.toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:#222;color:#fff;font-size:13px;padding:9px 18px;border-radius:999px;opacity:0;transition:opacity .2s;z-index:60;pointer-events:none;max-width:80vw}
+.toast.show{opacity:1}
+.tagNew{font-size:10px;background:var(--acc);color:#fff;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:2px}
+</style>
+</head>
+<body>
+<div class="proto-banner">THROWAWAY 原型（#9 抽屉 redesign，不进 main）：A 卡片流 / B 设置列表 / C 分段聚焦 —— <b>丑的是真机，不是这个原型</b>。</div>
+<div class="wrap">
+<h1>抽屉 redesign：三个方向 <span class="tagNew">PROTOTYPE</span></h1>
+<p class="q">问题：<b>全宽抽屉在视觉上像线框图</b>（虚线多、对不齐、按钮没按钮样）。下面是同一份内容（摘要/分渠道上下文/性格/工作区/路由席位/渠道/发送）的三种穿衣方式；所有控件可点、状态进内存、每次操作后底部 State 面板更新 JSON。</p>
+<div class="console">
+<button class="btn" data-v="A">A · 卡片流</button>
+<button class="btn" data-v="B">B · 设置列表</button>
+<button class="btn" data-v="C">C · 分段聚焦</button>
+<button class="btn" id="themeBtn">深色/浅色</button>
+<button class="btn" id="resetBtn">重置状态</button>
+<span id="vLabel"></span>
+</div>
+<div class="dsh">
+<div class="side">
+<div class="ni">通用设置</div><div class="ni">模型</div><div class="ni">插件</div><div class="ni">Agent 预设</div><div class="ni">IM机器人</div><div class="ni cur">IM机器人辅助</div><div class="ni">插件市场</div>
+</div>
+<div class="fleet">
+<div class="fleetHd"><h2>IM机器人辅助</h2><div class="sub">3 个 Agent · 2 个渠道 · 4 个机器人</div></div>
+<div class="arow"><div class="avatar">帅</div><div><div class="aname">小帅2</div><div class="asub">工作区 · D:\3DeepSeekHarness\agents\xiaoshuai</div></div>
+<div class="rowacts"><span class="asub">● 在线</span><button class="btn sm">接入</button><button class="btn sm primary" onclick="openSheet()">详情</button><button class="btn sm">…</button></div></div>
+<div class="sheet" id="sheet"><div class="sheetHd"><span style="color:var(--ok)">●</span><b>小帅2 · 详情</b><span style="margin-left:auto"></span><button class="btn sm" onclick="closeSheet()">关闭</button></div>
+<div class="sheetBd" id="sheetBd"></div></div>
+</div>
+</div>
+<div class="stateWrap"><div class="console" style="margin-bottom:6px">State（每次操作后更新）</div><pre id="state"></pre></div>
+</div>
+<div class="floatBar"><span>方向：</span><button class="btn sm" data-v="A">A 卡片流</button><button class="btn sm" data-v="B">设置列表</button><button class="btn sm" data-v="C">分段聚焦</button><span style="color:var(--mut)">←/→ 切换 · ?variant= 直达</span></div>
+<div class="toast" id="toast"></div>
+<script>
+var S, V = (new URLSearchParams(location.search).get("variant") || "A").toUpperCase();
+if (!"ABC".includes(V)) V = "A";
+var SEG = "ctx";
+function freshState() {
+  return { preset: "ptc", group: { feishu: true, weixin: false }, direct: { feishu: true, weixin: true },
+    fields: { feishu: ["channel", "conversationType", "senderId", "senderName", "botId"], weixin: ["senderId"] },
+    guidance: { feishu: "你是飞书渠道", weixin: "你是微信渠道" },
+    personality: "", persArmed: false, ws: "D:\\3DeepSeekHarness\\agents\\xiaoshuai", wsDraft: null,
+    routes: [], unbindArmed: null, catalog: [{ id: "ptc", label: "PTC 模式" }, { id: "std", label: "标准模式" }, { id: "create", label: "创造模式" }] };
+}
+S = freshState();
+var CH = [{ id: "feishu", label: "飞书", c: "#00b78a", ch: "飞" }, { id: "weixin", label: "微信", c: "#07c160", ch: "微" }];
+function toast(m) { var t = document.getElementById("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 2200); }
+function paintState() { document.getElementById("state").textContent = JSON.stringify({ variant: V, seg: SEG, state: S }, null, 1); }
+function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+function swTxt(which, id) { var on = S[which][id]; return '<button class="sw" role="switch" aria-checked="' + on + '" title="' + (which === "group" ? "群聊" : "私聊") + "增强（只写本渠道）" + '" onclick="flip(\'' + which + '\',\'' + id + '\')"></button>'; }
+function flip(which, id) { S[which][id] = !S[which][id]; toast((id === "feishu" ? "飞书" : "微信") + (which === "group" ? "群聊" : "私聊") + "增强已写入真系统，新会话生效"); paint(); }
+function setPreset(v) { S.preset = v; toast("预设已写入真系统，新会话生效"); paint(); }
+function applyPers() {
+  if (!S.persArmed) { S.persArmed = true; paint(); return; }
+  var t = document.getElementById("persArea").value.trim();
+  if (!t) { toast("先写点性格描述再应用"); return; }
+  S.personality = t; S.persArmed = false;
+  S.guidance.feishu = t; S.guidance.weixin = t;
+  toast("性格已写入真系统，新会话生效"); paint();
+}
+function draftPers(v) { S.personality = v; paintState(); }
+function draftWs(v) { S.wsDraft = v; paintState(); }
+function saveWs() {
+  var v = (document.getElementById("wsInput").value || "").trim();
+  if (!v || !(v[0] === "/" || /^[A-Za-z]:[\\/]/.test(v))) { toast("请输入绝对路径形式的工作区目录"); return; }
+  S.ws = v; S.wsDraft = null; toast("绑定工作区已写入真系统"); paint();
+}
+function browse() { S.wsDraft = S.wsDraft || S.ws; toast("（原型）已打开文件夹浏览器，选中后填回"); paint(); }
+function unbind(id) {
+  if (S.unbindArmed !== id) { S.unbindArmed = id; paint(); return; }
+  S.unbindArmed = null; toast("渠道机器人已移除"); paint();
+}
+function testSend() { toast("已发送到「飞书 · 测试会话」。"); }
+function openSheet() { document.getElementById("sheet").style.display = "flex"; }
+function closeSheet() { document.getElementById("sheet").style.display = "none"; }
+function setV(v) { V = v; history.replaceState(null, "", "?variant=" + v); paint(); }
+function setSeg(s) { SEG = s; paint(); }
+function presetOpts() {
+  var o = '<option value="__follow__">跟随默认</option>';
+  S.catalog.forEach(function (c) { o += '<option value="' + c.id + '"' + (S.preset === c.id ? " selected" : "") + ">" + c.label + "</option>"; });
+  return o;
+}
+function ctxCardHTML(id) {
+  var ch = CH.find(function (c) { return c.id === id; });
+  return { ch: ch, g: S.group[id], d: S.direct[id], fields: S.fields[id].join("、"), guide: S.guidance[id] };
+}
+/* ---------- A: 卡片流 ---------- */
+function renderA() {
+  var h = "";
+  h += '<div class="sec"><div class="secT"><span class="n">1</span>摘要 <span class="tag">写入真系统，新会话生效</span></div>';
+  h += '<div class="kv"><span class="k">模式</span><span class="v"><select onchange="setPreset(this.value)">' + presetOpts() + "</select></span></div>";
+  h += '<div class="note">沟通模式：DSH 用哪种方式回话（PTC/标准/创造…），不是角色性格</div>';
+  h += '<div class="statRow"><div class="stat"><b>7</b><span>路由</span></div><div class="stat"><b>2</b><span>渠道</span></div><div class="stat"><b style=\"color:var(--ok)\">●</b><span>在线</span></div></div></div>';
+  h += '<div class="sec"><div class="secT"><span class="n">2</span>上下文增强 <span class="tag">分渠道，各管各</span></div>';
+  ["feishu", "weixin"].forEach(function (id) {
+    var c = ctxCardHTML(id);
+    h += '<div class="chHead"><span class="chLogo" style="background:' + c.ch.c + '">' + c.ch.ch + "</span>" + c.ch.label + "</div>";
+    h += '<div class="kv"><span class="k">群聊</span><span class="v">' + swTxt("group", id) + "<b>" + (c.g ? "开" : "关") + "</b></span></div>";
+    h += '<div class="kv"><span class="k">私聊</span><span class="v">' + swTxt("direct", id) + "<b>" + (c.d ? "开" : "关") + "</b></span></div>";
+    h += '<div class="note">字段：' + esc(c.fields) + "</div>";
+    h += '<div class="guideBox">' + esc(c.guide) + "</div>";
+  });
+  h += '<div class="note">打开后 AI 能看到消息哪来的（哪个群/谁发的）；字段与引导语请去 dsh-im 上游改。</div></div>';
+  h += '<div class="sec"><div class="secT"><span class="n">3</span>性格/语气 <span class="tag">一框写全渠道</span></div>';
+  h += '<textarea id="persArea" placeholder="比如：说话幽默，像朋友一样；群里严肃、私聊放飞…" oninput="draftPers(this.value)">' + esc(S.personality) + "</textarea>";
+  h += '<div class="toolbarRow" style="margin-top:8px"><button class="btn primary" onclick="applyPers()">' + (S.persArmed ? "确认覆盖各渠道引导语？" : "应用") + "</button></div>";
+  h += '<div class="note">应用后覆盖各渠道现有引导语，新会话生效。</div></div>';
+  h += '<div class="sec"><div class="secT"><span class="n">4</span>绑定工作区</div><div class="wsPath">' + esc(S.ws) + "</div>";
+  h += '<div class="toolbarRow"><input type="text" class="grow" id="wsInput" value="' + esc(S.wsDraft || S.ws) + '" oninput="draftWs(this.value)">';
+  h += '<button class="btn" onclick="browse()">浏览</button><button class="btn primary" onclick="saveWs()">保存路径</button></div></div>';
+  h += '<div class="sec"><div class="secT"><span class="n">5</span>会话路由摘要 <span class="tag">0 · E3 席位</span></div><div class="note">会话路由预览随 E3 落地，席位已留。</div></div>';
+  h += '<div class="sec"><div class="secT"><span class="n">6</span>渠道管理 <span class="tag">2</span></div>';
+  CH.forEach(function (c) {
+    h += '<div class="kv"><span class="k"><span class="chLogo" style="background:' + c.c + '">' + c.ch + "</span></span><span>" + c.label + "</span>";
+    h += '<span class="v"><button class="btn sm" onclick="unbind(\'' + c.id + '\')">' + (S.unbindArmed === c.id ? "确认解绑？" : "解绑") + "</button></span></div>";
+  });
+  h += "</div>";
+  h += '<button class="btn primary heroBtn" onclick="testSend()">发测试消息（→飞书）</button>';
+  return h;
+}
+/* ---------- B: 设置列表 ---------- */
+function renderB() {
+  var h = "";
+  h += '<div class="sec" style="padding:4px 14px"><div class="kv"><span class="k">模式</span><span class="v"><select onchange="setPreset(this.value)">' + presetOpts() + "</select></span></div>";
+  h += '<div class="kv"><span class="k">状态</span><span class="v">路由 7 · 渠道 2 · <b style=\"color:var(--ok)\">在线</b></span></div></div>';
+  h += '<div class="note" style="padding:0 4px">沟通模式：DSH 用哪种方式回话（PTC/标准/创造…），不是角色性格。写入真系统，新会话生效。</div>';
+  ["feishu", "weixin"].forEach(function (id) {
+    var c = ctxCardHTML(id);
+    h += '<div class="note" style="font-weight:800;color:var(--ink);font-size:12px;margin:10px 4px 2px">上下文 · ' + c.ch.label + "</div>";
+    h += '<div class="sec" style="padding:4px 14px">';
+    h += '<div class="kv"><span class="k">群聊增强</span><span class="v">' + swTxt("group", id) + "</span></div>";
+    h += '<div class="kv"><span class="k">私聊增强</span><span class="v">' + swTxt("direct", id) + "</span></div>";
+    h += '<div class="kv"><span class="k">字段</span><span class="v" style="font-size:12px">' + esc(c.fields) + "</span></div>";
+    h += '<div class="kv"><span class="k">引导语</span><span class="v" style="font-size:12px;max-width:60%;text-align:right">' + esc(c.guide) + "</span></div></div>";
+  });
+  h += '<div class="note" style="font-weight:800;color:var(--ink);font-size:12px;margin:10px 4px 2px">性格/语气</div>';
+  h += '<div class="sec" style="padding:10px 14px"><textarea id="persArea" oninput="draftPers(this.value)" placeholder="比如：说话幽默，像朋友一样…">' + esc(S.personality) + "</textarea>";
+  h += '<div class="toolbarRow" style="margin-top:8px"><button class="btn primary" style="flex:1" onclick="applyPers()">' + (S.persArmed ? "确认覆盖各渠道引导语？" : "应用到全部渠道") + "</button></div></div>";
+  h += '<div class="note" style="font-weight:800;color:var(--ink);font-size:12px;margin:10px 4px 2px">绑定工作区</div>';
+  h += '<div class="sec" style="padding:10px 14px"><div class="wsPath">' + esc(S.ws) + "</div>";
+  h += '<div class="toolbarRow"><input type="text" class="grow" id="wsInput" value="' + esc(S.wsDraft || S.ws) + '" oninput="draftWs(this.value)">';
+  h += '<button class="btn" onclick="browse()">浏览</button><button class="btn primary" onclick="saveWs()">保存</button></div></div>';
+  h += '<div class="sec" style="padding:4px 14px;margin-top:10px"><div class="kv"><span class="k">会话路由</span><span class="v">随 E3 落地</span></div>';
+  CH.forEach(function (c) {
+    h += '<div class="kv"><span class="k"><span class="chLogo" style="background:' + c.c + '">' + c.ch + "</span> " + c.label + "</span>";
+    h += '<span class="v"><button class="btn sm" onclick="unbind(\'' + c.id + '\')">' + (S.unbindArmed === c.id ? "确认解绑？" : "解绑") + "</button></span></div>";
+  });
+  h += "</div>";
+  h += '<button class="btn primary heroBtn" style="margin-top:10px" onclick="testSend()">发测试消息（→飞书）</button>';
+  return h;
+}
+/* ---------- C: 分段聚焦 ---------- */
+function renderC() {
+  var h = "";
+  h += '<div class="segBar" role="tablist">';
+  [["mode", "模式"], ["ctx", "上下文"], ["pers", "性格"], ["more", "更多"]].forEach(function (s) {
+    h += '<button role="tab" class="' + (SEG === s[0] ? "cur" : "") + '" onclick="setSeg(\'' + s[0] + '\')">' + s[1] + "</button>";
+  });
+  h += "</div>";
+  if (SEG === "mode") {
+    h += '<div class="sec"><div class="secT">沟通模式</div>';
+    h += '<select style="width:100%;padding:10px;font-size:14px" onchange="setPreset(this.value)">' + presetOpts() + "</select>";
+    h += '<div class="note">DSH 用哪种方式回话（PTC/标准/创造…），不是角色性格。写入真系统，新会话生效。</div>';
+    h += '<div class="statRow"><div class="stat"><b>7</b><span>路由</span></div><div class="stat"><b>2</b><span>渠道</span></div><div class="stat"><b style=\"color:var(--ok)\">●</b><span>在线</span></div></div></div>';
+  } else if (SEG === "ctx") {
+    ["feishu", "weixin"].forEach(function (id) {
+      var c = ctxCardHTML(id);
+      h += '<div class="sec"><div class="secT"><span class="chLogo" style="background:' + c.ch.c + '">' + c.ch.ch + "</span>" + c.ch.label + "上下文</div>";
+      h += '<div class="kv"><span class="k">群聊增强</span><span class="v">' + swTxt("group", id) + "<b>" + (c.g ? "开" : "关") + "</b></span></div>";
+      h += '<div class="kv"><span class="k">私聊增强</span><span class="v">' + swTxt("direct", id) + "<b>" + (c.d ? "开" : "关") + "</b></span></div>";
+      h += '<div class="note">字段：' + esc(c.fields) + "</div>";
+      h += '<div class="guideBox">' + esc(c.guide) + "</div></div>";
+    });
+    h += '<div class="note" style="padding:0 4px">各渠道独立，互不干扰；字段与引导语请去 dsh-im 上游改（或用性格页覆盖）。</div>';
+  } else if (SEG === "pers") {
+    h += '<div class="sec"><div class="secT">性格/语气 <span class="tag">一框写全渠道</span></div>';
+    h += '<textarea id="persArea" style="min-height:120px" oninput="draftPers(this.value)" placeholder="比如：说话幽默，像朋友一样；群里严肃、私聊放飞…">' + esc(S.personality) + "</textarea>";
+    h += '<div class="toolbarRow" style="margin-top:8px"><button class="btn primary heroBtn" onclick="applyPers()">' + (S.persArmed ? "确认覆盖各渠道引导语？" : "应用") + "</button></div>";
+    h += '<div class="note">应用后覆盖各渠道现有引导语，新会话生效。</div></div>';
+  } else {
+    h += '<div class="sec"><div class="secT">绑定工作区</div><div class="wsPath">' + esc(S.ws) + "</div>";
+    h += '<div class="toolbarRow"><input type="text" class="grow" id="wsInput" value="' + esc(S.wsDraft || S.ws) + '" oninput="draftWs(this.value)">';
+    h += '<button class="btn" onclick="browse()">浏览</button><button class="btn primary" onclick="saveWs()">保存路径</button></div></div>';
+    h += '<div class="sec"><div class="secT">会话路由摘要 <span class="tag">0 · E3 席位</span></div><div class="note">会话路由预览随 E3 落地，席位已留。</div></div>';
+    h += '<div class="sec"><div class="secT">渠道管理 <span class="tag">2</span></div>';
+    CH.forEach(function (c) {
+      h += '<div class="kv"><span class="k"><span class="chLogo" style="background:' + c.c + '">' + c.ch + "</span></span><span>" + c.label + "</span>";
+      h += '<span class="v"><button class="btn sm" onclick="unbind(\'' + c.id + '\')">' + (S.unbindArmed === c.id ? "确认解绑？" : "解绑") + "</button></span></div>";
+    });
+    h += "</div>";
+    h += '<button class="btn primary heroBtn" style="margin-top:2px" onclick="testSend()">发测试消息（→飞书）</button>';
+  }
+  return h;
+}
+function paint() {
+  document.getElementById("sheetBd").innerHTML = V === "A" ? renderA() : V === "B" ? renderB() : renderC();
+  document.getElementById("vLabel").textContent = "当前：A 卡片流 / B 设置列表 / C 分段聚焦 —— 正在看 " + V;
+  document.querySelectorAll("[data-v]").forEach(function (b) { b.classList.toggle("cur", b.getAttribute("data-v") === V); });
+  paintState();
+}
+document.querySelectorAll("[data-v]").forEach(function (b) { b.addEventListener("click", function () { setV(b.getAttribute("data-v")); }); });
+document.getElementById("themeBtn").addEventListener("click", function () {
+  var r = document.documentElement; r.setAttribute("data-theme", r.getAttribute("data-theme") === "dark" ? "light" : "dark");
+});
+document.getElementById("resetBtn").addEventListener("click", function () { S = freshState(); SEG = "ctx"; paint(); });
+document.addEventListener("keydown", function (e) {
+  if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+  var order = ["A", "B", "C"], i = order.indexOf(V) + (e.key === "ArrowRight" ? 1 : -1);
+  setV(order[(i + 3) % 3]);
+});
+paint();
+</script>
+</body>
+</html>
