@@ -69,7 +69,7 @@ export function homePlate(workspace: string, meta: AgentMetaDoc | null): HomePla
   const name = viewName(base, meta ?? { names: {} } as AgentMetaDoc, base || workspace, workspace)
   return {
     name,
-    sub: base && base !== name ? base : '',
+    sub: base && normKey(base) !== normKey(name) ? base : '',
     initial: initialOf(name),
     color: paletteOf(workspace || name),
   }

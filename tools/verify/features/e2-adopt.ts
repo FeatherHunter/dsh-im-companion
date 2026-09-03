@@ -109,7 +109,7 @@ test('门牌：设置中文名优先，头像字与色板稳定', () => {
   assert.equal(model.homePlate(W_A, { names: { xiaoshuai: '小帅2' } }).color, p.color);
   const q = model.homePlate(W_B, { names: {} });
   assert.equal(q.name, 'Ali');
-  assert.equal(q.sub, 'ali');
+  assert.equal(q.sub, '');
 });
 
 test('manifest 注册：workspace-rail 槽位 + 进 FEATURES', () => {
@@ -301,7 +301,8 @@ test('view：头栏安装分身份入口，点击开面板（含未分配组）'
   assert.equal(sectionRows(secs[1]).length, 1);
   assert.ok(String(secs[3].attrs?.class ?? '').split(' ').includes('e2-sec-new'));
   assert.ok(bodyText().includes('小帅2'), '门牌用设置里的中文名');
-  assert.ok(bodyText().includes('1 个联系方式'), '计数按联系方式，不按人头');
+  assert.ok(!bodyText().includes('1 个联系方式'), '独部电话不重复计数');
+  assert.ok(bodyText().includes('2 个'), '未分配组照常计数');
   const faces = findClass(e2Doc.body, 'e2-face');
   assert.ok(faces.some((f: any) => f.textContent === '小'), '门牌有首字头像');
   const dots = findClass(e2Doc.body, 'e2-hdot');

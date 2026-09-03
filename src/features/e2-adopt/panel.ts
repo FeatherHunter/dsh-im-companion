@@ -81,7 +81,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
         grid.appendChild(homeCard({ name: '还没进家门的', sub: '先落到任意家', initial: '？', color: 0 }, null, unbound, true, {}, '', unbound.length + ' 个'))
       }
       for (const g of groups) {
-        grid.appendChild(homeCard(homePlate(g.workspace, meta), g.workspace, g.bots, false, {}, '', g.bots.length + ' 个联系方式'))
+        grid.appendChild(homeCard(homePlate(g.workspace, meta), g.workspace, g.bots, false, {}, '', g.bots.length >= 2 ? g.bots.length + ' 个联系方式' : ''))
       }
       grid.appendChild(homeCard(
         { name: '＋ 安新家', sub: '', initial: '＋', color: 0 }, null, [], true,
