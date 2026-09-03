@@ -72,18 +72,15 @@ function cellTitle(cell: MatrixCell, lang: Lang): string {
   return cell.label + ' ' + cell.botId + ' · ' + cellLabel(cell, lang) + (cell.stale ? t.staleNote : '') + '，' + t.drillHint
 }
 
+/** 格子只留圆点 + 文字：列身份由表头 LOGO 一次性建立，格内重复即噪音（第一性原理：零信息熵不配占像素）。 */
 function renderCell(row: MatrixRow, cell: MatrixCell, lang: Lang): HTMLElement {
   const cls = 'c1bm-cell' + (cell.health === 'empty' ? ' ghost' : cell.bound ? '' : ' unbound')
-  const kids: (HTMLElement | string)[] = [h('span', { className: 'c1bm-dot ' + cell.health })]
-  const logo = logoNode(cell.channel)
-  if (logo) kids.push(logo)
-  kids.push(cell.health === 'empty' ? '—' : cellLabel(cell, lang))
   return h('button', {
     type: 'button',
     className: cls,
     title: cellTitle(cell, lang),
     onClick: () => emitDrawer(row.key),
-  }, ...kids) as HTMLElement
+  }, h('span', { className: 'c1bm-dot ' + cell.health }), cell.health === 'empty' ? '—' : cellLabel(cell, lang)) as HTMLElement
 }
 
 function renderAgentHead(row: MatrixRow, lang: Lang): HTMLElement {
@@ -125,11 +122,11 @@ export interface RadarCallbacks {
 function renderInto(root: HTMLElement, model: MatrixModel, updatedAt: number, lang: Lang, cbs: RadarCallbacks): void {
   const t = strings(lang)
   const hd = h('div', { className: 'c1bm-hd' },
-    h('button', { type: 'button', className: 'c1bm-close', title: t.close, onClick: cbs.onClose }, '× ' + t.close),
     h('h2', { className: 'c1bm-title' }, t.title),
     h('span', { className: 'c1bm-meta' }, metaLine(model.counts.agents, model.counts.channels, model.counts.bots, lang)),
     h('span', { className: 'c1bm-sp' }),
-    h('button', { type: 'button', className: 'c1bm-refresh', title: t.refresh, onClick: cbs.onRefresh }, t.refresh)) as HTMLElement
+    h('button', { type: 'button', className: 'c1bm-refresh', title: t.refresh, onClick: cbs.onRefresh }, t.refresh),
+    h('button', { type: 'button', className: 'c1bm-close', title: t.close, onClick: cbs.onClose }, '× ' + t.close)) as HTMLElement
   if (updatedAt === 0 && model.rows.length === 0) {
     mount(root, [hd, h('div', { className: 'c1bm-loading' }, t.loading)])
     return
