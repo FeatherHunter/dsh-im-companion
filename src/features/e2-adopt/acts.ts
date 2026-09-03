@@ -1,0 +1,107 @@
+/** e2-adopt 写管道：绑定写透 + 确认弹窗 + 撤销窗 + 目录选择（纯行为，无布局）。 */
+import { h } from '../../client/dom'
+import { showModal } from '../../client/ui/modal'
+import { toast } from '../../client/ui/toast'
+import { openDirPicker } from '../../client/ui/dir-picker'
+import type { FeatureCtx } from '../protocol'
+import { UNDO_WINDOW_MS, resolveDrop, shortName, undoTarget } from './model'
+
+let undoTimer: ReturnType<typeof setTimeout> | null = null
+let undoEl: HTMLElement | null = null
+
+export function dismissUndo(): void {
+  try {
+    if (undoTimer) clearTimeout(undoTimer)
+    undoTimer = null
+    undoEl?.remove()
+    undoEl = null
+  } catch { /* 忽略 */ }
+}
+
+export async function setWorkspace(ctx: FeatureCtx, channel: string, botId: string, workspace: string, label: string): Promise<boolean> {
+  if (!ctx.rpc) {
+    toast('连接服务不可用')
+    return false
+  }
+  try {
+    await ctx.rpc('/' + channel, 'bot.workspace.set', { botId, workspace }, AbortSignal.timeout(8000))
+    await ctx.refresh()
+    return true
+  } catch (e) {
+    toast(label + '失败：' + String((e as Error)?.message ?? e))
+    return false
+  }
+}
+
+export function showUndo(ctx: FeatureCtx, channel: string, botId: string, from: string, text: string): void {
+  dismissUndo()
+  try {
+    const msg = h('span', {}, text + '（5s 内可撤销）')
+    const btn = h('button', {
+      onClick: () => {
+        dismissUndo()
+        void (async () => {
+          if (await setWorkspace(ctx, channel, botId, from, '撤销')) toast('已撤销，回到' + shortName(from), 'check')
+        })()
+      },
+    }, '撤销')
+    undoEl = h('div', { className: 'e2-undo', role: 'status' }, msg, btn) as HTMLElement
+    document.body.appendChild(undoEl)
+    undoTimer = setTimeout(() => { dismissUndo(); toast('撤销超时，绑定已生效') }, UNDO_WINDOW_MS)
+  } catch { /* 提示失败不阻断已落地绑定 */ }
+}
+
+export function askMove(ctx: FeatureCtx, channel: string, botId: string, from: string, to: string): void {
+  try {
+    const m = showModal([
+      h('div', { className: 'e2-confirm' }, '“' + botId + '”现属' + shortName(from) + '，换绑到“' + shortName(to) + '”？'),
+      h('div', { className: 'e2-confirm-btns' },
+        h('button', { onClick: () => m.close() }, '留在这里'),
+        h('button', {
+          onClick: () => {
+            m.close()
+            void (async () => {
+              if (await setWorkspace(ctx, channel, botId, to, '换绑')) {
+                const back = undoTarget(from)
+                if (back) showUndo(ctx, channel, botId, back, '已换绑到' + shortName(to))
+                else toast('已换绑到' + shortName(to), 'check')
+              }
+            })()
+          },
+        }, '确认换绑')),
+    ])
+  } catch { /* 弹层失败则不动（fail-closed） */ }
+}
+
+/* 目录选择（评审声明：与 c1a/drawer 原生优先口径同源，重复优于跨 feature 引用）。 */
+export function pickDir(ctx: FeatureCtx, initial: string): Promise<string | null> {
+  try {
+    const svc: unknown = typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : undefined
+    const pick = (svc as { pickDirectory?: unknown } | null)?.pickDirectory
+    const native = typeof pick === 'function'
+      ? () => Promise.resolve((pick as () => unknown)()).then((p: unknown) => (typeof p === 'string' ? p : null))
+      : undefined
+    return openDirPicker(ctx.rpc, initial, native).promise
+  } catch {
+    return Promise.resolve(null)
+  }
+}
+
+export function actDrop(ctx: FeatureCtx, bot: { botId: string; channel: string; workspace: string }, target: { kind: 'workspace'; workspace: string } | { kind: 'empty' }): void {
+  const v = resolveDrop(bot, target)
+  if (v.kind === 'bind') {
+    void (async () => {
+      if (await setWorkspace(ctx, bot.channel, bot.botId, v.to, '绑定')) {
+        const back = undoTarget('')
+        if (back) showUndo(ctx, bot.channel, bot.botId, back, '已绑定到' + shortName(v.to))
+        else toast('已绑定到' + shortName(v.to), 'check')
+      }
+    })()
+  } else if (v.kind === 'confirm-move') {
+    askMove(ctx, bot.channel, bot.botId, v.from, v.to)
+  } else if (v.kind === 'noop') {
+    toast('它已经在这里了')
+  } else {
+    toast('空白处不可放，请拖到分组上')
+  }
+}

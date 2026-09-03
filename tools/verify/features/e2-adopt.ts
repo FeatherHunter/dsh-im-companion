@@ -15,6 +15,7 @@ const ENTRIES = [
   join(FEAT, 'model.ts'),
   join(FEAT, 'view.ts'),
   join(FEAT, 'panel.ts'),
+  join(FEAT, 'acts.ts'),
   join(FEAT, 'styles.ts'),
   join(FEAT, 'manifest.ts'),
   join(REPO, 'src', 'features', 'index.ts'),
@@ -27,6 +28,7 @@ const ENTRIES = [
   join(CLIENT, 'theme.ts'),
   join(CLIENT, 'icons.ts'),
   join(CLIENT, 'ui', 'modal.ts'),
+  join(CLIENT, 'ui', 'dir-picker.ts'),
   join(CLIENT, 'ui', 'sheet.ts'),
   join(CLIENT, 'ui', 'toast.ts'),
 ];
@@ -123,7 +125,7 @@ const e2StubNode: any = (tag: string) => {
   const n: any = {
     nodeType: 1, tagName: String(tag).toUpperCase(), children: [] as any[],
     parentNode: null as any, parentElement: null as any,
-    style: {} as Record<string, string>, dataset: {} as Record<string, string>,
+    style: { setProperty(k: string, v: string) { (this as any)[k] = String(v); } } as Record<string, string>, dataset: {} as Record<string, string>,
     attrs: {} as Record<string, string>, listeners: {} as Record<string, any[]>, _text: '',
     classList: { add(...cs: string[]) { for (const c of cs) n._cls.add(c); }, remove(...cs: string[]) { for (const c of cs) n._cls.delete(c); }, contains(c: string) { return n._cls.has(c); } },
     _cls: new Set<string>(),
@@ -132,6 +134,7 @@ const e2StubNode: any = (tag: string) => {
     set textContent(v: string) { n._text = String(v); },
     setAttribute(k: string, v: string) { n.attrs[k] = String(v); },
     getAttribute(k: string) { return n.attrs[k] ?? null; },
+    hasAttribute(k: string) { return Object.prototype.hasOwnProperty.call(n.attrs, k); },
     removeAttribute(k: string) { delete n.attrs[k]; },
     appendChild(c: any) { c.parentNode = n; c.parentElement = n; n.children.push(c); return c; },
     remove() { try { n.parentNode?.removeChild(n); } catch { /* ignore */ } },
@@ -195,6 +198,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let e2Emit: ((snap: any) => void) | null = null;
 let e2RpcCalls: any[] = [];
 let e2RefreshCalls = 0;
+let e2PickDir: string | null = W_B;
 let e2Unmount: (() => void) | null = null;
 let nonce = 0;
 let e2Header: any = null;
@@ -229,7 +233,7 @@ const mountStage = (rpc: any) => {
     rpc,
     subscribe: (fn: any) => { e2Emit = fn; return () => { e2Emit = null; }; },
     refresh: async () => { e2RefreshCalls++; },
-    meta: {}, slots: {}, get: () => undefined,
+    meta: {}, slots: {}, get: (name: string) => (name === 'uiWorkspace' ? { pickDirectory: async () => e2PickDir } : undefined),
   };
   e2Unmount = view.mountE2Adopt(ctx);
   return {};
@@ -274,10 +278,11 @@ test('view：头栏安装分身份入口，点击开面板（含未分配组）'
   e2Emit!({ bots: stageBots() });
   openPanel();
   const secs = panelSections();
-  assert.equal(secs.length, 3);
+  assert.equal(secs.length, 4);
   assert.ok(String(secs[0].attrs?.class ?? '').split(' ').includes('e2-sec-unbound'));
   assert.equal(sectionRows(secs[0]).length, 2);
   assert.equal(sectionRows(secs[1]).length, 1);
+  assert.ok(String(secs[3].attrs?.class ?? '').split(' ').includes('e2-sec-new'));
 });
 
 test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async () => {
@@ -301,22 +306,21 @@ test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async ()
   assert.deepEqual(e2RpcCalls[1]?.payload, { botId: 'q1', workspace: W_A });
 });
 
-test('view：行内“移交给”下拉 → 同确认流程', async () => {
+test('view：地盘带归属色 + “＋ 新地盘”经目录选择绑定空人', async () => {
   mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
   openPanel();
   const secs = panelSections();
-  const rowQ = sectionRows(secs[1]).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
-  const sel = rowQ.children.find((c: any) => c.tagName === 'SELECT');
-  assert.ok(sel, '行应有移交给下拉');
-  const vals = sel.children.filter((c: any) => c.tagName === 'OPTION').map((c: any) => c.value);
-  assert.ok(vals.includes(W_B));
-  sel.value = W_B;
-  sel.listeners.change[0]();
+  const colors = secs.filter((s: any) => s.getAttribute('data-e2-ws')).map((s: any) => s.style['--e2-c']);
+  assert.ok(colors[0], '分组应有归属色');
+  assert.ok(new Set(colors).size >= 2, '不同组颜色不同');
+  const plus = secs.find((s: any) => String(s.attrs?.class ?? '').split(' ').includes('e2-sec-new'));
+  assert.ok(plus, '应有新地盘兜底区');
+  e2PickDir = 'D:\\agents\\newbie';
+  fireDrop(plus, { botId: 'f1', channel: 'feishu' });
   await sleep(20);
-  findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
-  await sleep(20);
-  assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
+  assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'f1', workspace: 'D:\\agents\\newbie' });
+  assert.equal(e2RefreshCalls, 1);
 });
 
 test('view：全已分配 → 无未分配组；组内放下 → 不写', async () => {
@@ -324,7 +328,7 @@ test('view：全已分配 → 无未分配组；组内放下 → 不写', async 
   e2Emit!({ bots: bots.map((b) => ({ ...b, workspace: b.workspace || W_A })) });
   openPanel();
   const secs = panelSections();
-  assert.equal(secs.length, 2);
+  assert.equal(secs.length, 3);
   const secA = secs[0];
   const rowQ = sectionRows(secA).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
   fireDrop(secA, { botId: 'q1', channel: 'qq' });
@@ -345,8 +349,10 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取
   const secs = panelSections();
   const rowF = sectionRows(secs[0])[0];
   lastDoc('dragstart')({ target: rowF, dataTransfer: { setData() {}, effectAllowed: '' } });
+  assert.ok(rowF.classList.contains('e2-dragging'), '拖起应有 ghost 态');
   lastDoc('dragend')();
   await sleep(10);
+  assert.ok(!rowF.classList.contains('e2-dragging'), '放下/取消后 ghost 态清除');
   assert.ok(bodyText().includes('已取消拖拽'));
 });
 
