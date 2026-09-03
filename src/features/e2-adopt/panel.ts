@@ -80,7 +80,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       }
       for (const g of groups) {
         const plate = homePlate(g.workspace, meta)
-        grid.appendChild(homeCard(plate, g.workspace, g.bots, false, {}, '', g.bots.length >= 2 ? g.bots.length + ' 个机器人' : ''))
+        grid.appendChild(homeCard(plate, g.workspace, g.bots, false, {}, '', g.bots.length + ' 个机器人'))
       }
       grid.appendChild(homeCard(
         { name: '＋ 安新家', sub: '', initial: '', color: 0 }, null, [], true,

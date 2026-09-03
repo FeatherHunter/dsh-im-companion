@@ -34,6 +34,7 @@ function reloadMeta(ctx: FeatureCtx): void {
 let dragId: string | null = null
 let dragEl: Element | null = null
 let dragPh: Element | null = null
+let dragStartX: number | null = null
 let hadDrag = false
 let dropped = false
 const claim = (): number => {
@@ -130,6 +131,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   dragId = null
   dragEl = null
   dragPh = null
+  dragStartX = null
   try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
   reloadMeta(ctx)
   const off = ctx.subscribe((snap) => {
@@ -149,6 +151,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       dropped = false
       dragId = row.getAttribute('data-e2-bot')
       dragEl = row
+      try { dragStartX = de.clientX } catch { dragStartX = null }
       try { row.classList.add('e2-dragging') } catch { /* 忽略 */ }
       /* 原牌隐身 + 歪斜占位符：setTimeout 让浏览器先抓完原生拖影再藏，否则拖影是空的（Firefox 会直接取消拖拽）。 */
       setTimeout(() => {
@@ -242,6 +245,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   };
   const onDragEnd = (): void => {
     dragId = null
+    dragStartX = null
     clearGhost()
     if (hadDrag && !dropped && alive(g)) toast('已取消拖拽，回到原位')
     hadDrag = false
@@ -249,9 +253,19 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     if (alive(g)) clearAfford()
   }
 
+  /* 影子跟手倒：起点以左向左歪，以右向右歪（H 定稿）。与主 dragover 并存，只动影子。 */
+  const onTilt = (e: Event): void => {
+    if (!alive(g)) return
+    try {
+      if (dragId === null || dragStartX === null || !dragPh) return
+      const dx = (e as DragEvent).clientX - dragStartX
+      ;(dragPh as HTMLElement).style.transform = dx < 0 ? 'rotate(-4deg)' : 'rotate(4deg)'
+    } catch { /* 忽略 */ }
+  }
   try {
     document.addEventListener('dragstart', onDragStart)
     document.addEventListener('dragover', onDragOver)
+    document.addEventListener('dragover', onTilt)
     document.addEventListener('drop', onDrop)
     document.addEventListener('dragend', onDragEnd)
   } catch { /* 无 DOM 环境可挂载为空操作 */ }
@@ -260,6 +274,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     try {
       document.removeEventListener('dragstart', onDragStart)
       document.removeEventListener('dragover', onDragOver)
+      document.removeEventListener('dragover', onTilt)
       document.removeEventListener('drop', onDrop)
       document.removeEventListener('dragend', onDragEnd)
     } catch { /* 忽略 */ }

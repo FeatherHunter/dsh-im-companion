@@ -21,6 +21,7 @@ export const CSS = [
   '@media (prefers-color-scheme: dark){.e2-row{box-shadow:0 3px 10px rgba(0,0,0,.4)}}',
   '.e2-row[draggable="false"]{opacity:.45;cursor:default}',
   '.e2-row:hover{transform:translateY(-3px) rotate(-.6deg);box-shadow:0 12px 24px rgba(90,70,40,.22)}',
+  '.e2-sec .e2-row:nth-child(odd):hover{transform:translateY(-3px) rotate(.6deg)}',
   '.e2-row.e2-dragging{opacity:.45}',
   '.e2-row.e2-ph{opacity:.45;transform:rotate(-4deg);border:1.5px dashed var(--e2-faint);box-shadow:none;pointer-events:none}',
   '.e2-ph-top{display:flex;align-items:center;gap:8px}',

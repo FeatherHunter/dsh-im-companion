@@ -317,6 +317,7 @@ test('view：头栏安装串门入口，点击开面板（含未分配组）', a
   assert.ok(bodyText().includes('小帅2'), '门牌用设置里的中文名');
   assert.ok(!bodyText().includes('联系方式'), '计数按机器人，不按联系方式');
   assert.ok(bodyText().includes('2 个机器人'), '未分配组照常计数');
+  assert.ok(bodyText().includes('1 个机器人'), '独户也计数（H 定稿）');
   assert.ok(bodyText().includes('共 2 户 · 4 个机器人'), '人口普查 footer');
   const caps = findClass(e2Doc.body, 'e2-cap');
   assert.ok(caps.some((c: any) => String(c.textContent).includes('QQ')), '成员小传含渠道');
@@ -388,9 +389,13 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取
   assert.ok(bodyText().includes('空白处不可放'));
   const secs = panelSections();
   const rowF = sectionRows(secs[0])[0];
-  lastDoc('dragstart')({ target: rowF, dataTransfer: { setData() {}, effectAllowed: '' } });
+  lastDoc('dragstart')({ target: rowF, clientX: 500, dataTransfer: { setData() {}, effectAllowed: '' } });
   assert.ok(rowF.classList.contains('e2-dragging'), '拖起应有 ghost 态');
   await sleep(10);
+  for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 100, preventDefault() {}, dataTransfer: { types: ['application/x-e2-adopt-bot'] } });
+  assert.ok(String(findClass(e2Doc.body, 'e2-ph')[0]?.style?.transform ?? '').includes('-4deg'), '往左拖影子向左倒');
+  for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 900, preventDefault() {}, dataTransfer: { types: ['application/x-e2-adopt-bot'] } });
+  assert.ok(String(findClass(e2Doc.body, 'e2-ph')[0]?.style?.transform ?? '').includes('rotate(4deg)'), '往右拖影子向右倒');
   assert.equal(rowF.style.display, 'none', '原牌隐身');
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '只留一块歪斜影子');
   const ph = findClass(e2Doc.body, 'e2-ph')[0];
