@@ -20,7 +20,7 @@
 .sky-dawn{background:linear-gradient(#3a4a7a 0%,#e8909c 60%,#ffd9a0 100%)}
 .sky-dusk{background:linear-gradient(#2b2a5e 0%,#b4528b 60%,#ff9d5c 100%)}
 .sky-night{background:linear-gradient(#060913 0%,#101a33 70%,#1b2a4a 100%)}
-.sunball{position:absolute;left:50%;top:120px;width:110px;height:110px;margin-left:-55px;border-radius:50%;background:radial-gradient(circle at 50% 45%,#fff6c9,#ffd21f 65%,rgba(255,180,0,0) 72%);box-shadow:0 0 var(--sunglow) 18px rgba(255,205,60,.85);animation:sunpulse 5s ease-in-out infinite}
+.sunball{position:absolute;left:50%;top:120px;width:110px;height:110px;margin-left:-55px;border-radius:50%;background:radial-gradient(circle at 50% 42%,#fff7cf 0%,#ffd21f 62%,#ffae00 100%);box-shadow:0 0 var(--sunglow) 18px rgba(255,205,60,.85);animation:sunpulse 5s ease-in-out infinite}
 @keyframes sunpulse{50%{--sunglow:60px}}
 .moonball{position:absolute;left:50%;top:100px;width:84px;height:84px;margin-left:-42px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f4f1de,#c9c5ae 70%);box-shadow:0 0 40px 10px rgba(220,225,240,.35)}
 .cloud{position:absolute;background:#fff;opacity:.85;border-radius:999px;animation:drift linear infinite}
@@ -54,6 +54,11 @@
 .segbar button.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .linkbtn{background:none;border:0;color:var(--acc);cursor:pointer;font-size:12px;margin-top:10px;font:inherit}
 @media (prefers-reduced-motion: reduce){.rainlayer,.snowlayer{animation:none}}
+</style>
+<style>
+/* ROUND7 P fixes: wee-hour horizon + solid sun disc (no transparent hole leaks). */
+.sky-wee{background:linear-gradient(#070b1e 0%,#131a3d 52%,#3c2c50 78%,#a05a44 100%)}
+.horizon{position:absolute;left:0;right:0;bottom:0;height:130px;background:linear-gradient(transparent,rgba(255,150,80,.4));pointer-events:none}
 </style>
 </head>
 <body>
@@ -94,7 +99,7 @@ function vN(){return '<div style="position:relative;background:#0b1020;overflow:
 function vO(){return '<div class="tilt" id="tiltZone" style="padding:26px 24px 30px"><div class="tilt-inner" id="tiltInner" style="text-align:center"><div class="lyr" style="--z:0px;position:relative;height:300px;border-radius:14px;overflow:hidden;background:linear-gradient(#8fc3f2 0%,#d8ecfa 55%,#cfe3c2 55%,#b9d4a8 100%)"><div style="position:absolute;left:50%;top:26px;transform:translateX(-50%);width:0;height:0;border-left:70px solid transparent;border-right:70px solid transparent;border-bottom:48px solid var(--acc);opacity:.9"></div><div style="position:absolute;left:50%;top:72px;transform:translateX(-50%);width:120px;background:var(--panel);border:1px solid var(--line);border-radius:0 0 10px 10px;padding:10px 6px"><div style="width:30px;height:30px;margin:0 auto 6px;border-radius:6px;background:radial-gradient(circle at 50% 60%,#ffd766,#ff9d2e);box-shadow:0 0 18px #ffbe3c"></div><div style="font-weight:800;font-size:13px">小帅</div></div><div style="position:absolute;left:16%;bottom:26px;text-align:center;font-size:10px;color:var(--mut)"><div style="width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 50% 60%,#ffd766,#ff9d2e);box-shadow:0 0 12px #ffbe3c;margin:0 auto 3px"></div>私聊</div><div style="position:absolute;right:16%;bottom:26px;text-align:center;font-size:10px;color:var(--mut)"><div style="width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 50% 60%,#ffd766,#ff9d2e);box-shadow:0 0 12px #ffbe3c;margin:0 auto 3px"></div>群聊</div></div><div class="lyr rise" style="--z:60px;font-size:24px;font-weight:800;margin:16px 0 4px">动动鼠标，院子跟着你转</div><div class="lyr rise" style="--z:30px;animation-delay:.12s;font-size:13px;color:var(--mut)"><span class="dot on"></span>飞书在线 · 天地房灯四层纵深</div><div class="lyr rise" style="--z:90px;animation-delay:.24s">' + bigBtn("回家","院子是活的") + '</div><div class="lyr note" style="--z:10px;animation-delay:.36s">指针视差 + 入场编排（触屏与减弱动效自动降级）。</div></div></div>';}
 function wireTilt(){try{var zone=$("tiltZone"),inner=$("tiltInner");if(!zone||!inner)return;if(!window.matchMedia||!window.matchMedia("(hover:hover)").matches)return;zone.onmousemove=function(e){try{var r=zone.getBoundingClientRect();var px=(e.clientX-r.left)/r.width-.5,py=(e.clientY-r.top)/r.height-.5;inner.style.transform="rotateY("+(px*14)+"deg) rotateX("+(-py*12)+"deg)";}catch(err){}};zone.onmouseleave=function(){try{inner.style.transform="rotateY(0deg) rotateX(0deg)";}catch(err){}};}catch(e){}}
 var PH = {
-wee:{tab:"凌晨",sky:"sky-night",moon:1,opts:[
+wee:{tab:"凌晨",sky:"sky-wee",moon:1,horizon:1,opts:[
 {t:"还没睡？灯给你留着",s:"飞书在线 · 整个世界都睡了，除了我",b:"回家",bs:"夜里凉，进来暖暖"},
 {t:"天快亮了，我陪你到天亮",s:"飞书在线 · 失眠和加班都算数",b:"回家",bs:"再陪一会儿"},
 {t:"夜里凉，进来暖暖",s:"飞书在线 · 热茶在桌上",b:"回家",bs:"不问为什么晚睡"}]},
@@ -103,7 +108,7 @@ dawn:{tab:"清晨",sky:"sky-dawn",moon:0,opts:[
 {t:"早，新的一天从家开始",s:"飞书在线 · 今天也要加油",b:"回家",bs:"出门前看一眼"},
 {t:"天亮了，我把门口扫好了",s:"飞书在线 · 1 个会话已就位",b:"回家",bs:"干净了"}]},
 day:{tab:"白天",sky:"sky-day",moon:0,opts:[
-{t:"家里亮堂，随时回来",s:"飞书在线 · 小帅守着今天",b:"回家",bs:"外面忙，家里不催"},
+{t:"家里亮堂，随时回来",s:"飞书在线 · 小帅守着今天",b:"回家",bs:"门开着"},
 {t:"正午了，歇会儿？",s:"飞书在线 · 喝口水再走",b:"回家",bs:"不耽误事"},
 {t:"外头再闹，家里安静",s:"飞书在线 · 1 个会话候着",b:"回家",bs:"进来静静"}]},
 dusk:{tab:"黄昏",sky:"sky-dusk",moon:0,opts:[
@@ -116,7 +121,7 @@ night:{tab:"深夜",sky:"sky-night",moon:1,opts:[
 {t:"累了就回来，灯不关",s:"飞书在线 · 不问今天过得怎样",b:"回家",bs:"先睡觉"}]}};
 var pSeg = "", pIdx = 0;
 function segOfHour(h){if(h>=2&&h<5)return "wee";if(h>=5&&h<9)return "dawn";if(h>=9&&h<17)return "day";if(h>=17&&h<20)return "dusk";return "night";}
-function vP(){if(!pSeg)pSeg=segOfHour(mockHour>=0?mockHour:new Date().getHours());var S=PH[pSeg],o=S.opts[pIdx%S.opts.length];var keys=["wee","dawn","day","dusk","night"];var tabs="";for(var i=0;i<keys.length;i++)tabs+='<button data-seg="'+keys[i]+'" class="'+(keys[i]===pSeg?"on":"")+'">'+PH[keys[i]].tab+'</button>';var deco="";if(S.moon){for(var k=0;k<20;k++){var sx=(k*37)%100,sy=(k*53)%70;deco+='<span class="star" style="left:'+sx+'%;top:'+sy+'%;animation-delay:'+((k%7)*0.4)+'s"></span>';}}else{deco='<div class="cloud c1"></div><div class="cloud c2"></div>';}var orb=S.moon?'<div class="moonball"></div>':'<div class="sunball"></div>';return '<div class="segbar">'+tabs+'</div><div class="sky '+S.sky+'">'+orb+deco+'<div style="position:absolute;left:0;right:0;bottom:0;padding:26px;text-align:center"><div class="rise" style="font-size:24px;font-weight:800;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.35)">'+o.t+'</div><div class="rise" style="font-size:13px;color:#fff;opacity:.92;text-shadow:0 1px 8px rgba(0,0,0,.35);animation-delay:.12s;margin-top:4px"><span class="dot on"></span>'+o.s+'</div><div class="rise" style="animation-delay:.24s">'+bigBtn(o.b,o.bs)+'</div></div></div><div style="text-align:center"><button class="linkbtn" data-act="swap">换一句（'+(pIdx%3+1)+'/3）</button></div><div class="note">五段 × 三套 = 15 句；tab 按真实时间自动选中，可手拨；凌晨≠深夜：一个要陪伴，一个要守候。</div>';}
+function vP(){if(!pSeg)pSeg=segOfHour(mockHour>=0?mockHour:new Date().getHours());var S=PH[pSeg],o=S.opts[pIdx%S.opts.length];var keys=["wee","dawn","day","dusk","night"];var tabs="";for(var i=0;i<keys.length;i++)tabs+='<button data-seg="'+keys[i]+'" class="'+(keys[i]===pSeg?"on":"")+'">'+PH[keys[i]].tab+'</button>';var deco="";if(S.moon){for(var k=0;k<20;k++){var sx=(k*37)%100,sy=(k*53)%70;deco+='<span class="star" style="left:'+sx+'%;top:'+sy+'%;animation-delay:'+((k%7)*0.4)+'s"></span>';}}else{deco='<div class="cloud c1"></div><div class="cloud c2"></div>';}var orb=S.moon?'<div class="moonball"></div>':'<div class="sunball"></div>';return '<div class="segbar">'+tabs+'</div><div class="sky '+S.sky+'">'+orb+deco+(S.horizon?'<div class="horizon"></div>':"")+'<div style="position:absolute;left:0;right:0;bottom:0;padding:26px;text-align:center"><div class="rise" style="font-size:24px;font-weight:800;color:#fff;text-shadow:0 2px 14px rgba(0,0,0,.35)">'+o.t+'</div><div class="rise" style="font-size:13px;color:#fff;opacity:.92;text-shadow:0 1px 8px rgba(0,0,0,.35);animation-delay:.12s;margin-top:4px"><span class="dot on"></span>'+o.s+'</div><div class="rise" style="animation-delay:.24s">'+bigBtn(o.b,o.bs)+'</div></div></div><div style="text-align:center"><button class="linkbtn" data-act="swap">换一句（'+(pIdx%3+1)+'/3）</button></div><div class="note">五段 × 三套 = 15 句；tab 按真实时间自动选中，可手拨；凌晨≠深夜：一个要陪伴，一个要守候。</div>';}
 var qWx = "sun";
 var QWX = {
 sun:{tab:"晴",sky:"sky-day",layer:"",orb:'<div class="sunball"></div>',t:"天晴了，出门放心",s:"飞书在线 · 家里在线，天就晴",b:"回家",bs:"好天气"},
