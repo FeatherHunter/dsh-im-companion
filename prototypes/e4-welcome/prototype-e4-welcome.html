@@ -1,0 +1,275 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE for issue #15 (E4 对话区欢迎横幅). Do NOT ship to main. -->
+<!-- Plan: Three variants of the E4 welcome banner, switchable via ?variant=, on throwaway prototypes/e4-welcome/prototype-e4-welcome.html (sub-shape B: 对话区无现有路由；mock DSH 对话区 chrome = 左工作区 rail 200px + 中间会话列 + 底部常驻输入框). -->
+<!-- Design Q: 对话区欢迎横幅：展示 Agent 形象/在线态/今日摘要式欢迎；与 DSH 原生空态的关系、触发时机与关闭策略。Branch: UI (what-should-this-look-like). -->
+<!-- Grilling 共识 (2026-09-03): 空态关系=叠加在原生空态上方（不动原生结构）；触发=仅空会话显示（有消息不打扰）；关闭=本会话内存态（切走回来即恢复，不碰持久化）；摘要=今日会话摘要 mock（3 行：私聊/群聊+未读+在中间打开）；Ctrl+K 不做（#1 已砍）。 -->
+<!-- Run: 双击打开，或 python -m http.server 8788 后访问 /prototypes/e4-welcome/prototype-e4-welcome.html?variant=A -->
+<!-- Assumption: 深色纳入切换；输入框三变体常驻可用（发送即变“有消息会话”，横幅自动隐藏，演示触发逻辑）；未绑定 Agent 显示无摘要引导态；本文件永不进 main。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[PROTOTYPE #15] E4 欢迎横幅三变体</title>
+<style>
+  :root { color-scheme: light; --bg:#f6f8fa; --panel:#fff; --ink:#1f2329; --mut:#646a73; --line:#e5e6eb; --acc:#1677ff; --ok:#20a162; --bad:#d92d20; --warn:#e8890c; }
+  [data-theme="dark"] { color-scheme: dark; --bg:#0f1115; --panel:#161a22; --ink:#e6edf3; --mut:#8b949e; --line:#2a313b; --acc:#4493ff; --ok:#3fb950; --bad:#f85149; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,"PingFang SC","Noto Sans SC",Segoe UI,Roboto,sans-serif; }
+  .proto-banner { background:#fff7e6; border-bottom:2px dashed var(--warn); color:#7a4b00; padding:8px 16px; font-size:12px; }
+  [data-theme="dark"] .proto-banner { background:#2a2100; color:#ffce6b; }
+  .wrap { max-width:1120px; margin:0 auto; padding:16px 16px 130px; }
+  h1 { font-size:20px; margin:12px 0 4px; }
+  .q { color:var(--mut); font-size:13px; margin:0 0 12px; max-width:100ch; }
+  .q b { color:var(--ink); }
+  .console { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .console label { font-size:12px; color:var(--mut); display:flex; gap:6px; align-items:center; }
+  select, button, input { font:inherit; }
+  select, input[type=text] { padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); }
+  .btn { padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); cursor:pointer; font-size:12px; }
+  .btn.primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .btn.sm { padding:3px 8px; font-size:11px; }
+  .btn.ghost { opacity:.75; }
+  .bhint { font-size:12px; background:color-mix(in srgb, var(--acc) 9%, transparent); border:1px solid color-mix(in srgb, var(--acc) 30%, transparent); border-radius:10px; padding:8px 12px; margin:0 0 10px; }
+  .changed { font-size:12px; background:color-mix(in srgb, var(--ok) 10%, transparent); border:1px solid color-mix(in srgb, var(--ok) 35%, transparent); border-radius:10px; padding:8px 12px; margin:0 0 10px; }
+  .dsh { max-width:980px; margin:0 auto; display:grid; grid-template-columns:200px 1fr; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--panel); min-height:560px; box-shadow:0 12px 40px rgba(0,0,0,.16); }
+  .rail { border-right:1px solid var(--line); padding:10px; font-size:12px; color:var(--mut); background:color-mix(in srgb, var(--ink) 2%, var(--panel)); }
+  .rail h5 { margin:2px 0 8px; font-size:11px; font-weight:700; color:var(--mut); }
+  .ws { padding:7px 8px; border-radius:8px; margin-bottom:4px; display:flex; justify-content:space-between; gap:6px; align-items:center; border:1px solid transparent; }
+  .ws.cur { background:color-mix(in srgb, var(--acc) 12%, transparent); color:var(--ink); border-color:color-mix(in srgb, var(--acc) 35%, transparent); }
+  .ws .tag { font-size:10px; padding:1px 6px; border-radius:999px; border:1px solid var(--line); }
+  .ws .tag.on { color:var(--ok); border-color:var(--ok); } .ws .tag.off { color:var(--bad); border-color:var(--bad); } .ws .tag.deg { color:var(--warn); border-color:var(--warn); }
+  .conv { display:flex; flex-direction:column; min-width:0; min-height:560px; }
+  .convHd { padding:10px 14px; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; font-size:13px; background:var(--panel); }
+  .convHd .sp { flex:1; }
+  .dot { width:9px; height:9px; border-radius:50%; flex:none; display:inline-block; }
+  .dot.online { background:var(--ok); animation:bl 1.6s infinite; }
+  .dot.offline { background:var(--bad); } .dot.degraded { background:var(--warn); }
+  @keyframes bl { 0%{box-shadow:0 0 0 0 rgba(32,161,98,.5)} 70%{box-shadow:0 0 0 7px rgba(32,161,98,0)} 100%{box-shadow:0 0 0 0 rgba(32,161,98,0)} }
+  .msgs { flex:1; padding:14px; overflow:auto; background:var(--bg); display:flex; flex-direction:column; gap:10px; }
+  .empty-native { border:1.5px dashed var(--line); border-radius:12px; padding:26px 16px; text-align:center; color:var(--mut); font-size:12px; background:var(--panel); }
+  .empty-native .big { font-size:26px; }
+  .bubble { max-width:70%; padding:8px 12px; border-radius:12px; font-size:13px; background:var(--panel); border:1px solid var(--line); align-self:flex-start; }
+  .bubble.me { align-self:flex-end; background:var(--acc); border-color:var(--acc); color:#fff; }
+  .e4x { position:relative; border:1px solid color-mix(in srgb, var(--acc) 40%, var(--line)); border-radius:12px; background:var(--panel); box-shadow:0 6px 22px rgba(22,119,255,.12); overflow:hidden; }
+  .e4x .x { position:absolute; top:8px; right:8px; width:24px; height:24px; border-radius:50%; border:1px solid var(--line); background:var(--panel); color:var(--mut); cursor:pointer; font-size:12px; line-height:1; }
+  .e4x .x:hover { color:var(--bad); border-color:var(--bad); }
+  .avatar { border-radius:10px; display:grid; place-items:center; color:#fff; font-weight:800; background:linear-gradient(135deg,#12213f,#3964fe); flex:none; }
+  .rout { display:flex; justify-content:space-between; gap:8px; font-size:12px; padding:6px 0; border-bottom:1px dashed var(--line); align-items:center; }
+  .rout:last-child { border-bottom:0; }
+  .rout code { font-size:11px; color:var(--mut); }
+  .rout a { color:var(--acc); cursor:pointer; text-decoration:none; white-space:nowrap; }
+  .chip { font-size:11px; border:1px solid var(--line); border-radius:999px; padding:1px 8px; background:var(--bg); display:inline-flex; gap:5px; align-items:center; }
+  .dismissed { border:1px dashed var(--line); border-radius:12px; padding:10px 12px; font-size:12px; color:var(--mut); text-align:center; background:var(--panel); }
+  .composer { border-top:1px solid var(--line); padding:10px 12px; display:flex; gap:8px; background:var(--panel); }
+  .composer input { flex:1; }
+  .state { margin-top:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; }
+  .stateHead { padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700; font-size:13px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+  .stateBody { display:grid; grid-template-columns:1fr 1.2fr; gap:12px; padding:12px; }
+  @media (max-width:900px){ .dsh{grid-template-columns:1fr} .rail{display:none} .stateBody{grid-template-columns:1fr} }
+  .kv { display:grid; gap:4px; font-size:12px; align-content:start; }
+  .kv div { display:flex; justify-content:space-between; gap:8px; border-bottom:1px dashed var(--line); padding:3px 0; }
+  .kv span:first-child { color:var(--mut); }
+  pre { margin:0; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px; font-size:11px; overflow:auto; max-height:260px; }
+  .switcher { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; align-items:center; gap:12px; background:#111; color:#fff; border-radius:999px; padding:8px 10px; box-shadow:0 8px 30px rgba(0,0,0,.35); z-index:99; font-size:13px; }
+  .switcher button { width:32px; height:32px; border-radius:50%; border:0; background:#2a2f36; color:#fff; cursor:pointer; font-size:15px; }
+  .switcher .dots { display:flex; gap:6px; }
+  .switcher .dots button { width:10px; height:10px; padding:0; background:#555; }
+  .switcher .dots button.on { background:#fff; }
+  .note { font-size:11px; color:var(--mut); margin-top:8px; }
+</style>
+</head>
+<body>
+<div class="proto-banner">⚠️ THROWAWAY PROTOTYPE · issue #15 · 抛弃式原型，不进 main（决议后赢家重写进真代码，原型归档到 throwaway 分支）。运行：双击本文件或 <code>python -m http.server 8788</code> 后访问 <code>/prototypes/e4-welcome/prototype-e4-welcome.html?variant=A</code>。</div>
+<div class="wrap" id="root" data-theme="light">
+  <h1>E4 · 对话区欢迎横幅 — 三变体对比</h1>
+  <p class="q">设计问题：<b>对话区欢迎横幅：展示 Agent 形象 / 在线态 / 今日摘要式欢迎；与原生空态的关系、触发时机与关闭策略。</b>分支：UI（<code>?variant=A/B/C</code> + 底部悬浮切换）。对照顺序建议 A → B → C：先看最拟人化的 A，再看最克制的 B，最后看最信息密的 C。Ctrl+K 命令面板不在本原型内（#1 已砍）。</p>
+  <div class="console">
+    <label>Agent <select id="agentSel">
+      <option value="xiaoshuai">小帅 · 已绑定·在线</option>
+      <option value="xinghuo">星火 · 部分在线</option>
+      <option value="unbound">未命名 · 未绑定</option>
+    </select></label>
+    <label>会话 <select id="sessSel"><option value="empty">空会话（触发欢迎）</option><option value="nonempty">有消息会话（不打扰）</option></select></label>
+    <label>主题 <select id="themeSel"><option value="light">浅色</option><option value="dark">深色</option></select></label>
+    <button class="btn" id="btnSwitch">模拟切会话（重置关闭态）</button>
+    <button class="btn ghost" id="btnReset">重置内存态</button>
+  </div>
+  <p class="bhint" id="variantHint"></p>
+  <p class="changed" id="changedLine"></p>
+  <div class="dsh">
+    <div class="rail" id="rail"></div>
+    <div class="conv">
+      <div class="convHd" id="convHd"></div>
+      <div class="msgs" id="msgs"></div>
+      <div class="composer"><input type="text" id="composerInput" placeholder="输入消息（横幅永不遮挡此处，回车发送即变“有消息会话”）"><button class="btn primary" id="btnSend">发送</button></div>
+    </div>
+  </div>
+  <div class="state"><div class="stateHead"><span>状态外显（每次操作后重渲染）</span><span id="varTag" style="font-weight:400;font-size:12px;color:var(--mut)"></span></div>
+    <div class="stateBody"><div class="kv" id="kvBox"></div><div><pre id="jsonBox"></pre><div class="note">⬆ 完整 relevant state：variant / agent / health / sessionEmpty / bannerVisible / dismissed / expanded(B) / theme。变体切换更新 URL ?variant=（可分享、可回退）。纯内存态，无持久化，不调真 RPC。生产门：<code>?prod=1</code> 隐藏悬浮条（本文件永不进 main）。</div></div></div>
+  </div>
+  <p class="note">变体说明：A 人物卡居中（拟人化最强：大头像+欢迎语+摘要列表+双快捷，居中叠在空态上方）；B 顶部细条可展开（最克制：细条常驻+点开展示摘要，存在感最低）；C 左右分栏（信息密度最高：左身份右路由，一眼扫完）。←/→ 键也可切换（输入框聚焦时不拦截）。关闭策略三变体一致：X → 本会话隐藏 + 占位条（可重新显示 / 切会话重置）。</p>
+</div>
+<div class="switcher" role="navigation" aria-label="原型变体切换（非设计本身）">
+  <button id="prevBtn" title="上一个变体">◀</button>
+  <span id="swLabel">A · 人物卡居中</span>
+  <span class="dots"><button data-v="A" title="A"></button><button data-v="B" title="B"></button><button data-v="C" title="C"></button></span>
+  <button id="nextBtn" title="下一个变体">▶</button>
+</div>
+<script>
+// ---- 纯逻辑模块（DOM-free：只读/写 state；渲染为薄壳；可整体 lift 为真代码的状态机雏形） ----
+var VARIANTS = ["A","B","C"];
+var NAMES = { A:"A · 人物卡居中", B:"B · 顶部细条可展开", C:"C · 左右分栏" };
+var HINTS = {
+  A:"变体 A · 人物卡居中：拟人化最强的一张。看点：大头像+在线态+一句欢迎（含今日数字）+ 3 行会话摘要（E3 联动“在中间打开”）+ 去设置/打开工作区。代价：占用空态纵向空间最多。",
+  B:"变体 B · 顶部细条可展开：最克制的一条。看点：细条只占一行（在线态+数字一句话+展开/X），摘要藏在展开面板里。代价：摘要需要多点一次。",
+  C:"变体 C · 左右分栏：信息密度最高的一块。看点：左列身份（头像/健康/家路径/快捷）+ 右列今日路由（sessionId+直达），一眼扫完。代价：窄会话列下偏挤。"
+};
+var AGENTS = {
+  xiaoshuai:{ name:"小帅", word:"帅", ws:"xiaoshuai", home:"D:/dsh/ws/xiaoshuai", bound:true, health:"online", healthLabel:"飞书在线", channels:"飞书 ●在线" },
+  xinghuo:{ name:"星火", word:"火", ws:"xinghuo", home:"D:/dsh/ws/xinghuo", bound:true, health:"degraded", healthLabel:"飞书在线 · QQ离线", channels:"飞书 ●在线 / QQ ○离线" },
+  unbound:{ name:"未命名", word:"？", ws:"dsh-im", home:"（未绑定工作区）", bound:false, health:"offline", healthLabel:"未绑定", channels:"飞书 ○离线" }
+};
+var DIGEST = [
+  { chat:"私聊 · 张三", unread:3, at:"11:06", session:"sess_dm_zs" },
+  { chat:"群聊 · 项目群", unread:12, at:"10:52", session:"sess_g_proj" },
+  { chat:"私聊 · 李四", unread:1, at:"09:41", session:"sess_dm_ls" }
+];
+var qs = new URLSearchParams(location.search);
+var variant = VARIANTS.indexOf(qs.get("variant")) >= 0 ? qs.get("variant") : "A";
+var agentKey = "xiaoshuai", sessionEmpty = true, dismissed = false, expanded = false, theme = "light", lastChanged = "初始化";
+var extraMsgs = [];
+function cur(){ return AGENTS[agentKey]; }
+function totalUnread(){ var n = 0; for (var i=0;i<DIGEST.length;i++) n += DIGEST[i].unread; return n; }
+function bannerVisible(){ return sessionEmpty && cur().bound && !dismissed; }
+function mDismiss(){ dismissed = true; lastChanged = "关闭横幅 → 本会话隐藏（内存态，切会话/重置可恢复）"; }
+function mReshow(){ dismissed = false; lastChanged = "重新显示 → 横幅回到空态上方"; }
+function mSwitchSession(){ dismissed = false; expanded = false; extraMsgs = []; lastChanged = "模拟切会话 → 关闭态/展开态/追加消息全部重置"; }
+function mSend(t){ extraMsgs.push(t); sessionEmpty = false; lastChanged = "发送消息 → 会话变“有消息”，横幅自动隐藏（触发逻辑演示）"; }
+function mOpen(session){ lastChanged = "在中间打开 " + session + "（mock，未调真路由；E3 联动点）"; }
+// ---- 渲染（薄壳） ----
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+function digestRows(){ var h = "";
+  for (var i=0;i<DIGEST.length;i++){ var d = DIGEST[i];
+    h += "<div class=\"rout\"><span><b>" + esc(d.chat) + "</b> · " + d.unread + " 条未读 · " + d.at + "<br><code>" + d.session + "</code></span><a data-open=\"" + d.session + "\">在中间打开</a></div>"; }
+  return h; }
+function unboundBox(){
+  return "<div class=\"e4x\" style=\"padding:16px\"><button class=\"x\" data-act=\"dismiss\" title=\"关闭（本会话）\">✕</button>"
+    + "<div style=\"display:flex;gap:12px;align-items:center\"><div class=\"avatar\" style=\"width:52px;height:52px;font-size:22px\">" + cur().word + "</div>"
+    + "<div><div style=\"font-weight:800;font-size:15px\">👋 这是 " + esc(cur().name) + " 的对话区</div>"
+    + "<div style=\"font-size:12px;color:var(--mut)\">当前工作区尚未绑定 Agent · 绑定后这里会出现欢迎横幅</div></div></div>"
+    + "<div style=\"margin-top:10px;display:flex;gap:8px\"><button class=\"btn primary sm\" data-act=\"noop-bind\">去绑定</button><button class=\"btn sm\" data-act=\"noop-settings\">去设置</button></div></div>";
+}
+function variantA(){
+  if(!cur().bound) return unboundBox();
+  var h = "<div class=\"e4x\" style=\"padding:18px 16px 14px;text-align:center\"><button class=\"x\" data-act=\"dismiss\" title=\"关闭（本会话）\">✕</button>";
+  h += "<div class=\"avatar\" style=\"width:56px;height:56px;font-size:24px;margin:0 auto 8px\">" + cur().word + "</div>";
+  h += "<div style=\"font-weight:800;font-size:16px\">👋 " + esc(cur().name) + " 在线上</div>";
+  h += "<div style=\"font-size:12px;color:var(--mut);margin:2px 0 10px\"><span class=\"dot " + cur().health + "\"></span> " + esc(cur().healthLabel) + " · 家：" + esc(cur().home) + "<br>今日 " + DIGEST.length + " 个会话 / " + totalUnread() + " 条未读，要先看哪一个？</div>";
+  h += "<div style=\"text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:4px 10px\">" + digestRows() + "</div>";
+  h += "<div style=\"margin-top:10px;display:flex;gap:8px;justify-content:center\"><button class=\"btn primary sm\" data-act=\"noop-settings\">去设置</button><button class=\"btn sm\" data-act=\"noop-openws\">打开工作区</button></div></div>";
+  return h;
+}
+function variantB(){
+  if(!cur().bound) return unboundBox();
+  var h = "<div class=\"e4x\" style=\"padding:0\"><div style=\"display:flex;gap:8px;align-items:center;padding:8px 40px 8px 12px;font-size:12px\">"
+    + "<span class=\"dot " + cur().health + "\"></span><b>" + esc(cur().name) + " · " + esc(cur().healthLabel) + "</b>"
+    + "<span style=\"color:var(--mut)\">今日 " + DIGEST.length + " 会话 / " + totalUnread() + " 条未读</span>"
+    + "<span style=\"margin-left:auto;display:flex;gap:6px\"><button class=\"btn sm\" data-act=\"expand\">" + (expanded ? "收起" : "展开") + "</button></span></div>"
+    + "<button class=\"x\" data-act=\"dismiss\" title=\"关闭（本会话）\">✕</button>";
+  if(expanded) h += "<div style=\"border-top:1px solid var(--line);padding:4px 12px 8px\">" + digestRows() + "<div style=\"margin-top:8px;display:flex;gap:8px\"><button class=\"btn primary sm\" data-act=\"noop-settings\">去设置</button><button class=\"btn sm\" data-act=\"noop-openws\">打开工作区</button></div></div>";
+  h += "</div>";
+  return h;
+}
+function variantC(){
+  if(!cur().bound) return unboundBox();
+  var h = "<div class=\"e4x\" style=\"padding:12px\"><button class=\"x\" data-act=\"dismiss\" title=\"关闭（本会话）\">✕</button>";
+  h += "<div style=\"display:grid;grid-template-columns:190px 1fr;gap:12px;text-align:left\">";
+  h += "<div style=\"border-right:1px dashed var(--line);padding-right:12px\"><div style=\"display:flex;gap:10px;align-items:center\"><div class=\"avatar\" style=\"width:44px;height:44px;font-size:20px\">" + cur().word + "</div><div><div style=\"font-weight:800\">" + esc(cur().name) + "</div><div style=\"font-size:11px;color:var(--mut)\"><span class=\"dot " + cur().health + "\"></span> " + esc(cur().healthLabel) + "</div></div></div>"
+    + "<div style=\"font-size:11px;color:var(--mut);margin-top:8px\">家：" + esc(cur().home) + "<br>" + esc(cur().channels) + "</div>"
+    + "<div style=\"margin-top:8px;display:flex;gap:6px;flex-wrap:wrap\"><button class=\"btn primary sm\" data-act=\"noop-settings\">去设置</button><button class=\"btn sm\" data-act=\"noop-openws\">打开工作区</button></div></div>";
+  h += "<div><div style=\"font-size:12px;font-weight:700;margin-bottom:2px\">今日摘要 · " + DIGEST.length + " 会话 / " + totalUnread() + " 条未读</div>" + digestRows() + "</div>";
+  h += "</div></div>";
+  return h;
+}
+function renderBanner(){
+  if(!sessionEmpty) return "";
+  if(!cur().bound) return (variant === "B" && dismissed) ? "" : unboundBox();
+  if(dismissed) return "<div class=\"dismissed\">横幅已关闭（本会话不再显示，切会话即恢复） <button class=\"btn sm\" data-act=\"reshow\">重新显示</button></div>";
+  return variant === "A" ? variantA() : variant === "B" ? variantB() : variantC();
+}
+function render(){
+  document.getElementById("root").setAttribute("data-theme", theme);
+  $("variantHint").textContent = HINTS[variant];
+  $("changedLine").textContent = "上次变化：" + lastChanged;
+  var rail = ""; var keys = ["xiaoshuai","xinghuo","unbound"];
+  var tagCls = { online:"on", degraded:"deg", offline:"off" };
+  var tagTxt = { online:"在线", degraded:"部分在线", offline:"未绑定" };
+  for (var i=0;i<keys.length;i++){ var k = keys[i], a = AGENTS[k];
+    rail += "<div class=\"ws" + (k===agentKey?" cur":"") + "\"><span>📁 " + a.ws + "<br><span style=\"color:var(--mut)\">" + a.name + "</span></span><span class=\"tag " + tagCls[a.health] + "\">" + tagTxt[a.health] + "</span></div>"; }
+  $("rail").innerHTML = "<h5>工作区（Mock）</h5>" + rail + "<div style=\"margin-top:8px;font-size:11px\">点控制台 Agent 切换 = 换工作区</div>";
+  var c = cur();
+  $("convHd").innerHTML = "<span>💬 当前：<b>" + esc(c.ws) + "</b></span><span class=\"sp\"></span><span class=\"chip\"><span class=\"dot " + c.health + "\"></span>" + esc(c.name) + " · " + esc(c.healthLabel) + "</span>";
+  var m = "";
+  if(sessionEmpty){
+    m += renderBanner();
+    m += "<div class=\"empty-native\"><div class=\"big\">💭</div><div><b>DSH 原生空态（保留）</b></div><div>开始一个新的对话吧 —— 横幅叠在其上方，原生结构不动。</div></div>";
+  } else {
+    m += "<div class=\"bubble\">你好，" + esc(c.name) + "，今天有什么安排？</div>";
+    for (var j=0;j<extraMsgs.length;j++) m += "<div class=\"bubble me\">" + esc(extraMsgs[j]) + "</div>";
+    m += "<div class=\"bubble\">收到 ✔（mock 回复；有消息会话下横幅自动隐藏，不打扰）</div>";
+  }
+  $("msgs").innerHTML = m;
+  var kv = [["变体 variant", variant + "（" + NAMES[variant] + "）"],["Agent", agentKey + " / " + c.name],["绑定 bound", c.bound],["健康 health", c.health + " / " + c.healthLabel],["空会话 sessionEmpty", sessionEmpty],["横幅可见 bannerVisible", bannerVisible() || (!sessionEmpty ? false : (!c.bound && !dismissed))],["已关闭 dismissed（内存）", dismissed],["展开 expanded（仅B）", expanded],["主题 theme", theme]];
+  var kh = ""; for (var k2=0;k2<kv.length;k2++) kh += "<div><span>" + kv[k2][0] + "</span><b>" + kv[k2][1] + "</b></div>";
+  $("kvBox").innerHTML = kh;
+  $("jsonBox").textContent = JSON.stringify({ variant:variant, agent:agentKey, bound:c.bound, health:c.health, sessionEmpty:sessionEmpty, bannerVisible:bannerVisible(), dismissed:dismissed, expanded:expanded, theme:theme, unread:totalUnread(), lastChanged:lastChanged }, null, 2);
+  $("varTag").textContent = NAMES[variant] + " · ?variant=" + variant;
+  $("swLabel").textContent = NAMES[variant];
+  var dots = document.querySelectorAll(".switcher .dots button");
+  for (var d2=0;d2<dots.length;d2++) dots[d2].className = dots[d2].getAttribute("data-v") === variant ? "on" : "";
+  if(new URLSearchParams(location.search).get("prod") === "1"){ var sw = document.querySelector(".switcher"); if(sw) sw.style.display = "none"; }
+}
+function setVariant(v, why){
+  if(VARIANTS.indexOf(v) < 0) return;
+  variant = v;
+  var u = new URL(location.href); u.searchParams.set("variant", v); history.replaceState(null, "", u.toString());
+  lastChanged = "切换变体 → " + NAMES[v] + (why ? "（" + why + "）" : "") + "（URL ?variant= 已更新，可分享）";
+  render();
+}
+// ---- 事件（薄壳接线） ----
+$("agentSel").addEventListener("change", function(e){ agentKey = e.target.value; dismissed = false; expanded = false; lastChanged = "切换 Agent → " + cur().name + "（" + cur().healthLabel + "；关闭态重置）"; render(); });
+$("sessSel").addEventListener("change", function(e){ sessionEmpty = (e.target.value === "empty"); dismissed = false; lastChanged = "切换会话类型 → " + (sessionEmpty ? "空会话（横幅按规则出现）" : "有消息会话（横幅自动隐藏）"); render(); });
+$("themeSel").addEventListener("change", function(e){ theme = e.target.value; lastChanged = "切换主题 → " + (theme === "dark" ? "深色" : "浅色") + "（横幅深色适配验证）"; render(); });
+$("btnSwitch").addEventListener("click", function(){ mSwitchSession(); render(); });
+$("btnReset").addEventListener("click", function(){ agentKey = "xiaoshuai"; sessionEmpty = true; dismissed = false; expanded = false; theme = "light"; extraMsgs = []; $("agentSel").value = "xiaoshuai"; $("sessSel").value = "empty"; $("themeSel").value = "light"; lastChanged = "重置内存态 → 小帅/空会话/浅色/未关闭"; render(); });
+function sendFromComposer(){ var inp = $("composerInput"); var t = inp.value.trim(); if(!t) return; inp.value = ""; mSend(t); render(); }
+$("btnSend").addEventListener("click", sendFromComposer);
+$("composerInput").addEventListener("keydown", function(e){ if(e.key === "Enter") sendFromComposer(); });
+document.addEventListener("click", function(e){
+  var t = e.target;
+  var open = t.getAttribute ? t.getAttribute("data-open") : null;
+  if(open){ mOpen(open); render(); return; }
+  var act = t.getAttribute ? t.getAttribute("data-act") : null;
+  if(!act) return;
+  if(act === "dismiss") mDismiss();
+  else if(act === "reshow") mReshow();
+  else if(act === "expand"){ expanded = !expanded; lastChanged = (expanded ? "展开摘要面板" : "收起摘要面板") + "（仅变体B）"; }
+  else if(act === "noop-settings") lastChanged = "去设置（mock，未跳转；真代码走 B3/设置页）";
+  else if(act === "noop-openws") lastChanged = "打开工作区（mock；真代码走工作区跳转）";
+  else if(act === "noop-bind") lastChanged = "去绑定（mock；未绑定态引导，真代码走绑定流程）";
+  render();
+});
+$("prevBtn").addEventListener("click", function(){ setVariant(VARIANTS[(VARIANTS.indexOf(variant)+VARIANTS.length-1)%VARIANTS.length], "◀"); });
+$("nextBtn").addEventListener("click", function(){ setVariant(VARIANTS[(VARIANTS.indexOf(variant)+1)%VARIANTS.length], "▶"); });
+document.querySelectorAll(".switcher .dots button").forEach(function(b){ b.addEventListener("click", function(){ setVariant(b.getAttribute("data-v"), "圆点直达"); }); });
+document.addEventListener("keydown", function(e){
+  var tag = (document.activeElement && document.activeElement.tagName) || "";
+  if(tag === "INPUT" || tag === "TEXTAREA" || (document.activeElement && document.activeElement.isContentEditable)) return;
+  if(e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+  setVariant(VARIANTS[(VARIANTS.indexOf(variant)+(e.key === "ArrowRight" ? 1 : VARIANTS.length-1))%VARIANTS.length], "键盘 " + e.key);
+});
+render();
+</script>
+</body>
+</html>
