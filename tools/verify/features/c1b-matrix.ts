@@ -136,6 +136,9 @@ test('LOGO：9 渠道全覆盖 + 未知回退（dsh-im 同款 glyph）', () => {
     assert.match(svg, /<path/);
   }
   assert.equal(iconsMod.channelGlyphSvg('nope-channel', 14), null);
+  for (const id of config.CHANNEL_ORDER) {
+    assert.match(data.LOGO_TILE_BG[id], /^#/, 'tile:' + id);
+  }
 });
 
 test('大弹窗装配：矩阵自管模态 + 装配层零感知 + A1 船按钮间距（源码断言）', () => {

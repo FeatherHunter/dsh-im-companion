@@ -110,6 +110,13 @@ export function footSomeLine(names: string[], lang: Lang): string {
   return names.join(lang === 'en' ? ', ' : '、') + (lang === 'en' ? ' not connected' : ' 暂无接入')
 }
 
+/** LOGO 底色（纯数据，可测）：dsh-im 设置页同款——品牌色圆角底 + 白 glyph；
+ * 飞书/企微 glyph 自带多色，只配白底衬；其余单色 glyph（currentColor）坐品牌底变白。 */
+export const LOGO_TILE_BG: Record<string, string> = {
+  feishu: '#ffffff', weixin: '#07c160', qq: '#12b7f5', slack: '#4a154b', telegram: '#2aabee',
+  discord: '#5865f2', whatsapp: '#25d366', dingtalk: '#0091ff', wecom: '#ffffff',
+}
+
 const RANK: Record<HealthKind, number> = { online: 0, warn: 1, offline: 2 }
 
 /** 行排序（锁定规格）：未绑定独立沉底 → 健康 rank → 按名（中文）。 */

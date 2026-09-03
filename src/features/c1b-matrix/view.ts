@@ -15,7 +15,7 @@ import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
 import {
   buildMatrix, drillEventFor, footAllLine, footSomeLine, healthLabel, langOf, metaLine,
-  statusText, strings, type Lang, type MatrixCell, type MatrixModel, type MatrixRow,
+  statusText, strings, LOGO_TILE_BG, type Lang, type MatrixCell, type MatrixModel, type MatrixRow,
 } from './data'
 
 const AVATAR_COLORS = ['#3964fe', '#07c160', '#e8890c', '#8e44ad', '#12b7f5', '#d92d20', '#00b386', '#5865f2']
@@ -46,12 +46,16 @@ function docLang(): Lang {
   }
 }
 
-/** 渠道 LOGO 节点（未知渠道回 null，调用方只剩文字）。 */
+/** 渠道 LOGO 节点：品牌底圆角 + glyph（未知渠道回 null，调用方只剩文字）。 */
 function logoNode(channel: string): HTMLElement | null {
   try {
-    const svg = channelGlyphSvg(channel, 14)
+    const svg = channelGlyphSvg(channel, 12)
     if (!svg) return null
-    return h('span', { className: 'c1bm-logo', html: svg }) as HTMLElement
+    return h('span', {
+      className: 'c1bm-logo',
+      html: svg,
+      style: { background: LOGO_TILE_BG[channel] ?? 'var(--dsw-alias-fill-secondary,rgba(127,127,127,.15))' },
+    }) as HTMLElement
   } catch {
     return null
   }

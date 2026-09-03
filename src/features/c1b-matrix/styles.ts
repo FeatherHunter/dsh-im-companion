@@ -9,7 +9,7 @@ export const CSS = `
 .c1bm-title { margin: 0; font-size: 17px; line-height: 22px; font-weight: 700; color: var(--dsw-alias-label-primary,#1c1c1e); }
 .c1bm-meta { font-size: 12px; color: var(--dsw-alias-label-tertiary,#98989d); font-variant-numeric: tabular-nums; }
 .c1bm-hd .c1bm-sp { flex: 1; }
-.c1bm-logo { display: inline-flex; width: 14px; height: 14px; flex: none; }
+.c1bm-logo { display: inline-flex; width: 18px; height: 18px; border-radius: 5px; flex: none; align-items: center; justify-content: center; color: #fff; border: 1px solid var(--dsw-alias-separator,#e5e6eb); overflow: hidden; }
 .c1bm-logo svg { display: block; }
 .c1bm-refresh { font: inherit; font-size: 12px; padding: 5px 12px; border-radius: 9px; border: 1px solid var(--dsw-alias-separator,#dfe1e5); background: var(--dsw-alias-bg-base,#fff); color: var(--dsw-alias-label-secondary,#6e6e73); cursor: pointer; margin-left: 6px; }
 .c1bm-refresh:hover { color: var(--dsw-alias-brand-primary,#0a84ff); border-color: var(--dsw-alias-brand-primary,#0a84ff); }
