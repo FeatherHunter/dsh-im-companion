@@ -1,10 +1,11 @@
 <!doctype html>
 <!-- THROWAWAY PROTOTYPE for issue #9 (C1a Fleet 详情抽屉). Do NOT ship to main. -->
-<!-- Plan: Three variants of the C1a agent detail drawer, switchable via ?variant=, on throwaway prototype-c1a-drawer.html (sub-shape B: drawer has no existing route; mock DSH chrome hosts A1 rows + right sheet). -->
+<!-- Plan: Three variants of the C1a agent detail drawer, switchable via ?variant=, on throwaway prototype-c1a-drawer.html (sub-shape B: drawer has no existing route; mock DSH chrome = 真机尺寸设置弹窗：左设置导航190px + 内容区~730px + 覆盖式右sheet 360px). -->
 <!-- Design Q: 从 A1 行打开 Agent 详情抽屉（右侧 sheet）：预设 / 上下文增强 / 绑定工作区 / 会话路由摘要 / 渠道管理，哪些进抽屉、哪些留在行内？Branch: UI (what-should-this-look-like). -->
 <!-- Grilling 共识 (2026-09-03): 变体=A全量进抽屉/B摘要+折叠/C渠道矩阵；数据=mock（预设下拉+自定义名、上下文开关+三档、绑定路径+换绑、路由各2+2条、渠道行接入/解绑）；保真=全可点+内存态+State外显；落点=本单文件+?variant=+底部悬浮条。 -->
+<!-- Width (2026-09-03 真机截图): 设置弹窗约940px / 左导航约190px / 内容区约730px → 抽屉必须覆盖式，不可并排挤压行宽。 -->
 <!-- Run: 双击打开，或 python -m http.server 8788 后访问 /prototype-c1a-drawer.html?variant=A -->
-<!-- Assumption: 深色纳入切换；抽屉 360px、窄屏全屏；真 RPC shape（bot.preset.set 等）待实现时对齐；本文件永不进 main（决议后赢家重写进真代码，原型归档 throwaway 分支）。 -->
+<!-- Assumption: 深色纳入切换；抽屉覆盖式360px（窄屏占内容区94%）；内容区宽度按真机730px写死；真 RPC shape待实现时对齐；本文件永不进 main。 -->
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8">
@@ -29,12 +30,17 @@
   .btn.primary { background:var(--acc); border-color:var(--acc); color:#fff; }
   .btn.ghost { opacity:.75; }
   .btn.sm { padding:3px 8px; font-size:11px; }
-  .dsh { display:grid; grid-template-columns:200px 1fr; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--panel); min-height:480px; }
+  .dsh { max-width:980px; margin:0 auto; display:grid; grid-template-columns:190px 1fr; border:1px solid var(--line); border-radius:14px; overflow:hidden; background:var(--panel); min-height:520px; box-shadow:0 12px 40px rgba(0,0,0,.18); }
   .side { border-right:1px solid var(--line); padding:10px; font-size:12px; color:var(--mut); }
   .ws { padding:6px 8px; border-radius:7px; margin-bottom:4px; display:flex; justify-content:space-between; gap:6px; }
   .ws.cur { background:color-mix(in srgb, var(--acc) 12%, transparent); color:var(--ink); outline:1px solid color-mix(in srgb, var(--acc) 35%, transparent); }
-  .fleet { display:flex; min-width:0; }
-  .rows { flex:1; min-width:0; padding:12px; display:grid; gap:8px; align-content:start; }
+  .fleet { position:relative; min-width:0; background:var(--panel); }
+  .fleetHd { padding:14px 14px 0; }
+  .fleetHd h2 { margin:0; font-size:22px; letter-spacing:-.01em; }
+  .fleetHd .sub { font-size:12px; color:var(--mut); margin:2px 0 10px; }
+  .fleetBar { display:flex; gap:8px; margin-bottom:10px; }
+  .fleetBar input { flex:1; }
+  .rows { min-width:0; padding:0 14px 14px; display:grid; gap:8px; align-content:start; }
   .arow { border:1px solid var(--line); border-radius:10px; padding:10px; display:flex; gap:10px; align-items:center; background:var(--panel); }
   .arow.cur { outline:2px solid color-mix(in srgb, var(--acc) 55%, transparent); outline-offset:1px; }
   .avatar { width:34px; height:34px; border-radius:9px; display:grid; place-items:center; color:#fff; font-weight:800; background:linear-gradient(135deg,#12213f,#3964fe); flex:none; }
@@ -48,7 +54,7 @@
   .dot.degraded { background:var(--warn); }
   @keyframes bl { 0%{box-shadow:0 0 0 0 rgba(32,161,98,.5)} 70%{box-shadow:0 0 0 7px rgba(32,161,98,0)} 100%{box-shadow:0 0 0 0 rgba(32,161,98,0)} }
   .rowacts { margin-left:auto; display:flex; gap:6px; flex:none; }
-  .sheet { width:360px; flex:none; border-left:1px solid var(--line); background:var(--bg); display:flex; flex-direction:column; min-height:480px; max-height:78vh; }
+  .sheet { position:absolute; top:0; right:0; bottom:0; width:min(360px,94%); z-index:5; border-left:1px solid var(--line); background:var(--bg); display:flex; flex-direction:column; overflow:hidden; box-shadow:-16px 0 32px rgba(0,0,0,.20); }
   .sheet.closed { display:none; }
   .sheetHd { padding:10px 12px; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:center; background:var(--panel); }
   .sheetHd b { font-size:13px; }
@@ -79,7 +85,7 @@
   .state { margin-top:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; }
   .stateHead { padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700; font-size:13px; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
   .stateBody { display:grid; grid-template-columns:1fr 1.2fr; gap:12px; padding:12px; }
-  @media (max-width:900px){ .dsh{grid-template-columns:1fr} .side{display:none} .fleet{flex-direction:column} .sheet{width:100%; max-height:none; border-left:0; border-top:1px solid var(--line)} .stateBody{grid-template-columns:1fr} }
+  @media (max-width:900px){ .dsh{grid-template-columns:1fr} .side{display:none} .stateBody{grid-template-columns:1fr} }
   .kv { display:grid; gap:4px; font-size:12px; align-content:start; }
   .kv div { display:flex; justify-content:space-between; gap:8px; border-bottom:1px dashed var(--line); padding:3px 0; }
   .kv span:first-child { color:var(--mut); }
@@ -110,9 +116,11 @@
     <span class="note" id="boundHint"></span>
   </div>
   <p class="bhint" id="variantHint"></p>
+  <p class="bhint">宽度约束（真机截图 2026-09-03）：设置弹窗约 940px，左侧设置导航约 190px，内容区约 730px；抽屉为覆盖式（宽 360px，浮于行上，不挤压行宽）；窄屏时抽屉占内容区 94%。</p>
   <div class="dsh">
     <div class="side" id="sideNav"></div>
     <div class="fleet">
+      <div class="fleetHd"><h2>Agent</h2><div class="sub">12 个 Agent · 2 个渠道 · 11 个机器人（mock 仅 3 行，余下省略）</div><div class="fleetBar"><input type="text" placeholder="搜索（原型范围外，未接线）" disabled><button class="btn sm" disabled title="原型范围外">按Agent</button><button class="btn sm ghost" disabled title="原型范围外">按渠道</button></div></div>
       <div class="rows" id="rowSlot"></div>
       <div class="sheet" id="drawerSlot"></div>
     </div>
@@ -212,20 +220,20 @@ function render(){
   $("themeSel").value = theme; $("agentSel").value = agentKey;
   document.body.setAttribute("data-theme", theme);
   const a = cur();
-  $("sideNav").innerHTML = ["xiaoshuai · 小帅","xinghuo · 星火","dsh-im · 未绑定"].map((t,i)=>{ const k=["xiaoshuai","xinghuo","unbound"][i]; return '<div class="ws'+(k===agentKey?" cur":"")+'"><span>📁 '+esc(t.split(" · ")[0])+'</span><span>'+esc(t.split(" · ")[1])+'</span></div>'; }).join("") + '<div style="margin-top:8px">← 真实 DSH 密度参照</div>';
+  $("sideNav").innerHTML = '<div style="font-weight:700;margin:2px 0 8px;color:var(--ink)">设置</div>' + ["通用设置","模型","插件","IM机器人","IM机器人辅助","插件市场","桌面设置"].map(t=>'<div class="ws'+(t==="IM机器人辅助"?" cur":"")+'"><span>⚙️ '+esc(t)+'</span></div>').join("");
   $("rowSlot").innerHTML = rowHTML();
   const sh = $("drawerSlot");
   sh.classList.toggle("closed", !drawerOpen);
   sh.innerHTML = drawerHTML();
-  const hints = { A:"A · 全量进抽屉：行内仅「状态 + 接入 + 详情」，预设/上下文/绑定/路由/渠道 5 块全进抽屉。", B:"B · 摘要+折叠：行内保留「渠道胶囊 + 换绑快捷」，抽屉顶部摘要可直接改预设/上下文，余下折叠。", C:"C · 渠道矩阵：行内保留全部快捷，抽屉是渠道×能力矩阵 + 批量条，适合多渠道运维。" };
+  const hints = { A:"A · 全量进抽屉：行内仅「状态 + 接入 + 详情」，5 块全进抽屉；抽屉覆盖于行上。", B:"B · 摘要+折叠：行内保留「渠道胶囊 + 换绑快捷」，抽屉顶部摘要可直接改，余下折叠；抽屉覆盖于行上。", C:"C · 渠道矩阵：行内保留全部快捷，抽屉是渠道×能力矩阵 + 批量条；抽屉覆盖于行上。" };
   $("variantHint").textContent = hints[variant];
   $("boundHint").textContent = a.ws ? "已绑定 · " + a.channels.length + " 渠道 · 路由 " + a.routes.length + " 条" : "未绑定 · 路由为空 · 先绑定再配身份";
   // 状态外显
   $("varTag").textContent = "当前 " + NAMES[variant] + " · ?variant=" + variant;
   $("swLabel").textContent = NAMES[variant];
   document.querySelectorAll(".switcher .dots button").forEach(d => d.classList.toggle("on", d.dataset.v === variant));
-  const state = { variant, variantName: NAMES[variant], agent: agentKey, name: a.name, drawerOpen, preset: a.preset, customPreset: a.customPreset, presetLabel: presetLabel(a), ctx: a.ctx, workspace: a.ws || "(unbound)", channels: a.channels, routes: a.routes.length, theme, lastChanged };
-  const rows = [["变体","?variant="+variant+"（"+NAMES[variant]+"）"],["Agent",a.name+"（"+agentKey+"）"],["抽屉",drawerOpen?"开":"合"],["预设",presetLabel(a)],["上下文",ctxLabel(a)],["工作区",a.ws||"未绑定"],["渠道",a.channels.map(c=>c.label+":"+c.status).join("，")||"—"],["路由",a.routes.length + " 条"],["主题",theme],["最近变化",lastChanged]];
+  const state = { variant, variantName: NAMES[variant], panel: "设置弹窗~940 / 导航190 / 内容~730 / 抽屉覆盖360", agent: agentKey, name: a.name, drawerOpen, preset: a.preset, customPreset: a.customPreset, presetLabel: presetLabel(a), ctx: a.ctx, workspace: a.ws || "(unbound)", channels: a.channels, routes: a.routes.length, theme, lastChanged };
+  const rows = [["变体","?variant="+variant+"（"+NAMES[variant]+"）"],["面板约束","内容~730px · 抽屉覆盖360px"],["Agent",a.name+"（"+agentKey+"）"],["抽屉",drawerOpen?"开":"合"],["预设",presetLabel(a)],["上下文",ctxLabel(a)],["工作区",a.ws||"未绑定"],["渠道",a.channels.map(c=>c.label+":"+c.status).join("，")||"—"],["路由",a.routes.length + " 条"],["主题",theme],["最近变化",lastChanged]];
   $("kvBox").innerHTML = rows.map(r=>"<div><span>"+esc(r[0])+"</span><b>"+esc(r[1])+"</b></div>").join("");
   $("jsonBox").textContent = JSON.stringify(state, null, 2);
   bind();
