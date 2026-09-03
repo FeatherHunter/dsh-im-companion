@@ -189,10 +189,9 @@ function routesSection(model: DrawerModel): HTMLElement {
   for (const r of model.routes) {
     const row = h('div', { className: 'c1a-route' + (r.ghost ? ' c1a-ghost' : '') })
     const who = (r.channel ? channelLabel(r.channel) + '·' : '') + r.chat
-    row.appendChild(h('div', { className: 'c1a-rchat', title: r.ghost ? '旧 direct: 存量映射，可忽略' : who }, who))
-    const low = h('div', { className: 'c1a-rlow' })
-    if (r.ghost) low.appendChild(h('span', { className: 'c1a-meta' }, '旧映射'))
-    low.appendChild(h('code', null, '→ ' + r.sessionId))
+    row.appendChild(h('span', { className: 'c1a-rchat', title: r.ghost ? '旧 direct: 存量映射，可忽略' : who }, who))
+    if (r.ghost) row.appendChild(h('span', { className: 'c1a-meta' }, '旧映射'))
+    row.appendChild(h('code', null, '→ ' + r.sessionId))
     const btn = makeButton({
       kind: 'ghost', size: 'sm', label: '复制', title: '复制完整会话标识',
       onClick: () => {
@@ -205,8 +204,7 @@ function routesSection(model: DrawerModel): HTMLElement {
         }
       },
     })
-    low.appendChild(h('span', { className: 'c1a-push' }, btn))
-    row.appendChild(low)
+    row.appendChild(h('span', { className: 'c1a-push' }, btn))
     sec.appendChild(row)
   }
   return sec
