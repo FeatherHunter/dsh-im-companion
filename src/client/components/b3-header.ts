@@ -66,6 +66,11 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   }, [sessionId, subscribe])
 
   React.useEffect(() => {
+    setOpen(false)
+    setResult(null)
+  }, [sessionId])
+
+  React.useEffect(() => {
     if (!open || typeof document === 'undefined') return
     const onDoc = (ev: Event): void => {
       try {

@@ -13,13 +13,34 @@ const DOT_CLASS = 'left-badges-dot'
 const LABEL_CLASS = 'left-badges-label'
 const KEY_ATTR = 'data-left-badges'
 
-function eachRow(fn: (row: Element) => void): void {
+/* 扫描作用域：命中行后收窄到其父容器（消息流刷屏时不全文档扫描）；行消失回大局。null = 全文档。 */
+let scope: Element | null = null
+let loggedFirstHit = false
+let lastRowTotal = -1
+
+function info(msg: string): void {
   try {
-    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return
-    const q = document.querySelectorAll.bind(document)
+    console.info('[dsh-im-companion] left-badges：' + msg)
+  } catch {
+    /* 无 console 环境静默 */
+  }
+}
+
+function collectRows(): Element[] {
+  const out: Element[] = []
+  const seen = new Set<Element>()
+  try {
+    if (typeof document === 'undefined') return out
+    const root: Element | Document = scope ?? document
+    if (typeof root.querySelectorAll !== 'function') return out
     for (const sel of ROW_SELECTORS) {
       try {
-        q(sel).forEach(fn)
+        root.querySelectorAll(sel).forEach((row) => {
+          if (!seen.has(row)) {
+            seen.add(row)
+            out.push(row)
+          }
+        })
       } catch {
         /* 该选择器不支持就跳过 */
       }
@@ -27,6 +48,7 @@ function eachRow(fn: (row: Element) => void): void {
   } catch {
     /* 非浏览器环境静默 */
   }
+  return out
 }
 
 function rowKey(row: Element): string {
@@ -75,9 +97,9 @@ function emitOpenAgent(workspace: string, agent: string): void {
   }
 }
 
-function decorateRow(row: Element, bots: BotSnap[], nowMs: number): void {
+function decorateRow(row: Element, bots: BotSnap[], nowMs: number): boolean {
   const key = rowKey(row)
-  if (!key) return
+  if (!key) return false
   const ws = resolveWorkspace(key, bots)
   const badge = badgeForWorkspace(ws, bots, nowMs)
   const paintKey = badge.kind + '|' + badge.label + '|' + badge.tooltip
@@ -94,7 +116,7 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): void {
     } catch {
       prev = ''
     }
-    if (prev === paintKey) return /* 无变化不碰 DOM（避免 observer 自激） */
+    if (prev === paintKey) return true /* 无变化不碰 DOM（避免 observer 自激） */
     try {
       el.setAttribute('class', BADGE_CLASS + ' ' + badge.kind)
       el.setAttribute('title', badge.tooltip)
@@ -103,11 +125,12 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): void {
       if (label) label.textContent = badge.label
     } catch {
       /* 更新失败下次快照再试 */
+      return false
     }
-    return
+    return true
   }
   try {
-    if (typeof document === 'undefined') return
+    if (typeof document === 'undefined') return false
     const host = document.createElement('span')
     host.setAttribute('class', BADGE_CLASS + ' ' + badge.kind)
     host.setAttribute('title', badge.tooltip)
@@ -128,19 +151,67 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): void {
       emitOpenAgent(badge.workspace, badge.agent)
     })
     row.appendChild(host)
+    return true
   } catch {
     /* 创建失败下次快照再试 */
+    return false
   }
 }
 
 function paint(bots: BotSnap[], nowMs: number): void {
-  eachRow((row) => {
+  const rows = collectRows()
+  if (!rows.length) {
+    if (scope !== null) scope = null
+    return
+  }
+  if (scope === null) {
+    const parent = rows[0].parentElement
+    if (parent) scope = parent
+  }
+  let decorated = 0
+  for (const row of rows) {
     try {
-      decorateRow(row, bots, nowMs)
+      if (decorateRow(row, bots, nowMs)) decorated++
     } catch {
       /* 单行失败不影响其他行 */
     }
-  })
+  }
+  if (!loggedFirstHit) {
+    loggedFirstHit = true
+    info('命中 ' + rows.length + ' 行，开始装饰')
+  }
+  if (rows.length !== lastRowTotal) {
+    lastRowTotal = rows.length
+    try {
+      console.debug('[dsh-im-companion] left-badges：行数 ' + rows.length + '，已装饰 ' + decorated)
+    } catch {
+      /* 无 console 环境静默 */
+    }
+  }
+}
+
+/* observer 回调经 rAF 合并（一帧最多画一次；无 rAF 环境同步直画，保证单测与旧宿主）。 */
+let rafQueued = false
+function schedulePaint(bots: BotSnap[]): void {
+  const run = (): void => {
+    rafQueued = false
+    try {
+      paint(bots, Date.now())
+    } catch {
+      /* 绘制失败下次再试 */
+    }
+  }
+  try {
+    if (typeof requestAnimationFrame === 'function') {
+      if (rafQueued) return
+      rafQueued = true
+      requestAnimationFrame(() => run())
+    } else {
+      run()
+    }
+  } catch {
+    run()
+  }
 }
 
 /** 挂载：订阅 stream + observer 重绘；首轮快照到达前不绘制（避免“未检查”闪成“未绑定”）。 */
@@ -158,6 +229,7 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
       /* 绘制失败下次再试 */
     }
   }
+  info('已挂载（选择器 ' + ROW_SELECTORS.join(' / ') + '，等 stream 首轮快照）')
   let unsub: (() => void) | null = null
   try {
     unsub = ctx.subscribe((snap: StreamSnapshot) => {
@@ -171,7 +243,7 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
   }
   try {
     if (typeof MutationObserver !== 'undefined') {
-      observer = new MutationObserver(() => repaint())
+      observer = new MutationObserver(() => schedulePaint(current))
       observer.observe(document.body ?? document.documentElement, { childList: true, subtree: true })
     }
   } catch {

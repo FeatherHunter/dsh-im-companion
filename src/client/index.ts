@@ -10,7 +10,8 @@ import { createMetaStore, type MetaStore } from './data/meta'
 import { resolveWorkspacePath, type WorkspaceItem } from './data/header-overlay'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
 
-export const inject = ['slots', 'connection', 'workspaces']
+/* 注：workspaces 经 ctx.get 惰性可选查找（无需声明）；声明会引入 provider 卸载连带，不声明更稳。 */
+export const inject = ['slots', 'connection']
 
 export function apply(ctx: any): void {
   const PLUGIN_ID = 'dsh-im-companion'
