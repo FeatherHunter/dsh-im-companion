@@ -247,7 +247,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       pressDown = true
       try { pressAt = Date.now() } catch { pressAt = 0 }
       const pr = t.closest?.('.' + ROW_CLASS) as Element | null
-      diag(ctx, 'press', 'pd=' + ((e as PointerEvent).defaultPrevented ? 1 : 0) + ' drag=' + (pr?.getAttribute?.('draggable') ?? '?'))
+      diag(ctx, 'press', 'pd=' + ((e as PointerEvent).defaultPrevented ? 1 : 0) + ' drag=' + (pr?.getAttribute?.('draggable') ?? '?') + ' pt=' + ((e as PointerEvent).pointerType ?? '?'))
       if (!diagShown && (e as PointerEvent).defaultPrevented) { diagShown = true; toast('按住被页面其它层拦截了，拖拽可能失灵（诊断提示，看到请告诉我）') }
     } catch { /* 忽略 */ }
   }

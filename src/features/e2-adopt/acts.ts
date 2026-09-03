@@ -7,7 +7,7 @@ import type { RpcCall } from '../../client/data/fleet-api'
 import { UNDO_WINDOW_MS, resolveDrop, shortName, undoTarget } from './model'
 
 /* 临时黑匣子（只为定位“拖不动”，定案即删）：拖拽关键事件 → host 落盘 e2-drag.log。 */
-export const E2_DIAGV = 'd4'
+export const E2_DIAGV = 'd5'
 export function diag(ctx: FeatureCtx, ev: string, info: string): void {
   try {
     const rpc = (ctx as unknown as { rpc?: RpcCall | null }).rpc ?? null
