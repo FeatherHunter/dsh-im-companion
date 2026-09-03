@@ -14,6 +14,7 @@ const CLIENT = join(REPO, 'src', 'client');
 const ENTRIES = [
   join(FEAT, 'model.ts'),
   join(FEAT, 'view.ts'),
+  join(FEAT, 'panel.ts'),
   join(FEAT, 'styles.ts'),
   join(FEAT, 'manifest.ts'),
   join(REPO, 'src', 'features', 'index.ts'),

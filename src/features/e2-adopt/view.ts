@@ -1,13 +1,12 @@
 /** e2-adopt 视图：左栏头按钮 → 分组面板（按归属列机器人，组间互拖换绑 + 每行“移交给”下拉兜底）。
  * 自有 DOM（e2-*）+ 共享 sheet/modal/toast 原语；宿主只读（头栏定位复用 B2 口径），不行行业务节点。无自有轮询；写走渠道 RPC + 写后立刷。 */
-import { channelLabel } from '../../client/data/config'
 import { h } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import { showModal } from '../../client/ui/modal'
-import { showSheet, type SheetHandle } from '../../client/ui/sheet'
 import { toast } from '../../client/ui/toast'
 import type { FeatureCtx } from '../protocol'
-import { UNDO_WINDOW_MS, boardGroups, resolveDrop, shortName, undoTarget } from './model'
+import { UNDO_WINDOW_MS, resolveDrop, shortName, undoTarget } from './model'
+import { openBoard, type BoardHandle } from './panel'
 
 const MIME = 'application/x-e2-adopt-bot'
 const ENTRY_CLASS = 'e2-entry'
@@ -18,7 +17,7 @@ const WARN_CLASS = 'e2-drop-warn'
 const GROUP_SEL = 'div[role="treeitem"][aria-expanded]'
 
 let entryBtn: HTMLElement | null = null
-let sheet: SheetHandle | null = null
+let board: BoardHandle | null = null
 let lastBots: BotSnap[] = []
 let dragId: string | null = null
 let hadDrag = false
@@ -140,67 +139,19 @@ function askMove(ctx: FeatureCtx, channel: string, botId: string, from: string, 
   } catch { /* 弹层失败则不动（fail-closed） */ }
 }
 
-function botLabel(b: BotSnap): string {
-  return (b.botName || b.botId) + ' · ' + channelLabel(b.channel)
-}
-
-function paintPanel(ctx: FeatureCtx): void {
-  if (!sheet) return
-  try {
-    const { unbound, groups } = boardGroups(lastBots)
-    const body: unknown[] = [
-      h('h2', { className: 'e2-panel-title' }, '重新分配机器人归属'),
-      h('p', { className: 'e2-panel-sub' }, '把牌拖到另一组完成换绑（会二次确认）；拖不动时用每行的“移交给”下拉。'),
-    ]
-    const sec = (name: string, ws: string | null, bots: BotSnap[], dashed: boolean): HTMLElement => {
-      const box = h('div', { className: SEC_CLASS + (dashed ? ' e2-sec-unbound' : '') }) as HTMLElement
-      if (ws) box.setAttribute('data-e2-ws', ws)
-      box.appendChild(h('div', { className: 'e2-sec-name' }, name + ' ', h('span', { className: 'e2-n' }, bots.length + ' 个')) as unknown as Node)
-      const others = groups.map((g) => g.workspace).filter((w) => w !== ws)
-      for (const b of bots) {
-        const row = h('div', { className: ROW_CLASS }) as HTMLElement
-        row.setAttribute('draggable', ctx.rpc ? 'true' : 'false')
-        row.setAttribute('data-e2-bot', b.botId)
-        row.setAttribute('data-e2-channel', b.channel)
-        row.title = ctx.rpc ? '拖到另一组完成换绑' : '连接服务不可用，暂不能分配'
-        row.appendChild(h('span', { className: 'e2-who' }, botLabel(b)) as unknown as Node)
-        if (others.length > 0) {
-          const sel = h('select', {
-            title: '移交给别的归属',
-            onChange: () => {
-              const to = (sel as HTMLSelectElement).value
-              try { (sel as HTMLSelectElement).value = '' } catch { /* 忽略 */ }
-              if (!to) return
-              if (!b.workspace) {
-                void (async () => {
-                  if (await setWorkspace(ctx, b.channel, b.botId, to, '绑定')) toast('已绑定到' + shortName(to), 'check')
-                })()
-              } else if (to !== b.workspace) {
-                askMove(ctx, b.channel, b.botId, b.workspace, to)
-              }
-            },
-          }) as HTMLSelectElement
-          sel.appendChild(h('option', { value: '' }, '移交给…') as unknown as Node)
-          for (const w of others) sel.appendChild(h('option', { value: w }, shortName(w)) as unknown as Node)
-          row.appendChild(sel as unknown as Node)
-        }
-        box.appendChild(row as unknown as Node)
-      }
-      return box
-    }
-    if (unbound.length > 0) body.push(sec('未分配', null, unbound, true))
-    for (const g of groups) body.push(sec(g.name, g.workspace, g.bots, false))
-    sheet.panel.replaceChildren()
-    for (const n of body) sheet.panel.appendChild(n as unknown as Node)
-  } catch { /* 渲染失败保持旧面板（fail-closed） */ }
-}
-
 function openPanel(ctx: FeatureCtx): void {
   try {
-    try { sheet?.close() } catch { /* 忽略 */ }
-    sheet = null
-    sheet = showSheet({ overlayClass: 'e2-overlay', panelClass: 'e2-panel', label: '重新分配机器人归属' })
-    paintPanel(ctx)
+    try { board?.close() } catch { /* 忽略 */ }
+    board = null
+    board = openBoard(ctx, {
+      bindNew: (bot, to) => {
+        void (async () => {
+          if (await setWorkspace(ctx, bot.channel, bot.botId, to, '绑定')) toast('已绑定到' + shortName(to), 'check')
+        })()
+      },
+      confirmMove: (bot, from, to) => askMove(ctx, bot.channel, bot.botId, from, to),
+    })
+    board.repaint(lastBots)
   } catch { /* 打不开就不开 */ }
 }
 
@@ -237,7 +188,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     if (!alive(g)) return
     lastBots = snap.bots
     try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
-    paintPanel(ctx)
+    try { board?.repaint(lastBots) } catch { /* 忽略 */ }
   })
 
   const onDragStart = (e: Event): void => {
@@ -340,8 +291,8 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     } catch { /* 忽略 */ }
     try { entryBtn?.remove() } catch { /* 忽略 */ }
     entryBtn = null
-    try { sheet?.close() } catch { /* 忽略 */ }
-    sheet = null
+    try { board?.close() } catch { /* 忽略 */ }
+    board = null
     clearAfford()
     dismissUndo()
     try { off() } catch { /* 忽略 */ }
