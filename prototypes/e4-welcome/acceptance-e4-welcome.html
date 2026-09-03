@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E4 欢迎横幅 · 真机验收手册（7 场景）</title>
+<style>
+  :root { color-scheme: light; --bg: #f6f8fa; --panel: #fff; --ink: #1f2329; --mut: #646a73; --line: #e5e6eb; --acc: #1677ff; --ok: #20a162; --bad: #d92d20; --warn: #e8890c; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.7 -apple-system, "PingFang SC", "Noto Sans SC", Segoe UI, Roboto, sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 24px 20px 80px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--mut); font-size: 13px; margin: 0 0 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin: 14px 0; }
+  .card h2 { font-size: 17px; margin: 0 0 6px; }
+  .why { background: #eef4ff; border: 1px solid #b6c8ff; border-radius: 10px; padding: 8px 12px; font-size: 13px; margin: 8px 0; }
+  ol.steps { margin: 8px 0; padding-left: 22px; }
+  ol.steps li { margin: 6px 0; }
+  code, kbd { font-family: monospace; font-size: 12px; background: #f2f3f5; border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; }
+  .exp { border-left: 4px solid var(--ok); padding: 6px 12px; margin: 8px 0; background: #f0faf4; font-size: 13px; }
+  .bug { border-left: 4px solid var(--bad); padding: 6px 12px; margin: 8px 0; background: #fef2f2; font-size: 13px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 1px 10px; margin-right: 6px; }
+  .t-must { background: #e6f4ea; color: #137333; } .t-trap { background: #fce8e6; color: #a50e0e; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; }
+  th { background: #f7f8fa; }
+  .foot { color: var(--mut); font-size: 12px; margin-top: 20px; }
+  @media print { body { background: #fff; } .wrap { padding: 0; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>E4 对话区欢迎横幅 · 真机验收手册</h1>
+  <p class="sub">issue #15 · A 变体 v1 · 共 7 个场景，全程约 20 分钟。你不需要懂源码：只要会点鼠标、会看字。每个场景都有<span class="tag t-must">预期（算过）</span>和<span class="tag t-trap">反模式（算 bug，截图贴 issue）</span>。</p>
+
+  <div class="card">
+    <h2>0 · 前置准备（只做一次，约 3 分钟）</h2>
+    <div class="why">第一性：你测的是“装进真机的新代码”，不是原型网页。必须先让真机吃到本次构建，否则后面全白测。</div>
+    <ol class="steps">
+      <li>确认插件已重新构建并注入（问开发要一句“bundle 已更新”即可）。</li>
+      <li><b>完全退出</b> DSH Desktop（右键托盘 → 退出，不是点窗口叉），再重新打开。</li>
+      <li>在 DSH 里按 <kbd>Ctrl+F5</kbd> 硬刷新一次，等左侧工作区列表出现。</li>
+      <li>准备两个工作区：① 已绑定 Agent 的（如小帅）；② 未绑定的（如 dsh-im）。再准备一个“部分在线”的 Agent（如星火，飞书在线 + QQ 离线），场景 5 用。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>刷新后 DSH 一切如常，设置页里“IM机器人辅助”还在，没有报错弹窗。</div>
+    <div class="bug"><b>反模式：</b>出现 <code>Failed to load plugins</code> 或设置页打不开 → 先重载一次页面，仍不行就截图停测（装配问题，不是横幅问题）。</div>
+  </div>
+
+  <div class="card">
+    <h2>场景 1 · 空会话里横幅完整出现（核心场景）</h2>
+    <div class="why">第一性：横幅只在“空会话”（从来没说过话的会话）出现，且必须长在原生空态的上方、不能挤掉输入框。</div>
+    <ol class="steps">
+      <li>切到已绑定的工作区（小帅），新建一个空会话（或找一个没有消息的会话）。</li>
+      <li>看对话区中部：找原生空态大标题“探索未至之境”，确认它还在。</li>
+      <li>看大标题上方：应该有一张横幅卡片。逐项念出来：问候语（早上好/下午好等，跟着系统时间）+ Agent 名（小帅）+ 绿色呼吸点 + “在线/家：xiaoshuai”；下面有渠道小药丸（飞书·在线）；再下面可能有一行“预设·客服话术”“上下文增强开”（没读到就不显示，没有也能过）；再下面是“已接入 N 个会话（x 私聊 · y 群聊）”+ 会话行。</li>
+      <li>看卡片右上角：有没有 <b>✕</b> 关闭按钮。</li>
+      <li>看卡片底部：一行按钮是不是正好两个 —— <b>Agent 详情</b>（蓝色）和 <b>检查连接</b>。</li>
+      <li>看对话区最底部：输入框能不能点、能不能打字（不要发送，场景 2 再发）。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>六样齐了就算过：问候名、呼吸灯、渠道丸、路由行、双按钮、✕；原生大标题和输入框都还在、都能用。</div>
+    <div class="bug"><b>反模式（见一个就截图）：</b>① 卡片里出现“几分钟前”“未读 N 条”→ 谎报，我们没有这个数据源；② 按钮里有“去绑定”“打开工作区”→ 死按钮，不该出现；③ 输入框被盖住点不了 → 干扰输入；④ 原生大标题消失了 → 吃掉了原生结构。</div>
+  </div>
+
+  <div class="card">
+    <h2>场景 2 · 有消息的会话里必须零打扰</h2>
+    <div class="why">第一性：欢迎只欢迎“新人”。只要说过话，横幅就该让路——打扰正常聊天是不可接受的。</div>
+    <ol class="steps">
+      <li>在场景 1 的空会话输入框里随便发一句话（如“你好”）。</li>
+      <li>等回复出现后，看：横幅卡片还在不在。</li>
+      <li>再切到另一个本来就有消息的老会话，看有没有横幅。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>发完消息横幅立刻消失；老会话里从头到尾没有横幅；消息收发一切正常。</div>
+    <div class="bug"><b>反模式：</b>有消息还赖着不走；或消息列表被横幅顶下去一大截。</div>
+  </div>
+
+  <div class="card">
+    <h2>场景 3 · 点 ✕ 只关当前会话（关闭是“本次免打扰”，不是“永久拉黑”）</h2>
+    <div class="why">第一性：关闭记忆是内存级的、按会话隔离的——关了 A 会话不影响 B 会话，切走回来即恢复。</div>
+    <ol class="steps">
+      <li>回到场景 1 的空会话（如果发过消息了就再建一个新的空会话），确认横幅在。</li>
+      <li>点卡片右上角 <b>✕</b>。</li>
+      <li>看本会话：横幅是否消失（空态大标题和输入框不受影响）。</li>
+      <li>切到另一个空会话（或同工作区另一个会话），再切回来：横幅是否又出现了。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>点的当时消失；换个会话回来就恢复。不需要去设置页找开关——本来就没有。</div>
+    <div class="bug"><b>反模式：</b>点了 ✕ 没反应；或关一次以后所有会话永远不再出现（记忆过头了）。</div>
+  </div>
+
+  <div class="card">
+    <h2>场景 4 · 未绑定工作区只给指引（不装可点）</h2>
+    <div class="why">第一性：没绑定就没有 Agent 可欢迎。这时横幅只能当“路牌”，不能假装有内容，更不能放点了没反应的按钮。</div>
+    <ol class="steps">
+      <li>切到未绑定的工作区（如 dsh-im），打开它的空会话。</li>
+      <li>看横幅：标题是不是类似“这里是 dsh-im 的对话区”，副标题说“尚未绑定 Agent”；正文有没有一句指引（去 IM机器人辅助绑定）。</li>
+      <li>数按钮：应该只有 <b>检查连接</b> 一个（+ ✕），绝不能有“Agent 详情”“去绑定”。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>一张“路牌卡”+ 一个能点的检查连接；点了检查连接没报错（转一下或静默都行）。</div>
+    <div class="bug"><b>反模式：</b>出现“Agent 详情”点了没反应；或出现“去绑定”点了没反应——死按钮都是 bug。</div>
+  </div>
+
+  <div class="card">
+    <h2>场景 5 · 部分在线 Agent 如实展示 + 检查连接真能刷</h2>
+    <div class="why">第一性：健康状态只承诺“可达性”。飞书在线但 QQ 离线时，横幅不许谎报“在线”，也不许谎报“离线”——只能是中间态；且用户必须有一键重查的手段。</div>
+    <ol class="steps">
+      <li>切到部分在线的 Agent（星火：飞书在线、QQ 离线）所在工作区的空会话。</li>
+      <li>看横幅状态行：是不是“待确认”一类中间态（黄色点），而不是纯绿“在线”或纯红“离线”；渠道小药丸里飞书和 QQ 是不是各标各的。</li>
+      <li>点 <b>检查连接</b>，等几秒，看状态行是否刷新（数字/时间有变化或保持但无报错弹窗）。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>中间态 + 分渠道展示 + 点刷新不报错。</div>
+    <div class="bug"><b>反模式：</b>部分在线被报成“在线”（谎报）或“离线”（吓人）；点检查连接弹红错或卡死。</div>
+  </div>
+
+  <div class="card">
+    <h2>场景 6 · “Agent 详情”真能打开 C1a 抽屉</h2>
+    <div class="why">第一性：卡上每个按钮都必须有真落点。详情按钮的落点是 C1a 详情抽屉（为当前这个 Agent 打开）。</div>
+    <ol class="steps">
+      <li>回到小帅的空会话横幅，点 <b>Agent 详情</b>。</li>
+      <li>看右侧是否滑出详情抽屉，且抽屉标题就是小帅（不是别的 Agent）。</li>
+      <li>关掉抽屉，看横幅还在不在（应该还在）。</li>
+    </ol>
+    <div class="exp"><b>预期：</b>一点就开，开的是当前 Agent，关抽屉不影响横幅。</div>
+    <div class="bug"><b>反模式：</b>点了没反应；或打开的是空白抽屉/别的 Agent。</div>
+  </div>
+
+  <div class="card">
+    <h2>场景 7 · 深色主题 + 诚实性总审查（对抗式）</h2>
+    <div class="why">第一性：深色下必须全员可读；且全卡上下不许出现我们没有的数据源许诺的东西。这是专门抓“谎报”的场景。</div>
+    <ol class="steps">
+      <li>DSH 切深色主题，回到小帅空会话横幅，逐行读：标题、状态、渠道丸、路由行、按钮，是否都清晰（没有黑底黑字、白底白字、糊成一团）。</li>
+      <li>拿着下面这张“谎报对照表”，在卡上一个一个找，找到即 bug。</li>
+    </ol>
+    <table>
+      <tr><th>如果看到…</th><th>算什么</th></tr>
+      <tr><td>“3 分钟前”“昨天活跃”等时间字样</td><td>谎报：我们没有会话活跃时间数据源</td></tr>
+      <tr><td>“未读 N 条”“N 条新消息”</td><td>谎报：未读数无真源（research/05 结论）</td></tr>
+      <tr><td>可点的“在中间打开/跳转”链接</td><td>谎报：session 已脱敏跳不了，只能是灰字“真机直达待联调”</td></tr>
+      <tr><td>真实人名（张三/项目群）</td><td>谎报：路由只有脱敏种类（私聊 ab12…），没有昵称源</td></tr>
+      <tr><td>“旧映射”小黄标</td><td>不是 bug：这是存量 direct: 幽灵 key 的诚实标注，加分项</td></tr>
+    </table>
+    <div class="exp"><b>预期：</b>深色全可读；对照表前四行一个都找不到；“旧映射”如有则是正确标注。</div>
+    <div class="bug"><b>反模式：</b>深色下有看不清的字；或对照表命中任一条 → 截图 + 圈出来贴到 #15。</div>
+  </div>
+
+  <div class="card">
+    <h2>收尾 · 怎么交卷</h2>
+    <ol class="steps">
+      <li>7 个场景全过：在 #15 回一句“7 场景通过 + 你的 DSH 版本”，就可以 close 了。</li>
+      <li>任一反模式命中：截图（横幅 + 地址栏时间）贴 #15，写“场景 N 未过：看到了 XXX”，开发修完你再重测该场景即可，不用 7 个全重来。</li>
+    </ol>
+    <p class="foot">本手册对应实现：src/features/welcome-banner/（#15 定稿 A 变体 v1）。手册本身不进产品代码。祝验收顺利。</p>
+  </div>
+</div>
+</body>
+</html>
