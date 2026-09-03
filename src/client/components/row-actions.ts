@@ -31,7 +31,7 @@ export function openMoreMenu(view: AgentView, anchor: HTMLElement, cb: RowAction
     items.push({ label: '渠道机器人', iconName: 'trash', sep: true })
     for (const b of view.bots) {
       items.push({
-        label: '移除渠道 · ' + channelLabel(b.channel) + ' 机器人',
+        label: '移除渠道·' + channelLabel(b.channel) + ' 机器人',
         iconName: 'trash',
         danger: true,
         confirm: true,

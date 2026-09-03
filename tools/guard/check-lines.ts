@@ -1,4 +1,4 @@
-// T0 · 300 行红线守卫——F0 §5（docs/features-contract.md）机械执行。
+// T0·300 行红线守卫——F0 §5（docs/features-contract.md）机械执行。
 // 口径：计数 src/**/*.ts 全部行（含注释）；豁免 lib/**、tools/**、.scratch/**、docs/**
 // （均在 src 之外，只扫 src 即天然豁免）与 features 内 json/md 资源（非 .ts，不进扫描）。
 // 超限即列出清单并 exit 1；用法：node tools/guard/check-lines.mjs [--limit 300] [--root <repo>] 。

@@ -24,8 +24,8 @@ export interface PanelBody {
 
 export function createPanelBody(deps: PanelBodyDeps): PanelBody {
   function renderMeta(model: FleetModel): void {
-    deps.titleMetaEl.textContent = model.counts.agents + ' 个 Agent · ' + model.counts.channels + ' 个渠道 · '
-      + model.totalBots + ' 个机器人' + (deps.state.updatedAt ? ' · 更新于 ' + deps.state.updatedAt : '')
+    deps.titleMetaEl.textContent = model.counts.agents + ' 个 Agent·' + model.counts.channels + ' 个渠道·'
+      + model.totalBots + ' 个机器人' + (deps.state.updatedAt ? '·更新于 ' + deps.state.updatedAt : '')
     deps.seg.setLabel('agent', '按Agent (' + model.counts.agents + ')')
     deps.seg.setLabel('channel', '按渠道 (' + model.counts.channels + ')')
   }

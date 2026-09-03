@@ -54,8 +54,8 @@ export function badgeForWorkspace(workspacePath: string, bots: BotSnap[], nowMs 
   const kinds = bound.map(kindOf)
   const kind: HealthKind = kinds.includes('online') ? 'online' : kinds.includes('warn') ? 'warn' : 'offline'
   const parts = bound.map((b) => {
-    if (b.stale) return channelLabel(b.channel) + ' · 未知（轮询失败）'
-    return channelLabel(b.channel) + ' · ' + HEALTH_LABELS[kindOf(b)]
+    if (b.stale) return channelLabel(b.channel) + '·未知（轮询失败）'
+    return channelLabel(b.channel) + '·' + HEALTH_LABELS[kindOf(b)]
   })
   const last = Math.max(...bound.map((b) => b.lastCheckedAt ?? 0))
   if (last > 0) {

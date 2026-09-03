@@ -102,7 +102,7 @@ function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement 
     row.appendChild(h('span', { className: 'c1a-dot ' + ch.status }))
     const label = channelLabel(ch.id)
     const health = HEALTH_LABELS[ch.status] ?? ch.status
-    row.appendChild(h('span', { title: label + ' · ' + health + ' · ' + ch.botId }, label))
+    row.appendChild(h('span', { title: label + '·' + health + '·' + ch.botId }, label))
     const btn = makeButton({
       kind: 'ghost', size: 'sm', label: '解绑', title: '移除该渠道机器人（需二次确认）',
       onClick: () => {
@@ -125,7 +125,7 @@ export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks): H
   const closeBtn = makeButton({ kind: 'ghost', size: 'sm', label: '关闭', title: '关闭抽屉', onClick: () => cbs.onClose() })
   const head = h('div', { className: 'c1a-dhead' },
     h('span', { className: 'c1a-dot ' + model.status }),
-    h('span', null, model.name + ' · 详情'),
+    h('span', null, model.name + '·详情'),
     h('span', { style: { marginLeft: 'auto' } }, closeBtn))
   const sum = h('div', { className: 'c1a-summary' })
   sum.appendChild(h('div', { className: 'c1a-meta' }, '摘要（改动即时保存）'))
@@ -136,7 +136,7 @@ export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks): H
     sum.appendChild(h('div', { className: 'c1a-fld' }, h('span', { className: 'c1a-lab' }, '自定'), custom))
   }
   sum.appendChild(h('div', { className: 'c1a-fld' }, h('span', { className: 'c1a-lab' }, '上下文'), ...ctxControls(model, cbs)))
-  sum.appendChild(h('div', { className: 'c1a-meta' }, '路由 ' + model.routes.length + ' 条 · 渠道 ' + model.channels.length + ' 个 · ' + model.statusLabel))
+  sum.appendChild(h('div', { className: 'c1a-meta' }, '路由 ' + model.routes.length + ' 条·渠道 ' + model.channels.length + ' 个·' + model.statusLabel))
   const body = h('div', { className: 'c1a-dbody' }, sum, workspaceSection(model, cbs), routesSection(model), channelsSection(model, cbs))
   body.appendChild(h('div', { className: 'c1a-foot' },
     makeButton({ kind: 'primary', size: 'sm', label: '发测试消息', title: '经已保存目标发送（与 B3 同语义）', onClick: () => cbs.onTestSend() })))

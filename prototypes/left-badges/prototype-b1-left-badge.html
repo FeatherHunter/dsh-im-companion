@@ -74,8 +74,8 @@
 <body>
 <div class="wrap">
 
-  <span class="proto-tag">PROTOTYPE · 抛弃式 · 不进生产</span>
-  <h1>B1 · 左栏工作区 IM 徽标：状态模型手感验证</h1>
+  <span class="proto-tag">PROTOTYPE·抛弃式·不进生产</span>
+  <h1>B1·左栏工作区 IM 徽标：状态模型手感验证</h1>
   <p class="lede">点按钮、看徽标变：验证“在线 / 待确认 / 离线 / 未绑定”四态映射与点击行为是否顺畅（逻辑分支单文件 HTML，双击即开）。</p>
 
   <div class="card"><div class="card-hd">❓ 正在回答的设计问题</div><div class="card-bd">
@@ -85,7 +85,7 @@
   </div></div>
 
   <div class="toolbar">
-    <span>轮询 tick：<b id="tick">0</b> · 模拟时钟 <b id="clock">11:06:00</b>（每轮 +15s）</span>
+    <span>轮询 tick：<b id="tick">0</b>·模拟时钟 <b id="clock">11:06:00</b>（每轮 +15s）</span>
     <span style="margin-left:auto"></span>
     <label><input type="checkbox" id="darkToggle"> 深色预览（仅样式对比）</label>
   </div>
@@ -259,15 +259,15 @@ function summarize(state) {
   var verdictOut = document.getElementById('verdictOut');
 
   var FREE = [
-    { group: '小帅 · 飞书', actions: [
+    { group: '小帅·飞书', actions: [
       { label: '变在线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai', status: 'healthy', connected: true, label: '小帅飞书 → 在线' } },
       { label: '变待确认', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai', status: 'degraded', connected: true, label: '小帅飞书 → 待确认（degraded）' } },
       { label: '变离线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai', status: 'offline', connected: false, label: '小帅飞书 → 离线' } } ] },
-    { group: '星火 · 飞书', actions: [
+    { group: '星火·飞书', actions: [
       { label: '变在线', act: { type: 'SET_BOT', botId: 'bot-xinghuo', status: 'healthy', connected: true, label: '星火飞书 → 在线' } },
       { label: '变待确认', act: { type: 'SET_BOT', botId: 'bot-xinghuo', status: 'checking', connected: true, label: '星火飞书 → 待确认（checking）' } },
       { label: '变离线', act: { type: 'SET_BOT', botId: 'bot-xinghuo', status: 'offline', connected: false, label: '星火飞书 → 离线' } } ] },
-    { group: '小帅 · QQ（聚合演示）', actions: [
+    { group: '小帅·QQ（聚合演示）', actions: [
       { label: 'QQ 上线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai-qq', status: 'healthy', connected: true, label: '小帅 QQ → 上线' } },
       { label: 'QQ 下线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai-qq', status: 'offline', connected: false, label: '小帅 QQ → 下线' } } ] },
     { group: '绑定关系', actions: [
@@ -323,7 +323,7 @@ function summarize(state) {
     rows.forEach(function (d) {
       var bound = d.bound.length
         ? d.bound.map(function (b) {
-            var t = esc(b.channel) + ' · ' + esc(b.botId) + ' · ' + healthOf(b.status, b.connected, b.failed);
+            var t = esc(b.channel) + '·' + esc(b.botId) + '·' + healthOf(b.status, b.connected, b.failed);
             if (b.failed) t += '（未知，' + (state.tick - b.lastTick) + '轮前）';
             return t;
           }).join('<br>')

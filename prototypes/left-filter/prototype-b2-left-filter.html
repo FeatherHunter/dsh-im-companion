@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B2 左栏筛选条状态模型原型（抛弃式）</title>
+<style>
+  :root { --accent:#0a84ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Noto Sans SC","Segoe UI",Roboto,sans-serif; background:#f2f3f5; color:#1c1c1e; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:960px; margin:0 auto; padding:20px 16px 80px; }
+  .proto-tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; color:#fff; background:#b42318; border-radius:6px; padding:3px 8px; margin-bottom:10px; }
+  h1 { font-size:22px; margin:0 0 6px; letter-spacing:-.02em; }
+  .lede { font-size:14px; color:#6e6e73; margin:0 0 12px; line-height:1.7; }
+  .card { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.06); margin:0 0 14px; overflow:hidden; }
+  .card-hd { padding:12px 16px; border-bottom:1px solid rgba(0,0,0,.07); font-weight:700; font-size:14px; }
+  .card-bd { padding:14px 16px; }
+  .q { font-size:13px; line-height:1.8; margin:0; }
+  .q b { color:var(--accent); }
+  .plain { font-size:13px; line-height:1.8; margin:10px 0 0; background:#f7f8fa; border-radius:10px; padding:10px 12px; }
+  .plain b { color:#1c1c1e; }
+  .assume { font-size:12px; color:#6e6e73; margin:8px 0 0; line-height:1.7; }
+  .changed { font-size:13px; background:rgba(10,132,255,.09); border:1px solid rgba(10,132,255,.3); border-radius:10px; padding:8px 12px; margin:0 0 12px; line-height:1.7; }
+  .warn { font-size:13px; background:rgba(180,35,24,.08); border:1px solid rgba(180,35,24,.35); border-radius:10px; padding:8px 12px; margin:0 0 12px; line-height:1.7; display:none; }
+  .counts { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; }
+  .count { font-size:12.5px; border:1px solid rgba(0,0,0,.12); border-radius:999px; padding:5px 12px; background:#f7f8fa; }
+  .count.active { border-color:var(--accent); background:rgba(10,132,255,.12); color:var(--accent); font-weight:700; }
+  .rail { border:1px solid rgba(0,0,0,.1); border-radius:12px; overflow:hidden; margin:0 0 10px; }
+  .rail-hd { font-size:11px; color:#6e6e73; padding:8px 12px; background:#f7f8fa; border-bottom:1px solid rgba(0,0,0,.07); }
+  .seg { display:flex; gap:6px; padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.07); background:#fff; }
+  .seg button { flex:1; font:inherit; font-size:12.5px; padding:7px 4px; border-radius:9px; border:1px solid rgba(0,0,0,.12); background:#f7f8fa; cursor:pointer; }
+  .seg button.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+  .native { display:flex; gap:8px; align-items:center; padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.07); font-size:12.5px; background:#fff; }
+  .native input { flex:1; font:inherit; font-size:12.5px; padding:6px 10px; border-radius:8px; border:1px solid rgba(0,0,0,.15); }
+  .row { padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.05); font-size:13px; display:flex; align-items:center; gap:8px; background:#fff; }
+  .row:last-child { border-bottom:none; }
+  .tag { font-size:11px; border-radius:999px; padding:2px 8px; border:1px solid rgba(0,0,0,.12); color:#6e6e73; }
+  .tag.bound { color:#1a9e54; border-color:rgba(26,158,84,.4); }
+  .empty { padding:16px 12px; font-size:12.5px; color:#6e6e73; text-align:center; background:#fff; }
+  .hidden-list { font-size:12px; color:#6e6e73; line-height:1.7; margin:0; }
+  .btnrow { display:flex; flex-wrap:wrap; gap:8px; }
+  .btnrow h4 { width:100%; margin:10px 0 0; font-size:12px; color:#6e6e73; font-weight:700; }
+  button.act { font:inherit; font-size:12.5px; padding:7px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.14); background:#fff; cursor:pointer; }
+  button.act:hover { border-color:var(--accent); color:var(--accent); }
+  button.act.done { border-color:var(--accent); background:rgba(10,132,255,.12); color:var(--accent); }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .tab { font:inherit; font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:999px; border:1px solid rgba(0,0,0,.14); background:transparent; cursor:pointer; color:inherit; }
+  .tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .scenario-desc { font-size:13px; line-height:1.7; margin:0 0 10px; }
+  .steps { margin:0; padding-left:20px; display:grid; gap:8px; font-size:13px; }
+  pre.out { font-size:11.5px; line-height:1.6; white-space:pre-wrap; background:rgba(0,0,0,.045); border-radius:10px; padding:10px 12px; overflow:auto; margin:12px 0 0; }
+  .foot { font-size:11.5px; color:#6e6e73; margin-top:6px; line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="proto-tag">PROTOTYPE·抛弃式·不进生产</span>
+  <h1>B2·左栏筛选条：三态 + 计数 + 原生共存手感验证</h1>
+  <p class="lede">点按钮、看左栏行藏谁剩下谁：验证“全部 / 已绑定 / 未绑定”切换、计数准不准、和左栏原生搜索框打不打架（逻辑分支单文件 HTML，双击即开，状态全在内存，刷新重置）。</p>
+  <div class="card"><div class="card-hd">正在回答的设计问题</div><div class="card-bd">
+    <p class="q">左栏顶部的筛选条（<b>全部 / 已绑定 / 未绑定</b>三段 + 每段计数）规则是否顺畅：<b>计数数什么</b>、<b>藏行还是置灰</b>、<b>和原生搜索框叠加还是委托</b>？外观不新开三变体，直接复用现有 <b>af-seg 分段控件</b>。</p>
+    <p class="assume">分支假设（已声明）：走<b>逻辑分支</b>。周围代码里绑定逻辑（bindings.ts）+ 分段控件（segmented.ts）都已有，风险在语义不在外观。若你要看三种长相，喊一声就改走 UI 分支。</p>
+    <div class="plain"><b>大白话①·计数数什么：</b>数的是左栏“工作区行数”，不是 Bot 个数。一行可以挂多个 Bot（比如小帅同时挂飞书+QQ），但只算一行。好比通讯录按人头数，不按手机号数。所以“已绑定 2”= 两行有 Bot，“未绑定 1”= 一行空着（从没绑过也算）。<br><b>大白话②·藏还是灰：</b>“隐藏”= 整行消失（省地方，但行会上下跳）；“置灰”= 行还在只是变灰点不了（位置不动，但占地方）。本原型按“隐藏 + 空时给一句‘没有匹配的工作区’”做，因为左栏行少，跳动成本低。<br><b>大白话③·叠加还是委托：</b>“叠加”= 我们自己藏一行，原生搜索再过滤一行（两道关，都得过）；“委托”= 把绑定条件传给 DSH 原生筛选，一次算出（前提是原生真有这个口子——还没取证）。你选了“委托原生”，本原型把两种都做出来给你掰开看。</div>
+  </div></div>
+  <div class="card"><div class="card-hd">当前状态（每次点击后全文重绘）</div><div class="card-bd">
+    <div class="changed" id="changed"></div>
+    <div class="warn" id="warn"></div>
+    <div class="counts" id="counts"></div>
+    <div class="rail"><div class="rail-hd" id="railHd">左栏模拟</div>
+      <div class="seg" id="seg"></div>
+      <div class="native"><span>原生搜索</span><input id="nativeInput" placeholder="比如：小 / 星 / 不存在的词" value=""><button class="act" id="nativeClear">清空</button><span id="modeLabel" style="margin-left:auto"></span></div>
+      <div id="rows"></div>
+    </div>
+    <p class="hidden-list" id="hiddenList"></p>
+    <pre class="out" id="verdictOut"></pre>
+  </div></div>
+  <div class="card"><div class="card-hd">自由点（随便按什么顺序）</div><div class="card-bd"><div class="btnrow" id="freeplay"></div></div></div>
+  <div class="card"><div class="card-hd">带路走（每个页签都会先回到起点，保证每次一样）</div><div class="card-bd">
+    <div class="tabs" id="tabs"></div>
+    <p class="scenario-desc" id="scenarioDesc"></p>
+    <ol class="steps" id="steps"></ol>
+  </div></div>
+  <p class="foot">抛弃式原型：逻辑在第一个 script 块里（纯函数，可搬进真代码）；页面只是薄外壳。内存状态，不联网，不写盘。位置 prototypes/left-filter/，不进生产分支。</p>
+</div>
+<script>
+/* 纯逻辑模块（可搬移部分）：无 DOM、无 document，(state, action) => state + 纯派生。页面只是调用它。 */
+var FILTERS = ["all", "bound", "unbound"];
+var FILTER_LABEL = { all: "全部", bound: "已绑定", unbound: "未绑定" };
+function isBound(path, bots) {
+  for (var i = 0; i < bots.length; i++) if (bots[i].workspace === path) return true;
+  return false;
+}
+function initialState() {
+  return {
+    tick: 0, filter: "all", nativeQuery: "", mode: "overlay", nativeAvailable: false,
+    lastAction: "初始状态",
+    bots: [
+      { channel: "feishu", botId: "bot-xiaoshuai", workspace: "D:\\agents\\xiaoshuai", connected: true, status: "healthy", failed: false, lastTick: 0 },
+      { channel: "feishu", botId: "bot-xinghuo", workspace: "D:\\agents\\xinghuo", connected: true, status: "healthy", failed: false, lastTick: 0 },
+      { channel: "qq", botId: "bot-xiaoshuai-qq", workspace: "D:\\agents\\xiaoshuai", connected: false, status: "offline", failed: false, lastTick: 0 }
+    ],
+    workspaces: [
+      { id: "xiaoshuai", path: "D:\\agents\\xiaoshuai", agent: "小帅" },
+      { id: "xinghuo", path: "D:\\agents\\xinghuo", agent: "星火" },
+      { id: "dsh-im", path: "D:\\agents\\dsh-im", agent: "（未命名）" }
+    ]
+  };
+}
+function countsOf(state) {
+  var bound = 0, unbound = 0;
+  for (var i = 0; i < state.workspaces.length; i++) {
+    if (isBound(state.workspaces[i].path, state.bots)) bound++; else unbound++;
+  }
+  return { all: state.workspaces.length, bound: bound, unbound: unbound };
+}
+function nativeHit(ws, q) {
+  if (!q || !q.trim()) return true;
+  var hay = (ws.agent + " " + ws.id + " " + ws.path).toLowerCase();
+  return hay.indexOf(q.trim().toLowerCase()) !== -1;
+}
+function bindingHit(ws, filter, bots) {
+  if (filter === "all") return true;
+  var b = isBound(ws.path, bots);
+  return filter === "bound" ? b : !b;
+}
+function computeVisible(state) {
+  var rows = [], hidden = [], warning = "";
+  var engine = "";
+  if (state.mode === "delegate" && state.nativeAvailable) engine = "委托原生：一次调用同时传绑定+关键词，原生一次性算出";
+  else if (state.mode === "delegate") { engine = "委托失败回退：原生口子不存在，绑定条件被丢掉，只剩关键词"; warning = "原生筛选 API 不存在（未取证到），委托模式下 B2 条件传不进去——切到“已绑定”也不藏行！请用自画叠加或先取证。"; }
+  else engine = "自画叠加：我们先藏一行（绑定关），原生搜索再过滤一行（关键词关），两道关都得过";
+  for (var i = 0; i < state.workspaces.length; i++) {
+    var ws = state.workspaces[i];
+    var bHit = bindingHit(ws, state.filter, state.bots);
+    var nHit = nativeHit(ws, state.nativeQuery);
+    var vis = state.mode === "delegate" && !state.nativeAvailable ? nHit : (bHit && nHit);
+    var bound = isBound(ws.path, state.bots);
+    if (vis) rows.push({ ws: ws, bound: bound });
+    else {
+      var why = !bHit ? "绑定关没过（筛选=" + FILTER_LABEL[state.filter] + "，它是" + (bound ? "已绑定" : "未绑定") + "）" : "关键词关没过（搜“" + state.nativeQuery + "”对不上它）";
+      if (state.mode === "delegate" && !state.nativeAvailable && bHit === false && nHit) why = "本该被绑定关藏掉，但委托失败把它漏过去了";
+      hidden.push({ ws: ws, bound: bound, reason: why });
+    }
+  }
+  return { visible: rows, hidden: hidden, engine: engine, warning: warning };
+}
+function summarize(state) {
+  var c = countsOf(state);
+  var v = computeVisible(state);
+  var lines = [];
+  lines.push("B2 原型 verdict 草稿 @ tick=" + state.tick + "（" + state.lastAction + "）");
+  lines.push("计数（行数口径）：全部 " + c.all + " / 已绑定 " + c.bound + " / 未绑定 " + c.unbound);
+  lines.push("引擎：" + v.engine);
+  lines.push("可见 " + v.visible.length + " 行：" + (v.visible.map(function (r) { return r.ws.agent + "(" + (r.bound ? "已绑定" : "未绑定") + ")"; }).join("、") || "（空→给空提示）"));
+  lines.push("藏起 " + v.hidden.length + " 行：" + (v.hidden.map(function (r) { return r.ws.agent + "（" + r.reason + "）"; }).join("；") || "无"));
+  if (v.warning) lines.push("警告：" + v.warning);
+  lines.push("绑定明细：" + state.bots.map(function (b) { return b.channel + ":" + b.botId + "→" + b.workspace + (b.failed ? "(轮询失败仍算绑定)" : ""); }).join("；"));
+  return lines.join("\n");
+}
+function reducer(state, action) {
+  var next = JSON.parse(JSON.stringify(state));
+  function findBot(id) { for (var i = 0; i < next.bots.length; i++) if (next.bots[i].botId === id) return next.bots[i]; return null; }
+  switch (action.type) {
+    case "RESET": return initialState();
+    case "SET_FILTER": next.filter = action.filter; next.lastAction = "切筛选→" + FILTER_LABEL[action.filter]; return next;
+    case "SET_QUERY": next.nativeQuery = action.query; next.lastAction = action.query ? "原生搜索→“" + action.query + "”" : "原生搜索清空"; return next;
+    case "SET_MODE": next.mode = action.mode; next.lastAction = action.mode === "delegate" ? "引擎→委托原生" : "引擎→自画叠加"; return next;
+    case "SET_NATIVE_AVAILABLE": next.nativeAvailable = action.available; next.lastAction = action.available ? "取证→原生口子存在" : "取证→原生口子不存在"; return next;
+    case "BIND_NEW": next.bots.push({ channel: "feishu", botId: "bot-dshim", workspace: "D:\\agents\\dsh-im", connected: true, status: "healthy", failed: false, lastTick: next.tick }); next.lastAction = "绑定 dsh-im（未绑定行-1）"; return next;
+    case "UNBIND_WS": { var before = next.bots.length; next.bots = next.bots.filter(function (b) { return b.workspace !== action.path; }); next.lastAction = "解绑工作区（拿掉 " + (before - next.bots.length) + " 个 Bot）"; return next; }
+    case "MOVE": { var b = findBot(action.botId); if (b) { b.workspace = action.to; next.lastAction = action.label; } return next; }
+    case "TICK": next.tick++; next.bots.forEach(function (b) { if (!b.failed) b.lastTick = next.tick; }); next.lastAction = "轮询刷新（tick=" + next.tick + "，计数应纹丝不动）"; return next;
+    case "POLL_FAIL": next.bots.forEach(function (b) { if (b.channel === action.channel) b.failed = true; }); next.lastAction = action.channel + " 轮询失败（变未知，但仍算绑定，计数不动）"; return next;
+    case "POLL_RECOVER": next.bots.forEach(function (b) { if (b.channel === action.channel) { b.failed = false; b.lastTick = next.tick; } }); next.lastAction = action.channel + " 轮询恢复"; return next;
+    default: return next;
+  }
+}
+</script>
+<script>
+/* 薄外壳（抛弃式）：渲染 + 接线，不进入搬移范围。 */
+(function () {
+  var state = initialState();
+  var prevVisible = {};
+  var changedEl = document.getElementById("changed");
+  var warnEl = document.getElementById("warn");
+  var countsEl = document.getElementById("counts");
+  var segEl = document.getElementById("seg");
+  var rowsEl = document.getElementById("rows");
+  var hiddenEl = document.getElementById("hiddenList");
+  var verdictEl = document.getElementById("verdictOut");
+  var railHd = document.getElementById("railHd");
+  var modeLabel = document.getElementById("modeLabel");
+  var nativeInput = document.getElementById("nativeInput");
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+  function render() {
+    var c = countsOf(state);
+    var v = computeVisible(state);
+    var diffs = [];
+    v.visible.forEach(function (r) { if (prevVisible[r.ws.id] === false) diffs.push(r.ws.agent + "回来了"); prevVisible[r.ws.id] = true; });
+    v.hidden.forEach(function (r) { if (prevVisible[r.ws.id] === true) diffs.push(r.ws.agent + "被藏起"); prevVisible[r.ws.id] = false; });
+    changedEl.textContent = "上次动作：" + state.lastAction + "。" + (diffs.length ? "变化：" + diffs.join("；") + "。" : "可见行无变化。");
+    if (v.warning) { warnEl.style.display = "block"; warnEl.textContent = "⚠ " + v.warning; } else { warnEl.style.display = "none"; warnEl.textContent = ""; }
+    countsEl.innerHTML = "";
+    FILTERS.forEach(function (f) {
+      var s = document.createElement("span");
+      s.className = "count" + (state.filter === f ? " active" : "");
+      s.textContent = FILTER_LABEL[f] + " " + c[f];
+      countsEl.appendChild(s);
+    });
+    segEl.innerHTML = "";
+    FILTERS.forEach(function (f) {
+      var b = document.createElement("button");
+      b.className = state.filter === f ? "active" : "";
+      b.textContent = FILTER_LABEL[f] + " " + c[f];
+      b.onclick = function () { dispatch({ type: "SET_FILTER", filter: f }); };
+      segEl.appendChild(b);
+    });
+    modeLabel.textContent = (state.mode === "delegate" ? "委托原生" : "自画叠加") + "·原生口子" + (state.nativeAvailable ? "有" : "无");
+    railHd.textContent = "左栏模拟（" + v.engine + "）";
+    rowsEl.innerHTML = "";
+    if (!v.visible.length) { var e = document.createElement("div"); e.className = "empty"; e.textContent = "没有匹配的工作区（空态提示，不留白）"; rowsEl.appendChild(e); }
+    v.visible.forEach(function (r) {
+      var d = document.createElement("div"); d.className = "row";
+      var t = document.createElement("span"); t.className = "tag" + (r.bound ? " bound" : ""); t.textContent = r.bound ? "已绑定" : "未绑定";
+      var n = document.createElement("span"); n.textContent = r.ws.agent + "（" + r.ws.id + "）";
+      d.appendChild(n); d.appendChild(t); rowsEl.appendChild(d);
+    });
+    hiddenEl.textContent = v.hidden.length ? "被藏起来的行：" + v.hidden.map(function (r) { return r.ws.agent + "——" + r.reason; }).join("；") : "没有被藏起来的行（全部可见）。";
+    verdictEl.textContent = summarize(state);
+    if (document.activeElement !== nativeInput && nativeInput.value !== state.nativeQuery) nativeInput.value = state.nativeQuery;
+  }
+  function dispatch(act) { state = reducer(state, act); render(); }
+  var FREE = [
+    { group: "筛选（绑定关）", actions: [ { label: "全部", act: { type: "SET_FILTER", filter: "all" } }, { label: "已绑定", act: { type: "SET_FILTER", filter: "bound" } }, { label: "未绑定", act: { type: "SET_FILTER", filter: "unbound" } } ] },
+    { group: "原生搜索（关键词关）", actions: [ { label: "搜“小”", act: { type: "SET_QUERY", query: "小" } }, { label: "搜“星”", act: { type: "SET_QUERY", query: "星" } }, { label: "搜不存在的词", act: { type: "SET_QUERY", query: "不存在的词" } }, { label: "清空搜索", act: { type: "SET_QUERY", query: "" } } ] },
+    { group: "绑定变化（看计数）", actions: [ { label: "绑定 dsh-im", act: { type: "BIND_NEW" } }, { label: "解绑星火", act: { type: "UNBIND_WS", path: "D:\\agents\\xinghuo" } }, { label: "星火Bot搬到dsh-im", act: { type: "MOVE", botId: "bot-xinghuo", to: "D:\\agents\\dsh-im", label: "星火 Bot 改绑到 dsh-im（搬移）" } } ] },
+    { group: "连接变化（计数应不动）", actions: [ { label: "轮询刷新", act: { type: "TICK" } }, { label: "飞书轮询失败", act: { type: "POLL_FAIL", channel: "feishu" } }, { label: "飞书轮询恢复", act: { type: "POLL_RECOVER", channel: "feishu" } } ] },
+    { group: "引擎与取证（核心抉择）", actions: [ { label: "自画叠加", act: { type: "SET_MODE", mode: "overlay" } }, { label: "委托原生", act: { type: "SET_MODE", mode: "delegate" } }, { label: "原生口子有", act: { type: "SET_NATIVE_AVAILABLE", available: true } }, { label: "原生口子无", act: { type: "SET_NATIVE_AVAILABLE", available: false } } ] },
+    { group: "其他", actions: [ { label: "回到起点", act: { type: "RESET" } } ] }
+  ];
+  var fp = document.getElementById("freeplay");
+  FREE.forEach(function (g) { var h = document.createElement("h4"); h.textContent = g.group; fp.appendChild(h); g.actions.forEach(function (a) { var b = document.createElement("button"); b.className = "act"; b.textContent = a.label; b.onclick = (function (act) { return function () { dispatch(act); }; })(a.act); fp.appendChild(b); }); });
+  var SCENARIOS = [
+    { key: "happy", name: "① 快乐路径", desc: "起点：3 行（已绑定 2：小帅/星火，未绑定 1：dsh-im）。依次切已绑定→未绑定→全部，看计数 3/2/1 与左栏行藏谁。看点：计数是行数，不是 Bot 数（小帅挂 2 个 Bot 也只算 1 行）。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "切到“已绑定”（应剩小帅+星火）", act: { type: "SET_FILTER", filter: "bound" } }, { label: "切到“未绑定”（应只剩 dsh-im）", act: { type: "SET_FILTER", filter: "unbound" } }, { label: "回到“全部”（3 行全回）", act: { type: "SET_FILTER", filter: "all" } } ] },
+    { key: "counts", name: "② 绑定变化计数", desc: "绑定一变，计数立刻跟变。绑定 dsh-im 后未绑定 1→0；解绑星火后已绑定 2→1；把星火 Bot 搬到 dsh-im 是搬移（星火变未绑定、dsh-im 变已绑定）。看点：计数永远等于当前绑定快照。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "绑定 dsh-im（未绑定应 1→0）", act: { type: "BIND_NEW" } }, { label: "解绑星火（已绑定应变 1）", act: { type: "UNBIND_WS", path: "D:\\agents\\xinghuo" } }, { label: "回到起点再搬移", act: { type: "RESET" } }, { label: "星火Bot搬到dsh-im（两边互换）", act: { type: "MOVE", botId: "bot-xinghuo", to: "D:\\agents\\dsh-im", label: "星火 Bot 改绑到 dsh-im（搬移）" } } ] },
+    { key: "native", name: "③ 原生共存抉择（核心）", desc: "你选了委托原生，这里掰开看：先搜“小”再切已绑定——叠加模式下两道关（绑定+关键词）只剩小帅；切委托且口子有时结果一样（经原生一次算出）；关掉口子后委托漏水（B2 条件被丢掉，未绑定行也漏进来）——这就是委托的风险。", steps: [ { label: "从起点开始（自画叠加）", act: { type: "RESET" } }, { label: "原生搜“小”（剩小帅）", act: { type: "SET_QUERY", query: "小" } }, { label: "再切“已绑定”（仍小帅，两道关）", act: { type: "SET_FILTER", filter: "bound" } }, { label: "切委托+口子有（结果一样，经原生）", act: { type: "SET_MODE", mode: "delegate" } }, { label: "先把口子打开", act: { type: "SET_NATIVE_AVAILABLE", available: true } }, { label: "再把口子关掉（警告出现，但搜“小”时还看不出）", act: { type: "SET_NATIVE_AVAILABLE", available: false } }, { label: "清空搜索（漏水现形：本该 2 行，实际 3 行全漏）", act: { type: "SET_QUERY", query: "" } } ] },
+    { key: "stale", name: "④ 失败与空态", desc: "轮询失败只是“不知道”，不是“没绑定”——飞书查不到时计数纹丝不动；搜一个不存在的词会筛空，左栏给一句空提示而不是留白。看点：绑定≠在线，空态不留白。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "飞书轮询失败（计数应不动）", act: { type: "POLL_FAIL", channel: "feishu" } }, { label: "轮询刷新（失败者时间冻结）", act: { type: "TICK" } }, { label: "搜不存在的词（空+空提示）", act: { type: "SET_QUERY", query: "不存在的词" } }, { label: "清空搜索+恢复", act: { type: "SET_QUERY", query: "" } } ] }
+  ];
+  var cur = 0;
+  var doneSteps = {};
+  function renderScenario() {
+    var tabsEl = document.getElementById("tabs"); tabsEl.innerHTML = "";
+    SCENARIOS.forEach(function (s, i) { var t = document.createElement("button"); t.className = "tab" + (i === cur ? " active" : ""); t.textContent = s.name; t.onclick = (function (idx) { return function () { cur = idx; doneSteps = {}; renderScenario(); }; })(i); tabsEl.appendChild(t); });
+    document.getElementById("scenarioDesc").textContent = SCENARIOS[cur].desc;
+    var ol = document.getElementById("steps"); ol.innerHTML = "";
+    SCENARIOS[cur].steps.forEach(function (st, i) {
+      var li = document.createElement("li");
+      var b = document.createElement("button"); b.className = "act" + (doneSteps[cur + "-" + i] ? " done" : "");
+      b.textContent = (doneSteps[cur + "-" + i] ? "✓ " : "") + st.label;
+      b.onclick = function () { dispatch(st.act); doneSteps[cur + "-" + i] = true; renderScenario(); };
+      li.appendChild(b); ol.appendChild(li);
+    });
+  }
+  document.getElementById("nativeClear").onclick = function () { dispatch({ type: "SET_QUERY", query: "" }); };
+  nativeInput.addEventListener("change", function () { dispatch({ type: "SET_QUERY", query: nativeInput.value }); });
+  render(); renderScenario();
+})();
+</script>
+</body>
+</html>

@@ -204,7 +204,7 @@ test('草稿测试流：建议列举/草稿发送/展示名', async () => {
   };
   const sgs = await listSuggestions(rpc as any, 'b1');
   assert.equal(sgs.length, 1);
-  assert.equal(suggestionLabel(sgs[0]), '群聊 · …c123');
+  assert.equal(suggestionLabel(sgs[0]), '群聊·…c123');
   const r = await testDraftTarget(rpc as any, 'b1', sgs[0]);
   assert.equal(r.sent, true);
   const bad = async () => ({ ok: false, error: { code: 'target-rejected', message: 'no' } });

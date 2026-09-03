@@ -191,7 +191,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
     {
       type: 'button',
       className: 'b3-header-dotbtn ' + overlay.dotKind,
-      title: overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + ' · ' + overlay.label + '（点击查看详情）',
+      title: overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + '·' + overlay.label + '（点击查看详情）',
       'aria-label': overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + dotTitle(overlay.dotKind as DotKind),
       onClick: () => {
         setResult(null)
@@ -216,7 +216,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
           {
             className: 'b3-header-chrow',
             key: ch.channel,
-            title: ch.label + ' · ' + ch.statusText,
+            title: ch.label + '·' + ch.statusText,
             'aria-label': ch.label + ch.statusText,
           },
           React.createElement(
@@ -287,7 +287,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   const pop = React.createElement(
     'div',
     { className: 'b3-header-pop', role: 'dialog', 'aria-label': overlay.agent + ' 状态详情' },
-    React.createElement('div', { className: 'b3-header-title' }, overlay.mode === 'unbound' ? '未绑定' : overlay.agent + ' · ' + overlay.label),
+    React.createElement('div', { className: 'b3-header-title' }, overlay.mode === 'unbound' ? '未绑定' : overlay.agent + '·' + overlay.label),
     detail,
     sendBtn ? React.createElement('div', { className: 'b3-header-row' }, sendBtn) : null,
     chPicker,

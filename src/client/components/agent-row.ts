@@ -67,7 +67,7 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
       ? view.channels.map((ch) =>
           h('span', {
             className: 'af-chip',
-            title: ch.label + ' · ' + HEALTH_LABELS[ch.status],
+            title: ch.label + '·' + HEALTH_LABELS[ch.status],
           },
             h('span', { className: 'af-chdot', style: { background: stateColor(ch.status) } }),
             ch.label,

@@ -33,7 +33,7 @@ export function normalizePreset(value: unknown): string {
 }
 
 export function presetLabel(value: string): string {
-  if (value.startsWith('custom:')) return '自定义 · ' + value.slice(7)
+  if (value.startsWith('custom:')) return '自定义·' + value.slice(7)
   const hit = PRESET_OPTIONS.find((o) => o.id === value)
   return hit ? hit.label : '默认助手'
 }

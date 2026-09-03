@@ -106,7 +106,7 @@ test('data：预设/强度归一化 + 标签', () => {
   assert.equal(data.normalizeLevel('high'), 'high');
   assert.equal(data.normalizeLevel('ultra'), 'mid');
   assert.equal(data.presetLabel('cs', ''), '客服话术');
-  assert.equal(data.presetLabel('custom:夜间档', ''), '自定义 · 夜间档');
+  assert.equal(data.presetLabel('custom:夜间档', ''), '自定义·夜间档');
 });
 
 test('data：抽屉模型派生（默认/已存/未知键/路由 seat 空）', () => {

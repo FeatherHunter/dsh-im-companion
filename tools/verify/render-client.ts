@@ -111,7 +111,7 @@ const checks: [string, boolean][] = [
   ['接入按钮', text.includes('接入')],
   ['页面干净-无解释词', !text.includes('解耦') && !text.includes('试验') && !text.includes('B1 ')],
   ['统计行', text.includes('3 个 Agent')],
-  ['显示工作区绑定', text.includes('工作区 · D:')],
+  ['显示工作区绑定', text.includes('工作区·D:')],
 ];
 for (const [name, ok] of checks) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 const allOk = checks.every(([, ok]) => ok);

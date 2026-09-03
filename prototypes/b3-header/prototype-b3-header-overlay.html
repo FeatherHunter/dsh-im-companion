@@ -71,17 +71,17 @@
   .switcher .dots button.on { background:#fff; }
   .note { font-size:11px; color:var(--mut); margin-top:8px; }
 </style>
-<div class="proto-banner">⚠️ THROWAWAY PROTOTYPE · issue #8 · 抛弃式原型，不进 main（决议后折叠赢家进真代码，原型归档到 throwaway 分支）。运行：双击本文件或 <code>python -m http.server 8788</code>。</div>
+<div class="proto-banner">⚠️ THROWAWAY PROTOTYPE·issue #8·抛弃式原型，不进 main（决议后折叠赢家进真代码，原型归档到 throwaway 分支）。运行：双击本文件或 <code>python -m http.server 8788</code>。</div>
 <div class="wrap" id="root" data-theme="light">
-  <h1>B3 · 工作区 Header 浮层 — 三变体对比</h1>
-  <p class="q">设计问题：对话区顶部 Header 浮层（当前 Agent 健康 · 绑定渠道 · 快捷动作）应该长什么样？悬浮时机与防遮挡如何取舍？分支：UI（?variant= A/B/C + 底部悬浮切换）。快捷动作已定：<b>打开工作区 / 发测试消息</b>；时机已定：<b>按绑定状态显示</b>。</p>
+  <h1>B3·工作区 Header 浮层 — 三变体对比</h1>
+  <p class="q">设计问题：对话区顶部 Header 浮层（当前 Agent 健康·绑定渠道·快捷动作）应该长什么样？悬浮时机与防遮挡如何取舍？分支：UI（?variant= A/B/C + 底部悬浮切换）。快捷动作已定：<b>打开工作区 / 发测试消息</b>；时机已定：<b>按绑定状态显示</b>。</p>
   <div class="console">
     <label>工作区场景 <select id="wsSel">
-      <option value="bound-online">xiaoshuai · 已绑定·在线</option>
-      <option value="bound-offline">xiaoshuai · 已绑定·离线</option>
-      <option value="conflict">小帅 · 多渠道冲突（飞书在线/QQ离线）</option>
-      <option value="unbound">dsh-im · 未绑定</option>
-      <option value="irrelevant">notes · IM无关</option>
+      <option value="bound-online">xiaoshuai·已绑定·在线</option>
+      <option value="bound-offline">xiaoshuai·已绑定·离线</option>
+      <option value="conflict">小帅·多渠道冲突（飞书在线/QQ离线）</option>
+      <option value="unbound">dsh-im·未绑定</option>
+      <option value="irrelevant">notes·IM无关</option>
     </select></label>
     <label>主题 <select id="themeSel"><option value="light">浅色</option><option value="dark">深色</option></select></label>
     <button class="btn" id="btnTest">发测试消息</button>
@@ -103,14 +103,14 @@
 </div>
 <div class="switcher" role="navigation" aria-label="原型变体切换（非设计本身）">
   <button id="prevBtn" title="上一个变体">◀</button>
-  <span id="swLabel">A · 胶囊嵌入</span>
+  <span id="swLabel">A·胶囊嵌入</span>
   <span class="dots"><button data-v="A" title="A"></button><button data-v="B" title="B"></button><button data-v="C" title="C"></button></span>
   <button id="nextBtn" title="下一个变体">▶</button>
 </div>
 <script>
 // ---- 纯逻辑模块（可整体搬入真代码前身，仅读内存 state，无 DOM 依赖部分在 createB3State；渲染为薄壳） ----
 const VARIANTS = ["A","B","C"];
-const NAMES = { A:"A · 胶囊嵌入", B:"B · 独立浮条", C:"C · 极简呼吸点" };
+const NAMES = { A:"A·胶囊嵌入", B:"B·独立浮条", C:"C·极简呼吸点" };
 const SCEN = {
   "bound-online":  { ws:"xiaoshuai", agent:"小帅", binding:"bound",   health:"online",  channels:[["feishu","online"]] },
   "bound-offline": { ws:"xiaoshuai", agent:"小帅", binding:"bound",   health:"offline", channels:[["feishu","offline"]] },
@@ -128,7 +128,7 @@ function healthText(sc){
   if (sc.binding === "none") return "—";
   if (sc.health === "online") return "飞书在线";
   if (sc.health === "offline") return "飞书离线";
-  return "飞书在线 · QQ离线";
+  return "飞书在线·QQ离线";
 }
 function dotClass(sc){
   if (sc.binding === "unbound" || sc.binding === "none") return "unbound";
@@ -151,8 +151,8 @@ function render(){
   document.getElementById("root").dataset.theme = theme;
   $("themeSel").value = theme; $("wsSel").value = scenKey;
   // 侧栏
-  $("sideNav").innerHTML = ["xiaoshuai · 小帅","dsh-im · 未绑定","notes · 无关"].map((t,i)=>
-    '<div class="ws'+(i===0 && sc.ws==="xiaoshuai" || i===1 && sc.ws==="dsh-im" || i===2 && sc.ws==="notes" ? " cur" : "")+'"><span>📁 '+esc(t.split(" · ")[0])+'</span><span>'+esc(t.split(" · ")[1])+'</span></div>').join("") + '<div style="margin-top:8px">← 真实 DSH 密度参照</div>';
+  $("sideNav").innerHTML = ["xiaoshuai·小帅","dsh-im·未绑定","notes·无关"].map((t,i)=>
+    '<div class="ws'+(i===0 && sc.ws==="xiaoshuai" || i===1 && sc.ws==="dsh-im" || i===2 && sc.ws==="notes" ? " cur" : "")+'"><span>📁 '+esc(t.split("·")[0])+'</span><span>'+esc(t.split("·")[1])+'</span></div>').join("") + '<div style="margin-top:8px">← 真实 DSH 密度参照</div>';
   // Header / strip 槽位
   $("headerSlot").innerHTML = ""; $("stripSlot").innerHTML = "";
   const timingNote = "时机判定：" + td.reason;
@@ -161,13 +161,13 @@ function render(){
     $("headerSlot").style.cssText = "display:contents";
     if (td.show) {
       const un = td.mode === "unbound-hint";
-      $("headerSlot").innerHTML = '<span class="cap'+(un?" unbound":"")+'"><span class="dot '+dotClass(sc)+'"></span><span>'+esc(un ? "未绑定 · 去设置" : sc.agent+" · "+healthText(sc))+'</span>' +
+      $("headerSlot").innerHTML = '<span class="cap'+(un?" unbound":"")+'"><span class="dot '+dotClass(sc)+'"></span><span>'+esc(un ? "未绑定·去设置" : sc.agent+"·"+healthText(sc))+'</span>' +
         (un ? '<button class="btn primary" data-act="settings">去设置</button>' : '<button class="btn" data-act="open">打开工作区</button><button class="btn primary" data-act="test">发测试消息</button>') + '</span>';
     }
   } else if (variant === "B") {
     if (td.show) {
       const un = td.mode === "unbound-hint";
-      $("stripSlot").innerHTML = '<div class="strip'+(un?" unbound":"")+'"><span class="dot '+dotClass(sc)+'"></span><span>📁 '+esc(sc.ws)+'</span><b>'+esc(un?"未绑定":sc.agent+" · "+healthText(sc))+'</b><span class="spacer"></span>' +
+      $("stripSlot").innerHTML = '<div class="strip'+(un?" unbound":"")+'"><span class="dot '+dotClass(sc)+'"></span><span>📁 '+esc(sc.ws)+'</span><b>'+esc(un?"未绑定":sc.agent+"·"+healthText(sc))+'</b><span class="spacer"></span>' +
         (un ? '<button class="btn primary" data-act="settings">去设置</button>' : '<button class="btn" data-act="open">打开工作区</button><button class="btn primary" data-act="test">发测试消息</button><button class="btn ghost" data-act="collapse">收起</button>') + '</div>';
     }
   } else {
@@ -175,7 +175,7 @@ function render(){
       const un = td.mode === "unbound-hint";
       $("headerSlot").style.cssText = "display:contents";
       $("headerSlot").innerHTML = '<span class="mini"><button class="mini-dotbtn" id="miniBtn" title="Agent 状态详情"><span class="dot '+dotClass(sc)+'"></span></button>' +
-        (popOpen ? '<div class="pop"><h4>'+esc(un?"未绑定工作区":sc.agent+" · "+healthText(sc))+'</h4><div style="color:var(--mut)">📁 '+esc(sc.ws)+' · '+esc(td.reason)+'</div><div class="row">' +
+        (popOpen ? '<div class="pop"><h4>'+esc(un?"未绑定工作区":sc.agent+"·"+healthText(sc))+'</h4><div style="color:var(--mut)">📁 '+esc(sc.ws)+'·'+esc(td.reason)+'</div><div class="row">' +
           (un ? '<button class="btn primary" data-act="settings">去设置</button>' : '<button class="btn" data-act="open">打开工作区</button><button class="btn primary" data-act="test">发测试消息</button>') + '</div></div>' : '') + '</span>';
       const mb = $("miniBtn"); if (mb) mb.onclick = () => { popOpen = !popOpen; lastChanged = "C 变体详情 " + (popOpen?"展开":"收起"); render(); };
     }
@@ -187,7 +187,7 @@ function render(){
     render();
   });
   // 状态外显
-  $("varTag").textContent = "当前 " + NAMES[variant] + " · ?variant=" + variant;
+  $("varTag").textContent = "当前 " + NAMES[variant] + "·?variant=" + variant;
   $("swLabel").textContent = NAMES[variant];
   document.querySelectorAll(".switcher .dots button").forEach(d => d.classList.toggle("on", d.dataset.v === variant));
   const state = { variant, variantName: NAMES[variant], workspace: sc.ws, agent: sc.agent, binding: sc.binding, health: sc.health, channels: sc.channels, theme, timing: td, lastChanged };

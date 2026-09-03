@@ -111,7 +111,7 @@ function channelsOf(snaps: BotSnap[]): AgentChannelView[] {
 const STATUS_RANK: Record<HealthKind, number> = { online: 0, warn: 1, offline: 2 }
 
 function healthDetailOf(channels: AgentChannelView[], bots: BotSnap[]): string {
-  const parts = channels.map((c) => c.label + ' · ' + HEALTH_LABELS[c.status])
+  const parts = channels.map((c) => c.label + '·' + HEALTH_LABELS[c.status])
   const last = Math.max(...bots.map((b) => b.lastCheckedAt ?? 0), 0)
   if (last > 0) parts.push('最后检测 ' + new Date(last).toLocaleTimeString('zh-CN', { hour12: false }))
   const firstDown = bots.find((b) => b.healthKind !== 'online')
@@ -152,8 +152,8 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
       status,
       stateLabel: channels.length ? HEALTH_LABELS[status] : '未接入',
       isLocal: false,
-      sub: channels.length ? channels.map((c) => c.label).join(' · ') : '尚未接入渠道',
-      workspaceLine: path ? '工作区 · ' + path : '未绑定工作区',
+      sub: channels.length ? channels.map((c) => c.label).join('·') : '尚未接入渠道',
+      workspaceLine: path ? '工作区·' + path : '未绑定工作区',
       healthDetail: healthDetailOf(channels, snaps),
       bots: botRefsOf(snaps),
     })
@@ -208,7 +208,7 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
         stateLabel: HEALTH_LABELS[status],
         isLocal: false,
         sub: base || '未绑定工作区',
-        workspaceLine: path ? '工作区 · ' + path : '未绑定工作区',
+        workspaceLine: path ? '工作区·' + path : '未绑定工作区',
         healthDetail: healthDetailOf([{ id: ch, label: channelLabel(ch), status }], list),
         bots: botRefsOf(list),
       }
