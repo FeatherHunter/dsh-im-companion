@@ -230,7 +230,8 @@ test('runTestSend 无目标分支：1 个直发 / N 个回列表 / 0 个给指�
   assert.match(rN.text, /选择/);
   const win = await sendToSuggestion(one as any, bot, { kind: 'user', route: { openId: 'ou_x' } }, W1, '小帅');
   assert.equal(win.ok, true);
-  assert.match(win.text, /草稿测试/);
+  assert.match(win.text, /一次性/);
+  assert.match(win.text, /未保存/);
 });
 
 test('channelsOf：多渠道成行，同渠道取最优，stale 按待确认', () => {

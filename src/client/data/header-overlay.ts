@@ -254,7 +254,7 @@ export async function sendToSuggestion(
     await testDraftTarget(rpc, bot.botId, sg)
     return {
       ok: true,
-      text: '测试消息已发送到「' + suggestionLabel(sg) + '」（草稿测试，未保存目标）。',
+      text: '已发送到「' + suggestionLabel(sg) + '」（一次性，未保存）。',
       event: { workspace: workspacePath, agent, botId: bot.botId, channel: bot.channel, targetId: '' },
     }
   } catch (e) {
