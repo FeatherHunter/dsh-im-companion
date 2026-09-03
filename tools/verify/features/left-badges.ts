@@ -52,6 +52,28 @@ const feishuOk = (lastCheckedAt: number) => async (ch: string) => {
   return { ok: true, value: { bots: [{ botId: 'f1', workspace: W1, connected: true, health: { status: 'healthy', lastCheckedAt } }] } };
 };
 
+/* 悬浮层测试桩：行带几何，元素带 style/尺寸/父子链。 */
+const stubEl: any = (tag: string) => ({
+  tag, attrs: {} as Record<string, string>, children: [] as any[], listeners: {} as Record<string, any[]>, text: '',
+  style: {} as Record<string, string>, parentNode: null as any,
+  offsetWidth: 64, offsetHeight: 18,
+  setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
+  getAttribute(k: string) { return this.attrs[k] ?? null; },
+  appendChild(c: any) { c.parentNode = this; this.children.push(c); return c; },
+  removeChild(c: any) { this.children = this.children.filter((x: any) => x !== c); return c; },
+  addEventListener(t: string, fn: any) { (this.listeners[t] || (this.listeners[t] = [])).push(fn); },
+  removeEventListener() {},
+  querySelector(sel: string) {
+    const cls = sel.startsWith('.') ? sel.slice(1) : sel;
+    return this.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)) ?? null;
+  },
+  getBoundingClientRect() { return { top: 10, left: 10, right: 200, bottom: 44, width: 190, height: 34 }; },
+  get textContent() { return this.text; },
+  set textContent(v: string) { this.text = String(v); },
+});
+const layerOf = (body: any) => body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('left-badges-layer')) ?? null;
+const chipOf = (layer: any) => (layer ? layer.querySelector('.left-badges-badge') : null);
+
 test('stream：失败渠道保留旧快照（stale+冻结），ok:false 不保留', async () => {
   const s = streamMod.createConnectionStream(feishuOk(2000), () => 90000);
   try {
@@ -156,30 +178,20 @@ test('registry：left-badges 在列，带样式与槽位', () => {
 
 test('styles：命名空间前缀，不占 .af-', () => {
   assert.match(styles.CSS, /.left-badges-badge/);
+  assert.match(styles.CSS, /.left-badges-layer/);
   assert.ok(!styles.CSS.includes('.af-'), '不得占用 .af-* 私有约定');
 });
 
-test('view：行装饰 + 点击只读事件 + 无变化不碰 DOM', () => {
-  const stubEl: any = (tag: string) => ({
-    tag, attrs: {} as Record<string, string>, children: [] as any[], listeners: {} as Record<string, any[]>, text: '',
-    setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
-    getAttribute(k: string) { return this.attrs[k] ?? null; },
-    appendChild(c: any) { this.children.push(c); return c; },
-    addEventListener(t: string, fn: any) { (this.listeners[t] ??= []).push(fn); },
-    querySelector(sel: string) {
-      const cls = sel.startsWith('.') ? sel.slice(1) : sel;
-      return this.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)) ?? null;
-    },
-    get textContent() { return this.text; },
-    set textContent(v: string) { this.text = String(v); },
-  });
+test('view：悬浮芯片 + 点击只读 + 同数据不增殖', () => {
   const row = stubEl('div');
   row.textContent = 'xiaoshuai';
-  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body') };
+  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body'), addEventListener() {}, removeEventListener() {} };
   const events: any[] = [];
   const winStub: any = {
     CustomEvent: class { type: string; detail: any; constructor(t: string, o: any) { this.type = t; this.detail = o?.detail; } },
     dispatchEvent(ev: any) { events.push(ev); return true; },
+    innerWidth: 1024, innerHeight: 768,
+    addEventListener() {}, removeEventListener() {},
   };
   (globalThis as any).document = docStub;
   (globalThis as any).window = winStub;
@@ -188,14 +200,16 @@ test('view：行装饰 + 点击只读事件 + 无变化不碰 DOM', () => {
     const heard: any[] = [];
     const ctx: any = { subscribe: (fn: any) => { fn({ bots: [snap({ lastCheckedAt: 5000 })], failed: [], updatedAt: 60000 }); heard.push(fn); return () => {}; } };
     const dispose = view.mountLeftBadges(ctx);
-    const badge = row.querySelector('.left-badges-badge');
-    assert.ok(badge, '行上注入徽标');
+    const layer = layerOf(docStub.body);
+    assert.ok(layer, '建悬浮层');
+    const badge = chipOf(layer);
+    assert.ok(badge, '层上有在线芯片');
     assert.match(String(badge.attrs.class), /online/);
     assert.match(String(badge.attrs.title), /最后检测/);
-    assert.equal(row.children.length, 1);
+    assert.equal(layer.children.length, 1);
     heard[0]({ bots: [snap({ lastCheckedAt: 5000 })], failed: [], updatedAt: 61000 });
-    assert.equal(row.children.length, 1);
-    badge.listeners.click[0]({ stopPropagation() {} });
+    assert.equal(layer.children.length, 1);
+    badge.listeners.click[0]();
     assert.equal(events.length, 1);
     assert.equal(events[0].type, 'dsh-im-companion:open-agent');
     assert.equal(events[0].detail.workspace, W1);
@@ -207,24 +221,11 @@ test('view：行装饰 + 点击只读事件 + 无变化不碰 DOM', () => {
   }
 });
 
-test('view：老代挂载在新代出现后静默（代际哨兵）', () => {
-  const stubEl: any = (tag: string) => ({
-    tag, attrs: {} as Record<string, string>, children: [] as any[], text: '',
-    setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
-    getAttribute(k: string) { return this.attrs[k] ?? null; },
-    appendChild(c: any) { this.children.push(c); return c; },
-    addEventListener() {},
-    querySelector(sel: string) {
-      const cls = sel.startsWith('.') ? sel.slice(1) : sel;
-      return this.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)) ?? null;
-    },
-    get textContent() { return this.text; },
-    set textContent(v: string) { this.text = String(v); },
-  });
+test('view：老代挂载在新代出现后摘层静默（代际哨兵）', () => {
   const row = stubEl('div');
   row.textContent = 'xiaoshuai';
   const win: any = {};
-  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body') };
+  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body'), addEventListener() {}, removeEventListener() {} };
   (globalThis as any).document = docStub;
   (globalThis as any).window = win;
   (globalThis as any).MutationObserver = class { constructor(_cb: any) {} observe() {} disconnect() {} };
@@ -232,12 +233,12 @@ test('view：老代挂载在新代出现后静默（代际哨兵）', () => {
     let fn: any = null;
     const ctx: any = { subscribe: (f: any) => { fn = f; f({ bots: [snap({ lastCheckedAt: 5000 })], failed: [], updatedAt: 60000 }); return () => {}; } };
     const dispose = view.mountLeftBadges(ctx);
-    const badge = row.querySelector('.left-badges-badge');
-    assert.ok(badge, '首轮画上徽标');
+    const badge = chipOf(layerOf(docStub.body));
+    assert.ok(badge, '首轮画上芯片');
     assert.match(String(badge.attrs.class), /online/);
     win.__lbGen = 999;
     fn({ bots: [snap({ lastCheckedAt: 5000, healthKind: 'offline', healthStatus: 'offline', connected: false })], failed: [], updatedAt: 61000 });
-    assert.match(String(row.querySelector('.left-badges-badge').attrs.class), /online/, '老代不再重绘');
+    assert.equal(chipOf(layerOf(docStub.body)), null, '老代摘层静默');
     dispose();
   } finally {
     delete (globalThis as any).document;
@@ -246,33 +247,17 @@ test('view：老代挂载在新代出现后静默（代际哨兵）', () => {
   }
 });
 
-test('view：未绑定不行徽标（残留旧徽标摘除）', () => {
-  const stubEl: any = (tag: string) => ({
-    tag, attrs: {} as Record<string, string>, children: [] as any[], text: '',
-    setAttribute(k: string, v: string) { this.attrs[k] = String(v); },
-    getAttribute(k: string) { return this.attrs[k] ?? null; },
-    appendChild(c: any) { this.children.push(c); return c; },
-    querySelector(sel: string) {
-      const cls = sel.startsWith('.') ? sel.slice(1) : sel;
-      return this.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)) ?? null;
-    },
-    get textContent() { return this.text; },
-    set textContent(v: string) { this.text = String(v); },
-  });
+test('view：未绑定无芯片且行内不写节点', () => {
   const row = stubEl('div');
   row.textContent = 'dsh-im';
-  const old = stubEl('span');
-  old.setAttribute('class', 'left-badges-badge unbound');
-  old.remove = () => { row.children = row.children.filter((c: any) => c !== old); };
-  row.children.push(old);
-  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body') };
+  const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body'), addEventListener() {}, removeEventListener() {} };
   (globalThis as any).document = docStub;
   (globalThis as any).MutationObserver = class { constructor(_cb: any) {} observe() {} disconnect() {} };
   try {
     const ctx: any = { subscribe: (fn: any) => { fn({ bots: [snap({})], failed: [], updatedAt: 60000 }); return () => {}; } };
     const dispose = view.mountLeftBadges(ctx);
-    assert.equal(row.querySelector('.left-badges-badge'), null);
-    assert.equal(row.children.length, 0);
+    assert.equal(chipOf(layerOf(docStub.body)), null, '未绑定无芯片');
+    assert.equal(row.children.length, 0, '行内不写节点');
     dispose();
   } finally {
     delete (globalThis as any).document;

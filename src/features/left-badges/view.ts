@@ -1,9 +1,10 @@
-/** left-badges 叠加视图：订阅 stream 快照 → MutationObserver 装饰左侧工作区行。
- * 防御式挂载（选择器命中不了就静默），无自有轮询（数据唯一来源 connection-stream），
- * 点击只读：派发 OPEN_AGENT_EVENT，不做任何 mutation。 */
-import { OPEN_AGENT_EVENT, badgeForWorkspace } from '../../client/data/bindings'
+/** left-badges 悬浮层视图：订阅 stream 快照 → body 级 fixed 芯片按行几何呈现。
+ * 只读行 DOM（文本匹配 + 取矩形），绝不向 React 管理的行内写节点。
+ * 无自有轮询；点击只读：派发 OPEN_AGENT_EVENT。 */
+import { badgeForWorkspace } from '../../client/data/bindings'
 import type { BotSnap, RpcCall } from '../../client/data/fleet-api'
 import { collectCensus, reportDebug } from './debug-report'
+import { ensureLayer, removeLayer, reposition, syncChips, type ChipItem } from './overlay'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
 
@@ -11,10 +12,6 @@ import type { FeatureCtx } from '../protocol'
  * 渲染工作区分组行，会话行无 aria-expanded；类名系 CSS Modules 哈希、不可依赖）。
  * 行内唯一可见文本即工作区展示名（projectText>title），故 key 取行文本做名称匹配。 */
 const ROW_SELECTORS = ['div[role="treeitem"][aria-expanded]']
-const BADGE_CLASS = 'left-badges-badge'
-const DOT_CLASS = 'left-badges-dot'
-const LABEL_CLASS = 'left-badges-label'
-const KEY_ATTR = 'data-left-badges'
 
 /* 作用域说明（#6 真机教训）：禁止把扫描收窄到命中行的父容器——左栏重排会换掉整个容器，
  * 收窄即锁死在脱离文档的死子树上空画。列表仅数十行，全文档直查零成本。 */
@@ -89,98 +86,32 @@ function basenameOf(ws: string): string {
   return parts[parts.length - 1] ?? ''
 }
 
-/* TODO(#6)：OPEN_AGENT_EVENT 的消费者（设置面板 #agent= 高亮联动）在后续票落地；此前事件只发无收。 */
-function emitOpenAgent(workspace: string, agent: string): void {
-  try {
-    if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
-    window.dispatchEvent(new window.CustomEvent(OPEN_AGENT_EVENT, { detail: { workspace, agent } }))
-  } catch {
-    /* 事件派发失败不影响徽标展示 */
-  }
-}
 
-function decorateRow(row: Element, bots: BotSnap[], nowMs: number): boolean {
-  const key = rowKey(row)
-  if (!key) return false
-  const ws = resolveWorkspace(key, bots)
-  const badge = badgeForWorkspace(ws, bots, nowMs)
-  /* 用户裁定：未绑定不行徽标（缺席不占坑）；残留旧徽标则摘除。数据层仍判 unbound，B3 头部提示不受影响。 */
-  if (badge.kind === 'unbound') {
-    try {
-      const old = typeof row.querySelector === 'function' ? row.querySelector('.' + BADGE_CLASS) : null
-      if (old) old.remove()
-    } catch {
-      return false
-    }
-    return true
-  }
-  const paintKey = badge.kind + '|' + badge.label + '|' + badge.tooltip
-  let el: Element | null = null
-  try {
-    el = typeof row.querySelector === 'function' ? row.querySelector('.' + BADGE_CLASS) : null
-  } catch {
-    el = null
-  }
-  if (el) {
-    let prev = ''
-    try {
-      prev = el.getAttribute?.(KEY_ATTR) ?? ''
-    } catch {
-      prev = ''
-    }
-    if (prev === paintKey) return true /* 无变化不碰 DOM（避免 observer 自激） */
-    try {
-      el.setAttribute('class', BADGE_CLASS + ' ' + badge.kind)
-      el.setAttribute('title', badge.tooltip)
-      el.setAttribute(KEY_ATTR, paintKey)
-      const label = el.querySelector?.('.' + LABEL_CLASS)
-      if (label) label.textContent = badge.label
-    } catch {
-      /* 更新失败下次快照再试 */
-      return false
-    }
-    return true
-  }
-  try {
-    if (typeof document === 'undefined') return false
-    const host = document.createElement('span')
-    host.setAttribute('class', BADGE_CLASS + ' ' + badge.kind)
-    host.setAttribute('title', badge.tooltip)
-    host.setAttribute(KEY_ATTR, paintKey)
-    const dot = document.createElement('span')
-    dot.setAttribute('class', DOT_CLASS)
-    const label = document.createElement('span')
-    label.setAttribute('class', LABEL_CLASS)
-    label.textContent = badge.label
-    host.appendChild(dot)
-    host.appendChild(label)
-    host.addEventListener('click', (ev) => {
-      try {
-        ev.stopPropagation()
-      } catch {
-        /* 阻止冒泡失败也继续派发 */
-      }
-      emitOpenAgent(badge.workspace, badge.agent)
-    })
-    row.appendChild(host)
-    return true
-  } catch {
-    /* 创建失败下次快照再试 */
-    return false
-  }
-}
 
 function paint(bots: BotSnap[], nowMs: number): void {
   if (!genAlive(activeGen)) return
   const rows = collectRows()
-  if (!rows.length) return
-  let decorated = 0
+  const items: ChipItem[] = []
+  const seenWs = new Set<string>()
   for (const row of rows) {
     try {
-      if (decorateRow(row, bots, nowMs)) decorated++
+      const key = rowKey(row)
+      if (!key) continue
+      const ws = resolveWorkspace(key, bots)
+      if (seenWs.has(ws)) continue
+      seenWs.add(ws)
+      const badge = badgeForWorkspace(ws, bots, nowMs)
+      if (badge.kind === 'unbound') continue
+      items.push({ row, badge })
     } catch {
       /* 单行失败不影响其他行 */
     }
+  }
+  let decorated = 0
+  try {
+    decorated = syncChips(items)
+  } catch {
+    /* 同步失败下次再试 */
   }
   /* TEMP-DEBUG(#6)：行数/已饰变化即上报一行（定位后删除） */
   try {
@@ -230,12 +161,36 @@ function schedulePaint(bots: BotSnap[]): void {
   }
 }
 
-/** 挂载：订阅 stream + observer 重绘；首轮快照到达前不绘制（避免“未检查”闪成“未绑定”）。 */
+let rzQueued = false
+function scheduleReposition(): void {
+  const run = (): void => {
+    rzQueued = false
+    try {
+      reposition()
+    } catch {
+      /* 重定位失败忽略 */
+    }
+  }
+  try {
+    if (typeof requestAnimationFrame === 'function') {
+      if (rzQueued) return
+      rzQueued = true
+      requestAnimationFrame(() => run())
+    } else {
+      run()
+    }
+  } catch {
+    run()
+  }
+}
+
+/** 挂载：订阅 stream + observer/滚动/尺寸跟随；首轮快照到达前不绘制。 */
 export function mountLeftBadges(ctx: FeatureCtx): () => void {
   const noop = (): void => {}
   if (typeof document === 'undefined') return noop
   let current: BotSnap[] = []
   let hasSnap = false
+  let dropped = false
   let observer: MutationObserver | undefined
   const repaint = (): void => {
     if (!hasSnap) return
@@ -255,12 +210,27 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     /* 上报失败静默 */
   }
   activeGen = claimGen()
+  try {
+    ensureLayer()
+  } catch {
+    /* 建层失败就只靠后续同步重试 */
+  }
   let unsub: (() => void) | null = null
   try {
     unsub = ctx.subscribe((snap: StreamSnapshot) => {
       current = snap.bots
       hasSnap = snap.updatedAt > 0
-      if (!genAlive(activeGen)) return
+      if (!genAlive(activeGen)) {
+        if (!dropped) {
+          dropped = true
+          try {
+            removeLayer()
+          } catch {
+            /* 摘层失败忽略 */
+          }
+        }
+        return
+      }
       /* TEMP-DEBUG(#6)：快照到达即上报（定位后删除） */
       try {
         const nfail = snap.failed ? snap.failed.length : 0
@@ -282,6 +252,17 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
   } catch {
     /* 无 observer 就只靠快照重绘 */
   }
+  const onMove = (): void => scheduleReposition()
+  try {
+    document.addEventListener('scroll', onMove, true)
+  } catch {
+    /* 旧宿主无捕获监听就跳过 */
+  }
+  try {
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') window.addEventListener('resize', onMove)
+  } catch {
+    /* 无 resize 监听就跳过 */
+  }
   return () => {
     try {
       unsub?.()
@@ -290,6 +271,21 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     }
     try {
       observer?.disconnect()
+    } catch {
+      /* 清理失败忽略 */
+    }
+    try {
+      document.removeEventListener('scroll', onMove, true)
+    } catch {
+      /* 清理失败忽略 */
+    }
+    try {
+      if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') window.removeEventListener('resize', onMove)
+    } catch {
+      /* 清理失败忽略 */
+    }
+    try {
+      removeLayer()
     } catch {
       /* 清理失败忽略 */
     }
