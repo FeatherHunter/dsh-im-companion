@@ -21,6 +21,7 @@ const ENTRIES = [
   join(DATA, "bindings.ts"),
   join(DATA, "meta.ts"),
   join(REPO, "src", "client", "dom.ts"),
+  join(REPO, "src", "client", "theme.ts"),
   join(WB, "data.ts"),
   join(WB, "anchor.ts"),
   join(WB, "styles.ts"),
@@ -155,10 +156,12 @@ test("样式命名空间 wb-", () => {
   const css = String(styles.CSS ?? "");
   assert.ok(css.length > 100);
   assert.ok(css.indexOf(".wb-") >= 0);
-  assert.ok(css.indexOf("#fff") < 0 && css.indexOf("#000") < 0, "禁止硬编码色值（深色跟随主题别名）");
+  assert.ok(!/#fff(?![0-9a-fA-F])/.test(css) && !/#000(?![0-9a-fA-F])/.test(css), "禁止裸硬编码色值（var() fallback 如 #ffffff 是主题令牌 sanctioned 写法）");
   const classes = [...css.matchAll(/\.([A-Za-z][A-Za-z0-9_-]*)/g)].map((m) => m[1]);
   const bad = classes.filter((c) => !c.startsWith("wb-"));
   assert.deepEqual(bad, []);
+  assert.ok(css.indexOf("--af-accent:") >= 0, "TOKEN_BLOCK 必须随横幅下发（对话树无 .af-root，缺此则全部 var(--af-*) 被丢弃）");
+  assert.ok(css.indexOf(".wb-banner{") >= 0, "token 必须声明在 .wb-banner 根上");
 });
 
 test("manifest 与注册表收录", () => {

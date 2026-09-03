@@ -5,7 +5,7 @@
  */
 export const STYLE_ID = 'dsh-im-companion-styles'
 
-const TOKEN_BLOCK = `
+export const TOKEN_BLOCK = `
   --af-accent: var(--dsw-alias-brand-primary, #0a84ff);
   --af-primary: var(--dsw-alias-label-primary, #1c1c1e);
   --af-secondary: var(--dsw-alias-label-secondary, #6e6e73);
