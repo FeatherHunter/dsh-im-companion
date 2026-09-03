@@ -162,6 +162,7 @@ test("样式命名空间 wb-", () => {
   assert.deepEqual(bad, []);
   assert.ok(css.indexOf("--af-accent:") >= 0, "TOKEN_BLOCK 必须随横幅下发（对话树无 .af-root，缺此则全部 var(--af-*) 被丢弃）");
   assert.ok(css.indexOf(".wb-banner{") >= 0, "token 必须声明在 .wb-banner 根上");
+  assert.ok(css.indexOf("min-height:") >= 0, "HOME 气场：横幅必须有最小高度占领对话区");
 });
 
 test("manifest 与注册表收录", () => {
