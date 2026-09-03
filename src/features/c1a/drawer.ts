@@ -5,38 +5,10 @@ import { toast } from '../../client/ui/toast'
 import { chooseBot, runTestSend } from '../../client/data/header-overlay'
 import type { FeatureCtx } from '../protocol'
 import type { OpenDrawerDetail } from '../../client/data/config'
-import { OPEN_DRAWER_EVENT, buildDrawerModel, type DrawerModel } from './data'
-import { renderDrawerContent, type DrawerCallbacks } from './view'
+import { OPEN_DRAWER_EVENT, buildDrawerModel, loadingModel, sheetGeometry, type DrawerModel } from './data'
+import { quietCallbacks, renderDrawerContent, type DrawerCallbacks } from './view'
 
 let currentClose: (() => void) | null = null
-
-export interface PanelRect {
-  top: number
-  right: number
-  bottom: number
-  left: number
-}
-
-export interface SheetGeom {
-  top: number
-  right: number
-  bottom: number
-  width: number
-}
-
-/** 抽屉贴设置面板右沿（真机体验反馈）：fixed 相对视口，用面板矩形反推四边；面板找不到回 null（调用方保持视口右沿兜底）。 */
-export function sheetGeometry(panel: PanelRect | null, viewport: { width: number; height: number }): SheetGeom | null {
-  if (!panel || !(viewport.width > 0 && viewport.height > 0)) return null
-  const pw = panel.right - panel.left
-  if (!(pw > 0)) return null
-  const width = pw < 420 ? Math.max(0, pw) : 360
-  return {
-    top: Math.max(0, Math.round(panel.top)),
-    right: Math.max(0, Math.round(viewport.width - panel.right)),
-    bottom: Math.max(0, Math.round(viewport.height - panel.bottom)),
-    width: Math.round(width),
-  }
-}
 
 export function mountDrawer(fctx: FeatureCtx): () => void {
   const onEvent = (e: Event): void => {
@@ -97,6 +69,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       label: 'Agent 详情抽屉',
       onClose: () => {
         closed = true
+        clearGiveUp()
         try {
           unsub()
         } catch {
@@ -115,6 +88,35 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     return
   }
   currentClose = closeAll
+  let settled = false
+  let giveUp: ReturnType<typeof setTimeout> | null = null
+  const clearGiveUp = (): void => {
+    try {
+      if (giveUp !== null) clearTimeout(giveUp)
+    } catch {
+      /* ignore */
+    }
+    giveUp = null
+  }
+  const paintLoading = (): void => {
+    if (closed || !sheet) return
+    try {
+      mount(sheet.panel, renderDrawerContent(loadingModel(key), quietCallbacks(() => closeAll())))
+    } catch {
+      /* keep old frame */
+    }
+  }
+  try {
+    giveUp = setTimeout(() => {
+      giveUp = null
+      if (!settled && !closed) {
+        toast('未找到该 Agent 的数据，可点列表右上刷新后重试')
+        closeAll()
+      }
+    }, 8000)
+  } catch {
+    /* 定时器不可用则不设限 */
+  }
   const placeSheet = (): void => {
     try {
       if (!sheet || typeof window === 'undefined' || typeof document === 'undefined') return
@@ -146,9 +148,17 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     if (closed || !meta || !sheet) return
     const model = buildDrawerModel(lastBots, meta, key)
     if (!model) {
-      closeAll()
+      if (settled) {
+        settled = false
+        toast('该 Agent 已不在列表，关闭抽屉')
+        closeAll()
+      } else {
+        paintLoading()
+      }
       return
     }
+    settled = true
+    clearGiveUp()
     try {
       mount(sheet.panel, renderDrawerContent(model, cbs(model)))
     } catch {

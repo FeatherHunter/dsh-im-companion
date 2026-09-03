@@ -4,6 +4,20 @@ import { makeButton } from '../../client/ui/button'
 import { HEALTH_LABELS, channelLabel } from '../../client/data/config'
 import { CTX_LEVELS, PRESET_OPTIONS, type DrawerModel } from './data'
 
+/** 加载态静默回调：除关闭外全是空操作（数据到之前误点不写坏任何东西）。 */
+export function quietCallbacks(onClose: () => void): DrawerCallbacks {
+  return {
+    onPreset: () => undefined,
+    onCustomName: () => undefined,
+    onToggleCtx: () => undefined,
+    onLevel: () => undefined,
+    onSaveWorkspace: () => undefined,
+    onRemoveBot: () => undefined,
+    onTestSend: () => undefined,
+    onClose,
+  }
+}
+
 export interface DrawerCallbacks {
   onPreset(id: string): void
   onCustomName(name: string): void

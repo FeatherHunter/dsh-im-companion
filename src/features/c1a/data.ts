@@ -38,6 +38,34 @@ export function presetLabel(value: string): string {
   return hit ? hit.label : '默认助手'
 }
 
+export interface PanelRect {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
+
+export interface SheetGeom {
+  top: number
+  right: number
+  bottom: number
+  width: number
+}
+
+/** 抽屉贴设置面板右沿：fixed 相对视口，用面板矩形反推四边；面板找不到回 null（调用方保持视口右沿兜底）。 */
+export function sheetGeometry(panel: PanelRect | null, viewport: { width: number; height: number }): SheetGeom | null {
+  if (!panel || !(viewport.width > 0 && viewport.height > 0)) return null
+  const pw = panel.right - panel.left
+  if (!(pw > 0)) return null
+  const width = pw < 420 ? Math.max(0, pw) : 360
+  return {
+    top: Math.max(0, Math.round(panel.top)),
+    right: Math.max(0, Math.round(viewport.width - panel.right)),
+    bottom: Math.max(0, Math.round(viewport.height - panel.bottom)),
+    width: Math.round(width),
+  }
+}
+
 export function normalizeLevel(value: unknown): CtxLevel {
   const s = String(value ?? '')
   return s === 'low' || s === 'mid' || s === 'high' ? s : 'mid'
@@ -78,6 +106,15 @@ export interface DrawerModel {
   channels: DrawerChannel[]
   bots: { channel: string; botId: string }[]
   routes: RouteEntry[]
+}
+
+/** 等待数据时的占位模型（key 回填，供关闭/重试逻辑识别）。 */
+export function loadingModel(key: string): DrawerModel {
+  return {
+    key, storeKey: key, name: '加载中', workspace: '', statusLabel: '等待数据', status: 'warn',
+    bound: false, preset: 'default', customName: '', ctx: { enabled: false, level: 'mid' },
+    channels: [], bots: [], routes: [],
+  }
 }
 
 export function storeKeyOf(base: string, key: string): string {
