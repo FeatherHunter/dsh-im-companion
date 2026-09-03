@@ -217,7 +217,7 @@ const CSS = `
 .af-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(0, 0, 0, .5); display: grid; place-items: center; }
 .af-modal {
   width: min(400px, calc(100vw - 48px)); max-height: 84vh; overflow: auto; padding: 20px;
-  background: var(--af-surface-2); border: 1px solid var(--af-hairline-strong); border-radius: 18px;
+  background: var(--af-bg); border: 1px solid var(--af-hairline-strong); border-radius: 18px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, .5); color: var(--af-primary);
   font-family: -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
 }

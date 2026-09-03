@@ -38,6 +38,8 @@ export const CSS = [
 '.c1a-sw[aria-checked="true"]::after{left:21px}',
 '.c1a-sw:disabled{cursor:not-allowed;opacity:.35}',
 '.c1a-hero{width:100%;padding:11px !important;font-size:14px !important;border-radius:11px !important}',
+'.c1a-list .af-btn,.c1a-foot .af-btn,.c1a-sec .af-btn{border:1px solid var(--dsw-alias-separator,#3a3a3c) !important;background:var(--dsw-alias-bg-base,#1c1c1e)}',
+'.c1a-list .af-btn.primary,.c1a-foot .af-btn.primary,.c1a-sec .af-btn.primary{background:var(--dsw-alias-brand-primary,#0a84ff) !important;border-color:transparent !important;color:#fff !important}',
 '.c1a-empty{font-size:12px;color:var(--dsw-alias-label-secondary,#888)}',
 '.c1a-ws{font-size:12px;word-break:break-all}',
 '.c1a-chlogo{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;flex:none}',
