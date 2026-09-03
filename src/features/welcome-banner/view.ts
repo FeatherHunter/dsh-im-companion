@@ -7,8 +7,8 @@
  * 卡片插到 hero 节点之前（= verdict 空态上方），输入框为独立兄弟节点、互不干扰。
  * 门控：非 hero/信号不全/工作区 label 匹配不出或歧义/未绑定 → 一律不渲染（宁缺勿错）；
  * 未绑定零 UI（纯净原生空态），不画指引卡。
- * 按钮语义（用户 verdict）：中央“进门”仅收起卡片（内存关闭，切会话恢复）；
- * “换一句”在同段三套文案内轮换（内存态）；无 X、无详情、无死按钮。 */
+ * 按钮语义（用户 verdict）：中央“进门”仅收起卡片；无换一句、无 X、无详情、无死按钮。
+ * 版式：全幅自适应——卡片撑满所在容器宽高，天空弹性填充，时辰是什么样家就是什么样。 */
 import { h } from "../../client/dom";
 import type { HealthKind } from "../../client/data/config";
 import type { TimeCopy } from "./data";
@@ -17,7 +17,6 @@ export { PHASE_SELECTOR, heroConfirmed, heroWorkspaceLabel, isVisible } from "./
 
 export interface HomeCallbacks {
   onEnter: () => void;
-  onSwap: () => void;
 }
 
 function dotClass(status: string): string {
@@ -43,7 +42,7 @@ function appendClouds(sky: HTMLElement): void {
   sky.appendChild(h("div", { className: "wb-cloud wb-c2" }));
 }
 
-/** P 主页渲染：天空（时辰）+ 大标题 + 真实健康副标题 + 进门按钮 + 换一句。 */
+/** P 主页渲染：全幅天空（时辰）+ 大标题 + 真实健康副标题 + 进门按钮。 */
 export function renderHome(input: {
   copy: TimeCopy;
   status: HealthKind;
@@ -52,7 +51,7 @@ export function renderHome(input: {
   callbacks: HomeCallbacks;
 }): HTMLElement {
   const { copy, status, stateLabel, subSuffix, callbacks } = input;
-  const card = h("section", { className: "wb-banner", dataset: { wb: copy.seg + "-" + copy.idx } });
+  const card = h("section", { className: "wb-banner", dataset: { wb: copy.seg } });
   const sky = h("div", { className: "wb-sky " + copy.sky });
   if (copy.moon) sky.appendChild(h("div", { className: "wb-moon" }));
   else sky.appendChild(h("div", { className: "wb-sun" }));
@@ -73,10 +72,5 @@ export function renderHome(input: {
     ),
   ));
   card.appendChild(sky);
-  card.appendChild(h("div", { className: "wb-swaprow" },
-    h("button", { className: "wb-swap", onclick: () => callbacks.onSwap() },
-      "换一句（" + (copy.idx + 1) + "/3）",
-    ),
-  ));
   return card;
 }

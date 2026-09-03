@@ -191,10 +191,10 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf(".wb-banner{") >= 0, "token 必须声明在 .wb-banner 根上");
   assert.ok(css.indexOf("min-height:") >= 0, "HOME 气场：横幅必须有最小高度占领对话区");
   assert.ok(css.indexOf("width: 100%") >= 0 && css.indexOf("align-self: stretch") >= 0, "卡片必须占满父容器宽度（flex 父容器下防塌成细条，真机竖条回归）");
-  for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-horizon", ".wb-title", ".wb-enter", ".wb-swap"]) {
+  for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-horizon", ".wb-title", ".wb-enter"]) {
     assert.ok(css.indexOf(cls) >= 0, "P 天空样式缺失：" + cls);
   }
-  for (const dead of [".wb-x", ".wb-route", ".wb-guide", ".wb-avatar"]) {
+  for (const dead of [".wb-x", ".wb-route", ".wb-guide", ".wb-avatar", ".wb-swaprow", ".wb-swap"]) {
     assert.equal(css.indexOf(dead), -1, "旧 A 样式必须移除：" + dead);
   }
 });
@@ -262,13 +262,13 @@ function stubEl(tag: string): any {
 const view: any = req("./features/welcome-banner/view.js");
 const overlay: any = req("./features/welcome-banner/overlay.js");
 
-test("渲染 P 主页（天空+标题+进门+换一句）", () => {
+test("渲染 P 主页（全幅天空+标题+进门）", () => {
   const copy = data.copyFor("day", 0);
   const calls: string[] = [];
   const el = view.renderHome({
     copy, status: "online", stateLabel: "在线",
     subSuffix: data.displaySub(copy.s, 2, "小帅"),
-    callbacks: { onEnter: () => calls.push("enter"), onSwap: () => calls.push("swap") },
+    callbacks: { onEnter: () => calls.push("enter") },
   });
   assert.ok(String(el.className).split(" ").includes("wb-banner"), "根节点即 wb-banner 卡片");
   assert.ok(el.querySelector(".wb-sky"), "天空层必须存在");
@@ -279,7 +279,8 @@ test("渲染 P 主页（天空+标题+进门+换一句）", () => {
   assert.ok(sub.indexOf("在线") >= 0 && sub.indexOf("小帅守着今天") >= 0, "副标题=真实健康+文案后缀：" + sub);
   const btns = el.querySelectorAll("button").map((b: any) => b.textContent);
   assert.ok(btns.some((t: string) => t.indexOf("回家") >= 0 && t.indexOf("门开着") >= 0), "进门按钮主副文案齐全：" + btns.join("|"));
-  assert.ok(btns.some((t: string) => t.indexOf("换一句") >= 0 && t.indexOf("1/3") >= 0), "换一句须带计数：" + btns.join("|"));
+  assert.equal(el.querySelector(".wb-swaprow"), null, "换一句控件必须移除");
+  assert.equal(el.querySelector(".wb-swap"), null, "换一句控件必须移除");
   assert.equal(el.querySelector(".wb-x"), null, "P 无 X（进门即关闭）");
   assert.equal(el.querySelectorAll(".wb-route").length, 0, "P 无路由列表");
   assert.ok(btns.every((t: string) => t.indexOf("Agent 详情") < 0 && t.indexOf("检查连接") < 0), "旧 A 按钮不得出现");
@@ -321,7 +322,7 @@ test("渲染类名全在 wb- 命名空间", () => {
   const el = view.renderHome({
     copy: wee, status: "online", stateLabel: "在线",
     subSuffix: data.displaySub(wee.s, null, "小帅"),
-    callbacks: { onEnter: () => {}, onSwap: () => {} },
+    callbacks: { onEnter: () => {} },
   });
   const seen = new Set<string>();
   const walk = (n: any) => {
@@ -436,7 +437,7 @@ test("DOM 叠加挂载：hero 下出现横幅、卸载即净", async () => {
   assert.ok(card.querySelector(".wb-title").textContent.length > 0, "标题必须有文案");
   const btns = card.querySelectorAll("button").map((n: any) => n.textContent);
   assert.ok(btns.some((t: string) => t.indexOf("回家") >= 0), "进门按钮必须存在：" + btns.join("|"));
-  assert.ok(btns.some((t: string) => t.indexOf("换一句") >= 0), "换一句必须存在：" + btns.join("|"));
+  assert.ok(btns.every((t: string) => t.indexOf("换一句") < 0), "换一句控件必须移除");
   stop();
   assert.equal(removed.length, inserted.length, "每次绘制都要在卸载时回收");
 });
@@ -472,7 +473,7 @@ test("藏起来的 hero 不绘制（有消息会话不打扰）", async () => {
   stop();
 });
 
-test("换一句回绕：三套之后回到第一句", () => {
+test("copyFor 同段回绕（数据层）", () => {
   const seg = "dusk";
   assert.equal(data.copyFor(seg, 0).idx, 0);
   assert.equal(data.copyFor(seg, 1).idx, 1);
@@ -616,6 +617,49 @@ test("删光重现：解绑清记忆，重绑再欢迎", async () => {
   await new Promise((r) => setTimeout(r, 30));
   assert.ok(inserted.length > beforeRebind, "重绑后应重现");
   assert.ok(inserted[inserted.length - 1].querySelector(".wb-title"), "重现的必须是完整 P 卡");
+  stop();
+});
+
+test("切换工作区清扫孤儿卡", async () => {
+  const W5 = "D:\\agents\\diwu";
+  const META5 = { names: { [W5]: "老五" }, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
+  const snap5 = { channel: "feishu", botId: "b5", workspace: W5, connected: true, healthStatus: "healthy", healthKind: "online", botName: "", avatarUrl: "", healthSummary: "", lastCheckedAt: 1000, stale: false };
+  const inserted: any[] = [];
+  const removed: any[] = [];
+  const heroStub: any = {
+    textContent: "探索未至之境 预览版 选择工作区 diwu",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "diwu" } : null,
+    getBoundingClientRect: () => ({ width: 600, height: 200 }),
+    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
+  };
+  const docStub: any = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+  };
+  (globalThis as any).document = docStub;
+  let subFn: any = null;
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      subFn = fn;
+      fn({ bots: [snap5], failed: [], updatedAt: 10, catalogs: {} });
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => META5 },
+    get: () => undefined,
+    slots: {},
+  };
+  const stop = overlay.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(inserted.length >= 1, "切前应有卡");
+  const card = inserted[inserted.length - 1];
+  docStub.querySelectorAll = (sel: string) => [];
+  subFn({ bots: [snap5], failed: [], updatedAt: 11, catalogs: {} });
+  await new Promise((r) => setTimeout(r, 30));
+  assert.ok(removed.includes(card), "hero 消失后孤儿卡必须被清扫");
   stop();
 });
 

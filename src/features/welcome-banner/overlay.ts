@@ -1,9 +1,10 @@
 /** welcome-banner 挂载编排（DOM 叠加扫描 + 绘制调度）：与 view.ts 的纯渲染分离，
  * 纯粹为了 300 行红线；逻辑归属仍是 welcome-banner 自包含目录（单向依赖 view 的 render）。
- * P 时辰 v1：出现规则沿用 hero 门 + 可见性门；未绑定零 UI；中央“进门”仅收起卡片；
- * “换一句”按工作区路径记内存 idx，同段三套轮换。
+ * P 时辰 v1：出现规则沿用 hero 门 + 可见性门；未绑定零 UI；中央“进门”仅收起卡片。
  * 进门记忆语义（用户 verdict）：key 永远是工作区全路径；点过“回家”后不再出现，
- * 内存 + meta.welcomed 持久化双写；直到该工作区机器人被删光才双清，重绑后重现。 */
+ * 内存 + meta.welcomed 持久化双写；直到该工作区机器人被删光才双清，重绑后重现。
+ * 已绘卡按 hero 节点键控：每轮扫描清扫 hero 已消失的卡（切工作区宿主复用父容器只换子节点，
+ * 旧卡会成孤儿留在原地——不扫就会“切换工作区也不消失”）。 */
 import { fetchRouteRows, type BotSnap } from "../../client/data/fleet-api";
 import type { AgentMetaDoc } from "../../client/data/meta";
 import { basenameOf, viewName } from "../../client/data/model";
@@ -17,8 +18,6 @@ import { renderHome } from "./view";
 
 /** 进门记忆（key = 工作区全路径）：内存态 + meta.welcomed 持久化双写，见文件头语义。 */
 const DISMISSED = new Set<string>();
-/** 换一句记忆（内存态，key = 工作区全路径，值 0-2；切页即忘，无需持久）。 */
-const SWAP = new Map<string, number>();
 /** 热更新/双挂载代际哨兵（同 left-badges）。 */
 let activeGen = 0;
 /** 决策日志（验收排障用：横幅没出现时看第一条 info 就知道卡在哪一关）。 */
@@ -42,9 +41,8 @@ interface MountState {
   welcomed: Record<string, boolean>;
   /** meta 就绪门：首绘必须等进门记忆播种完成，否则已欢迎过的家会闪现一次。 */
   metaReady: boolean;
-  /** label→path 备忘：match 失败/不可见分支也要删对卡（防孤儿残留）。 */
-  seen: Map<string, string>;
-  painted: Map<string, { node: unknown; parent: unknown; sig: string }>;
+  /** 已绘卡（key = hero 节点）：切工作区/删会话导致 hero 消失时按 key 清扫，不用 label 猜。 */
+  painted: Map<unknown, { node: unknown; parent: unknown; sig: string; path: string }>;
   timer: unknown;
 }
 
@@ -60,11 +58,11 @@ function candidatesOf(bots: BotSnap[], meta: AgentMetaDoc | null): WsCandidate[]
   return [...seen.entries()].map(([path, name]) => ({ path, name }));
 }
 
-function removePainted(st: MountState, key: string): void {
+function removePainted(st: MountState, hero: unknown): void {
   try {
-    const rec = st.painted.get(key);
+    const rec = st.painted.get(hero);
     if (!rec) return;
-    st.painted.delete(key);
+    st.painted.delete(hero);
     const parent = rec.parent as { removeChild?: (n: unknown) => void } | null;
     if (parent && typeof parent.removeChild === "function") {
       try { parent.removeChild(rec.node); } catch { /* 已被宿主回收 */ }
@@ -90,43 +88,33 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
   }
   if (!st.metaReady) return;
   const path = matchWorkspaceLabel(label, candidatesOf(st.bots, st.metaDoc));
-  const key = path ?? ("hero:" + label);
   if (!isVisible(heroRoot)) {
     infoOnce("hidden-hero", "hero 节点仍在 DOM 但不可见（宿主切走空态后的常驻藏匿），已跳过；这是有消息会话不打扰的保证。");
-    removePainted(st, key);
-    try {
-      const memo = st.seen.get(label);
-      if (memo && memo !== key) removePainted(st, memo);
-    } catch { /* ignore */ }
+    removePainted(st, heroRoot);
     return;
   }
   if (path && DISMISSED.has(path)) {
-    removePainted(st, key);
+    removePainted(st, heroRoot);
     return;
   }
   if (!path) {
     infoOnce("nomatch:" + label, "工作区 \"" + label + "\" 未匹配到已知绑定（快照bots=" + st.bots.length + "），已跳过；若横幅该出未出，把这条日志贴 issue。");
-    removePainted(st, key);
-    try {
-      const memo = st.seen.get(label);
-      if (memo) removePainted(st, memo);
-    } catch { /* ignore */ }
+    removePainted(st, heroRoot);
     return;
   }
-  try { st.seen.set(label, path); } catch { /* ignore */ }
   const emptyMeta = { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
   const model = path ? buildBannerModel(st.bots, st.metaDoc ?? emptyMeta, path, st.catalogs ?? {}) : null;
   if (!model) {
     infoOnce("unbound:" + label, "工作区 \"" + label + "\" 未绑定 Agent，零 UI（纯净原生空态）。");
-    removePainted(st, key);
+    removePainted(st, heroRoot);
     return;
   }
   const mine = st.routes.filter((r) => r && typeof r.chat === "string" && model.bots.some((b) => b.channel === r.channel && (!r.botId || b.botId === r.botId)));
   const total = st.routesOk ? summarizeRoutes(mine).total : null;
   const seg = segOfHour(new Date().getHours());
-  const copy = copyFor(seg, SWAP.get(path) ?? 0);
+  const copy = copyFor(seg, 0);
   const subSuffix = displaySub(copy.s, total, model.name);
-  const showSig = model.key + "|" + model.name + "|" + seg + "|" + copy.idx + "|" + model.status + "|" + (total === null ? "x" : total);
+  const showSig = model.key + "|" + model.name + "|" + seg + "|" + model.status + "|" + (total === null ? "x" : total);
   let card: unknown = null;
   try {
     card = renderHome({
@@ -136,11 +124,7 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
           try { DISMISSED.add(path); } catch { /* ignore */ }
           try { st.welcomed[path] = true; } catch { /* ignore */ }
           saveWelcomed(fctx, path, true);
-          removePainted(st, key);
-        },
-        onSwap: () => {
-          try { SWAP.set(path, (copy.idx + 1) % 3); } catch { /* ignore */ }
-          paintHero(fctx, st, heroRoot);
+          removePainted(st, heroRoot);
         },
       },
     });
@@ -151,19 +135,26 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
       insertBefore?: (n: unknown, ref: unknown) => void;
     } | null;
     if (!parent || typeof parent.insertBefore !== "function") return;
-    const prev = st.painted.get(key);
+    const prev = st.painted.get(heroRoot);
     if (prev && (prev.parent as unknown) === (parent as unknown) && prev.node && prev.sig === showSig) return;
-    removePainted(st, key);
+    removePainted(st, heroRoot);
     parent.insertBefore(card, heroRoot);
-    st.painted.set(key, { node: card, parent, sig: showSig });
-    infoOnce("painted:" + key, "P 横幅已挂载到空态上方（" + key + "，时段=" + seg + " 第" + (copy.idx + 1) + "句）。");
+    st.painted.set(heroRoot, { node: card, parent, sig: showSig, path });
+    infoOnce("painted:" + path, "P 横幅已挂载到空态上方（" + path + "，时段=" + seg + "）。");
   } catch { /* 宿主 DOM 变化即跳过本轮 */ }
 }
 
 function scanAll(fctx: FeatureCtx, st: MountState, doc: unknown): void {
   try {
     if (activeGen !== st.gen) return;
-    eachHero(doc, (root) => paintHero(fctx, st, root));
+    const live = new Set<unknown>();
+    eachHero(doc, (root) => {
+      live.add(root);
+      paintHero(fctx, st, root);
+    });
+    for (const hero of [...st.painted.keys()]) {
+      if (!live.has(hero)) removePainted(st, hero);
+    }
   } catch { /* 整轮异常静默 */ }
 }
 
@@ -194,7 +185,7 @@ export function mountBanner(fctx: FeatureCtx): () => void {
     if (!doc) {
       return () => { try { if (activeGen === gen) activeGen += 1; } catch { /* ignore */ } };
     }
-    const st: MountState = { gen, bots: [], catalogs: {}, metaDoc: null, routes: [], routesOk: false, welcomed: {}, metaReady: false, seen: new Map(), painted: new Map(), timer: null };
+    const st: MountState = { gen, bots: [], catalogs: {}, metaDoc: null, routes: [], routesOk: false, welcomed: {}, metaReady: false, painted: new Map(), timer: null };
     let unsub: () => void = noop;
     try {
       unsub = fctx.subscribe((s) => {
@@ -216,7 +207,6 @@ export function mountBanner(fctx: FeatureCtx): () => void {
                 st.welcomed = pruned.kept;
                 for (const p of pruned.dropped) {
                   try { DISMISSED.delete(p); } catch { /* ignore */ }
-                  try { SWAP.delete(p); } catch { /* ignore */ }
                   saveWelcomed(fctx, p, false);
                 }
                 infoOnce("unbound-reset", "有工作区机器人被删光，进门记忆已清除，重绑后 welcome 重现。");

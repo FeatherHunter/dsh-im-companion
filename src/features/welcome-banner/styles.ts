@@ -5,8 +5,8 @@
 import { TOKEN_BLOCK } from "../../client/theme";
 export const WB_TOKENS = ".wb-banner{" + TOKEN_BLOCK + "}";
 const SKY: string[] = [
-".wb-banner { position: relative; width: 100%; align-self: stretch; flex-shrink: 0; box-sizing: border-box; max-width: var(--dsh-chat-content-width, 880px); min-height: min(66vh, 600px); margin: 5vh auto; padding: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: center; border: 1px solid var(--af-hairline-strong); border-radius: 20px; background: var(--af-bg); color: var(--af-primary); box-shadow: 0 12px 44px color-mix(in srgb, var(--af-accent) 14%, transparent); font-size: 14px; line-height: 1.6; }",
-".wb-sky { position: relative; width: 100%; height: 420px; overflow: hidden; }",
+".wb-banner { position: relative; width: 100%; align-self: stretch; flex: 1 0 auto; flex-shrink: 0; box-sizing: border-box; min-height: 100%; margin: 0; padding: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: stretch; border: 0; border-radius: 0; background: var(--af-bg); color: var(--af-primary); font-size: 14px; line-height: 1.6; }",
+".wb-sky { position: relative; width: 100%; flex: 1 0 auto; min-height: 420px; overflow: hidden; }",
 ".wb-sky-wee { background: linear-gradient(#070b1e 0%,#131a3d 52%,#3c2c50 78%,#a05a44 100%); }",
 ".wb-sky-dawn { background: linear-gradient(#3a4a7a 0%,#e8909c 60%,#ffd9a0 100%); }",
 ".wb-sky-day { background: linear-gradient(#7db9f0 0%,#cfe8fa 70%,#eef7ee 100%); }",
@@ -35,8 +35,6 @@ const SKY: string[] = [
 "@keyframes wb-rise { to { opacity: 1; transform: none; } }",
 ".wb-enter { display: inline-block; border: 0; cursor: pointer; background: var(--af-accent); color: #ffffff; border-radius: 999px; padding: 12px 44px; font-size: 17px; font-weight: 800; font-family: inherit; box-shadow: 0 8px 26px rgba(0,0,0,.3); }",
 ".wb-enter-sub { display: block; font-size: 12px; font-weight: 400; opacity: .88; margin-top: 2px; }",
-".wb-swaprow { text-align: center; padding: 12px; background: var(--af-bg); }",
-".wb-swap { background: none; border: 0; color: var(--af-accent); cursor: pointer; font-size: 12px; font-family: inherit; }",
 ".wb-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: baseline; }",
 ".wb-online { background: var(--af-success); animation: wb-breathe 1.6s infinite; }",
 ".wb-warn { background: var(--af-warn); }",
