@@ -16,8 +16,8 @@ const DOT_CLASS = 'left-badges-dot'
 const LABEL_CLASS = 'left-badges-label'
 const KEY_ATTR = 'data-left-badges'
 
-/* 扫描作用域：命中行后收窄到其父容器（消息流刷屏时不全文档扫描）；行消失回大局。null = 全文档。 */
-let scope: Element | null = null
+/* 作用域说明（#6 真机教训）：禁止把扫描收窄到命中行的父容器——左栏重排会换掉整个容器，
+ * 收窄即锁死在脱离文档的死子树上空画。列表仅数十行，全文档直查零成本。 */
 let loggedFirstHit = false
 let lastRowTotal = -1
 /* TEMP-DEBUG(#6)：上报用（定位后删除） */
@@ -36,12 +36,10 @@ function collectRows(): Element[] {
   const out: Element[] = []
   const seen = new Set<Element>()
   try {
-    if (typeof document === 'undefined') return out
-    const root: Element | Document = scope ?? document
-    if (typeof root.querySelectorAll !== 'function') return out
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return out
     for (const sel of ROW_SELECTORS) {
       try {
-        root.querySelectorAll(sel).forEach((row) => {
+        document.querySelectorAll(sel).forEach((row) => {
           if (!seen.has(row)) {
             seen.add(row)
             out.push(row)
@@ -160,14 +158,7 @@ function decorateRow(row: Element, bots: BotSnap[], nowMs: number): boolean {
 
 function paint(bots: BotSnap[], nowMs: number): void {
   const rows = collectRows()
-  if (!rows.length) {
-    if (scope !== null) scope = null
-    return
-  }
-  if (scope === null) {
-    const parent = rows[0].parentElement
-    if (parent) scope = parent
-  }
+  if (!rows.length) return
   let decorated = 0
   for (const row of rows) {
     try {
