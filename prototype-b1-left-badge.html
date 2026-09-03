@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B1 左栏徽标状态模型原型（抛弃式）</title>
+<style>
+  :root { --accent:#0a84ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Noto Sans SC","Segoe UI",Roboto,sans-serif; background:#f2f3f5; color:#1c1c1e; -webkit-font-smoothing:antialiased; }
+  body.dark { background:#0b0d12; color:#e8eaf0; }
+  .wrap { max-width:920px; margin:0 auto; padding:20px 16px 80px; }
+  .proto-tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; color:#fff; background:#b42318; border-radius:6px; padding:3px 8px; margin-bottom:10px; }
+  h1 { font-size:24px; margin:0 0 6px; letter-spacing:-.02em; }
+  .lede { font-size:14px; color:#6e6e73; margin:0 0 12px; }
+  body.dark .lede { color:#9aa0ae; }
+  .card { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.06); margin:0 0 14px; overflow:hidden; }
+  body.dark .card { background:#151924; border-color:rgba(255,255,255,.12); box-shadow:none; }
+  .card-hd { padding:12px 16px; border-bottom:1px solid rgba(0,0,0,.07); font-weight:700; font-size:14px; display:flex; align-items:center; gap:8px; }
+  body.dark .card-hd { border-bottom-color:rgba(255,255,255,.1); }
+  .card-bd { padding:14px 16px; }
+  .q { font-size:13px; line-height:1.7; margin:0; }
+  .q b { color:var(--accent); }
+  .assume { font-size:12px; color:#6e6e73; margin:8px 0 0; line-height:1.7; }
+  body.dark .assume { color:#9aa0ae; }
+  .changed { font-size:13px; background:rgba(10,132,255,.09); border:1px solid rgba(10,132,255,.3); border-radius:10px; padding:8px 12px; margin:0 0 12px; }
+  body.dark .changed { background:rgba(10,132,255,.14); }
+  .wsgrid { display:grid; gap:10px; }
+  @media(min-width:720px){ .wsgrid { grid-template-columns:1fr 1fr 1fr; } }
+  .ws { border:1px solid rgba(0,0,0,.09); border-radius:12px; padding:12px; background:#f7f8fa; }
+  body.dark .ws { background:#0f1420; border-color:rgba(255,255,255,.12); }
+  .ws-name { font-weight:700; font-size:14px; }
+  .ws-path { font-size:11px; color:#6e6e73; word-break:break-all; }
+  body.dark .ws-path { color:#9aa0ae; }
+  .badge { display:inline-flex; align-items:center; gap:7px; margin:10px 0 6px; padding:5px 11px 5px 8px; border-radius:999px; font-size:12px; font-weight:700; background:rgba(0,0,0,.05); }
+  body.dark .badge { background:rgba(255,255,255,.08); }
+  .dot { width:10px; height:10px; border-radius:50%; flex:none; }
+  .dot.online { background:#1a9e54; animation:breathe 1.6s infinite; }
+  .dot.warn { background:#e07b00; }
+  .dot.offline { background:#b0b3b8; }
+  .dot.unbound { background:transparent; border:2px solid #b0b3b8; width:8px; height:8px; }
+  body.dark .dot.online { background:#30d158; }
+  body.dark .dot.warn { background:#ff9f0a; }
+  @keyframes breathe { 0%{box-shadow:0 0 0 0 rgba(26,158,84,.55)} 70%{box-shadow:0 0 0 8px rgba(26,158,84,0)} 100%{box-shadow:0 0 0 0 rgba(26,158,84,0)} }
+  .kv { font-size:12px; line-height:1.7; margin:6px 0 0; }
+  .kv dt { color:#6e6e73; float:left; clear:left; min-width:64px; }
+  body.dark .kv dt { color:#9aa0ae; }
+  .kv dd { margin:0 0 2px 70px; word-break:break-all; }
+  .btnrow { display:flex; flex-wrap:wrap; gap:8px; }
+  .btnrow h4 { width:100%; margin:10px 0 0; font-size:12px; color:#6e6e73; font-weight:700; }
+  body.dark .btnrow h4 { color:#9aa0ae; }
+  button.act { font:inherit; font-size:12.5px; padding:7px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.14); background:#fff; cursor:pointer; }
+  body.dark button.act { background:#1d2330; border-color:rgba(255,255,255,.16); color:#e8eaf0; }
+  button.act:hover { border-color:var(--accent); color:var(--accent); }
+  button.act.done { border-color:var(--accent); background:rgba(10,132,255,.12); color:var(--accent); }
+  button.act.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
+  .tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+  .tab { font:inherit; font-size:12.5px; font-weight:700; padding:7px 14px; border-radius:999px; border:1px solid rgba(0,0,0,.14); background:transparent; cursor:pointer; color:inherit; }
+  .tab.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .scenario-desc { font-size:13px; line-height:1.7; margin:0 0 10px; }
+  .steps { margin:0; padding-left:20px; display:grid; gap:8px; font-size:13px; }
+  .nav { font-size:12.5px; background:rgba(26,158,84,.09); border:1px solid rgba(26,158,84,.35); border-radius:10px; padding:8px 12px; margin-top:12px; }
+  body.dark .nav { background:rgba(48,209,88,.12); }
+  details.verdict { margin-top:12px; }
+  details.verdict summary { cursor:pointer; font-size:12.5px; font-weight:700; color:var(--accent); }
+  pre.out { font-size:11.5px; line-height:1.6; white-space:pre-wrap; background:rgba(0,0,0,.045); border-radius:10px; padding:10px 12px; overflow:auto; }
+  body.dark pre.out { background:rgba(255,255,255,.06); }
+  .toolbar { display:flex; align-items:center; gap:10px; margin:0 0 14px; font-size:12.5px; color:#6e6e73; }
+  body.dark .toolbar { color:#9aa0ae; }
+  .foot { font-size:11.5px; color:#6e6e73; margin-top:6px; line-height:1.7; }
+  body.dark .foot { color:#9aa0ae; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="proto-tag">PROTOTYPE · 抛弃式 · 不进生产</span>
+  <h1>B1 · 左栏工作区 IM 徽标：状态模型手感验证</h1>
+  <p class="lede">点按钮、看徽标变：验证“在线 / 待确认 / 离线 / 未绑定”四态映射与点击行为是否顺畅（逻辑分支单文件 HTML，双击即开）。</p>
+
+  <div class="card"><div class="card-hd">❓ 正在回答的设计问题</div><div class="card-bd">
+    <p class="q">左栏徽标的<b>状态模型</b>是否顺畅：连接域数据（<b>connection.status → health.status + connected</b>）能否干净地映射到<b>在线 / 待确认 / 离线</b>三态（外加<b>未绑定</b>），多渠道如何聚合，<b>点击徽标</b>应该发生什么？</p>
+    <p class="assume">已澄清口径（grilling Q1–Q4 全按推荐确认）：① 走<b>逻辑分支</b>（本文件），视觉一致性复用 A1 Apple token、不另开 UI 变体；② <b>待确认 = warn</b>（degraded / checking / unknown），未绑定另算灰色；③ <b>聚合：任一在线则在线，否则任一待确认则待确认，否则离线</b>；④ <b>点击只读跳转</b>到 IM机器人辅助设置页对应 Agent 行（tooltip 显示 healthDetail，不做任何 mutation）。深色适配仅“深色预览”做徽标对比，不进入状态模型。</p>
+    <p class="assume">第一性原理 verdict（已确认）：<b>绿灯只承诺可达性</b>，不承诺全通道健康；<b>轮询失败 = 未知</b>（待确认 + 时间冻结，绝不谎报离线）；tooltip 必带<b>最后检测时间</b>；点击只承诺打开设置页 section（#agent= 锚点待定）。场景④演示未知与时间冻结。</p>
+  </div></div>
+
+  <div class="toolbar">
+    <span>轮询 tick：<b id="tick">0</b> · 模拟时钟 <b id="clock">11:06:00</b>（每轮 +15s）</span>
+    <span style="margin-left:auto"></span>
+    <label><input type="checkbox" id="darkToggle"> 深色预览（仅样式对比）</label>
+  </div>
+
+  <div class="card"><div class="card-hd">📊 当前状态（每次点击后重渲染）</div><div class="card-bd">
+    <p class="changed" id="changed">尚未操作。试试下面的自由按钮，或切到引导场景走一遍。</p>
+    <div class="wsgrid" id="wsgrid"></div>
+    <div class="nav" id="nav">🖱 点击意图：暂无（点击任意徽标按钮后显示跳转目标；点击是只读的，不改变连接/绑定）。</div>
+    <details class="verdict"><summary>📋 当前完整派生状态（复制回填 issue verdict）</summary>
+      <pre class="out" id="verdictOut"></pre>
+      <div style="margin-top:8px"><button class="act" id="copyBtn">复制 verdict 文本</button></div>
+    </details>
+  </div></div>
+
+  <div class="card"><div class="card-hd">🎛 自由试（任意顺序点）</div><div class="card-bd"><div class="btnrow" id="freeplay"></div></div></div>
+
+  <div class="card"><div class="card-hd">🧭 引导场景（点 Tab → 按序点步骤；开始即重置）</div><div class="card-bd">
+    <div class="tabs" id="tabs"></div>
+    <p class="scenario-desc" id="scenarioDesc"></p>
+    <ol class="steps" id="steps"></ol>
+  </div></div>
+
+  <p class="foot">纯逻辑模块（首个 script 块，零 DOM 引用）可整体搬进真实实现（bindings + overlay 引擎）；本页面外壳为抛弃式。无持久化：刷新即重置。有趣时刻：“诶，这不该变灰！”或“原来点徽标啥也不改！”——那就是模型里的 bug，正是本原型的目的。</p>
+
+</div>
+
+<script>
+/* =====================================================================
+ * 纯逻辑模块（可搬移部分）：B1 徽标状态模型。零 DOM / 零副作用。
+ * 输入：bots（连接域快照）+ workspaces（绑定关系）。输出：派生徽标。
+ * ===================================================================== */
+function healthOf(status, connected, failed) {
+  if (failed) return 'warn'; /* 轮询失败 = 未知，绝不谎报离线 */
+  var s = String(status == null ? '' : status).toLowerCase();
+  if (s === 'healthy' || s === 'online' || s === 'connected' || s === 'ok') return 'online';
+  if (s === 'degraded' || s === 'checking' || s === 'unknown') return 'warn';
+  return connected ? 'online' : 'offline';
+}
+
+/* 模拟时钟：11:06:00 起，每轮询 tick +15s（对应 15s 真实轮询） */
+function fmtTime(tick) {
+  var total = 11 * 3600 + 6 * 60 + tick * 15;
+  function p(n) { return (n < 10 ? '0' : '') + n; }
+  return p(Math.floor(total / 3600) % 24) + ':' + p(Math.floor(total / 60) % 60) + ':' + p(total % 60);
+}
+
+var HEALTH_LABEL = { online: '在线', warn: '待确认', offline: '离线', unbound: '未绑定' };
+
+function channelLabel(id) {
+  var m = { feishu: '飞书', weixin: '微信', qq: 'QQ' };
+  return m[id] || id;
+}
+
+function badgeFor(workspacePath, bots, tick) {
+  var bound = bots.filter(function (b) { return b.workspace === workspacePath; });
+  if (bound.length === 0) {
+    return { kind: 'unbound', label: '未绑定',
+      tooltip: '尚未绑定任何 Bot（无徽标色）。点击跳设置页去绑定。' };
+  }
+  var kinds = bound.map(function (b) { return healthOf(b.status, b.connected, b.failed); });
+  var kind = kinds.indexOf('online') !== -1 ? 'online'
+    : kinds.indexOf('warn') !== -1 ? 'warn' : 'offline';
+  var parts = bound.map(function (b) {
+    if (b.failed) return channelLabel(b.channel) + '·未知（轮询失败，' + (tick - b.lastTick) + '轮前）';
+    return channelLabel(b.channel) + '·' + HEALTH_LABEL[healthOf(b.status, b.connected, b.failed)];
+  });
+  var oldest = bound[0].lastTick;
+  for (var i = 1; i < bound.length; i++) if (bound[i].lastTick < oldest) oldest = bound[i].lastTick;
+  parts.push('最后检测 ' + fmtTime(oldest));
+  return { kind: kind, label: HEALTH_LABEL[kind], tooltip: parts.join('；') };
+}
+
+function initialState() {
+  return {
+    tick: 0,
+    bots: [
+      { channel: 'feishu', botId: 'bot-xiaoshuai', workspace: 'D:\\agents\\xiaoshuai', connected: true, status: 'healthy', failed: false, lastTick: 0 },
+      { channel: 'feishu', botId: 'bot-xinghuo', workspace: 'D:\\agents\\xinghuo', connected: true, status: 'healthy', failed: false, lastTick: 0 },
+      { channel: 'qq', botId: 'bot-xiaoshuai-qq', workspace: 'D:\\agents\\xiaoshuai', connected: false, status: 'offline', failed: false, lastTick: 0 }
+    ],
+    workspaces: [
+      { id: 'xiaoshuai', path: 'D:\\agents\\xiaoshuai', agent: '小帅' },
+      { id: 'xinghuo', path: 'D:\\agents\\xinghuo', agent: '星火' },
+      { id: 'dsh-im', path: 'D:\\agents\\dsh-im', agent: '（未命名）' }
+    ],
+    lastNav: null,
+    lastAction: '初始状态'
+  };
+}
+
+function fingerprint(state) {
+  return JSON.stringify({ bots: state.bots, workspaces: state.workspaces });
+}
+
+/* reducer：(state, action) => state。CLICK 只记录意图，不碰 bots/workspaces。 */
+function reducer(state, action) {
+  var next = JSON.parse(JSON.stringify(state));
+  function setBot(botId, patch) {
+    var b = null;
+    for (var i = 0; i < next.bots.length; i++) if (next.bots[i].botId === botId) b = next.bots[i];
+    if (!b) return false;
+    for (var k in patch) b[k] = patch[k];
+    return true;
+  }
+  switch (action.type) {
+    case 'RESET': return initialState();
+    case 'TICK':
+      next.tick += 1;
+      next.bots.forEach(function (b) { if (!b.failed) b.lastTick = next.tick; });
+      next.lastAction = '轮询刷新（connection.status 重拉，' + fmtTime(next.tick) + '）'; return next;
+    case 'SET_BOT':
+      setBot(action.botId, { status: action.status, connected: action.connected, failed: false, lastTick: next.tick });
+      next.lastAction = action.label; return next;
+    case 'BIND_NEW':
+      next.bots.push({ channel: 'feishu', botId: 'bot-dshim', workspace: 'D:\\agents\\dsh-im', connected: true, status: 'healthy', failed: false, lastTick: next.tick });
+      next.lastAction = '绑定 dsh-im（bot.workspace.set 新 Bot）'; return next;
+    case 'POLL_FAIL':
+      next.bots.forEach(function (b) { if (b.channel === action.channel) b.failed = true; });
+      next.lastAction = channelLabel(action.channel) + '轮询失败（状态未知、时间冻结，绝不谎报离线）'; return next;
+    case 'POLL_RECOVER':
+      next.bots.forEach(function (b) { if (b.channel === action.channel) { b.failed = false; b.lastTick = next.tick; } });
+      next.lastAction = channelLabel(action.channel) + '轮询恢复（时间更新）'; return next;
+    case 'UNBIND_WS': {
+      var before = next.bots.length;
+      next.bots = next.bots.filter(function (b) { return b.workspace !== action.path; });
+      next.lastAction = '解绑工作区（移除 ' + (before - next.bots.length) + ' 个 Bot 绑定）'; return next;
+    }
+    case 'MOVE':
+      if (setBot(action.botId, { workspace: action.to })) next.lastAction = action.label;
+      return next;
+    case 'CLICK': {
+      var ws = null;
+      for (var j = 0; j < next.workspaces.length; j++) if (next.workspaces[j].id === action.wsId) ws = next.workspaces[j];
+      var badge = badgeFor(ws.path, next.bots, next.tick);
+      next.lastNav = { wsId: action.wsId, target: 'IM机器人辅助设置页 section（#agent=' + ws.id + ' 锚点待定）',
+        tooltip: badge.tooltip, readonlyProof: fingerprint(state) === fingerprint(next) };
+      next.lastAction = '点击「' + ws.agent + '」徽标（只读跳转）'; return next;
+    }
+    default: return next;
+  }
+}
+
+function derive(state) {
+  return state.workspaces.map(function (ws) {
+    var badge = badgeFor(ws.path, state.bots, state.tick);
+    var bound = state.bots.filter(function (b) { return b.workspace === ws.path; });
+    return { ws: ws, badge: badge, bound: bound };
+  });
+}
+
+function summarize(state) {
+  var lines = ['B1 原型 verdict @ tick=' + state.tick + '（' + state.lastAction + '）'];
+  derive(state).forEach(function (d) {
+    var bs = d.bound.map(function (b) { return b.channel + ':' + b.botId + '=' + healthOf(b.status, b.connected, b.failed) + '@' + fmtTime(b.lastTick) + (b.failed ? '(冻结)' : ''); }).join(', ') || '无绑定';
+    lines.push('- ' + d.ws.agent + '（' + d.ws.id + '）→ ' + d.badge.label + ' [' + bs + '] tooltip: ' + d.badge.tooltip);
+  });
+  if (state.lastNav) lines.push('点击意图: ' + state.lastNav.wsId + ' → ' + state.lastNav.target + '（只读指纹一致=' + state.lastNav.readonlyProof + '）');
+  return lines.join('\n');
+}
+</script>
+
+<script>
+/* 薄外壳（抛弃式）：渲染 + 接线，不进入搬移范围。 */
+(function () {
+  var state = initialState();
+  var prevBadges = {};
+  var grid = document.getElementById('wsgrid');
+  var changedEl = document.getElementById('changed');
+  var navEl = document.getElementById('nav');
+  var tickEl = document.getElementById('tick');
+  var verdictOut = document.getElementById('verdictOut');
+
+  var FREE = [
+    { group: '小帅 · 飞书', actions: [
+      { label: '变在线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai', status: 'healthy', connected: true, label: '小帅飞书 → 在线' } },
+      { label: '变待确认', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai', status: 'degraded', connected: true, label: '小帅飞书 → 待确认（degraded）' } },
+      { label: '变离线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai', status: 'offline', connected: false, label: '小帅飞书 → 离线' } } ] },
+    { group: '星火 · 飞书', actions: [
+      { label: '变在线', act: { type: 'SET_BOT', botId: 'bot-xinghuo', status: 'healthy', connected: true, label: '星火飞书 → 在线' } },
+      { label: '变待确认', act: { type: 'SET_BOT', botId: 'bot-xinghuo', status: 'checking', connected: true, label: '星火飞书 → 待确认（checking）' } },
+      { label: '变离线', act: { type: 'SET_BOT', botId: 'bot-xinghuo', status: 'offline', connected: false, label: '星火飞书 → 离线' } } ] },
+    { group: '小帅 · QQ（聚合演示）', actions: [
+      { label: 'QQ 上线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai-qq', status: 'healthy', connected: true, label: '小帅 QQ → 上线' } },
+      { label: 'QQ 下线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai-qq', status: 'offline', connected: false, label: '小帅 QQ → 下线' } } ] },
+    { group: '绑定关系', actions: [
+      { label: '绑定 dsh-im', act: { type: 'BIND_NEW' } },
+      { label: '解绑 dsh-im', act: { type: 'UNBIND_WS', path: 'D:\\agents\\dsh-im' } },
+      { label: '星火 Bot 改绑到 dsh-im', act: { type: 'MOVE', botId: 'bot-xinghuo', to: 'D:\\agents\\dsh-im', label: '星火 Bot 改绑到 dsh-im（搬移语义）' } } ] },
+    { group: '轮询故障（未知态）', actions: [
+      { label: '飞书轮询失败', act: { type: 'POLL_FAIL', channel: 'feishu' } },
+      { label: '飞书轮询恢复', act: { type: 'POLL_RECOVER', channel: 'feishu' } },
+      { label: 'QQ 轮询失败', act: { type: 'POLL_FAIL', channel: 'qq' } },
+      { label: 'QQ 轮询恢复', act: { type: 'POLL_RECOVER', channel: 'qq' } } ] },
+    { group: '轮询与点击', actions: [
+      { label: '轮询刷新', act: { type: 'TICK' } },
+      { label: '点小帅徽标', act: { type: 'CLICK', wsId: 'xiaoshuai' } },
+      { label: '点星火徽标', act: { type: 'CLICK', wsId: 'xinghuo' } },
+      { label: '点 dsh-im 徽标', act: { type: 'CLICK', wsId: 'dsh-im' } } ] }
+  ];
+
+  var SCENARIOS = [
+    { key: 'happy', name: '① 快乐路径', desc: '小帅在线 → 轮询刷新徽标跟随 → 点击徽标只读跳设置页。看点：绿呼吸点 + 跳转目标出现，且连接/绑定毫无变化。',
+      steps: [
+        { label: '从初始状态开始', act: { type: 'RESET' } },
+        { label: '轮询刷新一次', act: { type: 'TICK' } },
+        { label: '点击“小帅”徽标', act: { type: 'CLICK', wsId: 'xiaoshuai' } } ] },
+    { key: 'agg', name: '② 聚合边缘', desc: '小帅同时挂飞书 + QQ。看点：任一在线则在线（online 优先）；飞书抖动 + QQ 离线 → 待确认；全离线 → 离线；QQ 单独上线能把徽标拉回在线。',
+      steps: [
+        { label: '从初始状态开始（飞书在线 + QQ 离线 → 在线）', act: { type: 'RESET' } },
+        { label: '飞书抖动（degraded）→ 待确认', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai', status: 'degraded', connected: true, label: '小帅飞书 → 待确认（degraded）' } },
+        { label: '飞书断线 → 离线', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai', status: 'offline', connected: false, label: '小帅飞书 → 离线' } },
+        { label: 'QQ 上线 → 拉回在线（online 优先）', act: { type: 'SET_BOT', botId: 'bot-xiaoshuai-qq', status: 'healthy', connected: true, label: '小帅 QQ → 上线' } } ] },
+    { key: 'readonly', name: '③ 只读与搬移', desc: '非法尝试：连点徽标绝不改变连接/绑定（指纹一致 ✓）；把星火 Bot 改绑到 dsh-im 会搬移——星火变“未绑定”，dsh-im 变在线。看点：点击的只读性与改绑的搬移警告。',
+      steps: [
+        { label: '从初始状态开始', act: { type: 'RESET' } },
+        { label: '连点三处徽标（状态应纹丝不动）', act: { type: 'CLICK', wsId: 'dsh-im' } },
+        { label: '把星火 Bot 改绑到 dsh-im', act: { type: 'MOVE', botId: 'bot-xinghuo', to: 'D:\\agents\\dsh-im', label: '星火 Bot 改绑到 dsh-im（搬移语义）' } } ] },
+    { key: 'stale', name: '④ 未知与时间', desc: '轮询失败：飞书查不到 → 小帅（飞书未知 + QQ 离线）显示待确认而非离线，且最后检测时间冻结；再轮询也不会更新时间——诚实暴露“这是旧数据”。恢复后时间更新。',
+      steps: [
+        { label: '从初始状态开始', act: { type: 'RESET' } },
+        { label: '飞书轮询失败（未知→待确认）', act: { type: 'POLL_FAIL', channel: 'feishu' } },
+        { label: '轮询刷新（失败通道时间仍冻结）', act: { type: 'TICK' } },
+        { label: '飞书轮询恢复（时间更新）', act: { type: 'POLL_RECOVER', channel: 'feishu' } } ] }
+  ];
+  var curScenario = 0;
+  var doneSteps = {};
+
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+  function render() {
+    tickEl.textContent = state.tick;
+    document.getElementById('clock').textContent = fmtTime(state.tick);
+    var rows = derive(state);
+    var html = '';
+    rows.forEach(function (d) {
+      var bound = d.bound.length
+        ? d.bound.map(function (b) {
+            var t = esc(b.channel) + ' · ' + esc(b.botId) + ' · ' + healthOf(b.status, b.connected, b.failed);
+            if (b.failed) t += '（未知，' + (state.tick - b.lastTick) + '轮前）';
+            return t;
+          }).join('<br>')
+        : '<span style="opacity:.6">无绑定 Bot</span>';
+      html += '<div class="ws"><div class="ws-name">' + esc(d.ws.agent) + ' <span style="font-weight:400;font-size:11px;opacity:.6">' + esc(d.ws.id) + '</span></div>'
+        + '<div class="ws-path">' + esc(d.ws.path) + '</div>'
+        + '<span class="badge"><span class="dot ' + d.badge.kind + '"></span>' + esc(d.badge.label) + '</span>'
+        + '<dl class="kv"><dt>绑定</dt><dd>' + bound + '</dd>'
+        + '<dt>tooltip</dt><dd>' + esc(d.badge.tooltip) + '</dd>'
+        + '<dt>点击去向</dt><dd>设置页 section（锚点待定）</dd></dl></div>';
+    });
+    grid.innerHTML = html;
+
+    var diffs = [];
+    rows.forEach(function (d) {
+      var prev = prevBadges[d.ws.id];
+      if (prev && prev !== d.badge.kind) diffs.push(d.ws.agent + '：' + prev + '→' + d.badge.kind);
+      prevBadges[d.ws.id] = d.badge.kind;
+    });
+    changedEl.textContent = '上次动作：' + state.lastAction + '。' + (diffs.length ? '变化：' + diffs.join('；') + '。' : '徽标无变化。');
+    if (state.lastNav) {
+      navEl.textContent = '🖱 点击意图：' + state.lastNav.wsId + ' → ' + state.lastNav.target + '｜tooltip：' + state.lastNav.tooltip + '｜点击前后连接/绑定指纹一致=' + state.lastNav.readonlyProof + '（只读 ✓）';
+    }
+    verdictOut.textContent = summarize(state);
+  }
+
+  function dispatch(act) {
+    state = reducer(state, act);
+    render();
+  }
+
+  var fp = document.getElementById('freeplay');
+  FREE.forEach(function (g) {
+    var h = document.createElement('h4'); h.textContent = g.group; fp.appendChild(h);
+    g.actions.forEach(function (a) {
+      var b = document.createElement('button');
+      b.className = 'act'; b.textContent = a.label;
+      b.onclick = function () { dispatch(a.act); };
+      fp.appendChild(b);
+    });
+  });
+
+  var tabsEl = document.getElementById('tabs');
+  var descEl = document.getElementById('scenarioDesc');
+  var stepsEl = document.getElementById('steps');
+  function renderScenario() {
+    tabsEl.innerHTML = '';
+    SCENARIOS.forEach(function (s, i) {
+      var t = document.createElement('button');
+      t.className = 'tab' + (i === curScenario ? ' active' : '');
+      t.textContent = s.name;
+      t.onclick = function () { curScenario = i; doneSteps = {}; renderScenario(); };
+      tabsEl.appendChild(t);
+    });
+    var s = SCENARIOS[curScenario];
+    descEl.textContent = s.desc;
+    stepsEl.innerHTML = '';
+    s.steps.forEach(function (st, i) {
+      var li = document.createElement('li');
+      var b = document.createElement('button');
+      b.className = 'act' + (doneSteps[s.key + i] ? ' done' : '') + (i === 0 ? ' primary' : '');
+      b.textContent = (doneSteps[s.key + i] ? '✓ ' : '') + st.label;
+      b.onclick = function () { dispatch(st.act); doneSteps[s.key + i] = true; renderScenario(); };
+      li.appendChild(b);
+      stepsEl.appendChild(li);
+    });
+  }
+
+  document.getElementById('darkToggle').onchange = function (e) {
+    document.body.classList.toggle('dark', e.target.checked);
+  };
+  document.getElementById('copyBtn').onclick = function () {
+    var t = summarize(state);
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t);
+    else { var ta = document.createElement('textarea'); ta.value = t; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) {} ta.remove(); }
+  };
+
+  renderScenario();
+  render();
+})();
+</script>
+</body>
+</html>

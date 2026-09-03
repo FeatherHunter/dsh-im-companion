@@ -1,0 +1,75 @@
+/** FleetPanel 视图层：面板状态 → body DOM（加载/错误/空态/分区头/两态列表）。
+ * 渲染唯一入口 render()；数据层与动作层都不直接触碰 DOM。 */
+import { h, mount, type ChildNode } from '../dom'
+import { buildModel, type FleetModel } from '../data/model'
+import { makeEmpty } from '../ui/empty'
+import { makeErrorRow, makeGroupedList, makeLoadingRow, makeSkeletonRows } from '../ui/list'
+import type { SegHandle } from '../ui/segmented'
+import { makeAgentRow, type RowCallbacks } from './agent-row'
+import type { PanelState } from './panel-data'
+
+export interface PanelBodyDeps {
+  state: PanelState
+  bodyEl: HTMLElement
+  titleMetaEl: HTMLElement
+  seg: SegHandle
+  relayout(): void
+  rowCallbacks(): RowCallbacks
+  onRetry(): void
+}
+
+export interface PanelBody {
+  render(): void
+}
+
+export function createPanelBody(deps: PanelBodyDeps): PanelBody {
+  function renderMeta(model: FleetModel): void {
+    deps.titleMetaEl.textContent = model.counts.agents + ' 个 Agent · ' + model.counts.channels + ' 个渠道 · '
+      + model.totalBots + ' 个机器人' + (deps.state.updatedAt ? ' · 更新于 ' + deps.state.updatedAt : '')
+    deps.seg.setLabel('agent', '按Agent (' + model.counts.agents + ')')
+    deps.seg.setLabel('channel', '按渠道 (' + model.counts.channels + ')')
+  }
+
+  function rowsFor(model: FleetModel): ChildNode[] {
+    if (deps.state.mode === 'channel') {
+      const out: ChildNode[] = []
+      for (const g of model.channelGroups) {
+        out.push(h('div', { className: 'af-section' },
+          g.label,
+          h('span', { className: 'af-section-count' }, g.count + ' 个 Agent'),
+        ))
+        out.push(makeGroupedList(...g.views.map((v) => makeAgentRow(v, deps.rowCallbacks(), 'channel'))))
+      }
+      return out
+    }
+    return model.agents.map((v) => makeAgentRow(v, deps.rowCallbacks(), 'agent'))
+  }
+
+  function render(): void {
+    const s = deps.state
+    if (s.loading) {
+      mount(deps.bodyEl, makeGroupedList(...makeSkeletonRows(3), makeLoadingRow()))
+      deps.relayout()
+      return
+    }
+    if (s.error) {
+      mount(deps.bodyEl, makeErrorRow(s.error, deps.onRetry))
+      deps.relayout()
+      return
+    }
+    const model = buildModel(s.bots, s.meta, s.mode, s.query)
+    renderMeta(model)
+    const rows = rowsFor(model)
+    if (!rows.length) {
+      mount(deps.bodyEl, s.query
+        ? makeEmpty({ iconName: 'search', title: '没有找到匹配的 Agent', sub: '试试其他关键词' })
+        : makeEmpty({ iconName: 'person', title: '还没有 Agent', sub: '点击右上角 + 新建，或接入聊天渠道' }))
+      deps.relayout()
+      return
+    }
+    mount(deps.bodyEl, s.mode === 'channel' ? rows : makeGroupedList(...rows))
+    deps.relayout()
+  }
+
+  return { render }
+}
