@@ -189,6 +189,43 @@ export async function fetchBots(rpc: RpcCall): Promise<{ bots: BotSnap[]; failed
 
 /** B1 verdict 延续（connection-stream 落地前各调用方复用）：传输失败的渠道保留上一轮快照
  * 并标 stale（时间冻结、按未知展示），而不是丢弃谎报离线；ok:false 是权威空，不保留。 */
+/** 会话路由行（E4 welcome-banner 共用；c1a 自持版本不动）：读自有通道 routes.list，
+ * 任何失败静默 []（调用方渲染“暂无路由”静态态）；session 已由 host 侧脱敏，只做展示。 */
+export interface RouteRow {
+  chat: string;
+  sessionId: string;
+  ghost?: boolean;
+  channel?: string;
+  botId?: string;
+}
+
+export async function fetchRouteRows(
+  rpc: RpcCall | null,
+  bots: { channel: string; botId: string }[],
+): Promise<RouteRow[]> {
+  try {
+    if (!rpc || !(bots ?? []).length) return [];
+    const raw = await rpc("/im-companion", "routes.list",
+      { bots: bots.map((b) => ({ channel: b.channel, botId: b.botId })) }, AbortSignal.timeout(RPC_TIMEOUT_MS));
+    const rows = (raw as { ok?: boolean; value?: { routes?: unknown } } | null)?.value?.routes;
+    if (!Array.isArray(rows)) return [];
+    return rows.flatMap((r) => {
+      const row = r as { chat?: unknown; session?: unknown; ghost?: unknown; channel?: unknown; botId?: unknown };
+      if (typeof row?.chat !== "string" || typeof row?.session !== "string") return [];
+      const out: RouteRow = {
+        chat: row.chat,
+        sessionId: row.session,
+        ghost: row.ghost === true,
+      };
+      if (typeof row.channel === "string") out.channel = row.channel;
+      if (typeof row.botId === "string") out.botId = row.botId;
+      return [out];
+    });
+  } catch {
+    return [];
+  }
+}
+
 export function mergeStaleBots(prev: BotSnap[], fresh: BotSnap[], failed: readonly string[]): BotSnap[] {
   if (!failed.length) return fresh
   const seen = new Set(fresh.map((b) => b.channel + '\0' + b.botId))

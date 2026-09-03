@@ -3,7 +3,7 @@ import type { MetaStore } from '../client/data/meta'
 import type { RpcCall } from '../client/data/fleet-api'
 import type { StreamSnapshot } from '../client/data/connection-stream'
 
-export type SlotTarget = 'settings.section' | 'workspace-rail' | 'session-header'
+export type SlotTarget = 'settings.section' | 'workspace-rail' | 'session-header' | 'conversation-session'
 
 export interface SlotsService {
   inject(name: string, fn: () => unknown): unknown
