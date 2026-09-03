@@ -8,7 +8,7 @@ export const CSS = [
   '.e2-panel-sub{font-size:12px;opacity:.65;margin:0 0 14px;line-height:1.6}',
   '.e2-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}',
   '.e2-sec{--e2-c:#8e8e93;border:1px solid rgba(127,127,127,.35);border-left:4px solid var(--e2-c);border-radius:12px;padding:10px 12px;background:transparent;min-height:120px}',
-  '.e2-sec-unbound{border-style:dashed;grid-column:1/-1}',
+  '.e2-sec-unbound{border-style:dashed;grid-column:1/-1;min-height:0}',
   '.e2-sec-new{border-style:dashed;opacity:.85;cursor:pointer}',
   '.e2-sec-name{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:7px}',
   '.e2-dot{width:10px;height:10px;border-radius:50%;background:var(--e2-c);flex:none}',
