@@ -123,10 +123,11 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('z-index:1400'), '面板压过宿主 chrome');
   assert.ok(String(styles.CSS).includes('z-index:1600'), '确认框在最顶');
   assert.ok(String(styles.CSS).includes('.e2-tape{') && String(styles.CSS).includes('text-overflow:ellipsis'), '门牌不出框');
-  assert.ok(String(styles.CSS).includes('flex-wrap:wrap'), '砖墙流');
-  assert.ok(String(styles.CSS).includes('width:fit-content'), '宽随内容');
-  assert.ok(String(styles.CSS).includes('align-items:flex-start'), '高矮不齐');
-  assert.ok(!String(styles.CSS).includes('grid-template-columns'), '旧均分网格下线');
+  assert.ok(String(styles.CSS).includes('grid-template-columns:repeat(auto-fit,minmax(215px,1fr))'), 'H 定稿网格');
+  assert.ok(String(styles.CSS).includes('transform:rotate(-2deg)'), '胶带歪斜');
+  assert.ok(String(styles.CSS).includes('outline-offset:4px'), '落点描边');
+  assert.ok(String(styles.CSS).includes('#d9cfbd'), '暖纸底');
+  assert.ok(!String(styles.CSS).includes('fit-content'), '内容定宽下线');
 });
 
 test('视图暴露挂载入口', () => {
@@ -323,9 +324,8 @@ test('view：头栏安装串门入口，点击开面板（含未分配组）', a
   assert.ok(String(secs[3].attrs?.class ?? '').split(' ').includes('e2-sec-new'));
   assert.ok(bodyText().includes('小帅2'), '门牌用设置里的中文名');
   assert.ok(!bodyText().includes('联系方式'), '计数按机器人，不按联系方式');
-  assert.ok(bodyText().includes('2 个机器人'), '未分配组照常计数');
-  assert.ok(bodyText().includes('1 个机器人'), '独户也计数（H 定稿）');
-  assert.ok(bodyText().includes('共 2 户 · 4 个机器人'), '人口普查 footer');
+  assert.ok(!bodyText().includes('个机器人'), '计数文案下线');
+  assert.ok(bodyText().includes('永远在线，除了睡着的时候'), 'mock 小传');
   const caps = findClass(e2Doc.body, 'e2-cap');
   assert.ok(caps.some((c: any) => String(c.textContent).includes('QQ')), '成员小传含渠道');
   const tapes = findClass(e2Doc.body, 'e2-tape');

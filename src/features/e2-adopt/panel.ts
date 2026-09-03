@@ -45,13 +45,12 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
   const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') api.close() }
   try { document.addEventListener('keydown', onKey, true) } catch { /* 忽略 */ }
 
-  const homeCard = (plate: HomePlate, ws: string | null, bots: BotSnap[], dashed: boolean, extra: Record<string, string>, hint = '', count = ''): HTMLElement => {
+  const homeCard = (plate: HomePlate, ws: string | null, bots: BotSnap[], dashed: boolean, extra: Record<string, string>, hint = ''): HTMLElement => {
     const box = h('div', { className: SEC_CLASS + (dashed ? ' e2-sec-unbound' : '') }) as HTMLElement
     if (ws) box.setAttribute('data-e2-ws', ws)
     for (const k of Object.keys(extra)) box.setAttribute(k, extra[k])
     const head = h('div', { className: 'e2-sec-name' }) as HTMLElement
     head.appendChild(h('span', { className: 'e2-tape' }, plate.name) as unknown as Node)
-    if (count) head.appendChild(h('span', { className: 'e2-n' }, count) as unknown as Node)
     box.appendChild(head as unknown as Node)
     for (const b of bots) {
       const row = h('div', { className: ROW_CLASS }) as HTMLElement
@@ -63,7 +62,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       top.appendChild(h('span', { className: 'e2-hdot ' + healthClass(b), title: b.stale ? '状态未知（打盹）' : b.healthKind === 'online' ? '在岗' : '睡着了' }) as unknown as Node)
       top.appendChild(h('span', { className: 'e2-who' }, botLabel(b)) as unknown as Node)
       row.appendChild(top as unknown as Node)
-      row.appendChild(h('span', { className: 'e2-cap' }, channelLabel(b.channel) + ' · ' + (b.stale ? '状态未知' : b.healthKind === 'online' ? '永远在线' : b.healthKind === 'warn' ? '偶尔打盹' : '睡着了')) as unknown as Node)
+      row.appendChild(h('span', { className: 'e2-cap' }, channelLabel(b.channel) + ' · ' + (b.stale ? '状态未知' : b.healthKind === 'online' ? '永远在线，除了睡着的时候' : b.healthKind === 'warn' ? '偶尔打盹' : '睡着了')) as unknown as Node)
       box.appendChild(row as unknown as Node)
     }
     if (hint) box.appendChild(h('div', { className: 'e2-plus-hint' }, hint) as unknown as Node)
@@ -76,17 +75,16 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       const { unbound, groups } = boardGroups(bots)
       grid.replaceChildren()
       if (unbound.length > 0) {
-        grid.appendChild(homeCard({ name: '还没进家门的', sub: '', initial: '', color: 0 }, null, unbound, true, {}, '', unbound.length + ' 个机器人'))
+        grid.appendChild(homeCard({ name: '还没进家门的', sub: '', initial: '', color: 0 }, null, unbound, true, {}, ''))
       }
       for (const g of groups) {
         const plate = homePlate(g.workspace, meta)
-        grid.appendChild(homeCard(plate, g.workspace, g.bots, false, {}, '', g.bots.length + ' 个机器人'))
+        grid.appendChild(homeCard(plate, g.workspace, g.bots, false, {}, ''))
       }
       grid.appendChild(homeCard(
         { name: '＋ 安新家', sub: '', initial: '', color: 0 }, null, [], true,
         { 'data-e2-new': '1', class: 'e2-sec e2-sec-unbound e2-sec-new' }, '把照片拖到这里，选个空房子接住',
       ))
-      grid.appendChild(h('div', { className: 'e2-foot' }, '共 ' + groups.length + ' 户 · ' + bots.length + ' 个机器人') as unknown as Node)
     } catch { /* 渲染失败保持旧面板（fail-closed） */ }
   }
 
