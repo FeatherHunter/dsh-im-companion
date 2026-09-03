@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>B2 左栏筛选条状态模型原型（抛弃式）</title>
+<title>B2 左栏筛选条状态模型原型（抛弃式 · 1:1 左栏沙盒）</title>
 <style>
   :root { --accent:#0a84ff; }
   * { box-sizing:border-box; }
@@ -18,25 +18,58 @@
   .q { font-size:13px; line-height:1.8; margin:0; }
   .q b { color:var(--accent); }
   .plain { font-size:13px; line-height:1.8; margin:10px 0 0; background:#f7f8fa; border-radius:10px; padding:10px 12px; }
-  .plain b { color:#1c1c1e; }
+  .fidel { font-size:12px; line-height:1.8; margin:10px 0 0; background:rgba(26,158,84,.07); border:1px solid rgba(26,158,84,.3); border-radius:10px; padding:10px 12px; }
   .assume { font-size:12px; color:#6e6e73; margin:8px 0 0; line-height:1.7; }
   .changed { font-size:13px; background:rgba(10,132,255,.09); border:1px solid rgba(10,132,255,.3); border-radius:10px; padding:8px 12px; margin:0 0 12px; line-height:1.7; }
   .warn { font-size:13px; background:rgba(180,35,24,.08); border:1px solid rgba(180,35,24,.35); border-radius:10px; padding:8px 12px; margin:0 0 12px; line-height:1.7; display:none; }
   .counts { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 12px; }
   .count { font-size:12.5px; border:1px solid rgba(0,0,0,.12); border-radius:999px; padding:5px 12px; background:#f7f8fa; }
   .count.active { border-color:var(--accent); background:rgba(10,132,255,.12); color:var(--accent); font-weight:700; }
-  .rail { border:1px solid rgba(0,0,0,.1); border-radius:12px; overflow:hidden; margin:0 0 10px; }
-  .rail-hd { font-size:11px; color:#6e6e73; padding:8px 12px; background:#f7f8fa; border-bottom:1px solid rgba(0,0,0,.07); }
-  .seg { display:flex; gap:6px; padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.07); background:#fff; }
-  .seg button { flex:1; font:inherit; font-size:12.5px; padding:7px 4px; border-radius:9px; border:1px solid rgba(0,0,0,.12); background:#f7f8fa; cursor:pointer; }
-  .seg button.active { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:700; }
-  .native { display:flex; gap:8px; align-items:center; padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.07); font-size:12.5px; background:#fff; }
-  .native input { flex:1; font:inherit; font-size:12.5px; padding:6px 10px; border-radius:8px; border:1px solid rgba(0,0,0,.15); }
-  .row { padding:10px 12px; border-bottom:1px solid rgba(0,0,0,.05); font-size:13px; display:flex; align-items:center; gap:8px; background:#fff; }
-  .row:last-child { border-bottom:none; }
-  .tag { font-size:11px; border-radius:999px; padding:2px 8px; border:1px solid rgba(0,0,0,.12); color:#6e6e73; }
-  .tag.bound { color:#1a9e54; border-color:rgba(26,158,84,.4); }
-  .empty { padding:16px 12px; font-size:12.5px; color:#6e6e73; text-align:center; background:#fff; }
+  .ruler { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:12px; color:#6e6e73; margin:0 0 10px; }
+  .ruler .rlab { font-weight:700; }
+  .ruler button { font:inherit; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid rgba(0,0,0,.14); background:#fff; cursor:pointer; }
+  .ruler button.on { border-color:var(--accent); background:rgba(10,132,255,.12); color:var(--accent); font-weight:700; }
+  .dsb { border:1px solid rgba(0,0,0,.12); border-radius:12px; overflow:hidden; margin:0 0 10px; background:var(--dsw-specific-sidebar-fill,#f4f4f6); color:var(--dsw-alias-label-primary,#1c1c1e); font-size:14px; }
+  .dsb.dark { background:var(--dsw-specific-sidebar-fill,#1b1e26); color:var(--dsw-alias-label-primary,#e8eaf0); border-color:rgba(255,255,255,.14); }
+  .dsb-in { padding:6px 12px 10px; }
+  .dsb-hd { height:36px; display:flex; align-items:center; gap:4px; color:var(--dsw-alias-label-tertiary,#98989d); margin-bottom:4px; }
+  .dsb-title { font-size:13px; line-height:20px; white-space:nowrap; }
+  .dsb-sp { flex:1; }
+  .dsb-ibtn { width:28px; height:28px; border-radius:50%; border:none; background:transparent; color:var(--dsw-alias-label-secondary,#6e6e73); cursor:pointer; font-size:14px; line-height:1; flex:none; }
+  .dsb-ibtn:hover { background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.06)); }
+  .dsb-hbtn.on { background:rgba(10,132,255,.16); color:#0a84ff; }
+  .dsb-hbtn svg { width:14px; height:14px; display:block; }
+  .mount-tag { font-size:10.5px; font-weight:700; color:var(--accent); border:1px solid rgba(10,132,255,.45); border-radius:6px; padding:1px 6px; white-space:nowrap; }
+  .dsb-filter { display:flex; gap:2px; padding:2px; margin:4px 0; background:transparent; border:none; border-radius:9px; box-shadow:none; }
+  .dsb-c { font-size:11px; font-weight:500; opacity:.6; margin-left:3px; font-variant-numeric:tabular-nums; }
+  button.active .dsb-c { opacity:.62; }
+  .dsb-filter button { flex:1; min-width:0; font:inherit; font-size:12px; font-weight:600; line-height:1; padding:5px 2px; border-radius:8px; border:1px solid transparent; background:transparent; color:inherit; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dsb-filter button.active { background:rgba(127,127,127,.26); border-color:transparent; color:#1c1c1e; font-weight:700; box-shadow:0 1px 2px rgba(0,0,0,.18); }
+  .dsb.dark .dsb-filter button.active { background:rgba(255,255,255,.13); color:#fff; }
+  .dsb-filter.over { outline:2px dashed #b42318; outline-offset:2px; border-radius:8px; }
+  .over-msg { display:none; font-size:12px; color:#b42318; margin:0 0 6px; }
+  .over-msg.show { display:block; }
+  .dsb-searchrow { display:flex; gap:6px; padding:2px 0 6px; }
+  .dsb-searchrow input { flex:1; min-width:0; font:inherit; font-size:13px; height:30px; padding:0 10px; border-radius:8px; border:1px solid rgba(0,0,0,.15); background:transparent; color:inherit; }
+  .dsb-group { height:34px; display:flex; align-items:center; gap:6px; padding:0 8px; border-radius:8px; font-size:14px; cursor:default; }
+  .dsb-group:hover { background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.05)); }
+  .dsb-caret { width:16px; height:20px; display:inline-flex; align-items:center; justify-content:center; color:var(--dsw-alias-label-tertiary,#98989d); flex:none; font-size:11px; }
+  .dsb-gname { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dsb-n { font-size:11px; color:var(--dsw-alias-label-tertiary,#98989d); flex:none; }
+  .dsb-dot { width:8px; height:8px; border-radius:50%; flex:none; }
+  .dsb-dot.online { background:#1a9e54; }
+  .dsb.dark .dsb-dot.online { background:#30d158; }
+  .dsb-dot.warn { background:#e07b00; }
+  .dsb.dark .dsb-dot.warn { background:#ff9f0a; }
+  .dsb-dot.offline { background:#b0b3b8; }
+  .dsb-sess { height:32px; display:flex; align-items:center; gap:6px; padding:0 8px 0 30px; border-radius:8px; font-size:13px; }
+  .dsb-sess:hover { background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.05)); }
+  .dsb-sess span.t { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dsb-sess span.w { font-size:11px; color:var(--dsw-alias-label-tertiary,#98989d); flex:none; max-width:40%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dsb-mode { font-size:11px; color:var(--dsw-alias-label-tertiary,#98989d); padding:6px 2px 2px; }
+  .dsb-empty { padding:14px 8px; font-size:12.5px; color:var(--dsw-alias-label-secondary,#6e6e73); text-align:center; }
+  .dsb-rail { width:56px; padding:18px 10px 6px; display:flex; flex-direction:column; gap:8px; align-items:center; background:var(--dsw-specific-sidebar-fill,#f4f4f6); border:1px solid rgba(0,0,0,.12); border-radius:12px; margin:0 0 10px; }
+  .dsb-rail .ric { width:36px; height:36px; border-radius:10px; border:1px solid rgba(0,0,0,.1); display:flex; align-items:center; justify-content:center; font-size:15px; color:var(--dsw-alias-label-secondary,#6e6e73); }
   .hidden-list { font-size:12px; color:#6e6e73; line-height:1.7; margin:0; }
   .btnrow { display:flex; flex-wrap:wrap; gap:8px; }
   .btnrow h4 { width:100%; margin:10px 0 0; font-size:12px; color:#6e6e73; font-weight:700; }
@@ -54,23 +87,22 @@
 </head>
 <body>
 <div class="wrap">
-  <span class="proto-tag">PROTOTYPE·抛弃式·不进生产</span>
-  <h1>B2·左栏筛选条：三态 + 计数 + 原生共存手感验证</h1>
-  <p class="lede">点按钮、看左栏行藏谁剩下谁：验证“全部 / 已绑定 / 未绑定”切换、计数准不准、和左栏原生搜索框打不打架（逻辑分支单文件 HTML，双击即开，状态全在内存，刷新重置）。</p>
+  <span class="proto-tag">PROTOTYPE · 抛弃式 · 不进生产</span>
+  <h1>B2 · 左栏筛选条：三态 + 计数 + 原生共存手感验证</h1>
+  <p class="lede">点按钮、看左栏行藏谁剩下谁：验证“全部 / 已绑定 / 未绑定”切换、计数准不准、和左栏原生搜索打不打架。左栏是 <b>1:1 真机沙盒</b>（同款宽度/行高/字号/主题变量），双击即开，状态全在内存，刷新重置。</p>
   <div class="card"><div class="card-hd">正在回答的设计问题</div><div class="card-bd">
-    <p class="q">左栏顶部的筛选条（<b>全部 / 已绑定 / 未绑定</b>三段 + 每段计数）规则是否顺畅：<b>计数数什么</b>、<b>藏行还是置灰</b>、<b>和原生搜索框叠加还是委托</b>？外观不新开三变体，直接复用现有 <b>af-seg 分段控件</b>。</p>
+    <p class="q">左栏顶部的筛选条（<b>全部 / 已绑定 / 未绑定</b>三段 + 每段计数）规则是否顺畅：<b>计数数什么</b>、<b>藏行还是置灰</b>、<b>和原生搜索叠加还是委托</b>？外观不新开三变体，挂载进真机同款左栏沙盒里看。</p>
     <p class="assume">分支假设（已声明）：走<b>逻辑分支</b>。周围代码里绑定逻辑（bindings.ts）+ 分段控件（segmented.ts）都已有，风险在语义不在外观。若你要看三种长相，喊一声就改走 UI 分支。</p>
-    <div class="plain"><b>大白话①·计数数什么：</b>数的是左栏“工作区行数”，不是 Bot 个数。一行可以挂多个 Bot（比如小帅同时挂飞书+QQ），但只算一行。好比通讯录按人头数，不按手机号数。所以“已绑定 2”= 两行有 Bot，“未绑定 1”= 一行空着（从没绑过也算）。<br><b>大白话②·藏还是灰：</b>“隐藏”= 整行消失（省地方，但行会上下跳）；“置灰”= 行还在只是变灰点不了（位置不动，但占地方）。本原型按“隐藏 + 空时给一句‘没有匹配的工作区’”做，因为左栏行少，跳动成本低。<br><b>大白话③·叠加还是委托：</b>“叠加”= 我们自己藏一行，原生搜索再过滤一行（两道关，都得过）；“委托”= 把绑定条件传给 DSH 原生筛选，一次算出（前提是原生真有这个口子——还没取证）。你选了“委托原生”，本原型把两种都做出来给你掰开看。</div>
+    <div class="fidel"><b>落地保真声明（逐条对应真机取证）：</b>① 宽度档 264 / 320 / 420 = 本体 computeColumns 的 clamp 区间，56 = 收起 rail；内容区再减左右 12px padding。② 分组行高 34px、会话行 32px、字号 14px、圆角 8px、头栏 36px，类名哈希不可依赖、只抄尺寸。③ 颜色全走 --dsw-* 主题别名（沙盒外无真实变量，用 fallback 近似值，已标出）。④ 原生搜索是<b>搜会话内容</b>（session.search，250ms 防抖），搜出结果树替代分组树——不是搜工作区名，本原型已按此做。⑤ 每组默认只露 5 条会话（本原型每组 ≤3，全露并注明）。⑥ 收起态 56px 下筛选条不挂载。</div>
+    <div class="plain"><b>大白话① · 计数数什么：</b>数的是左栏“工作区行数”，不是 Bot 个数。一行可以挂多个 Bot（比如小帅同时挂飞书+QQ），但只算一行。好比通讯录按人头数，不按手机号数。所以“已绑定 2”= 两行有 Bot，“未绑定 1”= 一行空着（从没绑过也算）。<br><b>大白话② · 藏还是灰：</b>“隐藏”= 整行消失（省地方，但行会上下跳）；“置灰”= 行还在只是变灰点不了（位置不动，但占地方）。本原型按“隐藏 + 空时给一句空提示”做，因为左栏行少，跳动成本低。<br><b>大白话③ · 叠加还是委托：</b>“叠加”= 我们自己藏一行，原生搜会话时再过滤一遍（两道关）；“委托”= 把绑定条件传给原生，一次算出（前提是原生真有这个口子——还没取证）。你选了“委托原生”，本原型把两种都做出来给你掰开看。注意：原生搜的是<b>会话标题</b>，搜“周报”出的是两条会话，不是两个工作区。</div>
   </div></div>
   <div class="card"><div class="card-hd">当前状态（每次点击后全文重绘）</div><div class="card-bd">
     <div class="changed" id="changed"></div>
     <div class="warn" id="warn"></div>
     <div class="counts" id="counts"></div>
-    <div class="rail"><div class="rail-hd" id="railHd">左栏模拟</div>
-      <div class="seg" id="seg"></div>
-      <div class="native"><span>原生搜索</span><input id="nativeInput" placeholder="比如：小 / 星 / 不存在的词" value=""><button class="act" id="nativeClear">清空</button><span id="modeLabel" style="margin-left:auto"></span></div>
-      <div id="rows"></div>
-    </div>
+    <div class="ruler" id="ruler"><span class="rlab">尺子（只管看，不管状态机）：</span><span>宽度</span><span id="wBtns"></span><span>主题</span><span id="tBtns"></span><span id="rulerNote"></span></div>
+    <div id="sandbox"></div>
+    <p class="over-msg" id="overMsg"></p>
     <p class="hidden-list" id="hiddenList"></p>
     <pre class="out" id="verdictOut"></pre>
   </div></div>
@@ -80,15 +112,28 @@
     <p class="scenario-desc" id="scenarioDesc"></p>
     <ol class="steps" id="steps"></ol>
   </div></div>
-  <p class="foot">抛弃式原型：逻辑在第一个 script 块里（纯函数，可搬进真代码）；页面只是薄外壳。内存状态，不联网，不写盘。位置 prototypes/left-filter/，不进生产分支。</p>
+  <p class="foot">抛弃式原型：逻辑在第一个 script 块里（纯函数，可搬进真代码）；页面只是薄外壳。内存状态，不联网，不写盘。位置 prototypes/left-filter/，不进生产分支。URL 参数可预设：?w=264&amp;theme=dark&amp;q=周报&amp;filter=bound&amp;mode=delegate&amp;api=1</p>
 </div>
 <script>
 /* 纯逻辑模块（可搬移部分）：无 DOM、无 document，(state, action) => state + 纯派生。页面只是调用它。 */
+/* 取证对应：count=分组行数；原生搜索匹配会话标题（session.search 语义简化）；绑定不是在线。 */
 var FILTERS = ["all", "bound", "unbound"];
-var FILTER_LABEL = { all: "全部", bound: "已绑定", unbound: "未绑定" };
+var FILTER_LABEL = { all: "全部", bound: "有助理", unbound: "待认领" }; /* 文案与实现同步（2026-09-04 用户语言裁定），其余散文保持冻结 */
+var BADGE_LABEL = { online: "在线", warn: "待确认", offline: "离线", unbound: "未绑定" };
 function isBound(path, bots) {
   for (var i = 0; i < bots.length; i++) if (bots[i].workspace === path) return true;
   return false;
+}
+function badgeKind(path, bots) {
+  if (!isBound(path, bots)) return "unbound";
+  var failed = false, connected = false;
+  for (var i = 0; i < bots.length; i++) {
+    if (bots[i].workspace !== path) continue;
+    if (bots[i].failed) failed = true;
+    else if (bots[i].connected) connected = true;
+  }
+  if (failed) return "warn";
+  return connected ? "online" : "offline";
 }
 function initialState() {
   return {
@@ -103,6 +148,14 @@ function initialState() {
       { id: "xiaoshuai", path: "D:\\agents\\xiaoshuai", agent: "小帅" },
       { id: "xinghuo", path: "D:\\agents\\xinghuo", agent: "星火" },
       { id: "dsh-im", path: "D:\\agents\\dsh-im", agent: "（未命名）" }
+    ],
+    sessions: [
+      { id: "s1", ws: "D:\\agents\\xiaoshuai", title: "小帅需求讨论" },
+      { id: "s2", ws: "D:\\agents\\xiaoshuai", title: "飞书推送测试" },
+      { id: "s3", ws: "D:\\agents\\xiaoshuai", title: "小帅周报" },
+      { id: "s4", ws: "D:\\agents\\xinghuo", title: "星火联调" },
+      { id: "s5", ws: "D:\\agents\\xinghuo", title: "星火周报" },
+      { id: "s6", ws: "D:\\agents\\dsh-im", title: "dsh-im 试运行" }
     ]
   };
 }
@@ -113,48 +166,65 @@ function countsOf(state) {
   }
   return { all: state.workspaces.length, bound: bound, unbound: unbound };
 }
-function nativeHit(ws, q) {
-  if (!q || !q.trim()) return true;
-  var hay = (ws.agent + " " + ws.id + " " + ws.path).toLowerCase();
-  return hay.indexOf(q.trim().toLowerCase()) !== -1;
-}
-function bindingHit(ws, filter, bots) {
+function bindingPass(path, filter, bots) {
   if (filter === "all") return true;
-  var b = isBound(ws.path, bots);
+  var b = isBound(path, bots);
   return filter === "bound" ? b : !b;
 }
+function wsOf(state, path) {
+  for (var i = 0; i < state.workspaces.length; i++) if (state.workspaces[i].path === path) return state.workspaces[i];
+  return { id: "?", agent: "?" };
+}
+function delegated(state) { return state.mode === "delegate" && state.nativeAvailable; }
+function leaked(state) { return state.mode === "delegate" && !state.nativeAvailable; }
+function engineText(state) {
+  if (delegated(state)) return "委托原生：一次调用同时传绑定+关键词，原生一次性算出";
+  if (leaked(state)) return "委托失败回退：原生口子不存在，绑定条件被丢掉";
+  return "自画叠加：我们先按绑定藏，原生搜会话时再过滤（两道关都得过）";
+}
 function computeVisible(state) {
-  var rows = [], hidden = [], warning = "";
-  var engine = "";
-  if (state.mode === "delegate" && state.nativeAvailable) engine = "委托原生：一次调用同时传绑定+关键词，原生一次性算出";
-  else if (state.mode === "delegate") { engine = "委托失败回退：原生口子不存在，绑定条件被丢掉，只剩关键词"; warning = "原生筛选 API 不存在（未取证到），委托模式下 B2 条件传不进去——切到“已绑定”也不藏行！请用自画叠加或先取证。"; }
-  else engine = "自画叠加：我们先藏一行（绑定关），原生搜索再过滤一行（关键词关），两道关都得过";
-  for (var i = 0; i < state.workspaces.length; i++) {
-    var ws = state.workspaces[i];
-    var bHit = bindingHit(ws, state.filter, state.bots);
-    var nHit = nativeHit(ws, state.nativeQuery);
-    var vis = state.mode === "delegate" && !state.nativeAvailable ? nHit : (bHit && nHit);
-    var bound = isBound(ws.path, state.bots);
-    if (vis) rows.push({ ws: ws, bound: bound });
-    else {
-      var why = !bHit ? "绑定关没过（筛选=" + FILTER_LABEL[state.filter] + "，它是" + (bound ? "已绑定" : "未绑定") + "）" : "关键词关没过（搜“" + state.nativeQuery + "”对不上它）";
-      if (state.mode === "delegate" && !state.nativeAvailable && bHit === false && nHit) why = "本该被绑定关藏掉，但委托失败把它漏过去了";
-      hidden.push({ ws: ws, bound: bound, reason: why });
+  var q = (state.nativeQuery || "").trim().toLowerCase();
+  var warning = leaked(state) ? "原生筛选口子不存在（未取证到），委托模式下 B2 条件传不进去——筛选看着切了，行藏不住！请用自画叠加或先取证。" : "";
+  if (!q) {
+    var vis = [], hid = [];
+    for (var i = 0; i < state.workspaces.length; i++) {
+      var ws = state.workspaces[i];
+      var pass = leaked(state) ? true : bindingPass(ws.path, state.filter, state.bots);
+      var item = { ws: ws, bound: isBound(ws.path, state.bots), badge: badgeKind(ws.path, state.bots) };
+      if (pass) vis.push(item);
+      else hid.push({ ws: ws, reason: "绑定关没过（筛选=" + FILTER_LABEL[state.filter] + "，它是" + (item.bound ? "已绑定" : "未绑定") + "）" });
     }
+    return { kind: "tree", groups: vis, hiddenGroups: hid, warning: warning, engine: engineText(state) };
   }
-  return { visible: rows, hidden: hidden, engine: engine, warning: warning };
+  var cands = [];
+  for (var j = 0; j < state.sessions.length; j++) {
+    if (state.sessions[j].title.toLowerCase().indexOf(q) !== -1) cands.push(state.sessions[j]);
+  }
+  var sv = [], sh = [];
+  for (var k = 0; k < cands.length; k++) {
+    var s = cands[k];
+    var ok = leaked(state) ? true : bindingPass(s.ws, state.filter, state.bots);
+    var row = { sess: s, ws: wsOf(state, s.ws), bound: isBound(s.ws, state.bots) };
+    if (ok) sv.push(row);
+    else sh.push({ sess: s, reason: "所属组是" + (row.bound ? "已绑定" : "未绑定") + "，绑定关没过" });
+  }
+  return { kind: "search", matched: cands.length, sessions: sv, hiddenSessions: sh, warning: warning, engine: engineText(state) };
 }
 function summarize(state) {
   var c = countsOf(state);
   var v = computeVisible(state);
   var lines = [];
   lines.push("B2 原型 verdict 草稿 @ tick=" + state.tick + "（" + state.lastAction + "）");
-  lines.push("计数（行数口径）：全部 " + c.all + " / 已绑定 " + c.bound + " / 未绑定 " + c.unbound);
+  lines.push("计数（分组行数口径）：全部 " + c.all + " / 已绑定 " + c.bound + " / 未绑定 " + c.unbound);
   lines.push("引擎：" + v.engine);
-  lines.push("可见 " + v.visible.length + " 行：" + (v.visible.map(function (r) { return r.ws.agent + "(" + (r.bound ? "已绑定" : "未绑定") + ")"; }).join("、") || "（空→给空提示）"));
-  lines.push("藏起 " + v.hidden.length + " 行：" + (v.hidden.map(function (r) { return r.ws.agent + "（" + r.reason + "）"; }).join("；") || "无"));
+  if (v.kind === "tree") {
+    lines.push("模式：分组树（无搜索词）。可见 " + v.groups.length + " 组：" + (v.groups.map(function (r) { return r.ws.agent + "(" + BADGE_LABEL[r.badge] + ")"; }).join("、") || "（空→空提示）"));
+    lines.push("藏起 " + v.hiddenGroups.length + " 组：" + (v.hiddenGroups.map(function (r) { return r.ws.agent + "（" + r.reason + "）"; }).join("；") || "无"));
+  } else {
+    lines.push("模式：搜索结果树（搜“" + state.nativeQuery.trim() + "”，命中会话 " + v.matched + " 条，分组树被替代）。可见 " + v.sessions.length + " 条：" + (v.sessions.map(function (r) { return r.sess.title + "@" + r.ws.agent; }).join("、") || "（空→空提示）"));
+    lines.push("滤掉 " + v.hiddenSessions.length + " 条：" + (v.hiddenSessions.map(function (r) { return r.sess.title + "（" + r.reason + "）"; }).join("；") || "无"));
+  }
   if (v.warning) lines.push("警告：" + v.warning);
-  lines.push("绑定明细：" + state.bots.map(function (b) { return b.channel + ":" + b.botId + "→" + b.workspace + (b.failed ? "(轮询失败仍算绑定)" : ""); }).join("；"));
   return lines.join("\n");
 }
 function reducer(state, action) {
@@ -163,106 +233,227 @@ function reducer(state, action) {
   switch (action.type) {
     case "RESET": return initialState();
     case "SET_FILTER": next.filter = action.filter; next.lastAction = "切筛选→" + FILTER_LABEL[action.filter]; return next;
-    case "SET_QUERY": next.nativeQuery = action.query; next.lastAction = action.query ? "原生搜索→“" + action.query + "”" : "原生搜索清空"; return next;
+    case "SET_QUERY": next.nativeQuery = action.query; next.lastAction = action.query ? "原生搜会话→“" + action.query + "”（结果树替代分组树）" : "原生搜索清空（回分组树）"; return next;
     case "SET_MODE": next.mode = action.mode; next.lastAction = action.mode === "delegate" ? "引擎→委托原生" : "引擎→自画叠加"; return next;
     case "SET_NATIVE_AVAILABLE": next.nativeAvailable = action.available; next.lastAction = action.available ? "取证→原生口子存在" : "取证→原生口子不存在"; return next;
     case "BIND_NEW": next.bots.push({ channel: "feishu", botId: "bot-dshim", workspace: "D:\\agents\\dsh-im", connected: true, status: "healthy", failed: false, lastTick: next.tick }); next.lastAction = "绑定 dsh-im（未绑定行-1）"; return next;
     case "UNBIND_WS": { var before = next.bots.length; next.bots = next.bots.filter(function (b) { return b.workspace !== action.path; }); next.lastAction = "解绑工作区（拿掉 " + (before - next.bots.length) + " 个 Bot）"; return next; }
     case "MOVE": { var b = findBot(action.botId); if (b) { b.workspace = action.to; next.lastAction = action.label; } return next; }
     case "TICK": next.tick++; next.bots.forEach(function (b) { if (!b.failed) b.lastTick = next.tick; }); next.lastAction = "轮询刷新（tick=" + next.tick + "，计数应纹丝不动）"; return next;
-    case "POLL_FAIL": next.bots.forEach(function (b) { if (b.channel === action.channel) b.failed = true; }); next.lastAction = action.channel + " 轮询失败（变未知，但仍算绑定，计数不动）"; return next;
+    case "POLL_FAIL": next.bots.forEach(function (b) { if (b.channel === action.channel) b.failed = true; }); next.lastAction = action.channel + " 轮询失败（变未知仍算绑定，计数不动，徽标转待确认）"; return next;
     case "POLL_RECOVER": next.bots.forEach(function (b) { if (b.channel === action.channel) { b.failed = false; b.lastTick = next.tick; } }); next.lastAction = action.channel + " 轮询恢复"; return next;
     default: return next;
   }
 }
 </script>
 <script>
-/* 薄外壳（抛弃式）：渲染 + 接线，不进入搬移范围。 */
+/* 薄外壳（抛弃式）：1:1 左栏沙盒渲染 + 接线，不进入搬移范围。 */
+/* 沙盒尺子（sandbox）：宽度档/主题/搜索展开只管“看”，不进状态机。 */
 (function () {
   var state = initialState();
-  var prevVisible = {};
-  var changedEl = document.getElementById("changed");
-  var warnEl = document.getElementById("warn");
-  var countsEl = document.getElementById("counts");
-  var segEl = document.getElementById("seg");
-  var rowsEl = document.getElementById("rows");
-  var hiddenEl = document.getElementById("hiddenList");
-  var verdictEl = document.getElementById("verdictOut");
-  var railHd = document.getElementById("railHd");
-  var modeLabel = document.getElementById("modeLabel");
-  var nativeInput = document.getElementById("nativeInput");
+  var sandbox = { w: 264, theme: "light", expanded: false };
+  try {
+    var q = new URLSearchParams(location.search);
+    if (q.get("w")) sandbox.w = parseInt(q.get("w"), 10) || 264;
+    if (q.get("theme") === "dark") sandbox.theme = "dark";
+    if (q.get("q")) { state = reducer(state, { type: "SET_QUERY", query: q.get("q") }); sandbox.expanded = true; }
+    if (q.get("filter")) state = reducer(state, { type: "SET_FILTER", filter: q.get("filter") });
+    if (q.get("mode")) state = reducer(state, { type: "SET_MODE", mode: q.get("mode") });
+    if (q.get("api") === "1") state = reducer(state, { type: "SET_NATIVE_AVAILABLE", available: true });
+  } catch (e) { /* 参数解析失败就用默认 */ }
+  var prevVis = {};
+  function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+  function el(tag, cls, text) { var d = document.createElement(tag); if (cls) d.className = cls; if (text != null) d.textContent = text; return d; }
+  function renderRuler() {
+    var wb = $("wBtns"); wb.innerHTML = "";
+    [264, 320, 420, 56].forEach(function (w) {
+      var b = el("button", sandbox.w === w ? "on" : "", w === 56 ? "56收起" : String(w));
+      b.onclick = function () { sandbox.w = w; render(); };
+      wb.appendChild(b);
+    });
+    var tb = $("tBtns"); tb.innerHTML = "";
+    ["light", "dark"].forEach(function (t) {
+      var b = el("button", sandbox.theme === t ? "on" : "", t === "light" ? "浅色" : "深色");
+      b.onclick = function () { sandbox.theme = t; render(); };
+      tb.appendChild(b);
+    });
+    $("rulerNote").textContent = "真机区间 264–420（默认 " + sandbox.w + "px）· 收起 56 不挂载筛选条";
+  }
+  function renderSandbox() {
+    var box = $("sandbox"); box.innerHTML = "";
+    var c = countsOf(state);
+    var v = computeVisible(state);
+    if (sandbox.w === 56) {
+      var rail = el("div", "dsb-rail");
+      rail.appendChild(el("div", "ric", "🔍"));
+      rail.appendChild(el("div", "ric", "＋"));
+      box.appendChild(rail);
+      var note = el("p", "hidden-list", "收起态 56px：整栏只剩图标，筛选条与徽标都不挂载（真机同款行为）。");
+      box.appendChild(note);
+      return;
+    }
+    var dsb = el("div", "dsb" + (sandbox.theme === "dark" ? " dark" : ""));
+    dsb.style.width = sandbox.w + "px";
+    dsb.style.maxWidth = "100%";
+    var inner = el("div", "dsb-in");
+    dsb.appendChild(inner);
+    var hd = el("div", "dsb-hd");
+    hd.appendChild(el("span", "dsb-title", "工作区"));
+    hd.appendChild(el("span", "dsb-sp"));
+    var sbtn = el("button", "dsb-ibtn", "🔍");
+    sbtn.title = "原生搜索（搜会话内容，点开展开）";
+    sbtn.onclick = function () { sandbox.expanded = !sandbox.expanded; render(); };
+    hd.appendChild(sbtn);
+    var add = el("button", "dsb-ibtn", "＋");
+    add.title = "新建工作区（本体按钮，原型不做）";
+    hd.appendChild(add);
+    var hb = document.createElement("button"); hb.className = "dsb-ibtn dsb-hbtn" + (state.filter === "all" ? "" : " on");
+    hb.innerHTML = "<svg viewBox=\"0 0 16 16\" width=\"14\" height=\"14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 3.5h12l-4.6 5.4v3.9l-2.8 1.7V8.9z\"/></svg>";
+    hb.title = "绑定筛选：" + FILTER_LABEL[state.filter] + " " + countsOf(state)[state.filter] + "（点击切换）；三数见下方 verdict";
+    hb.onclick = function () { var order = ["all", "bound", "unbound"]; dispatch({ type: "SET_FILTER", filter: order[(order.indexOf(state.filter) + 1) % 3] }); };
+    hd.appendChild(hb);
+    inner.appendChild(hd);
+    var cap = el("div", "dsb-mode");
+    cap.innerHTML = "";
+    var tag = el("span", "mount-tag", "B2 挂载点");
+    cap.appendChild(tag);
+    cap.appendChild(document.createTextNode(" header 下 · 树顶（真机落点）"));
+    inner.appendChild(cap);
+    var seg = el("div", "dsb-filter");
+    seg.id = "dsbSeg";
+    FILTERS.forEach(function (f) {
+      var b = el("button", state.filter === f ? "active" : "", FILTER_LABEL[f] + " ");
+      var cn = document.createElement("span"); cn.className = "dsb-c"; cn.textContent = String(c[f]); b.appendChild(cn);
+      b.title = FILTER_LABEL[f] + " " + c[f] + " 个分组";
+      b.onclick = function () { dispatch({ type: "SET_FILTER", filter: f }); };
+      seg.appendChild(b);
+    });
+    inner.appendChild(seg);
+    if (sandbox.expanded) {
+      var sr = el("div", "dsb-searchrow");
+      var inp = document.createElement("input");
+      inp.value = state.nativeQuery;
+      inp.placeholder = "搜索会话（250ms 防抖·原型即时）";
+      inp.onchange = function () { dispatch({ type: "SET_QUERY", query: inp.value }); };
+      sr.appendChild(inp);
+      var clr = el("button", "dsb-ibtn", "✕");
+      clr.title = "清空并收起";
+      clr.onclick = function () { sandbox.expanded = false; dispatch({ type: "SET_QUERY", query: "" }); };
+      sr.appendChild(clr);
+      inner.appendChild(sr);
+    }
+    var list = el("div", "");
+    if (v.kind === "tree") {
+      if (!v.groups.length) list.appendChild(el("div", "dsb-empty", "没有匹配的工作区"));
+      v.groups.forEach(function (g) {
+        var row = el("div", "dsb-group");
+        row.title = g.ws.agent + " · " + BADGE_LABEL[g.badge] + "（B1 徽标语义）";
+        row.appendChild(el("span", "dsb-caret", "▾"));
+        row.appendChild(el("span", "dsb-gname", g.ws.agent));
+        var n = 0;
+        for (var i = 0; i < state.sessions.length; i++) if (state.sessions[i].ws === g.ws.path) n++;
+        row.appendChild(el("span", "dsb-n", String(n)));
+        if (g.badge !== "unbound") row.appendChild(el("span", "dsb-dot " + g.badge));
+        list.appendChild(row);
+      });
+    } else {
+      var m = el("div", "dsb-mode", "搜索结果树（" + v.matched + " 条命中，分组树被替代 · 每组≤5 条时全露）");
+      list.appendChild(m);
+      if (!v.sessions.length) list.appendChild(el("div", "dsb-empty", "没有匹配的会话"));
+      v.sessions.forEach(function (r) {
+        var srow = el("div", "dsb-sess");
+        srow.title = r.sess.title + " @" + r.ws.agent;
+        srow.appendChild(el("span", "t", r.sess.title));
+        srow.appendChild(el("span", "w", r.ws.agent));
+        list.appendChild(srow);
+      });
+    }
+    inner.appendChild(list);
+    var eng = el("div", "dsb-mode", v.engine);
+    inner.appendChild(eng);
+    box.appendChild(dsb);
+    try {
+      var over = seg.scrollWidth > seg.clientWidth + 1;
+      seg.classList.toggle("over", over);
+      var om = $("overMsg");
+      if (over) { om.className = "over-msg show"; om.textContent = "⚠ 横向溢出：" + sandbox.w + "px 放不下三段——落地会挤坏布局，必须改窄版（去计数/缩字/下拉）。"; }
+      else { om.className = "over-msg"; om.textContent = ""; }
+    } catch (e) { /* 量不到就不判 */ }
+  }
   function render() {
     var c = countsOf(state);
     var v = computeVisible(state);
     var diffs = [];
-    v.visible.forEach(function (r) { if (prevVisible[r.ws.id] === false) diffs.push(r.ws.agent + "回来了"); prevVisible[r.ws.id] = true; });
-    v.hidden.forEach(function (r) { if (prevVisible[r.ws.id] === true) diffs.push(r.ws.agent + "被藏起"); prevVisible[r.ws.id] = false; });
-    changedEl.textContent = "上次动作：" + state.lastAction + "。" + (diffs.length ? "变化：" + diffs.join("；") + "。" : "可见行无变化。");
-    if (v.warning) { warnEl.style.display = "block"; warnEl.textContent = "⚠ " + v.warning; } else { warnEl.style.display = "none"; warnEl.textContent = ""; }
-    countsEl.innerHTML = "";
+    function mark(id, nowVis, label) {
+      if (prevVis[id] === undefined) { prevVis[id] = nowVis; return; }
+      if (prevVis[id] !== nowVis) diffs.push(label + (nowVis ? "回来了" : "被藏起"));
+      prevVis[id] = nowVis;
+    }
+    if (v.kind === "tree") {
+      state.workspaces.forEach(function (ws) {
+        var on = false;
+        for (var i = 0; i < v.groups.length; i++) if (v.groups[i].ws.path === ws.path) on = true;
+        mark("g:" + ws.id, on, ws.agent);
+      });
+    } else {
+      state.sessions.forEach(function (s) {
+        var on = false;
+        for (var j = 0; j < v.sessions.length; j++) if (v.sessions[j].sess.id === s.id) on = true;
+        mark("s:" + s.id, on, "“" + s.title + "”");
+      });
+    }
+    $("changed").textContent = "上次动作：" + state.lastAction + "。" + (diffs.length ? "变化：" + diffs.join("；") + "。" : "可见行无变化。");
+    if (v.warning) { var w = $("warn"); w.style.display = "block"; w.textContent = "⚠ " + v.warning; }
+    else { var w2 = $("warn"); w2.style.display = "none"; w2.textContent = ""; }
+    var cc = $("counts"); cc.innerHTML = "";
     FILTERS.forEach(function (f) {
-      var s = document.createElement("span");
-      s.className = "count" + (state.filter === f ? " active" : "");
-      s.textContent = FILTER_LABEL[f] + " " + c[f];
-      countsEl.appendChild(s);
+      var s = el("span", "count" + (state.filter === f ? " active" : ""), FILTER_LABEL[f] + " " + c[f]);
+      cc.appendChild(s);
     });
-    segEl.innerHTML = "";
-    FILTERS.forEach(function (f) {
-      var b = document.createElement("button");
-      b.className = state.filter === f ? "active" : "";
-      b.textContent = FILTER_LABEL[f] + " " + c[f];
-      b.onclick = function () { dispatch({ type: "SET_FILTER", filter: f }); };
-      segEl.appendChild(b);
-    });
-    modeLabel.textContent = (state.mode === "delegate" ? "委托原生" : "自画叠加") + "·原生口子" + (state.nativeAvailable ? "有" : "无");
-    railHd.textContent = "左栏模拟（" + v.engine + "）";
-    rowsEl.innerHTML = "";
-    if (!v.visible.length) { var e = document.createElement("div"); e.className = "empty"; e.textContent = "没有匹配的工作区（空态提示，不留白）"; rowsEl.appendChild(e); }
-    v.visible.forEach(function (r) {
-      var d = document.createElement("div"); d.className = "row";
-      var t = document.createElement("span"); t.className = "tag" + (r.bound ? " bound" : ""); t.textContent = r.bound ? "已绑定" : "未绑定";
-      var n = document.createElement("span"); n.textContent = r.ws.agent + "（" + r.ws.id + "）";
-      d.appendChild(n); d.appendChild(t); rowsEl.appendChild(d);
-    });
-    hiddenEl.textContent = v.hidden.length ? "被藏起来的行：" + v.hidden.map(function (r) { return r.ws.agent + "——" + r.reason; }).join("；") : "没有被藏起来的行（全部可见）。";
-    verdictEl.textContent = summarize(state);
-    if (document.activeElement !== nativeInput && nativeInput.value !== state.nativeQuery) nativeInput.value = state.nativeQuery;
+    renderRuler();
+    renderSandbox();
+    var hid = [];
+    if (v.kind === "tree") v.hiddenGroups.forEach(function (r) { hid.push(r.ws.agent + "——" + r.reason); });
+    else v.hiddenSessions.forEach(function (r) { hid.push("“" + r.sess.title + "”——" + r.reason); });
+    $("hiddenList").textContent = hid.length ? ("被藏起来的：" + hid.join("；")) : "没有被藏起来的（全部可见）。";
+    $("verdictOut").textContent = summarize(state);
   }
-  function dispatch(act) { state = reducer(state, act); render(); }
+  function dispatch(act) {
+    if (act.type === "SET_QUERY" && act.query) sandbox.expanded = true;
+    state = reducer(state, act);
+    render();
+  }
   var FREE = [
     { group: "筛选（绑定关）", actions: [ { label: "全部", act: { type: "SET_FILTER", filter: "all" } }, { label: "已绑定", act: { type: "SET_FILTER", filter: "bound" } }, { label: "未绑定", act: { type: "SET_FILTER", filter: "unbound" } } ] },
-    { group: "原生搜索（关键词关）", actions: [ { label: "搜“小”", act: { type: "SET_QUERY", query: "小" } }, { label: "搜“星”", act: { type: "SET_QUERY", query: "星" } }, { label: "搜不存在的词", act: { type: "SET_QUERY", query: "不存在的词" } }, { label: "清空搜索", act: { type: "SET_QUERY", query: "" } } ] },
+    { group: "原生搜索（搜会话标题，结果树替代分组树）", actions: [ { label: "搜“周报”", act: { type: "SET_QUERY", query: "周报" } }, { label: "搜“小帅”", act: { type: "SET_QUERY", query: "小帅" } }, { label: "搜不存在的词", act: { type: "SET_QUERY", query: "不存在的词" } }, { label: "清空搜索", act: { type: "SET_QUERY", query: "" } } ] },
     { group: "绑定变化（看计数）", actions: [ { label: "绑定 dsh-im", act: { type: "BIND_NEW" } }, { label: "解绑星火", act: { type: "UNBIND_WS", path: "D:\\agents\\xinghuo" } }, { label: "星火Bot搬到dsh-im", act: { type: "MOVE", botId: "bot-xinghuo", to: "D:\\agents\\dsh-im", label: "星火 Bot 改绑到 dsh-im（搬移）" } } ] },
-    { group: "连接变化（计数应不动）", actions: [ { label: "轮询刷新", act: { type: "TICK" } }, { label: "飞书轮询失败", act: { type: "POLL_FAIL", channel: "feishu" } }, { label: "飞书轮询恢复", act: { type: "POLL_RECOVER", channel: "feishu" } } ] },
+    { group: "连接变化（计数应不动，徽标会转待确认）", actions: [ { label: "轮询刷新", act: { type: "TICK" } }, { label: "飞书轮询失败", act: { type: "POLL_FAIL", channel: "feishu" } }, { label: "飞书轮询恢复", act: { type: "POLL_RECOVER", channel: "feishu" } } ] },
     { group: "引擎与取证（核心抉择）", actions: [ { label: "自画叠加", act: { type: "SET_MODE", mode: "overlay" } }, { label: "委托原生", act: { type: "SET_MODE", mode: "delegate" } }, { label: "原生口子有", act: { type: "SET_NATIVE_AVAILABLE", available: true } }, { label: "原生口子无", act: { type: "SET_NATIVE_AVAILABLE", available: false } } ] },
     { group: "其他", actions: [ { label: "回到起点", act: { type: "RESET" } } ] }
   ];
-  var fp = document.getElementById("freeplay");
-  FREE.forEach(function (g) { var h = document.createElement("h4"); h.textContent = g.group; fp.appendChild(h); g.actions.forEach(function (a) { var b = document.createElement("button"); b.className = "act"; b.textContent = a.label; b.onclick = (function (act) { return function () { dispatch(act); }; })(a.act); fp.appendChild(b); }); });
+  var fp = $("freeplay");
+  FREE.forEach(function (g) { var h = el("h4", "", g.group); fp.appendChild(h); g.actions.forEach(function (a) { var b = el("button", "act", a.label); b.onclick = (function (act) { return function () { dispatch(act); }; })(a.act); fp.appendChild(b); }); });
   var SCENARIOS = [
-    { key: "happy", name: "① 快乐路径", desc: "起点：3 行（已绑定 2：小帅/星火，未绑定 1：dsh-im）。依次切已绑定→未绑定→全部，看计数 3/2/1 与左栏行藏谁。看点：计数是行数，不是 Bot 数（小帅挂 2 个 Bot 也只算 1 行）。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "切到“已绑定”（应剩小帅+星火）", act: { type: "SET_FILTER", filter: "bound" } }, { label: "切到“未绑定”（应只剩 dsh-im）", act: { type: "SET_FILTER", filter: "unbound" } }, { label: "回到“全部”（3 行全回）", act: { type: "SET_FILTER", filter: "all" } } ] },
-    { key: "counts", name: "② 绑定变化计数", desc: "绑定一变，计数立刻跟变。绑定 dsh-im 后未绑定 1→0；解绑星火后已绑定 2→1；把星火 Bot 搬到 dsh-im 是搬移（星火变未绑定、dsh-im 变已绑定）。看点：计数永远等于当前绑定快照。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "绑定 dsh-im（未绑定应 1→0）", act: { type: "BIND_NEW" } }, { label: "解绑星火（已绑定应变 1）", act: { type: "UNBIND_WS", path: "D:\\agents\\xinghuo" } }, { label: "回到起点再搬移", act: { type: "RESET" } }, { label: "星火Bot搬到dsh-im（两边互换）", act: { type: "MOVE", botId: "bot-xinghuo", to: "D:\\agents\\dsh-im", label: "星火 Bot 改绑到 dsh-im（搬移）" } } ] },
-    { key: "native", name: "③ 原生共存抉择（核心）", desc: "你选了委托原生，这里掰开看：先搜“小”再切已绑定——叠加模式下两道关（绑定+关键词）只剩小帅；切委托且口子有时结果一样（经原生一次算出）；关掉口子后委托漏水（B2 条件被丢掉，未绑定行也漏进来）——这就是委托的风险。", steps: [ { label: "从起点开始（自画叠加）", act: { type: "RESET" } }, { label: "原生搜“小”（剩小帅）", act: { type: "SET_QUERY", query: "小" } }, { label: "再切“已绑定”（仍小帅，两道关）", act: { type: "SET_FILTER", filter: "bound" } }, { label: "切委托+口子有（结果一样，经原生）", act: { type: "SET_MODE", mode: "delegate" } }, { label: "先把口子打开", act: { type: "SET_NATIVE_AVAILABLE", available: true } }, { label: "再把口子关掉（警告出现，但搜“小”时还看不出）", act: { type: "SET_NATIVE_AVAILABLE", available: false } }, { label: "清空搜索（漏水现形：本该 2 行，实际 3 行全漏）", act: { type: "SET_QUERY", query: "" } } ] },
-    { key: "stale", name: "④ 失败与空态", desc: "轮询失败只是“不知道”，不是“没绑定”——飞书查不到时计数纹丝不动；搜一个不存在的词会筛空，左栏给一句空提示而不是留白。看点：绑定≠在线，空态不留白。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "飞书轮询失败（计数应不动）", act: { type: "POLL_FAIL", channel: "feishu" } }, { label: "轮询刷新（失败者时间冻结）", act: { type: "TICK" } }, { label: "搜不存在的词（空+空提示）", act: { type: "SET_QUERY", query: "不存在的词" } }, { label: "清空搜索+恢复", act: { type: "SET_QUERY", query: "" } } ] }
+    { key: "happy", name: "① 快乐路径", desc: "起点：3 组（已绑定 2：小帅/星火，未绑定 1：dsh-im）。264px 沙盒里依次切已绑定→未绑定→全部，看计数 3/2/1、行高 34px 不变、三段无溢出红框。看点：计数是行数；窄栏放得下。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "切到“已绑定”（剩小帅+星火，带绿点）", act: { type: "SET_FILTER", filter: "bound" } }, { label: "切到“未绑定”（只剩 dsh-im，无点）", act: { type: "SET_FILTER", filter: "unbound" } }, { label: "回到“全部”（3 组全回）", act: { type: "SET_FILTER", filter: "all" } } ] },
+    { key: "counts", name: "② 绑定变化计数", desc: "绑定一变，计数立刻跟变。绑定 dsh-im 后未绑定 1→0；解绑星火后已绑定 2→1；把星火 Bot 搬到 dsh-im 是搬移（两边互换，徽标跟着走）。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "绑定 dsh-im（未绑定应 1→0）", act: { type: "BIND_NEW" } }, { label: "回到起点", act: { type: "RESET" } }, { label: "解绑星火（已绑定应变 1）", act: { type: "UNBIND_WS", path: "D:\\agents\\xinghuo" } }, { label: "回到起点再搬移", act: { type: "RESET" } }, { label: "星火Bot搬到dsh-im（两边互换）", act: { type: "MOVE", botId: "bot-xinghuo", to: "D:\\agents\\dsh-im", label: "星火 Bot 改绑到 dsh-im（搬移）" } } ] },
+    { key: "native", name: "③ 原生共存抉择（核心）", desc: "原生搜的是会话标题：搜“周报”出 2 条会话（小帅周报+星火周报），分组树被结果树替代。再切“未绑定”→ 0 条+空提示（两条都属于已绑定组）。切委托且口子有→一样；关掉口子→漏水（2 条全回来）；清空→回分组树。", steps: [ { label: "从起点开始（自画叠加）", act: { type: "RESET" } }, { label: "原生搜“周报”（2 条会话，结果树）", act: { type: "SET_QUERY", query: "周报" } }, { label: "再切“未绑定”（0 条+空提示）", act: { type: "SET_FILTER", filter: "unbound" } }, { label: "切回“已绑定”（2 条回来）", act: { type: "SET_FILTER", filter: "bound" } }, { label: "切委托+先把口子打开", act: { type: "SET_MODE", mode: "delegate" } }, { label: "口子打开（结果一样，经原生）", act: { type: "SET_NATIVE_AVAILABLE", available: true } }, { label: "再把口子关掉（漏水警告+2 条全回）", act: { type: "SET_NATIVE_AVAILABLE", available: false } }, { label: "清空搜索（回分组树）", act: { type: "SET_QUERY", query: "" } } ] },
+    { key: "stale", name: "④ 失败与空态", desc: "轮询失败只是“不知道”，不是“没绑定”——飞书查不到时计数不动，但两组绿点变橙（待确认）；搜一个不存在的词→空结果树+空提示。看点：绑定≠在线，空态不留白。", steps: [ { label: "从起点开始", act: { type: "RESET" } }, { label: "飞书轮询失败（计数不动，绿点变橙）", act: { type: "POLL_FAIL", channel: "feishu" } }, { label: "搜不存在的词（空+空提示）", act: { type: "SET_QUERY", query: "不存在的词" } }, { label: "清空搜索+恢复", act: { type: "SET_QUERY", query: "" } } ] }
   ];
   var cur = 0;
   var doneSteps = {};
   function renderScenario() {
-    var tabsEl = document.getElementById("tabs"); tabsEl.innerHTML = "";
-    SCENARIOS.forEach(function (s, i) { var t = document.createElement("button"); t.className = "tab" + (i === cur ? " active" : ""); t.textContent = s.name; t.onclick = (function (idx) { return function () { cur = idx; doneSteps = {}; renderScenario(); }; })(i); tabsEl.appendChild(t); });
-    document.getElementById("scenarioDesc").textContent = SCENARIOS[cur].desc;
-    var ol = document.getElementById("steps"); ol.innerHTML = "";
+    var tabsEl = $("tabs"); tabsEl.innerHTML = "";
+    SCENARIOS.forEach(function (s, i) { var t = el("button", "tab" + (i === cur ? " active" : ""), s.name); t.onclick = (function (idx) { return function () { cur = idx; doneSteps = {}; renderScenario(); }; })(i); tabsEl.appendChild(t); });
+    $("scenarioDesc").textContent = SCENARIOS[cur].desc;
+    var ol = $("steps"); ol.innerHTML = "";
     SCENARIOS[cur].steps.forEach(function (st, i) {
       var li = document.createElement("li");
-      var b = document.createElement("button"); b.className = "act" + (doneSteps[cur + "-" + i] ? " done" : "");
-      b.textContent = (doneSteps[cur + "-" + i] ? "✓ " : "") + st.label;
+      var b = el("button", "act" + (doneSteps[cur + "-" + i] ? " done" : ""), (doneSteps[cur + "-" + i] ? "✓ " : "") + st.label);
       b.onclick = function () { dispatch(st.act); doneSteps[cur + "-" + i] = true; renderScenario(); };
       li.appendChild(b); ol.appendChild(li);
     });
   }
-  document.getElementById("nativeClear").onclick = function () { dispatch({ type: "SET_QUERY", query: "" }); };
-  nativeInput.addEventListener("change", function () { dispatch({ type: "SET_QUERY", query: nativeInput.value }); });
   render(); renderScenario();
 })();
 </script>

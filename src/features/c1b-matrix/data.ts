@@ -61,7 +61,7 @@ export function healthLabel(health: CellHealth, lang: Lang): string {
 
 export interface MatrixStrings {
   title: string
-  back: string
+  close: string
   refresh: string
   loading: string
   emptyTitle: string
@@ -74,12 +74,12 @@ export interface MatrixStrings {
 
 const STRINGS: Record<Lang, MatrixStrings> = {
   zh: {
-    title: '舰队雷达', back: '‹ 返回列表', refresh: '刷新', loading: '矩阵加载中…',
+    title: '舰队雷达', close: '关闭', refresh: '刷新', loading: '矩阵加载中…',
     emptyTitle: '还没有 Agent', emptySub: '新建 Agent 并接入任意渠道后，这里会出现矩阵',
     agentCol: 'Agent ＼ 渠道', summaryCol: '汇总', drillHint: '点击钻取详情', staleNote: '（数据过期）',
   },
   en: {
-    title: 'Fleet Radar', back: '‹ Back', refresh: 'Refresh', loading: 'Loading matrix…',
+    title: 'Fleet Radar', close: 'Close', refresh: 'Refresh', loading: 'Loading matrix…',
     emptyTitle: 'No agents yet', emptySub: 'Create an agent and connect a channel, and the matrix will appear here',
     agentCol: 'Agent ＼ Channel', summaryCol: 'Summary', drillHint: 'Click for details', staleNote: '(stale)',
   },

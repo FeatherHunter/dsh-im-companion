@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向G · 庭院石灯（枯山水）</title>
+<style>
+body{margin:0;background:#e9e6dc;color:#3a3428;font-family:"Songti SC","STSong","PingFang SC",serif;}
+.wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px;}
+h1{font-size:15px;margin:0 0 4px;font-family:-apple-system,"PingFang SC",sans-serif;} .sub{font-size:12px;opacity:.6;margin:0 0 22px;font-family:-apple-system,"PingFang SC",sans-serif;}
+.grid{display:grid;gap:22px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
+.home{border-radius:18px;padding:20px 18px 16px;background:repeating-radial-gradient(circle at 50% 0%,rgba(120,110,85,.10) 0 1px,transparent 1px 9px),#f4f1e6;box-shadow:inset 0 0 0 1px rgba(120,110,85,.25),0 6px 20px rgba(120,110,85,.12);}
+.hd{display:flex;align-items:baseline;gap:10px;margin-bottom:12px;}
+.nm{font-size:21px;font-weight:800;letter-spacing:.15em;}
+.ct{margin-left:auto;font-size:11px;opacity:.55;font-family:-apple-system,"PingFang SC",sans-serif;}
+.row{display:flex;align-items:center;gap:10px;margin-top:10px;padding:11px 14px;font-size:14px;cursor:grab;background:#fdfbf4;border-radius:22px;box-shadow:0 3px 8px rgba(120,110,85,.20);transition:transform .14s ease,box-shadow .14s ease;}
+.row:hover{transform:translateY(-3px);box-shadow:0 10px 20px rgba(120,110,85,.28);}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:#cfc8b4;}
+.dot.on{background:#4a7c59;box-shadow:0 0 8px rgba(74,124,89,.8);}
+.ch{margin-left:auto;font-size:11px;opacity:.5;font-family:-apple-system,"PingFang SC",sans-serif;}
+.row.drag{opacity:.45;}
+.row.ph{opacity:.35;transform:rotate(-4deg);border:1.5px dashed rgba(120,110,85,.6);box-shadow:none;background:transparent;pointer-events:none;}
+.home.over{outline:2px solid #7a6a45;outline-offset:5px;}
+.hint{font-size:11px;opacity:.55;margin-top:14px;font-family:-apple-system,"PingFang SC",sans-serif;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>方向G · 庭院石灯 <span style="font-weight:400;opacity:.6;">—— 枯山水，成员是小石块</span></h1>
+  <p class="sub">悬停石块浮起；拖走后原位留个"沙坑印"。问题：禅不禅？会不会太素、信息不够？</p>
+  <div class="grid" id="grid"></div>
+  <p class="hint" id="msg">拖“老客户群”去阿梨家，看沙坑印。</p>
+</div>
+<script>
+var homes=[
+ {name:'小帅2',b:[['客服小冰','飞书','on'],['群管家','微信','on']]},
+ {name:'阿梨',b:[['夜间值班','QQ','warn']]},
+ {name:'老墨',b:[['商务一号','飞书','on'],['朋友圈号','微信','off'],['老客户群','QQ','on']]},
+];
+var drag=null;
+function render(){
+  var g=document.getElementById('grid');g.innerHTML='';
+  homes.forEach(function(h,hi){
+    var card=document.createElement('div');card.className='home';
+    card.innerHTML='<div class="hd"><span class="nm">'+h.name+'</span><span class="ct">'+h.b.length+' 个机器人</span></div>';
+    h.b.forEach(function(x){
+      var r=document.createElement('div');r.className='row';
+      r.innerHTML='<span class="dot '+(x[2]==='on'?'on':'')+'"></span><span>'+x[0]+'</span><span class="ch">'+x[1]+'</span>';
+      r.setAttribute('draggable','true');
+      r.addEventListener('dragstart',function(ev){drag={x:x,from:hi};r.classList.add('drag');setTimeout(function(){r.style.display='none';},0);ev.dataTransfer.effectAllowed='move';try{ev.dataTransfer.setData('text/plain',x[0]);}catch(e){}});
+      r.addEventListener('dragstart',function(){
+        var ph=document.createElement('div');ph.className='row ph';ph.textContent=x[0];
+        try{ r.parentNode.insertBefore(ph,r.nextSibling); r._ph=ph; }catch(e){}
+      });
+      r.addEventListener('dragend',function(){r.classList.remove('drag');r.style.display='';try{ if(r._ph){r._ph.remove();r._ph=null;} }catch(e){}clear();});
+      card.appendChild(r);
+    });
+    card.addEventListener('dragover',function(ev){if(!drag)return;ev.preventDefault();clear();card.classList.add('over');});
+    card.addEventListener('drop',function(ev){
+      if(!drag)return;ev.preventDefault();clear();var d=drag;drag=null;
+      if(d.from===hi){say('它已经在'+homes[hi].name+'家了');return;}
+      homes[d.from].b.splice(homes[d.from].b.indexOf(d.x),1);homes[hi].b.push(d.x);render();
+      say('“'+d.x[0]+'”搬到了'+homes[hi].name+'家');
+    });
+    g.appendChild(card);
+  });
+}
+function clear(){document.querySelectorAll('.home.over').forEach(function(n){n.classList.remove('over');});}
+function say(t){document.getElementById('msg').textContent=t;}
+render();
+</script>
+</body>
+</html>

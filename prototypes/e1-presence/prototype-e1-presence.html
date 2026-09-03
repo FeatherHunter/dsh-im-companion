@@ -1,0 +1,202 @@
+<!doctype html>
+<!-- Three variants of the E1 presence glow, switchable via ?variant=A|B|C on this throwaway file (sub-shape B: no host route exists; preview.html is shared so appending there is banned by contract S8). Double-click to open. -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E1 在场感动效原型（抛弃式·3变体）</title>
+<style>
+  :root { --accent:#0a84ff; --ok:#1a9e54; --ok-d:#30d158; --mut:#b0b3b8; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Noto Sans SC","Segoe UI",Roboto,sans-serif; background:#f2f3f5; color:#1c1c1e; -webkit-font-smoothing:antialiased; }
+  body.dark { background:#0b0d12; color:#e8eaf0; }
+  .wrap { max-width:960px; margin:0 auto; padding:20px 16px 110px; }
+  .proto-tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; color:#fff; background:#b42318; border-radius:6px; padding:3px 8px; margin-bottom:10px; }
+  h1 { font-size:23px; margin:0 0 6px; letter-spacing:-.02em; }
+  .lede { font-size:14px; color:#6e6e73; margin:0 0 12px; }
+  body.dark .lede { color:#9aa0ae; }
+  .card { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.06); margin:0 0 14px; overflow:hidden; }
+  body.dark .card { background:#151924; border-color:rgba(255,255,255,.12); box-shadow:none; }
+  .card-hd { padding:12px 16px; border-bottom:1px solid rgba(0,0,0,.07); font-weight:700; font-size:14px; }
+  body.dark .card-hd { border-bottom-color:rgba(255,255,255,.1); }
+  .card-bd { padding:14px 16px; }
+  .q { font-size:13px; line-height:1.7; margin:0; }
+  .q b { color:var(--accent); }
+  .assume { font-size:12px; color:#6e6e73; margin:8px 0 0; line-height:1.7; }
+  body.dark .assume { color:#9aa0ae; }
+  .controls { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; font-size:13px; }
+  .controls label { display:flex; align-items:center; gap:7px; }
+  .controls input[type=range] { width:150px; }
+  .seg { display:inline-flex; border:1px solid rgba(0,0,0,.14); border-radius:999px; overflow:hidden; }
+  body.dark .seg { border-color:rgba(255,255,255,.2); }
+  .seg button { font:inherit; font-size:12.5px; border:0; background:transparent; color:inherit; padding:6px 14px; cursor:pointer; }
+  .seg button.on { background:var(--accent); color:#fff; font-weight:700; }
+  button.act { font:inherit; font-size:12.5px; padding:7px 12px; border-radius:10px; border:1px solid rgba(0,0,0,.14); background:#fff; color:inherit; cursor:pointer; }
+  body.dark button.act { background:#1d2330; border-color:rgba(255,255,255,.16); }
+  button.act.on { border-color:var(--accent); background:rgba(10,132,255,.12); color:var(--accent); font-weight:700; }
+  .state { margin:12px 0 0; font-size:12.5px; line-height:1.8; background:rgba(10,132,255,.07); border:1px solid rgba(10,132,255,.28); border-radius:10px; padding:10px 14px; }
+  body.dark .state { background:rgba(10,132,255,.12); }
+  .state b { color:var(--accent); }
+  .state .warnline { color:#b42318; font-weight:700; }
+  body.dark .state .warnline { color:#ff9f0a; }
+  .vdesc { font-size:13px; line-height:1.7; margin:0 0 12px; }
+  .grid { display:grid; gap:8px; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }
+  .cell { display:flex; align-items:center; gap:8px; border:1px solid rgba(0,0,0,.09); border-radius:10px; padding:8px 10px; background:#f7f8fa; font-size:12px; }
+  body.dark .cell { background:#0f1420; border-color:rgba(255,255,255,.12); }
+  .cell .nm { font-weight:700; }
+  .cell .st { margin-left:auto; font-size:11px; color:#6e6e73; }
+  body.dark .cell .st { color:#9aa0ae; }
+  .dot { width:11px; height:11px; border-radius:50%; flex:none; background:var(--ok); }
+  body.dark .dot { background:var(--ok-d); }
+  .dot.off { background:var(--mut); }
+  .dot.va { animation:presence-breathe-a 1.6s infinite; }
+  @keyframes presence-breathe-a { 0%{box-shadow:0 0 0 0 rgba(26,158,84,.55)} 70%{box-shadow:0 0 0 8px rgba(26,158,84,0)} 100%{box-shadow:0 0 0 0 rgba(26,158,84,0)} }
+  .dot.vb { animation:presence-breathe-b 1.6s ease-in-out infinite; }
+  @keyframes presence-breathe-b { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .dot.vc { animation:presence-breathe-c 1.6s ease-in-out infinite; }
+  @keyframes presence-breathe-c { 0%,100%{transform:scale(1)} 50%{transform:scale(1.4)} }
+  body[data-level=reduced] .dot.va, body[data-level=reduced] .dot.vb, body[data-level=reduced] .dot.vc { animation-duration:2.8s; }
+  body[data-level=static] .dot { animation:none !important; }
+  .dot.off.decay { animation:none; opacity:.55; }
+  .dot.off.flicker { animation:presence-flicker .9s steps(2,jump-none) infinite; opacity:1; }
+  @keyframes presence-flicker { 50%{opacity:.15} }
+  .wsrow { display:flex; align-items:center; gap:8px; border:1px solid rgba(0,0,0,.09); border-radius:10px; padding:9px 12px; margin-bottom:8px; font-size:13px; background:#f7f8fa; }
+  body.dark .wsrow { background:#0f1420; border-color:rgba(255,255,255,.12); }
+  .wsrow .pill { margin-left:auto; display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; padding:3px 10px 3px 7px; border-radius:999px; background:rgba(0,0,0,.05); }
+  body.dark .wsrow .pill { background:rgba(255,255,255,.08); }
+  .cost { width:100%; border-collapse:collapse; font-size:12px; margin-top:4px; }
+  .cost th,.cost td { border:1px solid rgba(0,0,0,.1); padding:6px 8px; text-align:left; }
+  body.dark .cost th, body.dark .cost td { border-color:rgba(255,255,255,.14); }
+  .foot { font-size:11.5px; color:#6e6e73; line-height:1.7; }
+  body.dark .foot { color:#9aa0ae; }
+  #switcher { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; align-items:center; gap:4px; background:#111418; color:#fff; border-radius:999px; padding:6px 8px; box-shadow:0 6px 24px rgba(0,0,0,.35); z-index:99; font-size:13px; }
+  #switcher button { border:0; background:transparent; color:#fff; font-size:16px; width:34px; height:34px; border-radius:50%; cursor:pointer; }
+  #switcher button:hover { background:rgba(255,255,255,.15); }
+  #switcher .lab { padding:0 10px; font-weight:700; white-space:nowrap; }
+  #switcher .proto { font-size:10px; font-weight:700; background:#b42318; border-radius:5px; padding:2px 6px; margin-right:4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="proto-tag">PROTOTYPE·抛弃式·不进生产</span>
+  <h1>E1·在场感呼吸灯与断线动效：3 变体手感验证</h1>
+  <p class="lede">底部悬浮条切换变体（URL ?variant= 可分享）：看呼吸灯手感、断线语义、几十实例降级档，以及与 B1 徽标叠加是否打架。双击即开，零依赖，内存状态，刷新重置。</p>
+  <div class="card"><div class="card-hd">❓ 正在回答的设计问题</div><div class="card-bd">
+    <p class="q">E1 在场感动效：<b>健康呼吸灯</b>用哪种动画手法（光晕 / 透明度 / 缩放）、<b>断线</b>用衰减还是闪烁、<b>几十实例同屏</b>的降级策略（自动阈值 + 手动开关）是否顺畅、与 <b>B1 徽标</b>是复用还是叠加？</p>
+    <p class="assume">已澄清口径（grilling Q1–Q4 全按推荐）：① 走 <b>UI 分支</b>（本文件，?variant= 三变体 + 底部悬浮切换）；② 断线默认 <b>衰减</b>、闪烁仅作对比变体；③ 降级 <b>自动 + 手动双轨、阈值 20 实例</b>；④ E1 <b>独立 presence-* 命名空间</b>（参数复用 token、keyframe 不引用 B1），本页叠加验证。B1（#6）仍 OPEN，故叠加段为 mock 行验证、不依赖真机选择器。</p>
+  </div></div>
+  <div class="card"><div class="card-hd">🎛️ 对照条件（正交切换，每次切换重绘下方状态）</div><div class="card-bd">
+    <div class="controls">
+      <label>实例数 <input id="count" type="range" min="5" max="60" step="1" value="32"> <b id="countv">32</b></label>
+      <span>断线语义 <span class="seg" id="offseg"><button data-v="decay" class="on">衰减</button><button data-v="flicker">闪烁⚠️</button></span></span>
+      <label><input id="manual" type="checkbox"> 减少动态（手动）</label>
+      <label><input id="dark" type="checkbox"> 深色模式</label>
+      <button class="act" id="drop">模拟断线：关</button>
+    </div>
+    <div class="state" id="state"></div>
+  </div></div>
+  <div class="card"><div class="card-hd" id="vtitle">变体</div><div class="card-bd">
+    <p class="vdesc" id="vdesc"></p>
+    <div class="grid" id="grid"></div>
+  </div></div>
+  <div class="card"><div class="card-hd">🧩 与 B1 徽标叠加验证（mock 行，keyframe 独立）</div><div class="card-bd">
+    <div id="wsrows"></div>
+    <p class="assume">B1 真机用 left-badges-breathe（box-shadow）；E1 用独立 presence-breathe-a/b/c（同 token 不同名，零跨 feature 引用）。本段验证：同一行内“徽标 pill + 在场点”视觉不打架；若选 A 变体，两处光晕节奏一致（同为 1.6s）即视为协调。</p>
+  </div></div>
+  <div class="card"><div class="card-hd">💰 成本对照（静态陈述，待真机体感确认）</div><div class="card-bd">
+    <table class="cost">
+      <tr><th>变体</th><th>手法</th><th>成本直觉</th><th>无障碍</th></tr>
+      <tr><td>A 光晕扩散</td><td>box-shadow 每帧重绘</td><td>高（几十实例最先掉帧）</td><td>尊重 reduced-motion（static 档停）</td></tr>
+      <tr><td>B 透明度呼吸</td><td>opacity 合成器层</td><td>低（推荐若 A 卡）</td><td>同上；闪烁语义另有光敏风险</td></tr>
+      <tr><td>C 缩放脉冲</td><td>transform scale</td><td>中（合成器，但行内抖动观感）</td><td>同上</td></tr>
+    </table>
+    <p class="foot">降级档：full（原生周期 1.6s）→ reduced（实例&gt;20，周期 2.8s）→ static（手动 / 系统偏好，动画全停）。Verdict 待真机确认，见 issue #12。</p>
+  </div></div>
+</div>
+<nav id="switcher" aria-label="原型变体切换">
+  <span class="proto">PROTO</span>
+  <button id="prev" title="上一个变体 (←)">◀</button>
+  <span class="lab" id="slabel"></span>
+  <button id="next" title="下一个变体 (→)">▶</button>
+</nav>
+<script>
+"use strict";
+function resolveMotion(s) {
+  if (s.manualReduced) return { level: "static", reason: "手动减少动态开" };
+  if (s.sysReduced) return { level: "static", reason: "系统 prefers-reduced-motion" };
+  if (s.count > 20) return { level: "reduced", reason: "实例数 " + s.count + " > 20 自动降级" };
+  return { level: "full", reason: "全动效" };
+}
+var VARIANTS = {
+  A: { name: "A（光晕扩散）", cls: "va", kf: "presence-breathe-a",
+       desc: "变体 A · 光晕扩散：box-shadow 光环 1.6s，与 B1 同手法不同名。最有呼吸感，但几十实例下重绘成本最高；若真机卡，降级先看 B。" },
+  B: { name: "B（透明度呼吸）", cls: "vb", kf: "presence-breathe-b",
+       desc: "变体 B · 透明度呼吸：opacity 1→0.4→1，合成器友好、最省电。观感最克制，可能是默认款；缺点是远看不如 A 醒目。" },
+  C: { name: "C（缩放脉冲）", cls: "vc", kf: "presence-breathe-c",
+       desc: "变体 C · 缩放脉冲：transform scale 1→1.4，动感最强。成本中等，但圆点胀缩在密集列表里显抖；看真机是否接受。" }
+};
+var ORDER = ["A", "B", "C"];
+var NAMES = ["小帅", "星火", "阿哲", "小孙", "晓芸", "大海", "七七", "阿默", "拾光", "北岛"];
+function param() {
+  try {
+    var v = new URLSearchParams(location.search).get("variant");
+    return VARIANTS[v] ? v : "A";
+  } catch (e) { return "A"; }
+}
+var state = { variant: param(), count: 32, offlineMode: "decay", manualReduced: false, sysReduced: false, dark: false, dropped: false };
+try { state.sysReduced = !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
+var $ = function (id) { return document.getElementById(id); };
+function setVariant(v) {
+  if (!VARIANTS[v]) return;
+  state.variant = v;
+  try { var u = new URL(location.href); u.searchParams.set("variant", v); history.replaceState(null, "", u.toString()); } catch (e) {}
+  render();
+}
+function render() {
+  var V = VARIANTS[state.variant];
+  var m = resolveMotion(state);
+  document.body.dataset.level = m.level;
+  document.body.classList.toggle("dark", state.dark);
+  $("slabel").textContent = V.name;
+  $("vtitle").textContent = "变体 " + V.name;
+  $("vdesc").textContent = V.desc;
+  $("countv").textContent = state.count;
+  var cost = state.variant === "A" ? "高（box-shadow 重绘）" : state.variant === "B" ? "低（opacity 合成）" : "中（transform 合成）";
+  var warn = state.offlineMode === "flicker" ? ' <span class="warnline">⚠️ 闪烁对比中：WCAG 光敏风险，真机只看一眼即定夺。</span>' : "";
+  $("state").innerHTML = "当前变体：<b>" + V.name + "</b>（keyframe <b>" + V.kf + "</b>，独立命名） · 实例数：<b>" + state.count + "</b> · 成本直觉：<b>" + cost + "</b><br>断线语义：<b>" + (state.offlineMode === "decay" ? "衰减（静态灰）" : "闪烁（无限 blink）") + "</b> · 手动减少动态：<b>" + (state.manualReduced ? "开" : "关") + "</b> · 系统偏好：<b>" + (state.sysReduced ? "reduce" : "无偏好") + "</b><br>有效档位：<b>" + m.level + "</b>（" + m.reason + "） · 深色：<b>" + (state.dark ? "开" : "关") + "</b> · 线路：<b>" + (state.dropped ? "已断线" : "在线") + "</b>" + warn;
+  var html = "";
+  for (var i = 0; i < state.count; i++) {
+    var nm = NAMES[i % NAMES.length] + (i >= NAMES.length ? "-" + (Math.floor(i / NAMES.length) + 1) : "");
+    var off = state.dropped && (i % 3 === 2);
+    html += '<div class="cell"><span class="dot ' + V.cls + (off ? " off " + state.offlineMode : "") + '"></span><span class="nm">' + nm + "</span>" + '<span class="st">' + (off ? "断线" : "在线") + "</span></div>";
+  }
+  $("grid").innerHTML = html;
+  var rows = [{ ws: "xiaoshuai", ag: "小帅", on: !state.dropped }, { ws: "dsh-im", ag: "未绑定", on: false }];
+  var rh = "";
+  for (var j = 0; j < rows.length; j++) {
+    var r = rows[j];
+    rh += '<div class="wsrow">📁 ' + r.ws + '<span style="color:#6e6e73;font-size:11px">' + r.ag + '</span><span class="pill"><span class="dot ' + V.cls + (!r.on ? " off " + state.offlineMode : "") + '" style="width:8px;height:8px"></span>' + (r.on ? "飞书·在线" : (r.ag === "未绑定" ? "未绑定" : "离线")) + "</span></div>";
+  }
+  $("wsrows").innerHTML = rh;
+  var segBtns = $("offseg").querySelectorAll("button");
+  for (var k = 0; k < segBtns.length; k++) segBtns[k].classList.toggle("on", segBtns[k].dataset.v === state.offlineMode);
+  $("drop").textContent = state.dropped ? "模拟断线：开（1/3 实例断线）" : "模拟断线：关";
+  $("drop").classList.toggle("on", state.dropped);
+}
+$("prev").onclick = function () { setVariant(ORDER[(ORDER.indexOf(state.variant) + ORDER.length - 1) % ORDER.length]); };
+$("next").onclick = function () { setVariant(ORDER[(ORDER.indexOf(state.variant) + 1) % ORDER.length]); };
+document.addEventListener("keydown", function (e) {
+  var t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+  if (e.key === "ArrowLeft") $("prev").click();
+  if (e.key === "ArrowRight") $("next").click();
+});
+$("count").oninput = function (e) { state.count = +e.target.value; render(); };
+$("offseg").onclick = function (e) { var v = e.target && e.target.dataset && e.target.dataset.v; if (v) { state.offlineMode = v; render(); } };
+$("manual").onchange = function (e) { state.manualReduced = e.target.checked; render(); };
+$("dark").onchange = function (e) { state.dark = e.target.checked; render(); };
+$("drop").onclick = function () { state.dropped = !state.dropped; render(); };
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>概念乙 · 岛屿（暗黑渐变）</title>
+<style>
+body{margin:0;background:#000;color:#f5f5f7;font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif;}
+.wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px;}
+h1{font-size:15px;margin:0 0 4px;font-weight:700;}
+.sub{font-size:12px;color:#98989f;margin:0 0 24px;}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
+.isle{position:relative;border-radius:22px;padding:20px 18px 14px;color:#fff;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.5);}
+.i0{background:linear-gradient(150deg,#0a2540,#0a84ff33 60%,#101014);}
+.i1{background:linear-gradient(150deg,#06351c,#30d15833 60%,#101014);}
+.i2{background:linear-gradient(150deg,#2c0a3a,#bf5af233 60%,#101014);}
+.isle{border:1px solid rgba(255,255,255,.12);}
+.top{display:flex;align-items:baseline;gap:8px;margin-bottom:4px;}
+.avatar{width:34px;height:34px;border-radius:50%;display:inline-grid;place-items:center;font-size:16px;font-weight:800;background:rgba(255,255,255,.16);backdrop-filter:blur(4px);}
+.name{font-size:19px;font-weight:800;}
+.n{margin-left:auto;font-size:11px;color:rgba(255,255,255,.6);}
+.row{display:flex;align-items:center;gap:9px;margin-top:8px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.09);backdrop-filter:blur(8px);font-size:14px;cursor:grab;border:1px solid rgba(255,255,255,.08);}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:#636366;}
+.dot.on{background:#30d853;box-shadow:0 0 10px #30d853;animation:br 1.8s infinite;}
+.dot.warn{background:#ffd60a;box-shadow:0 0 8px rgba(255,214,10,.8);}
+@keyframes br{0%{box-shadow:0 0 0 0 rgba(48,216,83,.6)}70%{box-shadow:0 0 0 8px rgba(48,216,83,0)}100%{box-shadow:0 0 0 0 rgba(48,216,83,0)}}
+.ch{margin-left:auto;font-size:11px;color:rgba(255,255,255,.55);}
+.row.drag{opacity:.35;}
+.isle.over{outline:2px solid #fff;outline-offset:3px;}
+.hint{font-size:11px;color:#98989f;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>概念乙 · 岛屿 <span style="font-weight:400;color:#98989f;">—— 暗黑渐变，Linear 式</span></h1>
+  <p class="sub">直接拖成员换家（本地模拟）。问题：贵不贵？灯在暗底上够不够亮？</p>
+  <div class="grid" id="grid"></div>
+  <p class="hint" id="msg">把「夜间值班」拖到老墨家试试。</p>
+</div>
+<script>
+var homes=[
+ {name:'小帅2',b:['客服小冰|飞书|on','群管家|微信|on']},
+ {name:'阿梨',b:['夜间值班|QQ|warn']},
+ {name:'老墨',b:['商务一号|飞书|on','朋友圈号|微信|off','老客户群|QQ|on']},
+];
+var drag=null;
+function render(){
+  var g=document.getElementById('grid');g.innerHTML='';
+  homes.forEach(function(h,hi){
+    var card=document.createElement('div');card.className='isle i'+(hi%3);
+    var bots=h.b.map(function(s){var p=s.split('|');return{n:p[0],ch:p[1],st:p[2]};});
+    card.innerHTML='<div class="top"><span class="avatar">'+h.name.charAt(0)+'</span><span class="name">'+h.name+'</span><span class="n">'+bots.length+' 个机器人</span></div>';
+    bots.forEach(function(b){
+      var r=document.createElement('div');r.className='row';r.setAttribute('draggable','true');
+      r.innerHTML='<span class="dot '+(b.st==='on'?'on':b.st==='warn'?'warn':'')+'"></span><span>'+b.n+'</span><span class="ch">'+b.ch+'</span>';
+      r.addEventListener('dragstart',function(ev){drag={raw:b.n+'|'+b.ch+'|'+b.st,from:hi};r.classList.add('drag');ev.dataTransfer.effectAllowed='move';try{ev.dataTransfer.setData('text/plain',b.n);}catch(e){}});
+      r.addEventListener('dragend',function(){r.classList.remove('drag');clear();});
+      card.appendChild(r);
+    });
+    card.addEventListener('dragover',function(ev){if(!drag)return;ev.preventDefault();clear();card.classList.add('over');});
+    card.addEventListener('drop',function(ev){
+      if(!drag)return;ev.preventDefault();clear();var d=drag;drag=null;
+      if(d.from===hi){say('它已经在'+homes[hi].name+'家了');return;}
+      var src=homes[d.from].b,ix=src.indexOf(d.raw);if(ix>=0)src.splice(ix,1);
+      homes[hi].b.push(d.raw);render();
+      say('“'+d.raw.split('|')[0]+'”搬到了'+homes[hi].name+'家');
+    });
+    g.appendChild(card);
+  });
+}
+function clear(){document.querySelectorAll('.isle.over').forEach(function(n){n.classList.remove('over');});}
+function say(t){document.getElementById('msg').textContent=t;}
+render();
+</script>
+</body>
+</html>

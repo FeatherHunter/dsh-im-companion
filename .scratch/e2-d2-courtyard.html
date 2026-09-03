@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向B · 四合院（东方门第）</title>
+<style>
+body{margin:0;background:#efe9db;color:#2e2620;font-family:"Songti SC","STSong","PingFang SC",serif;}
+.wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px;}
+h1{font-size:15px;margin:0 0 4px;font-family:-apple-system,"PingFang SC",sans-serif;} .sub{font-size:12px;opacity:.6;margin:0 0 22px;font-family:-apple-system,"PingFang SC",sans-serif;}
+.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
+.home{background:#fffdf6;border:1px solid #d8cfae;outline:1px solid #d8cfae;outline-offset:4px;border-radius:4px;padding:18px 18px 14px;}
+.hd{display:flex;gap:12px;align-items:stretch;margin-bottom:10px;}
+.vname{writing-mode:vertical-rl;font-size:22px;font-weight:800;letter-spacing:.3em;border-right:1px solid #d8cfae;padding-right:8px;}
+.meta{display:flex;flex-direction:column;justify-content:center;}
+.seal{align-self:flex-start;background:#c8402a;color:#fff;font-size:15px;font-weight:800;border-radius:5px;padding:3px 7px;box-shadow:0 2px 6px rgba(200,64,42,.35);}
+.ct{font-size:11px;opacity:.55;margin-top:6px;font-family:-apple-system,"PingFang SC",sans-serif;}
+.row{display:flex;align-items:center;gap:9px;margin-top:8px;padding:10px 12px;font-size:14px;cursor:grab;background:transparent;border:1px solid transparent;border-radius:4px;transition:background .13s ease,border-color .13s ease,transform .13s ease,box-shadow .13s ease;}
+.row:hover{background:#f7efdc;border-color:#c8402a;transform:translateX(4px);box-shadow:-3px 0 0 #c8402a;}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;background:#cfc8b4;}
+.dot.on{background:#2e7d32;box-shadow:0 0 7px rgba(46,125,50,.7);}
+.ch{margin-left:auto;font-size:11px;opacity:.55;font-family:-apple-system,"PingFang SC",sans-serif;}
+.row.drag{opacity:.4;}
+.home.over{outline:2px solid #c8402a;outline-offset:5px;}
+.hint{font-size:11px;opacity:.55;margin-top:14px;font-family:-apple-system,"PingFang SC",sans-serif;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>方向B · 四合院 <span style="font-weight:400;opacity:.6;">—— 竖排门牌 + 印章 + 门客名帖</span></h1>
+  <p class="sub">悬停名帖会盖印右移（先放上去不动）；拖拽换家照常。问题：和"家"字配不配？会不会太复古？</p>
+  <div class="grid" id="grid"></div>
+  <p class="hint" id="msg">先悬停，再拖“夜间值班”去老墨家。</p>
+</div>
+<script>
+var homes=[
+ {name:'小帅2',b:[['客服小冰','飞书','on'],['群管家','微信','on']]},
+ {name:'阿梨',b:[['夜间值班','QQ','warn']]},
+ {name:'老墨',b:[['商务一号','飞书','on'],['朋友圈号','微信','off'],['老客户群','QQ','on']]},
+];
+var drag=null;
+function render(){
+  var g=document.getElementById('grid');g.innerHTML='';
+  homes.forEach(function(h,hi){
+    var card=document.createElement('div');card.className='home';
+    card.innerHTML='<div class="hd"><div class="vname">'+h.name+'</div><div class="meta"><span class="seal">'+h.name.charAt(0)+'</span><span class="ct">'+h.b.length+' 个机器人</span></div></div>';
+    h.b.forEach(function(x){
+      var r=document.createElement('div');r.className='row';
+      r.innerHTML='<span class="dot '+(x[2]==='on'?'on':'')+'"></span><span>'+x[0]+'</span><span class="ch">'+x[1]+'</span>';
+      r.setAttribute('draggable','true');
+      r.addEventListener('dragstart',function(ev){drag={x:x,from:hi};r.classList.add('drag');ev.dataTransfer.effectAllowed='move';try{ev.dataTransfer.setData('text/plain',x[0]);}catch(e){}});
+      r.addEventListener('dragend',function(){r.classList.remove('drag');clear();});
+      card.appendChild(r);
+    });
+    card.addEventListener('dragover',function(ev){if(!drag)return;ev.preventDefault();clear();card.classList.add('over');});
+    card.addEventListener('drop',function(ev){
+      if(!drag)return;ev.preventDefault();clear();var d=drag;drag=null;
+      if(d.from===hi){say('它已经在'+homes[hi].name+'家了');return;}
+      homes[d.from].b.splice(homes[d.from].b.indexOf(d.x),1);homes[hi].b.push(d.x);render();
+      say('“'+d.x[0]+'”搬到了'+homes[hi].name+'家');
+    });
+    g.appendChild(card);
+  });
+}
+function clear(){document.querySelectorAll('.home.over').forEach(function(n){n.classList.remove('over');});}
+function say(t){document.getElementById('msg').textContent=t;}
+render();
+</script>
+</body>
+</html>

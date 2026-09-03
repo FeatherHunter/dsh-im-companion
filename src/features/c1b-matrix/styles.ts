@@ -1,6 +1,10 @@
 /** C1b 矩阵样式（c1bm-* 命名空间：c1bm = c1b-matrix 缩写，全局唯一；颜色直引 --dsw-alias-* 令牌 + 浅色回退，深浅主题免费跟随，仿 c1a）。 */
 export const CSS = `
 .c1bm-root { padding: 6px 4px 12px; }
+.c1bm-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(0,0,0,.45); }
+.c1bm-modal { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); width: min(1120px,96vw); max-height: 88vh; overflow: auto; z-index: 1200; background: var(--dsw-alias-bg-base,#fff); color: var(--dsw-alias-label-primary,#1c1c1e); border: 1px solid var(--dsw-alias-separator,#ddd); border-radius: 16px; box-shadow: 0 24px 64px rgba(0,0,0,.28); padding: 16px 18px; }
+.c1bm-close { font: inherit; font-size: 12px; padding: 5px 10px; border-radius: 9px; border: 1px solid transparent; background: transparent; color: var(--dsw-alias-label-secondary,#6e6e73); cursor: pointer; }
+.c1bm-close:hover { color: var(--dsw-alias-brand-primary,#0a84ff); }
 .c1bm-hd { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 10px; flex-wrap: wrap; }
 .c1bm-title { margin: 0; font-size: 17px; line-height: 22px; font-weight: 700; color: var(--dsw-alias-label-primary,#1c1c1e); }
 .c1bm-meta { font-size: 12px; color: var(--dsw-alias-label-tertiary,#98989d); font-variant-numeric: tabular-nums; }

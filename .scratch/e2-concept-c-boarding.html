@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>概念丙 · 登机牌（票据秩序）</title>
+<style>
+body{margin:0;background:#ececf1;color:#1d1d1f;font-family:ui-monospace,"SF Mono",Consolas,"PingFang SC",sans-serif;}
+.wrap{max-width:640px;margin:0 auto;padding:32px 20px 80px;font-family:-apple-system,"PingFang SC",sans-serif;}
+h1{font-size:15px;margin:0 0 4px;font-weight:700;}
+.sub{font-size:12px;color:#6e6e73;margin:0 0 24px;}
+.ticket{background:#fff;border-radius:14px;margin-bottom:16px;box-shadow:0 2px 12px rgba(0,0,0,.07);overflow:hidden;}
+.stub{display:flex;align-items:center;gap:10px;padding:12px 16px 4px;}
+.no{font-family:ui-monospace,"SF Mono",Consolas,monospace;font-size:11px;color:#fff;background:#1d1d1f;border-radius:6px;padding:2px 8px;}
+.dest{font-size:20px;font-weight:800;}
+.n{margin-left:auto;font-size:11px;color:#6e6e73;font-family:ui-monospace,monospace;}
+.perf{border-top:2px dashed #d2d2d7;margin:8px 0 0;position:relative;}
+.perf:before,.perf:after{content:'';position:absolute;top:-9px;width:16px;height:16px;border-radius:50%;background:#ececf1;}
+.perf:before{left:-8px;}.perf:after{right:-8px;}
+.pax{padding:6px 8px 12px;}
+.row{display:flex;align-items:center;gap:9px;padding:9px 10px;font-size:13.5px;border-radius:9px;cursor:grab;}
+.row:hover{background:#f5f5f7;}
+.dot{width:7px;height:7px;border-radius:50%;flex:none;background:#d2d2d7;font-family:ui-monospace,monospace;}
+.dot.on{background:#30d158;}.dot.warn{background:#ff9f0a;}
+.ch{margin-left:auto;font-size:11px;color:#6e6e73;border:1px solid #d2d2d7;border-radius:6px;padding:1px 7px;}
+.row.drag{opacity:.35;background:#e8f0ff;}
+.ticket.over{outline:2px solid #0a84ff;outline-offset:3px;}
+.hint{font-size:11px;color:#6e6e73;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>概念丙 · 登机牌 <span style="font-weight:400;color:#6e6e73;">—— 票据秩序，极客味</span></h1>
+  <p class="sub">直接拖成员换票（本地模拟）。问题：看到是笑还是皱眉？还像不像家？</p>
+  <div id="grid"></div>
+  <p class="hint" id="msg">把「朋友圈号」拖到阿梨家试试。</p>
+</div>
+<script>
+var homes=[
+ {name:'小帅2',b:['客服小冰|飞书|on','群管家|微信|on']},
+ {name:'阿梨',b:['夜间值班|QQ|warn']},
+ {name:'老墨',b:['商务一号|飞书|on','朋友圈号|微信|off','老客户群|QQ|on']},
+];
+var drag=null;
+function render(){
+  var g=document.getElementById('grid');g.innerHTML='';
+  homes.forEach(function(h,hi){
+    var t=document.createElement('div');t.className='ticket';
+    var bots=h.b.map(function(s){var p=s.split('|');return{n:p[0],ch:p[1],st:p[2]};});
+    t.innerHTML='<div class="stub"><span class="no">No.0'+(hi+1)+'</span><span class="dest">'+h.name+'</span><span class="n">'+bots.length+' PAX</span></div><div class="perf"></div><div class="pax"></div>';
+    var pax=t.querySelector('.pax');
+    bots.forEach(function(b){
+      var r=document.createElement('div');r.className='row';r.setAttribute('draggable','true');
+      r.innerHTML='<span class="dot '+(b.st==='on'?'on':b.st==='warn'?'warn':'')+'"></span><span>'+b.n+'</span><span class="ch">'+b.ch+'</span>';
+      r.addEventListener('dragstart',function(ev){drag={raw:b.n+'|'+b.ch+'|'+b.st,from:hi};r.classList.add('drag');ev.dataTransfer.effectAllowed='move';try{ev.dataTransfer.setData('text/plain',b.n);}catch(e){}});
+      r.addEventListener('dragend',function(){r.classList.remove('drag');clear();});
+      pax.appendChild(r);
+    });
+    t.addEventListener('dragover',function(ev){if(!drag)return;ev.preventDefault();clear();t.classList.add('over');});
+    t.addEventListener('drop',function(ev){
+      if(!drag)return;ev.preventDefault();clear();var d=drag;drag=null;
+      if(d.from===hi){say('它已经在'+homes[hi].name+'家了');return;}
+      var src=homes[d.from].b,ix=src.indexOf(d.raw);if(ix>=0)src.splice(ix,1);
+      homes[hi].b.push(d.raw);render();
+      say('“'+d.raw.split('|')[0]+'”登机 → '+homes[hi].name+'家');
+    });
+    g.appendChild(t);
+  });
+}
+function clear(){document.querySelectorAll('.ticket.over').forEach(function(n){n.classList.remove('over');});}
+function say(t){document.getElementById('msg').textContent=t;}
+render();
+</script>
+</body>
+</html>

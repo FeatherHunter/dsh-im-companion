@@ -1,0 +1,10 @@
+const path = require("path");
+const fs = require("fs");
+const D = __dirname;
+let s = fs.readFileSync(path.join(D, "features/welcome-banner/styles.cjs"), "utf8");
+s = s.split('require("../../client/theme")').join('require("../../client/theme.cjs")');
+fs.writeFileSync(path.join(D, "features/welcome-banner/styles.cjs"), s);
+const m = require(path.join(D, "features/welcome-banner/styles.cjs"));
+const t = fs.readFileSync(path.join(D, "template.html"), "utf8");
+fs.writeFileSync(path.join(D, "preview.html"), t.split("PLACEHOLDER_CSS").join(m.CSS));
+console.log("css " + m.CSS.length + " minheight:" + (m.CSS.indexOf("min-height") >= 0));

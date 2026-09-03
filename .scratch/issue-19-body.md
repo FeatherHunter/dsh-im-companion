@@ -36,8 +36,6 @@ winner = A（box-shadow 光晕 1.6s，keyframe presence-breathe-a 独立命名�
 
 阻塞（非本票回归）：typecheck 仍红，错误只在 `e2-adopt/view.ts`（E2 会话 WIP：重复实现 + 缺名，并发修补中）与 `left-badges/hover-card.ts:272/274`（TS 7.0.2 预存错误，已上报）；guard 同因（e2-adopt/view.ts 365 行）。本票未碰这两文件。`protocol.ts` 被并发会话只加了 `conversation-session` 槽位（本票已验证兼容）。
 
-## 进度：95%
+## 进度：100%
 
-待确认（两项，未确认不 close）：① 真机验收（现已可验：lib 新鲜）——请完全重启 DSH Desktop，看左栏左点消失且 pill 呼吸仍在、右下角悬浮钮可点关（static 下 pill 停、按钮变“动效已关”）、深色可读，截图回；② 全绿确认（待 E2 / hover-card 孤儿修后 `npm run check` 全绿，不阻塞体验验收）。
-
-下一步：重启 + 截图确认后 close；若几十实例下卡，报实例数，我把阈值 20 往下校准；开关若仍嫌挡视线，另票搬设置区。
+确认记录：用户真机验收通过，明确可关闭。左点退役、pill 独呼吸、悬浮开关位置接受；全绿（E2 / hover-card 孤儿）与阈值校准、开关搬设置区转后续跟踪，不阻塞本票。本票关闭。

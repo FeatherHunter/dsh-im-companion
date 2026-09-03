@@ -1,0 +1,388 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE for issue #14 (E3 会话路由预览). Do NOT ship to main. -->
+<!-- Branch: LOGIC (logic/state model). Question: 给定 Agent + 渠道会话,预览会路由到哪个 DSH session?含已绑定/会话失效/未识别兜底;落点以 verdict 文字记录,UI 三变体 deferred 至 #9 关闭后. -->
+<!-- Grilling 共识 (2026-09-03): 兜底=未绑定→[去绑定占位](映射归 dsh-im,预览只读);脱敏=昵称+截断8;mock=单 Agent 小帅 x 5 会话 + 陌生输入;落点=逻辑先行. -->
+<!-- Run: 双击打开,或 python -m http.server 8788 后访问 /prototypes/routing-preview/prototype-e3-routing-preview.html -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[PROTOTYPE #14] E3 会话路由预览 · 逻辑推演</title>
+<style>
+  :root { color-scheme: light; --bg:#f6f8fa; --panel:#fff; --ink:#1f2329; --mut:#646a73; --line:#e5e6eb; --acc:#1677ff; --ok:#20a162; --bad:#d92d20; --warn:#b25e09; --warnbg:#fff7e6; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.6 -apple-system,"PingFang SC","Noto Sans SC",Segoe UI,Roboto,sans-serif; }
+  .proto-banner { background:var(--warnbg); border-bottom:2px dashed var(--warn); color:#7a4b00; padding:8px 16px; font-size:12px; }
+  .wrap { max-width:960px; margin:0 auto; padding:16px 16px 80px; }
+  h1 { font-size:20px; margin:12px 0 4px; }
+  .q { background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--acc); border-radius:8px; padding:10px 12px; font-size:13px; }
+  .q b { color:var(--acc); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; margin-top:12px; }
+  .panel h2 { font-size:14px; margin:0 0 8px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:720px){ .grid{grid-template-columns:1fr} }
+  .kv { display:grid; gap:2px; font-size:13px; }
+  .kv div { display:flex; justify-content:space-between; gap:10px; border-bottom:1px dashed var(--line); padding:4px 0; }
+  .kv span:first-child { color:var(--mut); flex:none; }
+  .kv .v { text-align:right; word-break:break-all; }
+  .verdict { border-radius:10px; padding:10px 12px; font-size:13px; margin-top:10px; border:1px solid var(--line); }
+  .verdict.bound { border-left:5px solid var(--ok); }
+  .verdict.stale { border-left:5px solid var(--warn); background:var(--warnbg); }
+  .verdict.unbound { border-left:5px solid var(--mut); }
+  .verdict.bad { border-left:5px solid var(--bad); }
+  .changed { outline:2px solid var(--acc); outline-offset:2px; border-radius:6px; }
+  .btnrow { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+  .btn { padding:7px 12px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); cursor:pointer; font:inherit; }
+  .btn.primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .btn.warn { border-color:var(--warn); color:var(--warn); }
+  .btn.danger { border-color:var(--bad); color:var(--bad); }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .btn.done { border-color:var(--ok); color:var(--ok); }
+  .tabs { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .tab { padding:7px 12px; border:1px solid var(--line); border-radius:999px; background:var(--panel); cursor:pointer; font-size:13px; }
+  .tab.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .step { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:8px; font-size:13px; }
+  .step ol { margin:8px 0 0; padding-left:20px; display:grid; gap:8px; }
+  pre { margin:8px 0 0; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px; font-size:11px; overflow:auto; max-height:240px; white-space:pre-wrap; }
+  .note { font-size:12px; color:var(--mut); margin-top:8px; }
+  input[type=text] { font:inherit; padding:7px 10px; border:1px solid var(--line); border-radius:8px; width:100%; background:var(--panel); color:var(--ink); }
+  code { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 4px; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="proto-banner">⚠️ THROWAWAY PROTOTYPE · issue #14 (E3) · 抛弃式逻辑原型，不进 main。决议后纯函数模块升格进真代码，HTML 壳归档到 throwaway 分支。运行：双击本文件，或 <code>python -m http.server 8788</code>。</div>
+<div class="wrap">
+  <h1>E3 · 会话路由预览 — 逻辑推演台</h1>
+  <div class="q">
+    <b>要回答的问题：</b>给定 Agent（小帅）与一个渠道会话，预览会路由到哪个 DSH session？
+    覆盖三种落点：① <b>已绑定且会话存在</b> → 显示截断 sess-id + [在中间打开]；② <b>已绑定但会话已失效</b>（真机 <code>sessionExists=false</code>）→ 预警“下一条真消息将重建”，预览不擅自新建；
+    ③ <b>未识别（sessionFor=null）</b> → 未绑定卡 + [去绑定占位]（真绑定发生在下一条真消息，由 dsh-im 自动建，companion 只读预览）。
+    真机依据：<code>conversationKey(event)</code>（飞书 <code>p2p:&lt;senderId&gt;</code> / <code>group:&lt;chatId&gt;</code>）→ <code>StateStore.sessionFor(key)</code> 字典查表 → <code>harness.workspaceSession(sessionId)</code>。
+    <b>分支：LOGIC</b>（单文件可分享 HTML；落点“抽屉 vs 独立页”只记 verdict，不做 UI 变体，待 #9 关闭后另起）。
+  </div>
+
+  <div class="panel">
+    <h2>当前状态（每次点击后重渲染）</h2>
+    <div class="grid">
+      <div class="kv" id="kv"></div>
+      <div>
+        <div style="font-size:12px;color:var(--mut)">预览卡（脱敏：昵称 + sess 截断 8 位，真实 key 不明文）</div>
+        <div class="verdict unbound" id="card">—</div>
+      </div>
+    </div>
+    <div class="note" id="delta">尚未操作。请从下面的自由推演或引导走查开始。</div>
+    <div style="font-size:12px;color:var(--mut);margin-top:8px">完整状态 JSON（调试区：此处可见完整 key，真实现收敛）</div>
+    <pre id="json">{}</pre>
+  </div>
+
+  <div class="panel">
+    <h2>自由推演（任意顺序点）</h2>
+    <div style="font-size:12px;color:var(--mut)">先选一个会话，再做动作。每个动作都是一次“路由事件”，状态面板即时外显。</div>
+    <div class="btnrow" id="convs"></div>
+    <div class="btnrow">
+      <button class="btn primary" data-act="preview">预览路由</button>
+      <button class="btn" data-act="open">在中间打开（占位）</button>
+      <button class="btn" data-act="incoming">模拟来一条真消息（dsh-im 自动建/复用）</button>
+      <button class="btn warn" data-act="kill">模拟会话被删（变 stale）</button>
+      <button class="btn danger" data-act="clear">解绑（clearSession，占位）</button>
+      <button class="btn" data-act="reset">重置 mock</button>
+    </div>
+    <div class="btnrow">
+      <input type="text" id="stranger" placeholder="陌生输入：如 group:oc_stranger999 / p2p:ou_stranger1，回车即选中并预览">
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>引导走查（每个 tab 一个难推的 case，起点固定）</h2>
+    <div class="tabs" id="tabs"></div>
+    <div class="step" id="step"></div>
+  </div>
+
+  <div class="panel">
+    <h2>落点 verdict（文字记录，非 UI 变体 · 待确认）</h2>
+    <div style="font-size:13px">建议落点：<b>C1a 抽屉内“会话路由摘要”区</b>（#9 验收后验证）。理由：① 复用 D 线已投入的抽屉席位（#9 已 95%），不新开独立页；② 路由卡是“身份配置的只读摘要”，与抽屉语义一致；③ 独立页会制造第二个信息孤岛。
+    待确认：抽屉 15s 刷新下摘要是否存活（#9 P0-3 同源问题）；“[在中间打开]”真实跳转 shape（<code>harness.openSession</code> 是否存在）。</div>
+    <div class="note">源码级发现（待 R3 修订）：R3 报告写 key 形如 <code>direct:&lt;openId&gt;</code>，但飞书真机是 <code>p2p:&lt;senderId&gt;</code>（message-utils.mjs:10-20）。走查 T3 用一条存量 <code>direct:</code> 数据演示“旧 key 命中、新事件查不到”的幽灵未绑定。</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+ * 纯逻辑模块（可整体升格进真代码；无 DOM、无 document 引用）
+ * 真机对照：
+ *  - key 规则 == dsh-im/src/channels/feishu/message-utils.mjs conversationKey
+ *  - 查表规则 == ConversationStateStore.sessionFor (sessions[key] ?? null)
+ *  - 建会话规则 == workspace-session.mjs askInWorkspaceSession (null/stale 时新建+setSession)
+ *  - companion 预览 == 只读：previewRoute 从不新建，只报 verdict
+ * ============================================================ */
+const SHOW_LEN = 8;
+
+function buildP2pKey(senderId) {
+  if (!senderId || typeof senderId !== "string") throw new Error("p2p event has no sender id");
+  return "p2p:" + senderId;
+}
+function buildGroupKey(chatId) {
+  if (!chatId || typeof chatId !== "string") throw new Error("group event has no chat id");
+  return "group:" + chatId;
+}
+/* 与真机 conversationKey(event) 同语义的最小形态 */
+function keyForEvent(event) {
+  const chatType = event && event.message && event.message.chat_type;
+  if (chatType === "p2p") {
+    const sid = (event.sender && event.sender.sender_id && (event.sender.sender_id.open_id || event.sender.sender_id.user_id)) || null;
+    return buildP2pKey(sid);
+  }
+  const chatId = event && event.message && event.message.chat_id;
+  return buildGroupKey(chatId);
+}
+function sessionFor(store, key) {
+  if (!store || typeof store !== "object") return null;
+  const v = store[key];
+  return (typeof v === "string" && v) ? v : null;
+}
+/* 只读预览： verdict ∈ bound | stale | unbound；从不写 store */
+function previewRoute(store, key, existsSet) {
+  const sid = sessionFor(store, key);
+  if (!sid) return { verdict: "unbound", key, sessionId: null, note: "sessionFor=null：从未绑定，下一条真消息由 dsh-im 建新会话" };
+  if (!existsSet.has(sid)) return { verdict: "stale", key, sessionId: sid, note: "已绑定但会话已失效：预览预警，下一条真消息将重建并 setSession" };
+  return { verdict: "bound", key, sessionId: sid, note: "命中且会话存在，可在中间打开" };
+}
+/* 真消息路径（dsh-im 拥有）：null/stale 时建新会话并写回；bound 时复用 */
+function onIncomingMessage(store, existsSet, key, newId) {
+  const cur = sessionFor(store, key);
+  if (cur && existsSet.has(cur)) return { reused: cur, created: null };
+  const sid = newId;
+  store[key] = sid;
+  existsSet.add(sid);
+  return { reused: null, created: sid };
+}
+function shortId(sid) { return sid.length > SHOW_LEN ? sid.slice(0, SHOW_LEN) + "…" : sid; }
+
+/* ---------------- fixture（内存态，无持久化） ---------------- */
+const AGENT = "小帅";
+function seedState() {
+  return {
+    store: {
+      "p2p:ou_zhangsan": "sess-aaa11111",
+      "p2p:ou_lisi": "sess-bbb22222",
+      "group:oc_proj": "sess-ccc33333",
+      "direct:ou_zhangsan": "sess-legacy999", /* 存量旧 key：演示 R3 direct: 与真机 p2p: 不一致 */
+    },
+    exists: new Set(["sess-aaa11111", "sess-bbb22222", "sess-ccc33333", "sess-legacy999"]),
+    convs: [
+      { id: "c1", kind: "私聊", nick: "张三", event: { message: { chat_type: "p2p" }, sender: { sender_id: { open_id: "ou_zhangsan" } } } },
+      { id: "c2", kind: "私聊", nick: "李四", event: { message: { chat_type: "p2p" }, sender: { sender_id: { open_id: "ou_lisi" } } } },
+      { id: "c3", kind: "群聊", nick: "项目群", event: { message: { chat_type: "group", chat_id: "oc_proj" } } },
+      { id: "c4", kind: "群聊", nick: "新群（未绑定）", event: { message: { chat_type: "group", chat_id: "oc_new" } } },
+      { id: "c5", kind: "存量旧key", nick: "direct:ou_zhangsan（幽灵）", event: null, rawKey: "direct:ou_zhangsan" },
+    ],
+    selectedId: "c1",
+    lastPreview: null,
+    lastAction: "初始 mock 已就绪",
+    counter: 0,
+  };
+}
+let S = seedState();
+function selectedConv() {
+  const c = S.convs.find((x) => x.id === S.selectedId);
+  if (!c) return S.convs[0];
+  return c;
+}
+function keyOf(conv) { return conv.rawKey ? conv.rawKey : keyForEvent(conv.event); }
+function labelOf(conv) { return AGENT + "·" + conv.kind + "@" + conv.nick; }
+</script>
+
+<script>
+"use strict";
+/* ---------- 薄壳：渲染 + 接线（抛弃式，可扔） ---------- */
+const $ = (id) => document.getElementById(id);
+const kvEl = $("kv"), cardEl = $("card"), jsonEl = $("json"), deltaEl = $("delta");
+const convsEl = $("convs"), tabsEl = $("tabs"), stepEl = $("step");
+let lastJson = "";
+
+function displayName(conv) { return labelOf(conv); }
+
+function render(changed) {
+  const conv = selectedConv();
+  let key = null, keyErr = null;
+  try { key = keyOf(conv); } catch (e) { keyErr = String((e && e.message) || e); }
+  const pv = key && !keyErr ? previewRoute(S.store, key, S.exists) : null;
+  if (pv) S.lastPreview = pv;
+
+  const rows = [
+    ["Agent", AGENT],
+    ["选中会话", displayName(conv)],
+    ["派生 conversationKey", keyErr ? ("非法输入：" + keyErr) : key],
+    ["sessionFor 结果", pv ? (pv.sessionId ? pv.sessionId : "null（未绑定）") : "—"],
+    ["会话存在性", pv && pv.sessionId ? (S.exists.has(pv.sessionId) ? "存在" : "已失效（stale）") : "—"],
+    ["verdict", pv ? ({ bound: "已绑定✔", stale: "绑定但失效⚠", unbound: "未绑定" })[pv.verdict] : "—"],
+    ["store 条目数 / 存活会话", Object.keys(S.store).length + " / " + S.exists.size],
+    ["最后动作", S.lastAction],
+  ];
+  kvEl.innerHTML = rows.map(([k, v]) =>
+    '<div><span>' + k + '</span><span class="v">' + escapeHtml(String(v)) + '</span></div>').join("");
+
+  cardEl.className = "verdict " + (pv ? pv.verdict : "unbound");
+  if (!pv) {
+    cardEl.innerHTML = '<b>输入非法</b><br>' + escapeHtml(keyErr || "") + '<br><span style="color:var(--mut)">p2p 必须有 senderId，群聊必须有 chatId（与真机抛错一致）。</span>';
+  } else if (pv.verdict === "bound") {
+    cardEl.innerHTML = '<b>' + escapeHtml(displayName(conv)) + '</b><br>→ <code>' +
+      escapeHtml(shortId(pv.sessionId)) + '</code> <span style="color:var(--ok)">● 已绑定</span><br>' +
+      '<button class="btn primary" style="margin-top:8px" onclick="window.__protoAct(\'open\')">在中间打开（占位）</button>';
+  } else if (pv.verdict === "stale") {
+    cardEl.innerHTML = '<b>' + escapeHtml(displayName(conv)) + '</b><br>→ <code>' +
+      escapeHtml(shortId(pv.sessionId)) + '</code> <span style="color:var(--warn)">● 会话已失效</span><br>' +
+      '<span style="font-size:12px">预览不新建；下一条真消息将重建并 setSession。</span>';
+  } else {
+    cardEl.innerHTML = '<b>' + escapeHtml(displayName(conv)) + '</b><br><span style="color:var(--mut)">未绑定</span> → [去绑定占位]<br>' +
+      '<span style="font-size:12px">真绑定发生在下一条真消息（dsh-im 自动建）。可用“模拟来一条真消息”体验。</span>';
+  }
+
+  const full = { selected: displayName(conv), key, preview: pv, store: S.store, exists: [...S.exists], lastAction: S.lastAction };
+  const txt = JSON.stringify(full, null, 2);
+  jsonEl.textContent = txt;
+  if (changed) {
+    deltaEl.innerHTML = '刚刚变化：<b>' + escapeHtml(changed) + '</b>';
+    deltaEl.classList.remove("changed");
+    void deltaEl.offsetWidth;
+    deltaEl.classList.add("changed");
+  }
+
+  convsEl.innerHTML = "";
+  S.convs.forEach((c) => {
+    const b = document.createElement("button");
+    b.className = "btn" + (c.id === S.selectedId ? " primary" : "");
+    b.textContent = c.kind + "@" + c.nick;
+    b.onclick = () => { S.selectedId = c.id; S.lastAction = "选中 " + displayName(c); render("选中会话 → " + displayName(c)); syncSteps(); };
+    convsEl.appendChild(b);
+  });
+  lastJson = txt;
+}
+function escapeHtml(s) { return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function act(name) {
+  const conv = selectedConv();
+  const key = keyOf(conv);
+  if (name === "preview") { S.lastAction = "预览 " + displayName(conv); render("手动预览：" + key + " → " + (S.lastPreview ? S.lastPreview.verdict : "?")); }
+  else if (name === "open") {
+    const pv = previewRoute(S.store, key, S.exists);
+    S.lastAction = pv.sessionId && pv.verdict === "bound"
+      ? "打开会话 " + pv.sessionId + "（占位：真机走 harness.openSession）"
+      : "打开被拒绝（" + pv.verdict + "，占位提示）";
+    render("点击[在中间打开]：" + S.lastAction);
+  }
+  else if (name === "incoming") {
+    S.counter += 1;
+    const nid = "sess-new" + String(S.counter).padStart(2, "0") + "0000";
+    const r = onIncomingMessage(S.store, S.exists, key, nid);
+    S.lastAction = r.created ? "真消息到达：" + key + " 新建 " + r.created + " 并 setSession" : "真消息到达：复用 " + r.reused;
+    render("dsh-im 建会话：" + (r.created ? "新建 " + r.created : "复用 " + r.reused));
+  }
+  else if (name === "kill") {
+    const sid = sessionFor(S.store, key);
+    if (sid) { S.exists.delete(sid); S.lastAction = "会话被删：" + sid + " 变 stale"; render("会话失效：" + sid + "（下次预览应预警）"); }
+    else { S.lastAction = "kill 无目标（未绑定，无会话可删）"; render("kill 空转：未绑定会话没有可失效的 session"); }
+  }
+  else if (name === "clear") {
+    if (S.store[key]) { delete S.store[key]; S.lastAction = "解绑：" + key; render("clearSession：" + key + " 已删除映射"); }
+    else { S.lastAction = "解绑空转：" + key + " 本就无映射"; render("解绑空转：本来就是未绑定"); }
+  }
+  else if (name === "reset") { const keepCounter = S.counter; S = seedState(); S.counter = keepCounter; render("重置 mock 到初始状态"); }
+  syncSteps();
+}
+window.__protoAct = act;
+document.querySelectorAll("[data-act]").forEach((b) => { b.onclick = () => act(b.getAttribute("data-act")); });
+$("stranger").addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  const v = e.target.value.trim();
+  if (!v) return;
+  if (!v.startsWith("p2p:") && !v.startsWith("group:") && !v.startsWith("direct:")) {
+    S.lastAction = "陌生输入非法（必须 p2p:/group:/direct: 前缀）"; render("非法输入：缺少 key 前缀"); return;
+  }
+  const id = "sx" + Date.now();
+  S.convs.push({ id, kind: "手输", nick: v, event: null, rawKey: v });
+  S.selectedId = id;
+  e.target.value = "";
+  S.lastAction = "输入陌生会话 " + v;
+  render("新增陌生会话：" + v);
+  syncSteps();
+});
+
+/* ---------- 引导走查 ---------- */
+const SCEN = [
+  {
+    id: "T1", name: "T1 快乐路径",
+    desc: "私聊@张三 已绑定且会话存在：预览应一次命中sess-aaa…，“在中间打开”放行。这是“预览与真机一致”的基线。",
+    steps: [
+      { label: "选中 私聊@张三", run: () => { S.selectedId = "c1"; S.lastAction = "走查T1-1：选中张三"; } },
+      { label: "预览路由", run: () => { S.lastAction = "走查T1-2：预览"; } },
+      { label: "在中间打开（占位）", run: () => {
+        const pv = previewRoute(S.store, keyOf(selectedConv()), S.exists);
+        S.lastAction = "走查T1-3：打开 " + (pv.sessionId || "null");
+      } },
+    ],
+  },
+  {
+    id: "T2", name: "T2 会话失效",
+    desc: "已绑定但会话被删（stale）：预览必须预警、且不擅自新建；下一条真消息才重建。这是 workshop-session.mjs:54 的存在性检查在预览侧的投影。",
+    steps: [
+      { label: "选中 群聊@项目群", run: () => { S.selectedId = "c3"; S.lastAction = "走查T2-1：选中项目群"; } },
+      { label: "模拟会话被删", run: () => { const k = keyOf(selectedConv()); const sid = sessionFor(S.store, k); if (sid) S.exists.delete(sid); S.lastAction = "走查T2-2：会话失效"; } },
+      { label: "预览路由（应预警 stale）", run: () => { S.lastAction = "走查T2-3：预览 stale"; } },
+      { label: "模拟来一条真消息（重建）", run: () => { S.counter += 1; const r = onIncomingMessage(S.store, S.exists, keyOf(selectedConv()), "sess-new" + String(S.counter).padStart(2, "0") + "0000"); S.lastAction = "走查T2-4：重建 " + (r.created || r.reused); } },
+    ],
+  },
+  {
+    id: "T3", name: "T3 陌生+幽灵key",
+    desc: "陌生群聊（null→未绑定卡→真消息自动建）+ 存量 direct: 幽灵 key：旧 direct: 命中、但新 p2p 事件查不到，揭示 R3 direct: 记载与真机 p2p: 的不一致。",
+    steps: [
+      { label: "选中 群聊@新群", run: () => { S.selectedId = "c4"; S.lastAction = "走查T3-1：选中新群"; } },
+      { label: "预览路由（应未绑定）", run: () => { S.lastAction = "走查T3-2：预览未绑定"; } },
+      { label: "模拟来一条真消息（自动建）", run: () => { S.counter += 1; const r = onIncomingMessage(S.store, S.exists, keyOf(selectedConv()), "sess-new" + String(S.counter).padStart(2, "0") + "0000"); S.lastAction = "走查T3-3：自动建 " + (r.created || r.reused); } },
+      { label: "选中 direct: 幽灵 key", run: () => { S.selectedId = "c5"; S.lastAction = "走查T3-4：选中幽灵 direct key"; } },
+    ],
+  },
+];
+let curTab = "T1", curStep = 0;
+function syncSteps() {
+  tabsEl.innerHTML = "";
+  SCEN.forEach((t) => {
+    const b = document.createElement("button");
+    b.className = "tab" + (t.id === curTab ? " on" : "");
+    b.textContent = t.name;
+    b.onclick = () => {
+      if (curTab !== t.id) { S = seedState(); curStep = 0; }
+      curTab = t.id; S.lastAction = "进入走查 " + t.id; render("进入" + t.id + "（起点已重置）"); drawStep();
+    };
+    tabsEl.appendChild(b);
+  });
+  drawStep();
+}
+function drawStep() {
+  const t = SCEN.find((x) => x.id === curTab);
+  let h = "<div>" + escapeHtml(t.desc) + "</div><ol>";
+  t.steps.forEach((s, i) => {
+    const st = i < curStep ? "done" : (i === curStep ? "primary" : "");
+    const mark = i < curStep ? " ✔" : "";
+    h += '<li><button class="btn ' + st + '" data-step="' + i + '">' + escapeHtml(s.label) + mark + '</button></li>';
+  });
+  h += "</ol>";
+  if (curStep >= t.steps.length) h += '<div class="note">本走查完成。可点 tab 顶部按钮重进（自动重置起点），或去自由推演乱序点。</div>';
+  stepEl.innerHTML = h;
+  stepEl.querySelectorAll("[data-step]").forEach((b) => {
+    b.onclick = () => {
+      const i = Number(b.getAttribute("data-step"));
+      const t2 = SCEN.find((x) => x.id === curTab);
+      if (i !== curStep) { /* 允许跳步：执行到该步 */ while (curStep <= i) { t2.steps[curStep].run(); curStep++; } }
+      else { t2.steps[curStep].run(); curStep++; }
+      render("走查 " + curTab + " 第 " + (i + 1) + " 步：" + t2.steps[i].label);
+      drawStep();
+    };
+  });
+}
+render(null);
+syncSteps();
+</script>
+</body>
+</html>

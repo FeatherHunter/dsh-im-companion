@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>[CSS PREVIEW] wb-home real CSS + mirrored markup (mock DOM)</title>
+<style>.wb-banner{
+  --af-accent: var(--dsw-alias-brand-primary, #0a84ff);
+  --af-primary: var(--dsw-alias-label-primary, #1c1c1e);
+  --af-secondary: var(--dsw-alias-label-secondary, #6e6e73);
+  --af-tertiary: var(--dsw-alias-label-tertiary, #98989d);
+  --af-bg: var(--dsw-alias-bg-base, #ffffff);
+  --af-surface: color-mix(in srgb, var(--dsw-alias-label-primary, #1c1c1e) 6%, var(--dsw-alias-bg-base, #ffffff));
+  --af-surface-2: color-mix(in srgb, var(--dsw-alias-label-primary, #1c1c1e) 11%, var(--dsw-alias-bg-base, #ffffff));
+  --af-hairline: color-mix(in srgb, var(--dsw-alias-label-primary, #1c1c1e) 12%, transparent);
+  --af-hairline-strong: color-mix(in srgb, var(--dsw-alias-label-primary, #1c1c1e) 22%, transparent);
+  --af-success: var(--dsw-alias-state-success-primary, #30d158);
+  --af-warn: var(--dsw-alias-state-warn-primary, #ff9f0a);
+  --af-danger: var(--dsw-alias-state-error-primary, #ff453a);
+}/* welcome-banner 样式（wb- 命名空间；颜色全部走 --af-* 主题别名，深色自动跟随，禁硬编码色值）。 */
+.wb-banner { position: relative; max-width: var(--dsh-chat-content-width, 880px); min-height: min(66vh, 600px); margin: 5vh auto; padding: 40px 44px 32px; display: flex; flex-direction: column; justify-content: center; gap: 4px; border: 1px solid var(--af-hairline-strong); border-radius: 20px; background: var(--af-bg); color: var(--af-primary); box-shadow: 0 12px 44px color-mix(in srgb, var(--af-accent) 14%, transparent); font-size: 14px; line-height: 1.6; }
+.wb-x { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%; border: 1px solid var(--af-hairline); background: var(--af-bg); color: var(--af-tertiary); cursor: pointer; font-size: 12px; line-height: 1; padding: 0; }
+.wb-x:hover { color: var(--af-danger); border-color: var(--af-danger); }
+.wb-head { display: flex; gap: 18px; align-items: center; }
+.wb-avatar { width: 84px; height: 84px; border-radius: 22px; display: grid; place-items: center; color: var(--af-bg); font-weight: 800; font-size: 36px; background: linear-gradient(135deg, var(--af-accent), color-mix(in srgb, var(--af-accent) 55%, var(--af-success))); flex: none; overflow: hidden; }
+.wb-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.wb-name { font-weight: 800; font-size: 24px; letter-spacing: -0.01em; }
+.wb-sub { font-size: 13px; color: var(--af-secondary); margin-top: 4px; }
+.wb-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: baseline; }
+.wb-online { background: var(--af-success); animation: wb-breathe 1.6s infinite; }
+.wb-warn { background: var(--af-warn); }
+.wb-offline { background: var(--af-danger); }
+.wb-unbound { background: var(--af-tertiary); }
+@keyframes wb-breathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--af-success) 50%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+.wb-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.wb-chip { font-size: 12px; border: 1px solid var(--af-hairline); border-radius: 999px; padding: 3px 12px; background: var(--af-surface); color: var(--af-secondary); display: inline-flex; gap: 5px; align-items: center; }
+.wb-idrow { font-size: 11px; color: var(--af-secondary); margin-top: 8px; }
+.wb-routes { margin-top: 16px; background: var(--af-surface); border: 1px solid var(--af-hairline); border-radius: 12px; padding: 6px 16px; }
+.wb-routetitle { font-size: 14px; font-weight: 700; padding: 8px 0 4px; }
+.wb-route { display: flex; justify-content: space-between; gap: 8px; align-items: center; font-size: 13px; padding: 8px 0; border-bottom: 1px dashed var(--af-hairline); }
+.wb-route:last-child { border-bottom: 0; }
+.wb-code { font-size: 11px; color: var(--af-tertiary); font-family: var(--ds-font-family-code, monospace); }
+.wb-ghost { font-size: 10px; border: 1px solid var(--af-warn); color: var(--af-warn); border-radius: 999px; padding: 0 6px; margin-left: 6px; white-space: nowrap; }
+.wb-more { font-size: 11px; color: var(--af-tertiary); padding: 4px 0; }
+.wb-noroutes { font-size: 12px; color: var(--af-secondary); padding: 6px 0; }
+.wb-actions { margin-top: 18px; display: flex; gap: 10px; }
+.wb-btn { padding: 9px 22px; border: 1px solid var(--af-hairline-strong); border-radius: 10px; background: var(--af-bg); color: var(--af-primary); cursor: pointer; font-size: 13px; }
+.wb-btn-primary { background: var(--af-accent); border-color: var(--af-accent); color: var(--af-bg); }
+.wb-guide { font-size: 12px; color: var(--af-secondary); margin-top: 8px; }
+.wb-note { font-size: 11px; color: var(--af-tertiary); margin-top: 6px; }
+</style>
+<style>body{margin:0;background:#101418;color:#e6edf3;font:14px/1.6 sans-serif;} .mock-scroll{max-width:1100px;margin:0 auto;min-height:100vh;padding:24px;} .mock-hero{border:1.5px dashed #2a313b;border-radius:12px;padding:26px;text-align:center;color:#8b949e;margin-top:12px;} .cap{background:#fff7e6;color:#7a4b00;font-size:12px;padding:8px 16px;border-bottom:2px dashed #e8890c;}</style>
+</head>
+<body>
+<div class="cap">CSS PREVIEW · 真实 styles.ts 转译 CSS + 手工镜像 DOM（仅看缩放气场，不代表数据逻辑）· DSH 深色底模拟</div>
+<div class="mock-scroll">
+<section class="wb-banner" style="color-scheme:dark">
+<button class="wb-x" title="关闭">✕</button>
+<div class="wb-head"><div class="wb-avatar">D</div><div><div class="wb-name">👋 夜深了，Dsh-mattpocock-skills-deck</div><div class="wb-sub"><span class="wb-dot wb-online"></span>在线 · 家：dsh-mattpocock-skills-deck</div><div class="wb-chips"><span class="wb-chip"><span class="wb-dot wb-online"></span>飞书</span></div></div></div>
+<div class="wb-idrow">预设·PTC 模式 · 上下文增强关</div>
+<div class="wb-routes"><div class="wb-routetitle">已接入 1 个会话：私聊 1 · 群聊 0</div><div class="wb-route"><span><b>私聊 ou_37683ad7b…</b><br><code class="wb-code">session-859648e1…</code></span><span class="wb-note">飞书 · 真机直达待联调</span></div></div>
+<div class="wb-actions"><button class="wb-btn wb-btn-primary">Agent 详情</button><button class="wb-btn">检查连接</button></div>
+</section>
+<div class="mock-hero">💭 DSH 原生空态（保留，占位示意）</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E3 路由投影 · 真机验收手册（7 场景）</title>
+<style>
+  :root { color-scheme: light; --bg:#f6f8fa; --panel:#fff; --ink:#1f2329; --mut:#646a73; --line:#e5e6eb; --acc:#1677ff; --ok:#20a162; --warn:#b25e09; --warnbg:#fff7e6; --bad:#d92d20; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.7 -apple-system,"PingFang SC","Noto Sans SC",Segoe UI,Roboto,sans-serif; }
+  .wrap { max-width:900px; margin:0 auto; padding:20px 16px 90px; }
+  h1 { font-size:22px; margin:8px 0 4px; }
+  .sub { color:var(--mut); font-size:13px; margin-bottom:14px; }
+  .progress { position:sticky; top:0; z-index:10; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 14px; margin-bottom:14px; font-size:13px; display:flex; gap:10px; align-items:center; }
+  .progress b { color:var(--acc); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:12px; }
+  .card h2 { font-size:16px; margin:0 0 4px; }
+  .tag { display:inline-block; font-size:11px; border-radius:999px; padding:1px 9px; margin-left:8px; vertical-align:2px; }
+  .tag.must { background:#e6f4ff; color:#0958d9; }
+  .tag.cond { background:var(--warnbg); color:var(--warn); }
+  .why { font-size:13px; background:var(--bg); border-radius:8px; padding:8px 10px; margin:8px 0; }
+  .why b { color:var(--acc); }
+  ol.steps { margin:8px 0 0; padding-left:22px; display:grid; gap:10px; }
+  ol.steps li { padding-left:2px; }
+  .op { display:block; }
+  .exp { display:block; font-size:13px; color:var(--mut); margin-top:2px; }
+  .exp b { color:var(--ok); }
+  .fix { display:block; font-size:12px; color:var(--warn); margin-top:2px; }
+  label.chk { display:flex; gap:8px; align-items:flex-start; cursor:pointer; }
+  input[type=checkbox] { margin-top:5px; width:15px; height:15px; flex:none; accent-color:var(--acc); }
+  li.done .op { text-decoration:line-through; color:var(--mut); }
+  code { background:var(--bg); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:12px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; margin-top:8px; }
+  th,td { border:1px solid var(--line); padding:6px 8px; text-align:left; }
+  th { background:var(--bg); }
+  .verdict { border:2px dashed var(--acc); }
+  .verdict h2 { color:var(--acc); }
+  @media print { .progress { position:static; } body { background:#fff; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>E3 · 会话路由投影 — 真机验收手册</h1>
+  <div class="sub">给零基础测试者：你不需要懂源码。只要会用 DSH Desktop，就能按下面 7 个场景逐项打勾。全部打勾 = 通过；任何一步“所见”与“期望所见”不符，记到最后的 verdict 区。</div>
+  <div class="progress">✅ 已勾 <b id="cnt">0</b> / <span id="tot">0</span> 步（本页不存档，关掉重来）</div>
+
+  <div class="card">
+    <h2>准备工作（必做，只做一次）</h2>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">完全退出 DSH Desktop（托盘图标也右键退出），重新打开。<span class="exp">期望所见：<b>全新启动</b>，不是窗口最小化恢复。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">在 DSH 主界面按 <code>Ctrl+F5</code> 强制刷新一次。<span class="exp">期望所见：界面闪一下重载，保证你看到的是新版插件。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">打开设置，找到 <b>IM机器人辅助</b>（Agent 列表）。<span class="exp">期望所见：<b>一行一个 Agent</b>（如“小帅”），每行右侧有状态和按钮。</span><span class="fix">找不到？→ 说明插件没挂载成功，直接记 verdict，不用往下测。</span></span></label></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>先认识：路由行长什么样<span class="tag must">必读</span></h2>
+    <table>
+      <tr><th>你看到的</th><th>意思</th></tr>
+      <tr><td>飞书·私聊 ou_0c8be253e9f14a7c2 → session-cb3301da8f2e4b6a（整行单行，超宽可左右拖）</td><td>飞书上和“某人”的私聊，绑着电脑里对应会话。<b>id 从头到尾完整显示，没有省略号；一行放不下时整行可左右拖动，绝不换行、绝不断尾。</b>注意：完整 id 会进截图，外发前想好。</td></tr>
+      <tr><td>飞书·群聊（同上单行）</td><td>飞书群聊的绑定，同上</td></tr>
+      <tr><td>旧映射 + 黄条</td><td>历史遗留的旧记录（见场景 5），不影响使用</td></tr>
+      <tr><td>复制 / 已复制</td><td>把完整的 sess-id 拷出来人工查找用（见场景 3）</td></tr>
+      <tr><td>暂无已绑定会话映射</td><td>你还没绑过任何聊天（见场景 4），这是正常状态，不是 bug</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>场景 1：进门——打开抽屉，找到路由区<span class="tag must">必测</span></h2>
+    <div class="why"><b>为什么测：</b>路由区住在 Agent 详情抽屉里。进不去，后面全不用测——这是第一性原理的入口检查。</div>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">在 IM机器人辅助列表里，点任意一个 Agent 行右侧的 <b>详情</b> 按钮。<span class="exp">期望所见：<b>右侧滑出一个详情抽屉</b>，标题含该 Agent 名 + “详情”。</span><span class="fix">点了一点反应没有、等 8 秒出现提示？→ 记 verdict（这是已知风险点）。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">在抽屉里往下翻，找到 <b>会话路由摘要（N）</b> 这一栏（N 是数字，0 或更大）。<span class="exp">期望所见：<b>这一栏存在</b>，N 是一个数字。</span><span class="fix">翻到底没有？→ 记 verdict，场景 2–5 跳过，直接测场景 6。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">把 N 记下来：N = ____。<span class="exp">期望所见：数字而已，后面场景要和它对账。</span></span></label></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>场景 2：有映射时——展开看行<span class="tag must">必测（若 N=0 则跳过，记“无数据可展”）</span></h2>
+    <div class="why"><b>为什么测：</b>这是功能的核——“哪个聊天绑着哪个会话”。对抗点：行必须带渠道名（多渠道并存时飞书/QQ 的私聊行不能长得一样），且不能出现完整 id。</div>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">点开 <b>会话路由摘要（N）</b>（点标题展开）。<span class="exp">期望所见：<b>展开 N 行</b>，行数 = 标题括号里的 N。</span><span class="fix">行数对不上？→ 记 verdict。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">逐行检查格式：<b>每行都是单行：渠道名·私聊/群聊/会话 + 完整聊天 id → 完整 sess-id + 复制按钮</b>。<span class="exp">期望所见：<b>绝不断尾（没有 …），绝不换行</b>；行太宽时整行可左右拖；第一段是渠道名（飞书/QQ/…）。</span><span class="fix">出现断尾 … / 换成两行？→ 记 verdict。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">如果你有 ≥2 个渠道的机器人：确认不同渠道的行前缀不同。<span class="exp">期望所见：<b>飞书行和 QQ 行一眼可分</b>。</span></span></label></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>场景 3：复制按钮——拷出 sess-id<span class="tag must">必测（需场景 2 有行）</span></h2>
+    <div class="why"><b>为什么测：</b>一键跳转做不到（现状无接口），复制是降级方案。验收它“点了有反应、拷出来的是完整 id 本身”。</div>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">点任意一行的 <b>复制</b> 按钮。<span class="exp">期望所见：按钮文字变成 <b>已复制</b>。</span><span class="fix">没变？→ 先记 verdict，继续第 2 步（剪贴板在某些环境拿不到，属已知可接受降级）。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">打开记事本粘贴（<code>Ctrl+V</code>）。<span class="exp">期望所见：粘出来的是 <b>行里显示的那个完整 id</b>，不多不少（和行里逐字一致）。</span><span class="fix">粘出空 / 粘出别的东西？→ 记 verdict。</span></span></label></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>场景 4：空席位——没绑定时不撒谎<span class="tag must">必测（N=0 的用户；N&gt;0 的用户跳过）</span></h2>
+    <div class="why"><b>为什么测：</b>第一性原理——只读投影在没数据时必须如实说“没有”，不能编数据、不能报错、不能白屏。这是“不求上游”方案的诚实底线。</div>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">展开 <b>会话路由摘要（0）</b>。<span class="exp">期望所见：<b>一行字：“暂无已绑定会话映射（只读投影，随轮询刷新）。”</b>，没有报错、没有空白抽屉。</span><span class="fix">出现红色报错 / 抽屉卡死？→ 记 verdict（fail-soft 失效算严重）。</span></span></label></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>场景 5：幽灵行——旧映射告警<span class="tag cond">条件测（有黄条才测）</span></h2>
+    <div class="why"><b>为什么测：</b>只有飞书老用户才有 <code>direct:</code> 存量（新 key 规则叫 <code>p2p:</code>）。有黄条 = 命中了 R3 文档与真机不一致的坑；没有 = 你很干净，跳过即通过。</div>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">在展开的行里找 <b>黄条 + “旧映射”</b> 字样。有？继续；没有？本场景记“通过（无存量）”，结束。<span class="exp">期望所见：两种之一，没有第三种。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">把鼠标悬停在黄条行上，看 tooltip。<span class="exp">期望所见：提示含 <b>“可忽略”</b>，且<b>没有任何“等上游/找管理员”之类要你求人的话</b>。</span></span></label></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>场景 6：跟随与保活——开着抽屉等一轮<span class="tag must">必测</span></h2>
+    <div class="why"><b>为什么测：</b>对抗两个谎言：①“随轮询刷新”不能是空话（后台 15 秒一轮，抽屉必须活着）；② 路由区不能是纸糊的——你动了别处，它不能消失。</div>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">抽屉开着不动，等 25 秒（数 25 下）。<span class="exp">期望所见：<b>抽屉还在，路由区还在</b>，没有自动关闭、没有报错 toast。</span><span class="fix">抽屉自己关了 / 弹出错误？→ 记 verdict。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">在抽屉里改一次预设（摘要区下拉换一个选项）。<span class="exp">期望所见：预设即时生效；<b>路由区行数/内容不变</b>（它只读，不该被你的编辑影响）。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">关闭抽屉，重新点 <b>详情</b> 打开。<span class="exp">期望所见：路由区数字与行和关闭前一致。</span></span></label></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>场景 7：不添乱——主流程照常<span class="tag must">必测</span></h2>
+    <div class="why"><b>为什么测：</b>新功能唯一的硬红线：不能碰坏老功能。路由区是只读寄生虫，宿主（预设/上下文/测试消息/解绑）必须一切如常。</div>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">开关一次上下文增强（群聊/私聊任一）。<span class="exp">期望所见：开关翻转生效，无报错。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">点 <b>发测试消息</b> 发一条。<span class="exp">期望所见：提示发送成功（或如常的失败提示——关键是<b>和没装 E3 时表现一样</b>）。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">最后看一眼路由区。<span class="exp">期望所见：<b>还在，内容没被你的操作污染</b>（行数没无故变多/变少）。</span></span></label></li>
+    </ol>
+  </div>
+
+  <div class="card verdict">
+    <h2>Verdict（填完交给我）</h2>
+    <ol class="steps">
+      <li><label class="chk"><input type="checkbox"><span class="op">场景 1 N = ____；场景 2 行数 = ____；有黄条？有 / 无<span class="exp">把三个空填了，我就能对账。</span></span></label></li>
+      <li><label class="chk"><input type="checkbox"><span class="op">不符合项原文抄录（哪一步、看到了什么、期望是什么）：____<span class="exp">没有不符合？写“全过”。</span></span></label></li>
+    </ol>
+  </div>
+</div>
+<script>
+(function () {
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var cnt = document.getElementById('cnt');
+  document.getElementById('tot').textContent = boxes.length;
+  function paint() {
+    var n = boxes.filter(function (b) { return b.checked; }).length;
+    cnt.textContent = n;
+    boxes.forEach(function (b) {
+      var li = b.closest('li');
+      if (li) li.classList.toggle('done', b.checked);
+    });
+  }
+  boxes.forEach(function (b) { b.addEventListener('change', paint); });
+  paint();
+})();
+</script>
+</body>
+</html>

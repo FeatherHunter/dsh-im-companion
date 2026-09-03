@@ -285,7 +285,7 @@ document.addEventListener('click', function(e){
   }
 });
 document.getElementById('openq').innerHTML =
-  '假设：写路径 = <kbd>bot.workspace.set</kbd> 直写，写后广播刷新（沿用单写多读）；撤销窗口演示用 3 步，真实现再定 5s。实现修正（#20 评论）：新绑无撤销（上游无无损回未绑定路径），只有换绑可撤销——本原型的新绑撤销步仅作演示。' +
+  '假设：写路径 = <kbd>bot.workspace.set</kbd> 直写，写后广播刷新（沿用单写多读）；撤销窗口演示用 3 步，真实现再定 5s。实现修正（#20 评论）：新绑无撤销（上游无无损回未绑定路径），只有换绑可撤销——本原型的新绑撤销步仅作演示。转向（2026-09-04）：拖拽源改为面板分组（已分配之间调拨），未绑定池仅为例外；迁移表 7 行不变。' +
   '开放问题：D1（#11）反向声明仍在 grilling 中——若工作区侧声明与 Fleet 拖拽冲突如何消解，待 #11 关闭后回炉本状态机。' +
   '源抽象：C1a/C1b 仍在开发中，原型源为抽象 Bot 行，verdict 落在 reducer 上，实现时各控件 dispatch 同一 action 即可。';
 renderState(); renderFree(); renderTabs();

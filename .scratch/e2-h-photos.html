@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向H · 拍立得墙（人情味）</title>
+<style>
+body{margin:0;background:#d9cfbd;color:#3d3225;font-family:-apple-system,"PingFang SC",sans-serif;}
+.wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px;}
+h1{font-size:15px;margin:0 0 4px;} .sub{font-size:12px;opacity:.65;margin:0 0 22px;}
+.grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr));}
+.home{background:rgba(255,253,247,.6);border-radius:6px;padding:14px 14px 12px;box-shadow:0 4px 16px rgba(90,70,40,.12);}
+.hd{display:flex;align-items:center;gap:8px;margin:0 2px 10px;}
+.tape{display:inline-block;background:rgba(200,180,130,.5);padding:1px 12px;transform:rotate(-2deg);font-size:15px;font-weight:800;}
+.ct{margin-left:auto;font-size:11px;opacity:.55;}
+.row{background:#fffdf8;border-radius:4px;margin-top:10px;padding:8px 8px 10px;cursor:grab;box-shadow:0 3px 10px rgba(90,70,40,.16);transition:transform .14s ease,box-shadow .14s ease;}
+.row:hover{transform:translateY(-3px) rotate(-.6deg);box-shadow:0 12px 24px rgba(90,70,40,.22);}
+.row:nth-child(odd):hover{transform:translateY(-3px) rotate(.6deg);}
+.ph-top{display:flex;align-items:center;gap:8px;}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:#d8d2c4;}
+.dot.on{background:#34a853;}
+.cap{font-size:14px;}
+.ch{display:block;margin-top:6px;font-size:11px;opacity:.55;font-style:italic;}
+.row.drag{opacity:.45;transform:rotate(2deg) scale(1.03);}
+.row.ph{opacity:.45;transform:rotate(-4deg);border:1.5px dashed #a89878;box-shadow:none;background:transparent;pointer-events:none;transition:transform .15s ease;}
+.home.over{outline:2.5px solid #7a5c2e;outline-offset:4px;}
+.hint{font-size:11px;opacity:.6;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>方向H · 拍立得墙 <span style="font-weight:400;opacity:.6;">—— 软木板 + 手写小字，人情味</span></h1>
+  <p class="sub">悬停照片翘起；拖走后原位留一张空白相纸。问题：暖过头了吗？还像工具吗？</p>
+  <div class="grid" id="grid"></div>
+  <p class="hint" id="msg">拖“客服小冰”去老墨家，看空白相纸。</p>
+</div>
+<script>
+var homes=[
+ {name:'小帅2',b:[['客服小冰','飞书','on'],['群管家','微信','on']]},
+ {name:'阿梨',b:[['夜间值班','QQ','warn']]},
+ {name:'老墨',b:[['商务一号','飞书','on'],['朋友圈号','微信','off'],['老客户群','QQ','on']]},
+ {name:'星火',b:[['星火号','飞书','on']]},
+ {name:'小匠',b:[['匠人号','飞书','on'],['匠小二','微信','warn']]},
+ {name:'小研',b:[['研报姬','飞书','on']]},
+ {name:'小婉',b:[['婉儿','微信','on'],['婉公馆','QQ','on'],['婉 backup','飞书','off']]},
+ {name:'小孙',b:[['孙行者','飞书','warn']]},
+ {name:'小灿',b:[['灿灿','QQ','on'],['灿妈','微信','on']]},
+ {name:'小智',b:[['智多星','飞书','on'],['智囊团','微信','on'],['智识库','QQ','warn'],['智小二','飞书','off']]},
+ {name:'小管',b:[['管家婆','微信','on']]},
+ {name:'小卫',b:[['卫士','飞书','on'],['卫兵','QQ','on']]},
+ {name:'小晨',b:[['晨读','微信','warn']]},
+ {name:'小阳',b:[['阳阳','飞书','on'],['阳光','QQ','on']]},
+];
+var drag=null,dragX=null;
+document.addEventListener('dragover',function(ev){
+  if(drag==null||dragX==null)return;
+  var dx=(ev.clientX||0)-dragX;
+  document.querySelectorAll('.row.ph').forEach(function(p){ p.style.transform=dx<0?'rotate(-4deg)':'rotate(4deg)'; });
+});
+function render(){
+  var g=document.getElementById('grid');g.innerHTML='';
+  homes.forEach(function(h,hi){
+    var card=document.createElement('div');card.className='home';
+    card.innerHTML='<div class="hd"><span class="tape">'+h.name+'</span><span class="ct">'+h.b.length+' 个机器人</span></div>';
+    h.b.forEach(function(x){
+      var r=document.createElement('div');r.className='row';
+      r.innerHTML='<div class="ph-top"><span class="dot '+(x[2]==='on'?'on':'')+'"></span><span>'+x[0]+'</span></div><span class="ch">'+x[1]+' · 永远在线，除了睡着的时候</span>';
+      r.setAttribute('draggable','true');
+      r.addEventListener('dragstart',function(ev){drag={x:x,from:hi};r.classList.add('drag');setTimeout(function(){r.style.display='none';},0);ev.dataTransfer.effectAllowed='move';try{ev.dataTransfer.setData('text/plain',x[0]);}catch(e){}});
+      r.addEventListener('dragstart',function(ev){
+        try{ dragX = ev.clientX; }catch(e){}
+        var ph=r.cloneNode(true);ph.classList.remove('drag');ph.classList.add('ph');ph.removeAttribute('draggable');ph.removeAttribute('id');
+        try{ r.parentNode.insertBefore(ph,r.nextSibling); r._ph=ph; }catch(e){}
+      });
+      r.addEventListener('dragend',function(){r.classList.remove('drag');r.style.display='';try{ if(r._ph){r._ph.remove();r._ph=null;} }catch(e){}clear();});
+      card.appendChild(r);
+    });
+    card.addEventListener('dragover',function(ev){if(!drag)return;ev.preventDefault();clear();card.classList.add('over');});
+    card.addEventListener('drop',function(ev){
+      if(!drag)return;ev.preventDefault();clear();var d=drag;drag=null;
+      if(d.from===hi){say('它已经在'+homes[hi].name+'家了');return;}
+      homes[d.from].b.splice(homes[d.from].b.indexOf(d.x),1);homes[hi].b.push(d.x);render();
+      say('“'+d.x[0]+'”搬到了'+homes[hi].name+'家');
+    });
+    g.appendChild(card);
+  });
+}
+function clear(){document.querySelectorAll('.home.over').forEach(function(n){n.classList.remove('over');});}
+function say(t){document.getElementById('msg').textContent=t;}
+render();
+</script>
+</body>
+</html>

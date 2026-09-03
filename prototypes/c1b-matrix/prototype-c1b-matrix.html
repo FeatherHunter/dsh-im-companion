@@ -1,0 +1,282 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE for issue #10 (C1b Fleet 矩阵总览). Do NOT ship to main. -->
+<!-- Plan: Three variants of the Fleet matrix, switchable via ?variant=, on throwaway prototypes/c1b-matrix/prototype-c1b-matrix.html (sub-shape B: no matrix page exists yet; closest host preview.html only has a static sketch). -->
+<!-- Design Q: 矩阵视图（行=Agent、列=渠道、格=bot状态/绑定）应该长什么样？缩放/排序/空态/钻取如何取舍？Branch: UI (what-should-this-look-like). -->
+<!-- Grilling 共识 (2026-09-03, 用户选推荐项): 变体=A稠密表/B卡片热力/C主从钻取；窄屏=A横滚+冻结首列、B/C堆叠+宽度滑杆；排序=在线>待确认>离线>未绑定、列固定9序；钻取=点击模拟C1a抽屉事件；数据=静态mock+控制条。 -->
+<!-- Run: 双击打开，或 python -m http.server 8788 后访问 /prototypes/c1b-matrix/prototype-c1b-matrix.html?variant=A -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[PROTOTYPE #10] C1b Fleet 矩阵三变体</title>
+<style>
+  :root { color-scheme: light; --bg:#f6f8fa; --panel:#fff; --ink:#1f2329; --mut:#646a73; --line:#e5e6eb; --acc:#1677ff; --ok:#20a162; --warn:#e8890c; --bad:#d92d20; }
+  [data-theme="dark"] { color-scheme: dark; --bg:#0f1115; --panel:#161a22; --ink:#e6edf3; --mut:#8b949e; --line:#2a313b; --acc:#4493ff; --ok:#3fb950; --warn:#d29922; --bad:#f85149; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,"PingFang SC","Noto Sans SC",Segoe UI,Roboto,sans-serif; }
+  .proto-banner { background:#fff7e6; border-bottom:2px dashed var(--warn); color:#7a4b00; padding:8px 16px; font-size:12px; }
+  [data-theme="dark"] .proto-banner { background:#2a2100; color:#ffce6b; }
+  .wrap { max-width:1100px; margin:0 auto; padding:16px 16px 130px; }
+  h1 { font-size:20px; margin:12px 0 4px; }
+  .q { color:var(--mut); font-size:13px; margin:0 0 6px; line-height:1.7; }
+  .assume { font-size:12px; color:var(--mut); background:var(--panel); border:1px dashed var(--line); border-radius:10px; padding:8px 12px; margin:0 0 12px; line-height:1.7; }
+  .console { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:12px; font-size:12px; }
+  .console label { display:flex; gap:6px; align-items:center; color:var(--mut); }
+  select { padding:6px 8px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); font:inherit; font-size:12px; }
+  input[type="range"] { width:140px; }
+  .btn { padding:6px 10px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); cursor:pointer; font-size:12px; }
+  .btn.primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+  .stage-outer { display:flex; justify-content:center; }
+  .stage { width:100%; min-width:0; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .card-hd { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--line); font-weight:700; font-size:13px; flex-wrap:wrap; }
+  .card-hd .sub { font-weight:400; font-size:11px; color:var(--mut); }
+  .card-bd { padding:12px 14px; }
+  .dot { width:10px; height:10px; border-radius:50%; flex:none; display:inline-block; }
+  .dot.online { background:var(--ok); } .dot.warn { background:var(--warn); } .dot.offline { background:var(--bad); } .dot.empty { background:transparent; border:1.5px dashed var(--mut); width:9px; height:9px; }
+  /* Variant A: dense table */
+  .tbl-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+  table.m { border-collapse:separate; border-spacing:0; width:100%; min-width:760px; font-size:12px; }
+  table.m th, table.m td { padding:7px 8px; border-bottom:1px solid var(--line); border-right:1px solid var(--line); text-align:center; white-space:nowrap; }
+  table.m thead th { background:var(--bg); position:sticky; top:0; font-size:11px; color:var(--mut); }
+  table.m tbody th { position:sticky; left:0; background:var(--panel); text-align:left; min-width:150px; z-index:1; }
+  table.m tbody tr:hover td, table.m tbody tr:hover th { background:color-mix(in srgb, var(--acc) 6%, var(--panel)); }
+  .cell { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); border-radius:999px; padding:3px 8px; cursor:pointer; background:var(--panel); font-size:11px; }
+  .cell:hover { border-color:var(--acc); color:var(--acc); }
+  .cell.unbound { border-style:dashed; opacity:.8; }
+  .cell.empty { border-style:dashed; opacity:.55; cursor:default; }
+  .cell.empty:hover { border-color:var(--line); color:inherit; }
+  /* Variant B: cards */
+  .bcards { display:grid; gap:10px; }
+  .bcard { border:1px solid var(--line); border-radius:12px; padding:10px 12px; background:var(--panel); }
+  .bcard-hd { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .avatar { width:30px; height:30px; border-radius:9px; display:grid; place-items:center; color:#fff; font-weight:800; font-size:14px; flex:none; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  /* Variant C: master-detail */
+  .cgrid { display:grid; grid-template-columns:250px 1fr; gap:0; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  @media (max-width:700px){ .cgrid { grid-template-columns:1fr; } }
+  .clist { border-right:1px solid var(--line); background:var(--bg); padding:8px; display:grid; gap:6px; align-content:start; max-height:520px; overflow:auto; }
+  .crow { display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:9px; border:1px solid transparent; cursor:pointer; font-size:12px; width:100%; background:transparent; color:var(--ink); text-align:left; }
+  .crow:hover { border-color:var(--line); }
+  .crow.on { background:var(--panel); border-color:var(--acc); }
+  .cdetail { padding:12px 14px; min-width:0; }
+  .drow { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; margin-bottom:6px; font-size:12px; flex-wrap:wrap; cursor:pointer; background:var(--panel); color:var(--ink); width:100%; text-align:left; }
+  .drow:hover { border-color:var(--acc); }
+  .drow .sp { flex:1; }
+  .mono { font-variant-numeric:tabular-nums; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11px; color:var(--mut); }
+  .empty-box { padding:26px 16px; text-align:center; color:var(--mut); font-size:13px; border:1px dashed var(--line); border-radius:12px; background:var(--bg); line-height:1.8; }
+  /* state panel */
+  .state { margin-top:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .stateHead { display:flex; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700; font-size:13px; flex-wrap:wrap; }
+  .stateBody { padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:760px){ .stateBody{grid-template-columns:1fr} }
+  .kv { display:grid; gap:4px; font-size:12px; align-content:start; }
+  .kv div { display:flex; justify-content:space-between; gap:8px; border-bottom:1px dashed var(--line); padding:3px 0; }
+  .kv span:first-child { color:var(--mut); }
+  pre { margin:0; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px; font-size:11px; overflow:auto; max-height:240px; }
+  .note { font-size:11px; color:var(--mut); margin-top:8px; line-height:1.7; }
+  /* drawer stub */
+  .scrim { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:center; justify-content:center; z-index:80; padding:16px; }
+  .scrim.show { display:flex; }
+  .sheet { background:var(--panel); color:var(--ink); border-radius:14px; max-width:440px; width:100%; padding:16px; border:1px solid var(--line); }
+  .sheet h3 { margin:0 0 6px; font-size:15px; }
+  /* floating switcher (prototype chrome, NOT part of design) */
+  .switcher { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; align-items:center; gap:12px; background:#111; color:#fff; border-radius:999px; padding:8px 10px; box-shadow:0 8px 30px rgba(0,0,0,.35); z-index:99; font-size:13px; white-space:nowrap; }
+  .switcher button { width:32px; height:32px; border-radius:50%; border:0; background:#2a2f36; color:#fff; cursor:pointer; font-size:15px; }
+  .switcher .dots { display:flex; gap:6px; }
+  .switcher .dots button { width:10px; height:10px; padding:0; background:#555; }
+  .switcher .dots button.on { background:#fff; }
+</style>
+</head>
+<body>
+<div class="proto-banner">⚠️ THROWAWAY PROTOTYPE · issue #10 · 抛弃式原型，不进 main（决议后折叠赢家进真代码，原型归档到 throwaway 分支）。运行：双击本文件或 <code>python -m http.server 8788</code> 后访问 <code>/prototypes/c1b-matrix/prototype-c1b-matrix.html?variant=A</code>。</div>
+<div class="wrap" id="root" data-theme="light">
+  <h1>C1b · Fleet 矩阵总览 — 三变体对比</h1>
+  <p class="q">设计问题：<b>矩阵视图（行=Agent、列=渠道、格=bot 状态/绑定）应该长什么样？</b>覆盖缩放策略（多 Agent×9 渠道）、行列排序、空态与钻取。分支：UI（<code>?variant=A/B/C</code> + 底部悬浮切换）。点击只模拟钻取（弹 C1a 抽屉替身 + 状态外显），不写真数据；内存态，无持久化。</p>
+  <div class="assume">假设（grilling 2026-09-03 用户选推荐项，待真机验收前复核）：①变体=A稠密表/B卡片热力/C主从钻取；②窄屏=A横滚+冻结首列、B/C堆叠+宽度滑杆模拟；③行按在线&gt;待确认&gt;离线&gt;未绑定、组内按名，列固定 9 序（飞书/微信/QQ/Slack/Telegram/Discord/WhatsApp/钉钉/企微）；④点格/行模拟派发 <span class="mono">dsh-im-companion:open-drawer</span>；⑤静态 mock + 控制条覆盖 0/3/8/12 Agent × 稀疏/稠密。</div>
+  <div class="console">
+    <label>Agent 数量 <select id="nSel"><option value="0">0（空态）</option><option value="3" selected>3</option><option value="8">8</option><option value="12">12×9 压力</option></select></label>
+    <label>渠道填充 <select id="dSel"><option value="sparse">稀疏</option><option value="dense" selected>稠密</option></select></label>
+    <label>主题 <select id="tSel"><option value="light">浅色</option><option value="dark">深色</option></select></label>
+    <label>模拟宽度 <input type="range" id="wRange" min="360" max="1100" step="20" value="1100"><b id="wVal">1100px</b></label>
+    <span class="mono" id="sortNote">行:在线&gt;待确认&gt;离线&gt;未绑定 · 列:9序固定</span>
+  </div>
+  <div class="stage-outer"><div class="stage" id="stage"><div class="card"><div class="card-hd"><span id="varTitle"></span><span class="sub" id="varSub"></span></div><div class="card-bd" id="varBody"></div></div></div></div>
+  <div class="state"><div class="stateHead"><span>状态外显（每次操作后重渲染）</span><span id="varTag" style="font-weight:400;font-size:12px;color:var(--mut)"></span></div>
+    <div class="stateBody"><div class="kv" id="kvBox"></div><div><pre id="jsonBox"></pre><div class="note">⬆ 完整 relevant state：variant / mock / sort / selection / drill / theme / width。变体切换更新 URL ?variant=（可分享、可回退）。←/→ 键也可切换（输入框聚焦时不拦截）。</div></div></div>
+  </div>
+  <p class="note">变体说明：A 稠密表（信息最全，桌面首选，窄屏横滚）；B 卡片热力（每 Agent 一卡，渠道芯片自动换行，窄屏零滚）；C 主从钻取（左列表选 Agent、右看该行 9 渠道详情，矩阵退为列表+计数，适合 Agent 多时的聚焦排查）。要“ B 的卡片 + A 的表头”这类杂交反馈正是我们想要的。</p>
+</div>
+<div class="scrim" id="scrim"><div class="sheet"><h3 id="sheetTitle">抽屉替身</h3><div id="sheetBody" style="font-size:13px;line-height:1.8"></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn primary" id="sheetOk">知道了（stub，不真写）</button></div><div class="note">原型 stub：真实现派发 <span class="mono">dsh-im-companion:open-drawer {key}</span> 打开 C1a 抽屉；这里只外显 state。</div></div></div>
+<div class="switcher" role="navigation" aria-label="原型变体切换（非设计本身）">
+  <button id="prevBtn" title="上一个变体">◀</button>
+  <span id="swLabel"></span>
+  <span class="dots"><button data-v="A" title="A"></button><button data-v="B" title="B"></button><button data-v="C" title="C"></button></span>
+  <button id="nextBtn" title="下一个变体">▶</button>
+</div>
+<script>
+'use strict';
+var VARIANTS = ["A","B","C"];
+var NAMES = { A:"A·稠密表", B:"B·卡片热力", C:"C·主从钻取" };
+var SUBS = { A:"行=Agent 列=9渠道 · 首列冻结+横滚", B:"每Agent一卡 · 渠道芯片换行", C:"左选Agent 右看9渠道 · 聚焦排查" };
+var CHANNELS = [
+  {id:"feishu",label:"飞书",color:"#3370ff"},{id:"weixin",label:"微信",color:"#07c160"},{id:"qq",label:"QQ",color:"#12b7f5"},
+  {id:"slack",label:"Slack",color:"#4a154b"},{id:"telegram",label:"TG",color:"#2aabee"},{id:"discord",label:"DC",color:"#5865f2"},
+  {id:"whatsapp",label:"WA",color:"#25d366"},{id:"dingtalk",label:"钉钉",color:"#0091ff"},{id:"wecom",label:"企微",color:"#2e7cf6"}
+];
+var NAME_POOL = ["小帅","阿梨","老墨","星火","晚风","青柠","海盐","山茶","白昼","夜航","南风","北岛"];
+var BASE_POOL = ["xiaoshuai","ali","laomo","xinghuo","wanfeng","qingning","haiyan","shancha","baizhou","yehang","nanfeng","beidao"];
+var PALETTE = ["#3964fe","#07c160","#e8890c","#8e44ad","#12b7f5","#d92d20","#00b386","#5865f2"];
+function hash(s){ var h=0; for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h; }
+function mulberry(seed){ var t=seed+0x6D2B79F5; return function(){ t=Math.imul(t^t>>>15,t|1); t^=t+Math.imul(t^t>>>7,t|61); return ((t^t>>>14)>>>0)/4294967296; }; }
+function buildAgents(n, density){
+  var rnd = mulberry(n*100 + (density==="dense"?7:13));
+  var out = [];
+  for(var i=0;i<n;i++){
+    var name = NAME_POOL[i%NAME_POOL.length], base = BASE_POOL[i%BASE_POOL.length];
+    var bots = [];
+    CHANNELS.forEach(function(ch, ci){
+      var p = density==="dense" ? 0.72 : 0.32;
+      if(ch.id==="feishu") p = density==="dense" ? 0.95 : 0.6; // 飞书最常见，保证列不全空
+      if(rnd() < p){
+        var r = rnd();
+        var health = r<0.68 ? "online" : (r<0.82 ? "warn" : "offline");
+        var bound = rnd() < 0.85;
+        bots.push({channel:ch.id, botId:"bot-"+ch.id+"-"+base, health:health, bound:bound});
+      }
+    });
+    var kinds = bots.map(function(b){return b.health;});
+    var agg = !bots.length ? "empty" : (kinds.indexOf("online")>=0?"online":(kinds.indexOf("warn")>=0?"warn":"offline"));
+    out.push({key:base, name:name, base:base, workspace:"D:/ws/"+base, agg:agg, bots:bots});
+  }
+  var rank = {online:0, warn:1, offline:2, empty:3};
+  out.sort(function(a,b){ return (rank[a.agg]-rank[b.agg]) || (a.name<b.name?-1:1); });
+  return out;
+}
+function botOf(agent, cid){ for(var i=0;i<agent.bots.length;i++) if(agent.bots[i].channel===cid) return agent.bots[i]; return null; }
+function healthLabel(h){ return h==="online"?"在线":(h==="warn"?"待确认":(h==="offline"?"离线":"—")); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;"); }
+var qs = new URLSearchParams(location.search);
+var variant = VARIANTS.indexOf(qs.get("variant"))>=0 ? qs.get("variant") : "A";
+var nAgents = 3, density = "dense", theme = "light", width = 1100;
+var selKey = null, drill = null, lastChanged = "初始化";
+try{
+  var wq = parseInt(qs.get("w")||"",10); if(wq>=360&&wq<=1100) width=wq;
+  var nq = qs.get("n"); if(["0","3","8","12"].indexOf(nq)>=0) nAgents=parseInt(nq,10);
+  var dq = qs.get("d"); if(dq==="sparse"||dq==="dense") density=dq;
+}catch(e){}
+var $ = function(id){ return document.getElementById(id); };
+function syncUrl(){
+  try{ var u=new URL(location.href); u.searchParams.set("variant",variant); u.searchParams.set("n",String(nAgents)); u.searchParams.set("d",density); u.searchParams.set("w",String(width)); history.replaceState(null,"",u); }catch(e){}
+}
+function setVariant(v, why){ variant=v; lastChanged=why||("切换变体 → "+v); if(selKey==null&&agents.length) selKey=agents[0].key; syncUrl(); render(); }
+var agents = [];
+function cellHtml(agent, ch){
+  var b = botOf(agent, ch.id);
+  if(!b) return '<span class="cell empty"><span class="dot empty"></span>—</span>';
+  var cls = b.bound ? "" : " unbound";
+  var tag = b.bound ? healthLabel(b.health) : healthLabel(b.health)+"·未绑定";
+  return '<button class="cell'+cls+'" data-agent="'+esc(agent.key)+'" data-ch="'+esc(ch.id)+'"><span class="dot '+b.health+'"></span>'+esc(tag)+'</button>';
+}
+function renderVariant(){
+  var host = $("varBody");
+  $("varTitle").textContent = "Fleet 矩阵 · " + NAMES[variant];
+  $("varSub").textContent = SUBS[variant] + " · " + agents.length + " Agent × 9 渠道";
+  if(!agents.length){
+    host.innerHTML = '<div class="empty-box"><b>还没有 Agent</b><br>新建 Agent 并接入任意渠道后，这里会出现矩阵。<br><br><button class="btn primary" id="emptyGo">＋ 去新建（stub）</button> <span class="mono">空态验收：标题+行动点，不露空表头</span></div>';
+    var g=$("emptyGo"); if(g) g.onclick=function(){ lastChanged="空态点击新建（stub）"; drill={type:"empty-create"}; renderState(); openSheet("新建 Agent","原型 stub：真实现走 A1 新建流程，这里只记录一次点击。"); };
+    return;
+  }
+  if(selKey==null || !agents.some(function(a){return a.key===selKey;})) selKey=agents[0].key;
+  if(variant==="A"){
+    var h = '<div class="tbl-scroll"><table class="m"><thead><tr><th style="text-align:left">Agent ＼ 渠道</th>';
+    CHANNELS.forEach(function(ch){ h += '<th><span class="dot" style="background:'+ch.color+'"></span> '+esc(ch.label)+'</th>'; });
+    h += '<th>汇总</th></tr></thead><tbody>';
+    agents.forEach(function(a){
+      h += '<tr><th><span style="display:flex;align-items:center;gap:8px"><span class="avatar" style="background:'+PALETTE[hash(a.key)%PALETTE.length]+'">'+esc(a.name.charAt(0))+'</span><span><b>'+esc(a.name)+'</b><br><span class="mono">'+esc(a.base)+'</span></span></span></th>';
+      CHANNELS.forEach(function(ch){ h += '<td>'+cellHtml(a,ch)+'</td>'; });
+      var aggTag = a.agg==="empty" ? "未绑定" : healthLabel(a.agg);
+      h += '<td><span class="dot '+a.agg+'"></span> '+aggTag+'</td></tr>';
+    });
+    h += '</tbody></table></div><div class="note">A：桌面全表一眼扫完；窄屏把宽度滑到 360px 看首列冻结 + 横滚。点任一格模拟钻取 C1a 抽屉。</div>';
+    host.innerHTML = h;
+  } else if(variant==="B"){
+    var b = "";
+    agents.forEach(function(a){
+      b += '<div class="bcard"><div class="bcard-hd"><span class="avatar" style="background:'+PALETTE[hash(a.key)%PALETTE.length]+'">'+esc(a.name.charAt(0))+'</span><b>'+esc(a.name)+'</b><span class="mono">'+esc(a.base)+' · '+a.bots.length+'/9 已接入</span><span style="flex:1"></span><span class="dot '+a.agg+'"></span><span style="font-size:11px;color:var(--mut)">'+(a.agg==="empty"?"未绑定":healthLabel(a.agg))+'</span></div><div class="chips">';
+      CHANNELS.forEach(function(ch){
+        var bot = botOf(a, ch.id);
+        if(!bot) b += '<span class="cell empty"><span class="dot empty"></span>'+esc(ch.label)+' —</span>';
+        else b += '<button class="cell'+(bot.bound?"":" unbound")+'" data-agent="'+esc(a.key)+'" data-ch="'+esc(ch.id)+'"><span class="dot '+bot.health+'"></span>'+esc(ch.label)+'·'+esc(bot.bound?healthLabel(bot.health):healthLabel(bot.health)+"·未绑定")+'</button>';
+      });
+      b += '</div></div>';
+    });
+    host.innerHTML = '<div class="bcards">'+b+'</div><div class="note">B：卡片自动换行，窄屏零横滚；代价是跨 Agent 同渠道对齐没了（扫“QQ 全离线”不如 A 快）。</div>';
+  } else {
+    var sel = agents.filter(function(a){return a.key===selKey;})[0] || agents[0];
+    var l = '<div class="cgrid"><div class="clist">';
+    agents.forEach(function(a){
+      l += '<button class="crow'+(a.key===sel.key?" on":"")+'" data-sel="'+esc(a.key)+'"><span class="dot '+a.agg+'"></span><b>'+esc(a.name)+'</b><span class="mono">'+a.bots.length+'/9</span></button>';
+    });
+    l += '</div><div class="cdetail"><div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="avatar" style="background:'+PALETTE[hash(sel.key)%PALETTE.length]+'">'+esc(sel.name.charAt(0))+'</span><b>'+esc(sel.name)+'</b><span class="mono">'+esc(sel.workspace)+'</span><span style="flex:1"></span><span class="dot '+sel.agg+'"></span></div>';
+    CHANNELS.forEach(function(ch){
+      var bot = botOf(sel, ch.id);
+      if(!bot) l += '<div class="drow" style="cursor:default;opacity:.65"><span class="dot empty"></span><b>'+esc(ch.label)+'</b><span class="mono">未接入</span><span class="sp"></span><button class="btn" data-add="'+esc(ch.id)+'">＋接入</button></div>';
+      else l += '<button class="drow" data-agent="'+esc(sel.key)+'" data-ch="'+esc(ch.id)+'"><span class="dot '+bot.health+'"></span><b>'+esc(ch.label)+'</b><span class="mono">'+esc(bot.botId)+'</span><span>'+esc(bot.bound?healthLabel(bot.health):healthLabel(bot.health)+"·未绑定")+'</span><span class="sp"></span><span style="font-size:11px;color:var(--mut)">钻取 ›</span></button>';
+    });
+    l += '<div class="note">C：Agent 多时只看一行 9 渠道，排查最快；代价是全局扫表能力没了。点行即钻取抽屉替身。</div></div></div>';
+    host.innerHTML = l;
+  }
+  host.querySelectorAll("[data-agent]").forEach(function(el){
+    el.onclick = function(){
+      var k = el.getAttribute("data-agent"), c = el.getAttribute("data-ch");
+      selKey = k; drill = {type:"open-drawer", key:k, channel:c, at:new Date().toISOString()};
+      lastChanged = "钻取 "+k+" / "+c+"（模拟派发 open-drawer）";
+      renderState();
+      var a = agents.filter(function(x){return x.key===k;})[0];
+      var bot = a ? botOf(a, c) : null;
+      openSheet("Agent 详情（替身）", "Agent：<b>"+esc(k)+"</b><br>渠道：<b>"+esc(c)+"</b><br>bot：<span class='mono'>"+esc(bot?bot.botId:"—")+"</span><br>健康："+esc(bot?healthLabel(bot.health):"未接入")+" · "+esc(bot?(bot.bound?"已绑定":"未绑定"):"—")+"<br><br>真实现派发 <span class='mono'>dsh-im-companion:open-drawer</span> 打开 C1a 抽屉。");
+    };
+  });
+  host.querySelectorAll("[data-sel]").forEach(function(el){
+    el.onclick = function(){ selKey = el.getAttribute("data-sel"); lastChanged = "C 变体选中 Agent → "+selKey; renderState(); renderVariant(); renderState(); };
+  });
+  host.querySelectorAll("[data-add]").forEach(function(el){
+    el.onclick = function(e){ e.stopPropagation(); lastChanged = "C 变体点＋接入 "+el.getAttribute("data-add")+"（stub）"; drill={type:"provision", channel:el.getAttribute("data-add")}; renderState(); openSheet("添加接入（替身）","渠道：<b>"+esc(el.getAttribute("data-add"))+"</b><br>原型 stub：真实现走 A1 接入 QR 闭环。"); };
+  });
+}
+function openSheet(t, h){ $("sheetTitle").textContent=t; $("sheetBody").innerHTML=h; $("scrim").classList.add("show"); }
+function renderState(){
+  document.getElementById("root").dataset.theme = theme;
+  $("stage").style.maxWidth = width+"px"; $("stage").style.margin = "0 auto";
+  $("wVal").textContent = width+"px";
+  $("nSel").value = String(nAgents); $("dSel").value = density; $("tSel").value = theme; $("wRange").value = String(width);
+  $("varTag").textContent = "当前 "+NAMES[variant]+"·?variant="+variant+" · "+nAgents+" Agent × 9 渠道";
+  $("swLabel").textContent = NAMES[variant];
+  document.querySelectorAll(".switcher .dots button").forEach(function(d){ d.classList.toggle("on", d.dataset.v===variant); });
+  var emptyCols = CHANNELS.filter(function(ch){ return agents.length && agents.every(function(a){ return !botOf(a,ch.id); }); }).map(function(c){return c.id;});
+  var rows = [["变体","?variant="+variant+"（"+NAMES[variant]+"）"],["Agent 数",String(nAgents)+"（mock）"],["填充",density],["排序","行在线>待确认>离线>未绑定 · 列9序固定"],["选中 Agent",selKey||"—"],["钻取",drill?drill.type+" "+(drill.key||"")+" "+(drill.channel||""):"—"],["全空渠道列",emptyCols.length?emptyCols.join("、"):"无"],["主题",theme],["模拟宽度",width+"px"],["最近变化",lastChanged]];
+  $("kvBox").innerHTML = rows.map(function(r){ return "<div><span>"+esc(r[0])+"</span><b style='text-align:right;max-width:60%'>"+esc(r[1])+"</b></div>"; }).join("");
+  var state = { variant:variant, variantName:NAMES[variant], mock:{n:nAgents, density:density}, sort:{rows:"online>warn>offline>empty, name", cols:"CHANNEL_ORDER固定9序"}, selectedAgent:selKey, drill:drill, emptyColumns:emptyCols, theme:theme, widthPx:width, counts:{agents:agents.length, channels:9, bots:agents.reduce(function(s,a){return s+a.bots.length;},0)}, lastChanged:lastChanged };
+  $("jsonBox").textContent = JSON.stringify(state, null, 2);
+}
+function render(){ agents = buildAgents(nAgents, density); renderVariant(); renderState(); }
+$("nSel").onchange = function(e){ nAgents=parseInt(e.target.value,10); selKey=null; drill=null; lastChanged="mock 切换 → "+nAgents+" Agent"; syncUrl(); render(); };
+$("dSel").onchange = function(e){ density=e.target.value; drill=null; lastChanged="填充切换 → "+density; syncUrl(); render(); };
+$("tSel").onchange = function(e){ theme=e.target.value; lastChanged="主题 → "+theme; renderState(); };
+$("wRange").oninput = function(e){ width=parseInt(e.target.value,10); lastChanged="模拟宽度 → "+width+"px"; syncUrl(); renderState(); };
+$("sheetOk").onclick = function(){ $("scrim").classList.remove("show"); };
+$("scrim").onclick = function(e){ if(e.target===$("scrim")) $("scrim").classList.remove("show"); };
+$("prevBtn").onclick = function(){ setVariant(VARIANTS[(VARIANTS.indexOf(variant)+2)%3], "底部切换 ◀ → "+VARIANTS[(VARIANTS.indexOf(variant)+2)%3]); };
+$("nextBtn").onclick = function(){ setVariant(VARIANTS[(VARIANTS.indexOf(variant)+1)%3], "底部切换 ▶ → "+VARIANTS[(VARIANTS.indexOf(variant)+1)%3]); };
+document.querySelectorAll(".switcher .dots button").forEach(function(d){ d.onclick=function(){ setVariant(d.dataset.v, "底部圆点 → "+d.dataset.v); }; });
+document.addEventListener("keydown", function(e){
+  var t = e.target; if(t && (t.tagName==="INPUT"||t.tagName==="TEXTAREA"||t.isContentEditable)) return;
+  if(e.key==="ArrowLeft") setVariant(VARIANTS[(VARIANTS.indexOf(variant)+2)%3], "键盘 ←");
+  if(e.key==="ArrowRight") setVariant(VARIANTS[(VARIANTS.indexOf(variant)+1)%3], "键盘 →");
+  if(e.key==="Escape") $("scrim").classList.remove("show");
+});
+render();
+</script>
+</body>
+</html>

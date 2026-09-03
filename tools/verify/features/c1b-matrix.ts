@@ -117,18 +117,24 @@ test('双语：字典/状态词/渠道名 EN（默认 zh 保持旧断言）', ()
   assert.equal(mEn.cols[0].label, 'Feishu');
 });
 
-test('单入口装配：无独立 section 注册 + index 显隐 + A1 船按钮（源码断言）', () => {
-  assert.doesNotMatch(manifestSrc, /slots\.inject/);
-  assert.doesNotMatch(manifestSrc, /order: 23,[\s\S]*label/);
+test('大弹窗装配：矩阵自管模态 + 装配层零感知 + A1 船按钮间距（源码断言）', () => {
+  const viewSrc = readFileSync(join(FEAT, 'view.ts'), 'utf8');
+  assert.match(viewSrc, /showSheet\(\{ overlayClass: 'c1bm-overlay', panelClass: 'c1bm-modal'/);
+  assert.match(viewSrc, /FLEET_VIEW_EVENT/);
+  assert.match(viewSrc, /mountRadarView/);
+  assert.match(viewSrc, /openRadar/);
+  assert.doesNotMatch(viewSrc, /slots\.inject/);
+  assert.doesNotMatch(viewSrc, /from 'react'/);
+  assert.match(manifestSrc, /mountRadar/);
   const indexSrc = readFileSync(join(REPO, 'src', 'client', 'index.ts'), 'utf8');
-  assert.match(indexSrc, /MatrixSection/);
-  assert.match(indexSrc, /FLEET_VIEW_EVENT/);
-  assert.match(indexSrc, /hidden: fleetView !== 'list'/);
-  assert.match(indexSrc, /hidden: fleetView !== 'radar'/);
+  assert.doesNotMatch(indexSrc, /MatrixSection/);
+  assert.doesNotMatch(indexSrc, /c1b-matrix/);
   const panelSrc = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
   assert.match(panelSrc, /iconName: 'ship'/);
   assert.match(panelSrc, /emitFleetView\('radar'\)/);
+  assert.match(panelSrc, /gap: '12px'/);
   assert.doesNotMatch(panelSrc, /c1b-matrix/);
+  assert.match(stylesSrc, /\.c1bm-modal/);
 });
 
 test('注册：id/槽位目标 + 样式命名空间（转译已过，此处源码断言）', () => {

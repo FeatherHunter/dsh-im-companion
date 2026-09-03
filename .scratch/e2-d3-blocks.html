@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向C · 积木（拼搭玩趣）</title>
+<style>
+body{margin:0;background:#eef1f6;color:#1d1d1f;font-family:-apple-system,"PingFang SC",sans-serif;}
+.wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px;}
+h1{font-size:15px;margin:0 0 4px;} .sub{font-size:12px;color:#6e6e73;margin:0 0 22px;}
+.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
+.base{background:#fff;border-radius:18px;padding:16px 14px 14px;background-image:radial-gradient(rgba(0,0,0,.10) 1.5px,transparent 1.5px);background-size:18px 18px;box-shadow:0 4px 18px rgba(0,0,0,.06);}
+.hd{display:flex;align-items:center;gap:8px;margin:2px 4px 10px;}
+.nm{font-size:16px;font-weight:800;background:#1d1d1f;color:#fff;border-radius:8px;padding:2px 12px;}
+.ct{margin-left:auto;font-size:11px;color:#6e6e73;background:#fff;border-radius:99px;padding:2px 10px;box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.brick{position:relative;display:flex;align-items:center;gap:9px;margin:10px 4px 0;padding:11px 12px 11px 14px;border-radius:12px;font-size:14px;font-weight:600;color:#fff;cursor:grab;box-shadow:0 3px 0 rgba(0,0,0,.18);transition:transform .12s ease,box-shadow .12s ease;}
+.brick:before{content:'';position:absolute;top:-6px;left:14px;width:26px;height:8px;border-radius:4px 4px 0 0;background:inherit;filter:brightness(1.08);}
+.brick:hover{transform:translateY(-3px) scale(1.02);box-shadow:0 9px 18px rgba(0,0,0,.22);}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:rgba(255,255,255,.55);}
+.dot.on{background:#fff;box-shadow:0 0 8px #fff;}
+.ch{margin-left:auto;font-size:11px;opacity:.75;font-weight:400;}
+.brick.drag{opacity:.45;transform:scale(1.05) rotate(-2deg);}
+.base.over{outline:3px dashed #0a84ff;outline-offset:4px;}
+.hint{font-size:11px;color:#6e6e73;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>方向C · 积木 <span style="font-weight:400;color:#6e6e73;">—— 底板 + 彩色积木，拼搭感</span></h1>
+  <p class="sub">悬停积木弹起（先放上去不动）；拖到别家底板即搬家。问题：好玩吗？还是太幼稚？</p>
+  <div class="grid" id="grid"></div>
+  <p class="hint" id="msg">先悬停，再拖“商务一号”去小帅2家。</p>
+</div>
+<script>
+var CH={飞书:'#0a84ff',微信:'#07c160',QQ:'#8e44ad'};
+var homes=[
+ {name:'小帅2',b:[['客服小冰','飞书','on'],['群管家','微信','on']]},
+ {name:'阿梨',b:[['夜间值班','QQ','warn']]},
+ {name:'老墨',b:[['商务一号','飞书','on'],['朋友圈号','微信','off'],['老客户群','QQ','on']]},
+];
+var drag=null;
+function render(){
+  var g=document.getElementById('grid');g.innerHTML='';
+  homes.forEach(function(h,hi){
+    var card=document.createElement('div');card.className='base';
+    card.innerHTML='<div class="hd"><span class="nm">'+h.name+'</span><span class="ct">'+h.b.length+' 个机器人</span></div>';
+    h.b.forEach(function(x){
+      var r=document.createElement('div');r.className='brick';r.style.background=CH[x[1]]||'#555';
+      r.innerHTML='<span class="dot '+(x[2]==='on'?'on':'')+'"></span><span>'+x[0]+'</span><span class="ch">'+x[1]+'</span>';
+      r.setAttribute('draggable','true');
+      r.addEventListener('dragstart',function(ev){drag={x:x,from:hi};r.classList.add('drag');ev.dataTransfer.effectAllowed='move';try{ev.dataTransfer.setData('text/plain',x[0]);}catch(e){}});
+      r.addEventListener('dragend',function(){r.classList.remove('drag');clear();});
+      card.appendChild(r);
+    });
+    card.addEventListener('dragover',function(ev){if(!drag)return;ev.preventDefault();clear();card.classList.add('over');});
+    card.addEventListener('drop',function(ev){
+      if(!drag)return;ev.preventDefault();clear();var d=drag;drag=null;
+      if(d.from===hi){say('它已经在'+homes[hi].name+'家了');return;}
+      homes[d.from].b.splice(homes[d.from].b.indexOf(d.x),1);homes[hi].b.push(d.x);render();
+      say('“'+d.x[0]+'”拼到了'+homes[hi].name+'家');
+    });
+    g.appendChild(card);
+  });
+}
+function clear(){document.querySelectorAll('.base.over').forEach(function(n){n.classList.remove('over');});}
+function say(t){document.getElementById('msg').textContent=t;}
+render();
+</script>
+</body>
+</html>

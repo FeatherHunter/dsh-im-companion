@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E2 驾驶舱视觉稿（抛弃式 mock，可拖）</title>
+<style>.e2-entry{font-size:12px;font-weight:700;border:1px solid rgba(127,127,127,.5);background:transparent;border-radius:8px;padding:3px 10px;margin-left:6px;cursor:pointer}
+.e2-overlay{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:20px}
+.e2-cockpit{position:relative;width:min(920px,94vw);max-height:86vh;overflow:auto;background:var(--dsw-alias-bg-base,#fff);border-radius:16px;padding:18px 18px 20px;box-shadow:0 24px 64px rgba(0,0,0,.35)}
+.e2-x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:1px solid rgba(127,127,127,.4);background:transparent;font-size:15px;line-height:1;cursor:pointer;opacity:.7}
+.e2-panel-title{font-size:16px;font-weight:700;margin:0 0 4px;padding-right:36px}
+.e2-panel-sub{font-size:12px;opacity:.65;margin:0 0 14px;line-height:1.6}
+.e2-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.e2-sec{--e2-c:#8e8e93;border:1px solid rgba(127,127,127,.35);border-left:4px solid var(--e2-c);border-radius:12px;padding:10px 12px;background:transparent;min-height:120px}
+.e2-sec-unbound{border-style:dashed;grid-column:1/-1;min-height:0}
+.e2-sec-new{border-style:dashed;opacity:.85;cursor:pointer}
+.e2-sec-name{font-size:13px;font-weight:700;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.e2-dot{width:10px;height:10px;border-radius:50%;background:var(--e2-c);flex:none}
+.e2-sec-unbound .e2-dot{background:transparent;border:2px solid #b0b3b8;width:8px;height:8px}
+.e2-n{font-weight:400;opacity:.6;font-size:12px}
+.e2-row{display:flex;align-items:center;gap:8px;font-size:13px;border:1px solid rgba(127,127,127,.3);border-left:3px solid var(--e2-c);border-radius:10px;padding:7px 10px;margin:0 0 6px;background:var(--dsw-alias-bg-base,#fff);cursor:grab}
+.e2-row.e2-dragging{opacity:.45}
+.e2-row .e2-who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.e2-ch{font-size:12px;flex:none}.e2-foot{font-size:12px;opacity:.6;text-align:center;margin-top:2px;grid-column:1/-1}
+.e2-plus-hint{font-size:12px;opacity:.6;line-height:1.6}
+.e2-drop-ok{outline:2px solid #1a9e54 !important;outline-offset:-2px;background:rgba(26,158,84,.07)}
+.e2-drop-warn{outline:2px solid #e6a700 !important;outline-offset:-2px;background:rgba(230,167,0,.08)}
+.e2-undo{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:10px;font-size:13px;padding:10px 14px;border-radius:12px;background:#1c1c1e;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+.e2-undo button{font:inherit;font-size:12.5px;font-weight:700;color:#fff;background:transparent;border:1px solid rgba(255,255,255,.5);border-radius:8px;padding:4px 10px;cursor:pointer}
+.e2-confirmbar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:90;display:flex;align-items:center;gap:10px;font-size:13px;padding:10px 14px;border-radius:12px;background:#fff;color:#1c1c1e;border:1px solid rgba(0,0,0,.15);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.e2-confirmbar button{font:inherit;font-size:12.5px;padding:5px 12px;border-radius:8px;border:1px solid rgba(0,0,0,.2);background:#fff;cursor:pointer}
+.e2-confirmbar button.go{background:#0a84ff;border-color:#0a84ff;color:#fff;font-weight:700}
+body{margin:0;background:#3a3a3c;font-family:-apple-system,"PingFang SC","Noto Sans SC",sans-serif;}
+.e2-face{width:30px;height:30px;border-radius:50%;flex:none;display:inline-grid;place-items:center;font-size:14px;font-weight:700;color:#fff}
+.e2-av-0 .e2-face{background:linear-gradient(135deg,#0a84ff,#5e5ce6)}.e2-av-1 .e2-face{background:linear-gradient(135deg,#30d158,#0a84ff)}.e2-av-2 .e2-face{background:linear-gradient(135deg,#bf5af2,#ff375f)}.e2-sec-unbound .e2-face{background:rgba(127,127,127,.35)}
+.e2-av-0{--e2-c:#0a84ff}.e2-av-1{--e2-c:#30d158}.e2-av-2{--e2-c:#bf5af2}
+.e2-sec-name{align-items:center}.e2-titles{display:flex;flex-direction:column;min-width:0}.e2-home{font-size:14px}.e2-sub{font-size:11px;font-weight:400;opacity:.55}.e2-n{margin-left:auto}
+.e2-hdot{width:8px;height:8px;border-radius:50%;flex:none;background:#b0b3b8}.e2-h-online{background:#1a9e54}.e2-h-warn{background:#e6a700}
+body.dark{background:#000}body.dark .e2-cockpit{background:#1c1c1e;color:#f2f2f7}body.dark .e2-sec{background:rgba(255,255,255,.06)}body.dark .e2-row{background:#2c2c2e;color:#f2f2f7}</style>
+</head>
+<body>
+<div style="max-width:900px;margin:24px auto;padding:0 16px;color:#fff;font-size:13px;line-height:1.8;">
+  <b style="background:#b42318;border-radius:6px;padding:2px 8px;font-size:11px;">视觉稿 · 抛弃式 mock</b>
+  <p>下面就是驾驶舱本体（与实现同一套 CSS）。直接用鼠标拖牌：小帅 → 阿梨试试。确认条、撤销条都是活的（本地模拟）。底色灰是模拟的 DSH 遮罩，真实环境里背后是你的左栏。<br><button onclick="document.body.classList.toggle('dark')" style="margin-top:8px;font:inherit;font-size:12px;padding:5px 14px;border-radius:8px;border:1px solid #999;background:#fff;cursor:pointer;color:#111;">切换 深色 / 浅色</button></p>
+</div>
+<div class="e2-overlay" style="position:static;background:none;display:block;padding:0 16px 60px;">
+<div class="e2-cockpit" style="margin:0 auto;">
+  <button class="e2-x" onclick="document.querySelector('.demo-note').style.display='none'">×</button>
+  <h2 class="e2-panel-title">机器人搬家</h2>
+  <p class="e2-panel-sub">把成员拖到另一个家完成换绑（会二次确认）。绿灯在岗，黄灯打盹，灰灯睡着了。</p>
+  <div class="e2-grid" id="grid"></div>
+</div>
+</div>
+<div class="demo-note"></div>
+<script>
+var PALETTE = ['#0a84ff','#30d158','#bf5af2','#ff9f0a'];
+var state = [
+  { ws: 'xiaoshuai', name: '小帅2', sub: 'xiaoshuai', av: 0, bots: [{id:'客服小冰',ch:'飞书',st:'on'},{id:'群管家',ch:'微信',st:'on'}] },
+  { ws: 'ali', name: '阿梨', sub: 'ali', av: 1, bots: [{id:'夜间值班',ch:'QQ',st:'warn'}] },
+  { ws: 'laomo', name: '老墨', sub: 'laomo', av: 2, bots: [{id:'商务一号',ch:'飞书',st:'on'},{id:'朋友圈号',ch:'微信',st:'off'},{id:'老客户群',ch:'QQ',st:'on'}] },
+];
+var unbound = [{id:'刚接的微信号',ch:'微信'}];
+var drag = null, undoTimer = null;
+function el(tag, cls, text){ var d=document.createElement(tag); if(cls)d.className=cls; if(text!=null)d.textContent=text; return d; }
+function render(){
+  var grid = document.getElementById('grid'); grid.innerHTML='';
+  function sec(name, ws, bots, color, dashed, extra, sub, av){
+    var box = el('div','e2-sec'+(dashed?' e2-sec-unbound':'')+(av!=null?' e2-av-'+av:''));
+    if(ws)box.setAttribute('data-ws',ws);
+    if(extra)box.setAttribute('data-new','1');
+    var head = el('div','e2-sec-name');
+    head.appendChild(el('span','e2-face',name.charAt(0)));
+    var titles = el('span','e2-titles');
+    titles.appendChild(el('span','e2-home',name));
+    if(sub&&sub!==name)titles.appendChild(el('span','e2-sub',sub));
+    head.appendChild(titles);
+    var CHC={飞书:'#3370ff',微信:'#07c160',QQ:'#12b7f5'};
+      if(!(extra&&bots.length===0))head.appendChild(el('span','e2-n',bots.length+' 个机器人'));
+    box.appendChild(head);
+    bots.forEach(function(b){
+      var row = el('div','e2-row');
+      row.setAttribute('draggable','true');
+      row.appendChild(el('span','e2-hdot '+(b.st==='on'?'e2-h-online':b.st==='warn'?'e2-h-warn':'')));
+      row.appendChild(el('span','e2-who',b.id));
+      var chs=el('span','e2-ch',' · '+b.ch); chs.style.color=CHC[b.ch]||'#8e8e93'; row.appendChild(chs);
+      row.addEventListener('dragstart',function(ev){
+        drag={bot:b,from:ws}; row.classList.add('e2-dragging');
+        ev.dataTransfer.effectAllowed='move';
+        try{ev.dataTransfer.setData('text/plain',b.id);}catch(e){}
+      });
+      row.addEventListener('dragend',function(){ row.classList.remove('e2-dragging'); clearTint(); });
+      box.appendChild(row);
+    });
+    if(extra){ box.appendChild(el('div','e2-plus-hint','把牌拖到这里，选个空人接住')); }
+    box.addEventListener('dragover',function(ev){
+      if(!drag)return; ev.preventDefault(); clearTint();
+      ev.dataTransfer.dropEffect='move';
+      box.classList.add(drag.from&&drag.from!==ws?'e2-drop-warn':'e2-drop-ok');
+    });
+    box.addEventListener('drop',function(ev){
+      if(!drag)return; ev.preventDefault(); clearTint();
+      var d=drag; drag=null;
+      if(d.from===ws){ bar('它已经在这里了'); return; }
+      confirmBar('“'+d.bot.id+'”现属'+nameOf(d.from)+'，换绑到“'+name+'”？',function(){
+        move(d,ws); undoBar(d,ws);
+      });
+    });
+    grid.appendChild(box);
+  }
+  if(unbound.length)sec('还没进家门的',null,unbound,null,true,false,'先落到任意家',null);
+  state.forEach(function(g){ sec(g.name,g.ws,g.bots,null,false,false,g.sub,g.av); });
+  sec('＋ 安新家',null,[],null,true,true,'',null);
+  var all=0;state.forEach(function(g){all+=g.bots.length;});all+=unbound.length;
+  grid.appendChild(el('div','e2-foot','共 '+state.length+' 户 · '+all+' 个机器人'));
+}
+function nameOf(ws){ if(!ws)return'未分配'; var g=state.find(function(x){return x.ws===ws;}); return g?g.name:ws; }
+function move(d,ws){
+  ['unbound'].forEach(function(){});
+  var src = !d.from ? unbound : state.find(function(x){return x.ws===d.from;}).bots;
+  var ix = src.findIndex(function(x){return x.id===d.bot.id;}); if(ix>=0)src.splice(ix,1);
+  if(!ws){ unbound.push(d.bot); }
+  else { state.find(function(x){return x.ws===ws;}).bots.push(d.bot); }
+  render();
+}
+function clearTint(){ document.querySelectorAll('.e2-drop-ok,.e2-drop-warn').forEach(function(n){n.classList.remove('e2-drop-ok');n.classList.remove('e2-drop-warn');}); }
+function bar(text){ toast(text,null); }
+function toast(text,btn){
+  document.querySelectorAll('.e2-undo,.e2-confirmbar').forEach(function(n){n.remove();});
+  if(undoTimer){clearTimeout(undoTimer);undoTimer=null;}
+  var t=el('div',btn?'e2-confirmbar':'e2-undo',text);
+  document.body.appendChild(t); return t;
+}
+function confirmBar(text,go){
+  var t=toast(null,true); t.textContent=text+' ';
+  var no=el('button',null,'留在这里'); no.onclick=function(){t.remove();};
+  var yes=el('button','go','确认换绑'); yes.onclick=function(){t.remove();go();};
+  t.appendChild(no); t.appendChild(yes);
+}
+function undoBar(d,ws){
+  var t=el('div','e2-undo','已换绑到'+nameOf(ws)+'（5s 内可撤销）');
+  var b=el('button',null,'撤销');
+  b.onclick=function(){ t.remove(); if(undoTimer){clearTimeout(undoTimer);undoTimer=null;} move({bot:d.bot,from:ws},d.from); toast('已撤销，回到'+nameOf(d.from),null); };
+  t.appendChild(b); document.body.appendChild(t);
+  undoTimer=setTimeout(function(){ t.remove(); toast('撤销超时，绑定已生效',null); },5000);
+}
+render();
+</script>
+</body>
+</html>

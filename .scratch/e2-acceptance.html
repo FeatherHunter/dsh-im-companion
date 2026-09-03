@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>E2 重新分配 · 零基础验收指南（7 场景）</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Noto Sans SC","Segoe UI",Roboto,sans-serif; background:#f2f3f5; color:#1c1c1e; }
+  .wrap { max-width:860px; margin:0 auto; padding:24px 16px 90px; }
+  h1 { font-size:22px; margin:0 0 4px; }
+  .sub { font-size:13px; color:#666; margin:0 0 16px; line-height:1.7; }
+  .card { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius:14px; margin:0 0 14px; overflow:hidden; }
+  .card-hd { padding:12px 16px; border-bottom:1px solid rgba(0,0,0,.07); font-weight:700; font-size:15px; display:flex; gap:8px; align-items:center; }
+  .tag { font-size:11px; font-weight:700; color:#fff; background:#0a84ff; border-radius:6px; padding:2px 8px; white-space:nowrap; }
+  .tag.adv { background:#b42318; }
+  .card-bd { padding:12px 16px 16px; font-size:13.5px; line-height:1.8; }
+  .card-bd ol { margin:8px 0; padding-left:22px; }
+  .card-bd li { margin:6px 0; }
+  .exp { background:#f0faf3; border:1px solid #bfe3c9; border-radius:10px; padding:8px 12px; margin:8px 0; }
+  .exp b { color:#1a9e54; }
+  .advbox { background:#fdf1f0; border:1px solid #f0b8b4; border-radius:10px; padding:8px 12px; margin:8px 0; }
+  .advbox b { color:#b42318; }
+  code, kbd { font-family:inherit; font-size:12px; background:rgba(0,0,0,.06); border-radius:5px; padding:1px 6px; }
+  label.step { display:flex; gap:8px; align-items:flex-start; cursor:pointer; }
+  label.step input { margin-top:5px; }
+  .foot { font-size:12px; color:#666; line-height:1.8; }
+  #progress { position:fixed; left:0; right:0; bottom:0; background:#1c1c1e; color:#fff; font-size:13px; padding:10px 16px; text-align:center; }
+  @media print { #progress { display:none; } body { background:#fff; } .card { break-inside:avoid; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>E2 重新分配 · 零基础验收指南</h1>
+  <p class="sub">一句话背景：<b>左栏一个工作区 = 一个人</b>（如“小帅”）；每个机器人出生就有归属。本功能让你打开一个面板，把机器人从一个人手里<b>调拨</b>给另一个人。下面 7 个场景按顺序做，全过即通过。不需要懂任何源码。</p>
+
+  <div class="card"><div class="card-hd"><span class="tag">准备</span>动手前（只做一次）</div><div class="card-bd"><ol>
+    <li><label class="step"><input type="checkbox">先在代码目录跑 <code>npm run build:client</code>（把最新样式编进包——跳过这步会出现“样式失效”的假象），然后完全退出 DSH Desktop（托盘也退），重新打开，页面按 <kbd>Ctrl+F5</kbd> 硬刷新。</label></li>
+    <li><label class="step"><input type="checkbox">看左栏顶部，找到一个<b>小机器人图标</b>按钮（在筛选按钮旁边，鼠标悬停会提示“分身份：打开面板…”）。点它 → 屏幕中央弹出面板 <code>重新分配机器人归属</code>，里面按人分组列出所有机器人（如“小帅 2 个”“阿梨 1 个”）。有关面板直接按 <kbd>Esc</kbd> 或点阴影。</label></li>
+    <li><label class="step"><input type="checkbox">确认至少有两个组、且至少一个组里有 1 个机器人（否则没得调）。如果真有“未分配”组，它会置顶显示，没有就是正常的。</label></li>
+  </ol></div></div>
+
+  <div class="card"><div class="card-hd"><span class="tag">场景 1</span>打开面板看清家底</div><div class="card-bd"><ol>
+    <li><label class="step"><input type="checkbox">点<b>小机器人图标</b>打开面板（标题应为 <code>串门 · 搬家</code>，悬停图标提示“串门…”）。</label></li>
+    <li><label class="step"><input type="checkbox">核对：每家 = 胶带门牌上的<b>设置中文名</b>（如小帅2）+ “N 个机器人”（一家只住 1 位，就是他自己；机器人是他的小家伙们）；每张牌 = 绿/黄/灰灯（在岗/打盹/睡着）+ 机器人名 + 彩色渠道名；面板底部还有虚线“＋ 安新家”。</label></li>
+  </ol><div class="exp"><b>预期：</b>组数、人数与左栏实际一致；没有“未分配”组（除非真有未绑定机器人，那它是置顶虚线组）。面板信息与左栏互相印证。</div></div></div>
+
+  <div class="card"><div class="card-hd"><span class="tag">场景 2</span>把人调走（拖放换绑）</div><div class="card-bd"><ol>
+    <li><label class="step"><input type="checkbox">按住 A 组里任意一张牌，拖到 <b>B 组区域</b>悬停：B 组应出现<b>黄色描边</b>（表示“换过去要确认”）。</label></li>
+    <li><label class="step"><input type="checkbox">松手：弹出确认框（现属…换绑到…？），点 <code>确认换绑</code>。</label></li>
+  </ol><div class="exp"><b>预期：</b>底部弹出 <code>已换绑到某某（5s 内可撤销）</code> 带 <code>撤销</code> 按钮；面板里这张牌搬到 B 组；左栏两边计数同步变化。</div>
+  <div class="advbox"><b>对抗：</b>确认框开着时按 <kbd>Esc</kbd> → 必须等于“留在这里”，不能悄悄换绑。</div></div></div>
+
+  <div class="card"><div class="card-hd"><span class="tag">场景 3</span>调给空人（＋ 安新家兜底）</div><div class="card-bd"><ol>
+    <li><label class="step"><input type="checkbox">把任意一张牌拖到面板底部虚线 <code>＋ 安新家</code> 区松手 → 弹出系统目录选择器，选一个目前没机器人的工作区目录，确认。</label></li>
+    <li><label class="step"><input type="checkbox">如果这张牌原来有所属，同样会先弹换绑确认框，点 <code>确认换绑</code>。</label></li>
+  </ol><div class="exp"><b>预期：</b>绑定落到你选的目录；面板刷新后出现新的一组。在目录选择器里点取消 → 什么都不发生。</div></div></div>
+
+  <div class="card"><div class="card-hd"><span class="tag">场景 4</span>调错撤销 + 超时落定</div><div class="card-bd"><ol>
+    <li><label class="step"><input type="checkbox">做一次换绑，<b>5 秒内</b>点 <code>撤销</code> → 弹出 <code>已撤销，回到某某</code>，牌搬回去。</label></li>
+    <li><label class="step"><input type="checkbox">再做一次换绑，这次等 5 秒以上 → 撤销按钮消失并弹出 <code>撤销超时，绑定已生效</code>，再无撤销入口。</label></li>
+  </ol><div class="exp"><b>预期：</b>第 4 秒点撤销必成功、第 6 秒必找不到按钮。刷新页面后归属稳定。</div></div></div>
+
+  <div class="card"><div class="card-hd"><span class="tag">场景 5</span>三种“什么都不发生”</div><div class="card-bd"><ol>
+    <li><label class="step"><input type="checkbox"><b>放回本组：</b>牌拖回自己组松手 → <code>它已经在这里了</code>，无写入。</label></li>
+    <li><label class="step"><input type="checkbox"><b>扔空白：</b>牌拖到面板空白处松手 → <code>空白处不可放，请拖到分组上</code>。</label></li>
+    <li><label class="step"><input type="checkbox"><b>中途取消：</b>拿起后按 <kbd>Esc</kbd> → <code>已取消拖拽，回到原位</code>。</label></li>
+  </ol><div class="exp"><b>预期：</b>三种做完，面板分组与左栏计数与做之前完全一致。</div></div></div>
+
+  <div class="card"><div class="card-hd"><span class="tag adv">场景 6</span>对抗：批量与重复</div><div class="card-bd"><ol>
+    <li><label class="step"><input type="checkbox"><b>批量连调：</b>一口气把 2–3 张牌调给不同的人 → 每次独立成功，互不干扰。</label></li>
+    <li><label class="step"><input type="checkbox"><b>重复调：</b>同一张牌连调两次到同一人 → 第二次提示“已经在这里”，不重复写入。</label></li>
+    <li><label class="step"><input type="checkbox"><b>面板开着时外部变化：</b>调拨成功后面板应自动刷新分组（牌已搬家），不需要关了重开。</label></li>
+  </ol></div></div>
+
+  <div class="card"><div class="card-hd"><span class="tag adv">场景 7</span>对抗：断连与一致性</div><div class="card-bd"><ol>
+    <li><label class="step"><input type="checkbox"><b>断连置灰：</b>（如方便）停掉连接服务后重开面板 → 所有牌置灰不可拖，提示不可分配；任何操作都不写坏数据。</label></li>
+    <li><label class="step"><input type="checkbox"><b>刷新一致性：</b>全部做完后 <kbd>Ctrl+F5</kbd>，对照面板分组与左栏 → 一致，无幽灵绑定。</label></li>
+  </ol><div class="advbox"><b>通过标准：</b>场景 1–7 每步预期命中。不符就记“场景 X 第 Y 步：做了…/期望…/实际…”，截图发回即有效 bug 报告。</div></div></div>
+
+  <div class="card"><div class="card-hd">已知边界（不算 bug）</div><div class="card-bd"><p class="foot">1）新绑定的牌成功后<b>没有</b>撤销按钮（只有换绑有）——上游没有“回到未绑定”的无损接口。<br>2）面板里拖到空白处不能新建归属。<br>3）左栏行本身不再是放置目标，调拨只在面板里做；左栏只负责展示结果。<br>4）“未分配”组只在真有未绑定机器人时出现，平时看不见是正常的。</p></div></div>
+</div>
+<div id="progress">已勾选 0 / 20 步</div>
+<script>
+(function(){
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('input[type=checkbox]'));
+  var bar = document.getElementById('progress');
+  function paint(){
+    var n = boxes.filter(function(b){ return b.checked; }).length;
+    bar.textContent = n === boxes.length ? '全部完成，可以发验收结论了' : ('已勾选 ' + n + ' / ' + boxes.length + ' 步');
+  }
+  boxes.forEach(function(b){ b.addEventListener('change', paint); });
+  paint();
+})();
+</script>
+</body>
+</html>

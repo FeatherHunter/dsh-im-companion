@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>方向D · 极光玻璃（浅色光感）</title>
+<style>
+body{margin:0;color:#1d1d1f;font-family:-apple-system,"PingFang SC",sans-serif;background:linear-gradient(120deg,#e8f1ff,#f3eaff 45%,#eafff3);}
+.wrap{max-width:880px;margin:0 auto;padding:32px 20px 80px;}
+h1{font-size:15px;margin:0 0 4px;} .sub{font-size:12px;color:#6e6e73;margin:0 0 22px;}
+.grid{display:grid;gap:18px;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));}
+.home{position:relative;border-radius:20px;padding:18px 16px 14px;background:rgba(255,255,255,.55);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.8);box-shadow:0 8px 30px rgba(90,100,200,.12);overflow:hidden;}
+.home:before{content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:var(--c,#0a84ff);opacity:.18;filter:blur(10px);}
+.hd{position:relative;display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+.face{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:15px;font-weight:800;color:#fff;background:var(--c,#0a84ff);}
+.nm{font-size:16px;font-weight:800;} .ct{margin-left:auto;font-size:11px;color:#6e6e73;}
+.row{position:relative;display:flex;align-items:center;gap:9px;margin-top:8px;padding:10px 12px;border-radius:13px;font-size:14px;cursor:grab;background:rgba(255,255,255,.75);border:1px solid rgba(255,255,255,.9);overflow:hidden;transition:transform .13s ease,box-shadow .13s ease;}
+.row:after{content:'';position:absolute;top:0;bottom:0;left:-60%;width:45%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.9),transparent);transform:skewX(-18deg);transition:left .45s ease;}
+.row:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(90,100,200,.20);}
+.row:hover:after{left:120%;}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;background:#d2d2d7;}
+.dot.on{background:#30d158;box-shadow:0 0 8px rgba(48,209,88,.9);}
+.ch{margin-left:auto;font-size:11px;color:#6e6e73;}
+.row.drag{opacity:.4;}
+.home.over{outline:2px solid var(--c,#0a84ff);outline-offset:3px;box-shadow:0 0 0 6px color-mix(in srgb,var(--c,#0a84ff) 18%,transparent),0 8px 30px rgba(90,100,200,.12);}
+.hint{font-size:11px;color:#6e6e73;margin-top:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>方向D · 极光玻璃 <span style="font-weight:400;color:#6e6e73;">—— 浅色光感，高光扫过</span></h1>
+  <p class="sub">悬停成员行有一道光扫过（先放上去不动）；拖拽换家照常。问题：轻不轻？透不透？</p>
+  <div class="grid" id="grid"></div>
+  <p class="hint" id="msg">先悬停看扫光，再拖“老客户群”去阿梨家。</p>
+</div>
+<script>
+var homes=[
+ {name:'小帅2',c:'#0a84ff',b:[['客服小冰','飞书','on'],['群管家','微信','on']]},
+ {name:'阿梨',c:'#30a853',b:[['夜间值班','QQ','warn']]},
+ {name:'老墨',c:'#a06ee1',b:[['商务一号','飞书','on'],['朋友圈号','微信','off'],['老客户群','QQ','on']]},
+];
+var drag=null;
+function render(){
+  var g=document.getElementById('grid');g.innerHTML='';
+  homes.forEach(function(h,hi){
+    var card=document.createElement('div');card.className='home';card.style.setProperty('--c',h.c);
+    card.innerHTML='<div class="hd"><span class="face">'+h.name.charAt(0)+'</span><span class="nm">'+h.name+'</span><span class="ct">'+h.b.length+' 个机器人</span></div>';
+    h.b.forEach(function(x){
+      var r=document.createElement('div');r.className='row';
+      r.innerHTML='<span class="dot '+(x[2]==='on'?'on':'')+'"></span><span>'+x[0]+'</span><span class="ch">'+x[1]+'</span>';
+      r.setAttribute('draggable','true');
+      r.addEventListener('dragstart',function(ev){drag={x:x,from:hi};r.classList.add('drag');ev.dataTransfer.effectAllowed='move';try{ev.dataTransfer.setData('text/plain',x[0]);}catch(e){}});
+      r.addEventListener('dragend',function(){r.classList.remove('drag');clear();});
+      card.appendChild(r);
+    });
+    card.addEventListener('dragover',function(ev){if(!drag)return;ev.preventDefault();clear();card.classList.add('over');});
+    card.addEventListener('drop',function(ev){
+      if(!drag)return;ev.preventDefault();clear();var d=drag;drag=null;
+      if(d.from===hi){say('它已经在'+homes[hi].name+'家了');return;}
+      homes[d.from].b.splice(homes[d.from].b.indexOf(d.x),1);homes[hi].b.push(d.x);render();
+      say('“'+d.x[0]+'”搬到了'+homes[hi].name+'家');
+    });
+    g.appendChild(card);
+  });
+}
+function clear(){document.querySelectorAll('.home.over').forEach(function(n){n.classList.remove('over');});}
+function say(t){document.getElementById('msg').textContent=t;}
+render();
+</script>
+</body>
+</html>

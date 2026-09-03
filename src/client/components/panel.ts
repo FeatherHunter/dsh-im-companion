@@ -38,12 +38,12 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     bodyModule.render()
   })
   const refreshBtn = makeIconButton({ iconName: 'refresh', label: '刷新', title: '立即刷新', onClick: () => void data.load(true) })
-  /* 舰队雷达入口（#10 例外单 PR：只加按钮+事件派发，不引矩阵、不改 mode 语义；矩阵显隐由装配层接管）。 */
+  /* 舰队雷达入口（#10 例外单 PR：只加按钮+事件派发，不引矩阵、不改 mode 语义；弹窗由矩阵特性自管）。 */
   const radarBtn = makeIconButton({
     iconName: 'ship', label: '舰队雷达', title: '舰队雷达 Fleet Radar',
     onClick: () => emitFleetView('radar'),
   })
-  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto' } }, radarBtn, refreshBtn))
+  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '12px' } }, radarBtn, refreshBtn))
   const compose = makeComposeBar((name) => void actions.create(name))
   const body = h('div', { className: 'af-body' })
   const root = h('div', { className: 'af-root' }, hd, toolbar, compose.el, body)
