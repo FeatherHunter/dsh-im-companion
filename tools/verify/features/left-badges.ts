@@ -39,7 +39,6 @@ const bindings: any = req('./client/data/bindings.js');
 const view: any = req('./features/left-badges/view.js');
 const styles: any = req('./features/left-badges/styles.js');
 const registry: any = req('./features/index.js');
-const dbgReport: any = req('./features/left-badges/debug-report.js');
 const hover: any = req('./features/left-badges/hover-card.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
@@ -288,11 +287,6 @@ test('hover-card：卡片数据（未绑定null/渠道行/时间）', () => {
   assert.match(p1.duration, /^\d+\.\d+s$/);
 });
 
-test('debug-report（TEMP-DEBUG）：无 DOM 归零 + rpc 空 no-op 不抛', () => {
-  assert.deepEqual(dbgReport.collectCensus(), { treeitem: 0, expanded: 0, selected: 0, badges: 0 });
-  dbgReport.reportDebug(null, { kind: 't' });
-  dbgReport.reportDebug(undefined, { kind: 't' });
-});
 
 rmSync(tmp, { recursive: true, force: true });
 console.log('features/left-badges: ALL PASS');

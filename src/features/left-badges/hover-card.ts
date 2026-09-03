@@ -86,19 +86,13 @@ function dot(kind: HealthKind): HTMLElement | null {
 
 export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
   const noop = (): void => {}
-  try {
-    if (typeof document === 'undefined') return noop
-  } catch {
-    return noop
-  }
+  if (typeof document === 'undefined') return noop
   let card: HTMLElement | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   let pending: Element | null = null
   const clearTimer = (): void => {
-    try {
-      if (timer !== undefined) clearTimeout(timer)
-    } catch {
-      /* 清理失败忽略 */
+    if (timer !== undefined) {
+      try { clearTimeout(timer) } catch { /* 忽略 */ }
     }
     timer = undefined
     pending = null
@@ -106,10 +100,9 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
   const hide = (): void => {
     clearTimer()
     try {
-      if (card) (card as unknown as { style?: { display?: string } }).style!.display = 'none'
-    } catch {
-      /* 隐藏失败忽略 */
-    }
+      const st = (card as unknown as { style?: { display?: string } } | null)?.style
+      if (st) st.display = 'none'
+    } catch { /* 忽略 */ }
   }
   const inCard = (t: unknown): boolean => {
     try {
@@ -130,15 +123,9 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       let top = 8
       let bottom = top + 34
       try {
-        if (anchor && typeof anchor.getBoundingClientRect === 'function') {
-          const r = anchor.getBoundingClientRect()
-          edge = r.right
-          top = r.top
-          bottom = r.bottom
-        }
-      } catch {
-        /* 取行几何失败就用视口缺省 */
-      }
+        const g = anchor && typeof anchor.getBoundingClientRect === 'function' ? anchor.getBoundingClientRect() : null
+        if (g) { edge = g.right; top = g.top; bottom = g.bottom }
+      } catch { /* 忽略 */ }
       let x = edge - w
       if (W > 0) x = Math.max(8, Math.min(x, W - w - 8))
       let y = top - h - 8
@@ -163,13 +150,10 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
         const host = document.body ?? document.documentElement
         host.appendChild(card)
       }
-      const c = card as unknown as { style?: { display?: string; visibility?: string }; replaceChildren?: (...n: unknown[]) => void; append?: (...n: unknown[]) => void }
+      const c = card as unknown as { style?: { display?: string; visibility?: string }; replaceChildren: (...n: unknown[]) => void }
       try {
-        if (typeof (card as unknown as { replaceChildren?: unknown }).replaceChildren === 'function') (c.replaceChildren as (...n: unknown[]) => void)()
-        else if (c.style) c.style.display = 'none'
-      } catch {
-        /* 清空失败继续 */
-      }
+        c.replaceChildren()
+      } catch { /* 忽略 */ }
       const head = el('div', HEAD_CLASS)
       const name = el('span', NAME_CLASS, data.agent)
       if (!head || !name) return false
@@ -178,24 +162,15 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       for (const ch of data.channels) {
         const row = el('div', ROW_CLASS)
         if (!row) continue
-        try {
-          row.setAttribute('aria-label', channelLabel(ch.channel) + ' ' + HEALTH_LABELS[ch.kind])
-        } catch {
-          /* 无障碍标签失败忽略 */
-        }
+        try { row.setAttribute('aria-label', channelLabel(ch.channel) + ' ' + HEALTH_LABELS[ch.kind]) } catch { /* 忽略 */ }
         const g = el('span', GLYPH_CLASS)
         const d = dot(ch.kind)
         if (!g || !d) continue
         try {
           const ph = breathPhase(ch.channel)
           const st = (d as unknown as { style?: { animationDelay?: string; animationDuration?: string } }).style
-          if (st) {
-            st.animationDelay = ph.delay
-            st.animationDuration = ph.duration
-          }
-        } catch {
-          /* 呼吸相位失败用默认节奏 */
-        }
+          if (st) { st.animationDelay = ph.delay; st.animationDuration = ph.duration }
+        } catch { /* 忽略 */ }
         try {
           if (ch.glyph) (g as unknown as { innerHTML?: string }).innerHTML = ch.glyph
           else g.textContent = (ch.channel || '?').slice(0, 1).toUpperCase()
@@ -256,10 +231,9 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       const to = e.relatedTarget
       if (inCard(to)) return
       try {
-        if (pending && (to === pending || (pending as unknown as { contains?: (n: unknown) => boolean }).contains?.(to))) return
-      } catch {
-        /* 归属判断失败就隐藏 */
-      }
+        const pc = pending as unknown as { contains?: (n: unknown) => boolean } | null
+        if (pending && (to === pending || (typeof pc?.contains === 'function' ? pc.contains(to) : false))) return
+      } catch { /* 忽略 */ }
       hide()
     } catch {
       /* 移出失败静默 */
@@ -292,37 +266,25 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
   on('keydown', onKey)
   on('click', hide)
   on('scroll', hide, true)
-  try {
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('resize', hide as (ev: UIEvent) => void)
+  const onWin = (t: string, fn: (ev: unknown) => void): void => {
+    try {
+      if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return
+      window.addEventListener(t, fn as (ev: UIEvent) => void)
       stops.push(() => {
-        try {
-          window.removeEventListener('resize', hide as (ev: UIEvent) => void)
-        } catch {
-          /* 清理失败忽略 */
-        }
+        try { window.removeEventListener(t, fn as (ev: UIEvent) => void) } catch { /* 忽略 */ }
       })
-    }
-  } catch {
-    /* 注册失败忽略 */
+    } catch { /* 忽略 */ }
   }
+  onWin('resize', hide)
   return () => {
     clearTimer()
     for (const s of stops) {
-      try {
-        s()
-      } catch {
-        /* 清理失败忽略 */
-      }
+      try { s() } catch { /* 忽略 */ }
     }
     try {
-      if (card) {
-        const p = (card as unknown as { parentNode?: { removeChild?: (c: unknown) => void } }).parentNode
-        if (p && typeof p.removeChild === 'function') p.removeChild(card)
-      }
-    } catch {
-      /* 清理失败忽略 */
-    }
+      const p = (card as unknown as { parentNode?: { removeChild?: (c: unknown) => void } } | null)?.parentNode
+      if (p && typeof p.removeChild === 'function') p.removeChild(card)
+    } catch { /* 忽略 */ }
     card = null
   }
 }

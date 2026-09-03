@@ -2,8 +2,7 @@
  * 行上只读写三个无害属性（data-lb-kind/data-lb-label/title），不增删节点——重渲染无东西可吃。
  * 无自有轮询；徽标纯展示不可点（用户裁定，点击事件已退役）。 */
 import { badgeForWorkspace } from '../../client/data/bindings'
-import type { BotSnap, RpcCall } from '../../client/data/fleet-api'
-import { collectCensus, reportDebug } from './debug-report'
+import type { BotSnap } from '../../client/data/fleet-api'
 import { buildCardData, mountHoverCard } from './hover-card'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
@@ -17,9 +16,7 @@ const ROW_SELECTORS = ['div[role="treeitem"][aria-expanded]']
  * 收窄即锁死在脱离文档的死子树上空画。列表仅数十行，全文档直查零成本。 */
 let loggedFirstHit = false
 let lastRowTotal = -1
-/* TEMP-DEBUG(#6)：上报用（定位后删除） */
-let debugRpc: RpcCall | null = null
-let lastPaintKey = ''
+// paint-key retired ''
 /* 代际哨兵：热更新/双挂载堆叠时只有最新一代画画（老代永久静默，防新旧打架闪烁）。 */
 let activeGen = 0
 const claimGen = (): number => { try { const w = window as unknown as Record<string, number>; w.__lbGen = (w.__lbGen || 0) + 1; return w.__lbGen } catch { return 1 } }
@@ -116,16 +113,6 @@ function paint(bots: BotSnap[], nowMs: number): void {
       /* 单行失败不影响其他行 */
     }
   }
-  /* TEMP-DEBUG(#6)：行数/已饰变化即上报一行（定位后删除） */
-  try {
-    const pk = rows.length + ':' + decorated
-    if (pk !== lastPaintKey) {
-      lastPaintKey = pk
-      reportDebug(debugRpc, { kind: 'paint', rows: rows.length, decorated, ...collectCensus() })
-    }
-  } catch {
-    /* 上报失败静默 */
-  }
   if (!loggedFirstHit) {
     loggedFirstHit = true
     info('命中 ' + rows.length + ' 行，开始装饰')
@@ -181,14 +168,6 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     }
   }
   info('已挂载（选择器 ' + ROW_SELECTORS.join(' / ') + '，等 stream 首轮快照）')
-  /* TEMP-DEBUG(#6)：挂载普查（定位后删除） */
-  try {
-    debugRpc = ctx.rpc ? ctx.rpc : null
-    const noRpc = ctx.rpc ? false : true
-    reportDebug(debugRpc, { kind: 'mount', rpcNull: noRpc, ...collectCensus() })
-  } catch {
-    /* 上报失败静默 */
-  }
   activeGen = claimGen()
   let unsub: (() => void) | null = null
   try {
@@ -210,13 +189,6 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
         /* meta 未就绪下轮再试 */
       }
       if (!genAlive(activeGen)) return
-      /* TEMP-DEBUG(#6)：快照到达即上报（定位后删除） */
-      try {
-        const nfail = snap.failed ? snap.failed.length : 0
-        reportDebug(debugRpc, { kind: 'snap', updatedAt: snap.updatedAt, bots: snap.bots.length, failed: nfail, hasSnap, ...collectCensus() })
-      } catch {
-        /* 上报失败静默 */
-      }
       repaint()
     })
   } catch {
