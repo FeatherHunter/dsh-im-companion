@@ -5,7 +5,7 @@
  * 守卫：读不到（undefined）就不写——盲写覆盖用户引导语是正确性红线。 */
 import { OPEN_DRAWER_EVENT, type HealthKind } from '../../client/data/config'
 import { buildModel } from '../../client/data/model'
-import type { AgentPresetCatalog, BotSnap, UpstreamCtx } from '../../client/data/fleet-api'
+import type { AgentPresetCatalog, BotSnap, RpcCall, UpstreamCtx } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 
 export { OPEN_DRAWER_EVENT }
@@ -75,8 +75,38 @@ export function personalityPrefill(bots: DrawerBot[]): string {
   return guides.length === 1 ? guides[0] : ''
 }
 
-export interface RouteEntry { chat: string; sessionId: string }
-export function fetchRoutesFor(): RouteEntry[] { return [] }
+export interface RouteEntry {
+  chat: string
+  sessionId: string
+  /** direct: 存量（现行只产 p2p:/group:）。 */
+  ghost?: boolean
+  channel?: string
+}
+
+/** 自有通道（不求上游）：/im-companion routes.list。 */
+export const ROUTES_CHANNEL = '/im-companion'
+
+/** 只读取数：任何失败（无 rpc/拒答/形状不对）都静默 []，抽屉空席位兜底。 */
+export async function fetchRoutes(rpc: RpcCall | null, bots: { channel: string; botId: string }[]): Promise<RouteEntry[]> {
+  try {
+    if (!rpc || !(bots ?? []).length) return []
+    const raw = await rpc(ROUTES_CHANNEL, 'routes.list',
+      { bots: bots.map((b) => ({ channel: b.channel, botId: b.botId })) }, AbortSignal.timeout(5000))
+    const rows = (raw as { ok?: boolean; value?: { routes?: unknown } } | null)?.value?.routes
+    if (!Array.isArray(rows)) return []
+    return rows.flatMap((r) => {
+      const row = r as { chat?: unknown; session?: unknown; ghost?: unknown; channel?: unknown }
+      if (typeof row?.chat !== 'string' || typeof row?.session !== 'string') return []
+      return [{
+        chat: row.chat, sessionId: row.session,
+        ghost: row.ghost === true,
+        channel: typeof row.channel === 'string' ? row.channel : undefined,
+      }]
+    })
+  } catch {
+    return []
+  }
+}
 
 /** 等待数据时的占位模型（key 回填，供关闭/重试逻辑识别；读写全禁用）。 */
 export function loadingModel(key: string): DrawerModel {
@@ -136,6 +166,7 @@ function mergeCatalogs(channels: string[], catalogs: Record<string, AgentPresetC
 
 export function buildDrawerModel(
   bots: BotSnap[], meta: AgentMetaDoc, key: string, catalogs: Record<string, AgentPresetCatalog> = {},
+  routes: RouteEntry[] = [],
 ): DrawerModel | null {
   const fleet = buildModel(bots, meta, 'agent', '')
   const view = fleet.agents.find((a) => a.key === key)
@@ -166,6 +197,6 @@ export function buildDrawerModel(
       return { id: c.id, label: c.label, status: c.status, botId, ctx: ctxOf(c.id, botId) }
     }),
     bots: dbots,
-    routes: fetchRoutesFor(),
+    routes,
   }
 }

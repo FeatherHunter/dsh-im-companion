@@ -17,6 +17,8 @@ export const CSS = [
 '.c1a-sec summary{cursor:pointer;font-size:12px;font-weight:700}',
 '.c1a-route{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px dashed var(--dsw-alias-separator,#eee)}',
 '.c1a-route code{font-size:11px;color:var(--dsw-alias-label-secondary,#888)}',
+'.c1a-ghost{border-left:3px solid var(--dsw-alias-state-warn-primary,#e8890c);padding-left:6px}',
+'.c1a-push{margin-left:auto;flex:none}',
 '.c1a-chrow{display:flex;gap:8px;align-items:center;font-size:12px;padding:5px 0;border-bottom:1px dashed var(--dsw-alias-separator,#eee)}',
 '.c1a-dot{width:8px;height:8px;border-radius:50%;background:var(--dsw-alias-label-tertiary,#999)}',
 '.c1a-dot.online{background:var(--dsw-alias-state-success-primary,#20a162)}',

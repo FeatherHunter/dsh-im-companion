@@ -154,13 +154,28 @@ function routesSection(model: DrawerModel): HTMLElement {
   const sec = h('details', { className: 'c1a-sec' })
   sec.appendChild(h('summary', null, '会话路由摘要（' + model.routes.length + '）'))
   if (!model.routes.length) {
-    sec.appendChild(h('div', { className: 'c1a-empty' }, '会话路由预览随 E3（#14）落地，席位已留。'))
+    sec.appendChild(h('div', { className: 'c1a-empty' }, '暂无已绑定会话映射（只读投影，随轮询刷新）。'))
     return sec
   }
   for (const r of model.routes) {
-    const row = h('div', { className: 'c1a-route' })
-    row.appendChild(h('span', null, r.chat))
+    const row = h('div', { className: 'c1a-route' + (r.ghost ? ' c1a-ghost' : '') })
+    const who = (r.channel ? channelLabel(r.channel) + '·' : '') + r.chat
+    row.appendChild(h('span', { title: r.ghost ? '旧 direct: 存量映射，可忽略' : who }, who))
     row.appendChild(h('code', null, '→ ' + r.sessionId))
+    if (r.ghost) row.appendChild(h('span', { className: 'c1a-meta' }, '旧映射'))
+    const btn = makeButton({
+      kind: 'ghost', size: 'sm', label: '复制', title: '复制会话标识（截断 8 位，便于人工查找）',
+      onClick: () => {
+        try {
+          const nav = (globalThis as unknown as { navigator?: { clipboard?: { writeText(s: string): unknown } } }).navigator
+          void nav?.clipboard?.writeText(r.sessionId)
+          btn.textContent = '已复制'
+        } catch {
+          /* 剪贴板不可用则静默 */
+        }
+      },
+    })
+    row.appendChild(h('span', { className: 'c1a-push' }, btn))
     sec.appendChild(row)
   }
   return sec

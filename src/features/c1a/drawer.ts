@@ -11,8 +11,8 @@ import { channelLabel, type OpenDrawerDetail } from '../../client/data/config'
 import { applyPersonality, rpcOf, writeBots, type WriteDeps } from './actions'
 import { followSheetResize, placeSheetPanel } from './position'
 import {
-  OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, loadingModel,
-  presetPayloadFor, type DrawerModel,
+  OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, fetchRoutes, loadingModel,
+  presetPayloadFor, type DrawerModel, type RouteEntry,
 } from './data'
 import { quietCallbacks, renderDrawerContent, type DrawerCallbacks } from './view'
 
@@ -35,11 +35,7 @@ export function mountDrawer(fctx: FeatureCtx): () => void {
     return () => undefined
   }
   return () => {
-    try {
-      window.removeEventListener(OPEN_DRAWER_EVENT, onEvent as EventListener)
-    } catch {
-      /* ignore */
-    }
+    try { window.removeEventListener(OPEN_DRAWER_EVENT, onEvent as EventListener) } catch { /* ignore */ }
   }
 }
 
@@ -64,6 +60,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   let closed = false
   let lastBots: SnapBots = []
   let lastCatalogs: Record<string, AgentPresetCatalog> = {}
+  let lastRoutes: RouteEntry[] = []
   const closeAll = (): void => {
     try {
       sheet?.close()
@@ -100,11 +97,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   let settled = false
   let giveUp: ReturnType<typeof setTimeout> | null = null
   const clearGiveUp = (): void => {
-    try {
-      if (giveUp !== null) clearTimeout(giveUp)
-    } catch {
-      /* ignore */
-    }
+    try { if (giveUp !== null) clearTimeout(giveUp) } catch { /* ignore */ }
     giveUp = null
   }
   const paintLoading = (): void => {
@@ -128,14 +121,10 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   }
   placeSheetPanel(sheet.panel)
   let stopFollow: () => void = () => undefined
-  try {
-    stopFollow = followSheetResize(sheet.panel)
-  } catch {
-    /* 监听失败忽略（位置定格） */
-  }
+  try { stopFollow = followSheetResize(sheet.panel) } catch { /* 监听失败忽略（位置定格） */ }
   const paint = (): void => {
     if (closed || !meta || !sheet) return
-    const model = buildDrawerModel(lastBots, meta, key, lastCatalogs)
+    const model = buildDrawerModel(lastBots, meta, key, lastCatalogs, lastRoutes)
     if (!model) {
       if (settled) {
         settled = false
@@ -293,6 +282,10 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       lastBots = snap.bots
       lastCatalogs = (snap as { catalogs?: Record<string, AgentPresetCatalog> }).catalogs ?? {}
       paint()
+      // 路由跟随每轮快照重读（本地小文件；变了才重绘，避免空转闪烁）。
+      void fetchRoutes(fctx.rpc, snap.bots).then((r) => {
+        if (JSON.stringify(r) !== JSON.stringify(lastRoutes)) { lastRoutes = r; paint() }
+      }).catch(() => undefined)
     })
   } catch {
     closeAll()

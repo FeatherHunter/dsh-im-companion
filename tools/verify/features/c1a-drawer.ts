@@ -11,11 +11,14 @@ import { createDocument } from '../dom-shim.ts';
 
 const REPO = process.cwd();
 const HOST = join(REPO, 'src', 'host');
+const ROUTES = join(HOST, 'routes.ts');
 const DATA = join(REPO, 'src', 'client', 'data');
 const UI = join(REPO, 'src', 'client', 'ui');
 const FEAT = join(REPO, 'src', 'features', 'c1a');
 const ENTRIES = [
   join(HOST, 'meta-store.ts'),
+  join(HOST, 'rpc.ts'),
+  ROUTES,
   join(DATA, 'config.ts'),
   join(DATA, 'fleet-api.ts'),
   join(DATA, 'meta.ts'),
@@ -238,7 +241,29 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
   assert.ok(findByClass(root, 'c1a-summary').length >= 1);
-  assert.ok(all.includes('随 E3（#14）落地'));
+  assert.ok(all.includes('暂无已绑定会话映射'));
+});
+
+test('view：路由行渲染脱敏映射 + 幽灵告警 + 复制按钮', () => {
+  const catalogs = { feishu: { defaultId: '', items: [] } };
+  const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs, [
+    { chat: '私聊 ou_zha…', sessionId: 'sess-aaa…', channel: 'feishu' },
+    { chat: '旧映射 ou_gho…', sessionId: 'sess-leg…', ghost: true, channel: 'feishu' },
+  ]);
+  const noop = () => {};
+  const root = view.renderDrawerContent(model, {
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
+    onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
+    onRemoveBot: noop, onTestSend: noop, onClose: noop,
+  });
+  const all = texts(root).join('|');
+  assert.ok(all.includes('会话路由摘要（2）'));
+  assert.ok(all.includes('飞书·私聊 ou_zha…'));
+  assert.ok(all.includes('sess-aaa…'));
+  assert.ok(all.includes('旧映射'));
+  assert.ok(all.includes('复制'));
+  assert.equal(findByClass(root, 'c1a-route').length, 2);
+  assert.equal(findByClass(root, 'c1a-ghost').length, 1);
 });
 
 test('view：多渠道不一致渲染占位且可继续操作', () => {
@@ -340,6 +365,24 @@ test('actions：性格应用覆盖各渠道引导语且保留字段开关', asyn
   assert.equal(sent.length, 1);
 });
 
+test('data：路由取数经自有通道，失败静默空数组', async () => {
+  const calls: any[] = [];
+  const fakeRpc = async (ch: string, ep: string, p: any) => {
+    calls.push([ch, ep, p]);
+    return { ok: true, value: { routes: [{ channel: 'feishu', botId: 'b1', chat: '私聊 ou_zha…', session: 'sess-aaa…', ghost: false }], skipped: [] } };
+  };
+  const bots = [{ channel: 'feishu', botId: 'b1' }];
+  assert.deepEqual(await data.fetchRoutes(fakeRpc, bots), [
+    { chat: '私聊 ou_zha…', sessionId: 'sess-aaa…', ghost: false, channel: 'feishu' },
+  ]);
+  assert.deepEqual(await data.fetchRoutes(async () => ({ ok: true, value: { routes: [{ chat: 'x' }] } }), bots), []);
+  assert.deepEqual(calls[0][0], '/im-companion');
+  assert.equal(calls[0][1], 'routes.list');
+  assert.deepEqual(await data.fetchRoutes(null, bots), []);
+  assert.deepEqual(await data.fetchRoutes(async () => ({ ok: false, error: { message: 'x' } }), bots), []);
+  assert.deepEqual(await data.fetchRoutes(async () => { throw new Error('down'); }, bots), []);
+});
+
 test('view：发送按钮预告目标渠道', () => {
   const catalogs = { feishu: { defaultId: '', items: [] } };
   const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs);
@@ -353,4 +396,102 @@ test('view：发送按钮预告目标渠道', () => {
   assert.ok(withTarget.includes('发测试消息（→飞书）'));
   const withoutTarget = texts(view.renderDrawerContent(model, cbs)).join('|');
   assert.ok(withoutTarget.includes('发测试消息'));
+});
+
+// ---- E3 路由投影（#14 砍完形态）：只读 bound 投影，无名版脱敏 + direct 幽灵 key ----
+const routesMod: any = req('./host/routes.js');
+const hostRpc: any = req('./host/rpc.js');
+
+test('routes：落盘解析只收字符串映射，其余丢弃', () => {
+  assert.deepEqual(
+    routesMod.parseSessionsText('{"sessions":{"p2p:ou_1":"sess-aaa11111","group:oc_2":"sess-bbb22222"}}'),
+    { 'p2p:ou_1': 'sess-aaa11111', 'group:oc_2': 'sess-bbb22222' });
+  assert.deepEqual(routesMod.parseSessionsText('{"sessions":{"a":1,"b":null,"c":"","d":"sess-ok"}}'), { d: 'sess-ok' });
+  assert.deepEqual(routesMod.parseSessionsText('not json'), {});
+  assert.deepEqual(routesMod.parseSessionsText('{"nope":{}}'), {});
+  assert.deepEqual(routesMod.parseSessionsText('{"sessions":[]}'), {});
+});
+
+test('routes：脱敏只露种类+头部，sess 截断 8 位', () => {
+  assert.equal(routesMod.maskChat('p2p:ou_zhangsan01'), '私聊 ou_zha…');
+  assert.equal(routesMod.maskChat('group:oc_project9'), '群聊 oc_pro…');
+  assert.equal(routesMod.maskChat('direct:ou_zhangsan01', 'feishu'), '旧映射 ou_zha…');
+  assert.equal(routesMod.maskChat('direct:12345', 'telegram'), '会话 12345');
+  assert.equal(routesMod.isGhost('direct:ou_1', 'feishu'), true);
+  assert.equal(routesMod.isGhost('p2p:ou_1', 'feishu'), false);
+  assert.equal(routesMod.isGhost('direct:12345', 'telegram'), false);
+  assert.equal(routesMod.isGhost('group:oc_1', 'feishu'), false);
+  assert.equal(routesMod.maskChat('p2p:ab'), '私聊 ab');
+  assert.equal(routesMod.maskChat('foo:bar'), '其他 foo:bar');
+  assert.equal(routesMod.maskSession('sess-aaa11111'), 'sess-aaa…');
+  assert.equal(routesMod.maskSession('sess-1'), 'sess-1');
+});
+
+test('routes：候选路径按上游落盘规则（bots 下 + 飞书 legacy）', () => {
+  const home = join(tmpdir(), 'fake-home');
+  assert.deepEqual(routesMod.candidateStateFiles(home, 'feishu', 'b1'), [
+    join(home, 'integrations', 'dsh-feishu', 'bots', 'b1', 'state.json'),
+    join(home, 'integrations', 'dsh-feishu', 'state.json'),
+  ]);
+  assert.deepEqual(routesMod.candidateStateFiles(home, 'qq', 'b2'), [
+    join(home, 'integrations', 'dsh-qq', 'bots', 'b2', 'state.json'),
+  ]);
+  assert.deepEqual(routesMod.candidateStateFiles(home, 'feishu', '../evil'), []);
+  assert.deepEqual(routesMod.candidateStateFiles(home, '../x', 'b1'), []);
+});
+
+test('routes：聚合读盘跳过缺失/损坏，direct 标幽灵', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'e3-routes-'));
+  try {
+    const botsDir = join(dir, 'integrations', 'dsh-feishu', 'bots', 'b1');
+    const { mkdirSync, writeFileSync } = await import('node:fs');
+    mkdirSync(botsDir, { recursive: true });
+    writeFileSync(join(botsDir, 'state.json'), JSON.stringify({ sessions: {
+      'p2p:ou_zhangsan01': 'sess-aaa11111',
+      'direct:ou_ghost01': 'sess-legacy9',
+    } }));
+    const qqDir = join(dir, 'integrations', 'dsh-qq', 'bots', 'b9');
+    mkdirSync(qqDir, { recursive: true });
+    writeFileSync(join(qqDir, 'state.json'), JSON.stringify({ sessions: { 'direct:12345': 'sess-qq00001' } }));
+    const out = await routesMod.collectRoutes(dir, [
+      { channel: 'feishu', botId: 'b1' },
+      { channel: 'qq', botId: 'b9' },
+      { channel: 'qq', botId: 'nobody' },
+    ]);
+    assert.equal(out.routes.length, 3);
+    const byChat = Object.fromEntries(out.routes.map((r: any) => [r.chat, r]));
+    assert.deepEqual(byChat['私聊 ou_zha…'], { channel: 'feishu', botId: 'b1', chat: '私聊 ou_zha…', session: 'sess-aaa…', ghost: false });
+    assert.equal(byChat['旧映射 ou_gho…'].ghost, true);
+    assert.equal(byChat['旧映射 ou_gho…'].session, 'sess-leg…');
+    assert.deepEqual(byChat['会话 12345'], { channel: 'qq', botId: 'b9', chat: '会话 12345', session: 'sess-qq0…', ghost: false });
+    assert.deepEqual(out.skipped, [{ channel: 'qq', botId: 'nobody', reason: 'no-state' }]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('routes.list：端点只读聚合，缺席不炸', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'e3-ep-'));
+  try {
+    const botsDir = join(dir, 'integrations', 'dsh-feishu', 'bots', 'b1');
+    const { mkdirSync, writeFileSync } = await import('node:fs');
+    mkdirSync(botsDir, { recursive: true });
+    writeFileSync(join(botsDir, 'state.json'), JSON.stringify({ sessions: { 'group:oc_proj9': 'sess-ccc33333' } }));
+    const handler = hostRpc.createAgentFleetHandler({}, { dshHome: dir });
+    const res = await handler('routes.list', { bots: [{ channel: 'feishu', botId: 'b1' }] });
+    assert.equal(res.ok, true);
+    assert.deepEqual(res.value.routes, [
+      { channel: 'feishu', botId: 'b1', chat: '群聊 oc_pro…', session: 'sess-ccc…', ghost: false },
+    ]);
+    assert.deepEqual(res.value.skipped, []);
+    const empty = await handler('routes.list', { bots: [] });
+    assert.deepEqual(empty.value.routes, []);
+    const bad = await handler('routes.list', { bots: 'nope' });
+    assert.equal(bad.ok, false);
+    const ignored = await handler('routes.list', { bots: [{ channel: 'feishu', botId: 'b1' }], dshHome: '/definitely/not/here' });
+    assert.equal(ignored.ok, true);
+    assert.equal(ignored.value.routes.length, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

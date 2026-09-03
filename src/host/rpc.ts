@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import type { AgentMetaStore } from './meta-store.js'
+import { collectRoutes } from './routes.js'
 
 export type RpcPayload = Record<string, unknown>
 
@@ -35,10 +36,11 @@ function pickDebug(p: RpcPayload): Record<string, string | number | boolean> {
   }
 }
 
-export function createAgentFleetHandler(store: AgentMetaStore): (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null) => Promise<RpcResult> {
+export function createAgentFleetHandler(store: AgentMetaStore, opts: { dshHome?: string } = {}): (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null) => Promise<RpcResult> {
   return async (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null): Promise<RpcResult> => {
     if (signal?.aborted) return fail('cancelled', '已取消')
     const p = payload ?? {}
+    const dshHome = typeof opts.dshHome === 'string' && opts.dshHome ? opts.dshHome : path.join(homedir(), '.dsh')
     try {
       switch (endpoint) {
         case 'ping':
@@ -98,6 +100,19 @@ export function createAgentFleetHandler(store: AgentMetaStore): (endpoint: strin
           }
           await store.setCtx(key, { enabled: p.enabled, level: p.level })
           return ok({})
+        }
+        case 'routes.list': {
+          const bots = Array.isArray(p.bots) ? p.bots as { channel?: unknown; botId?: unknown }[] : null
+          if (!bots) return fail('bad-request', 'bots 数组必填')
+          const home = dshHome
+          const seen = new Set<string>()
+          const clean = bots.filter((b) => {
+            const k = String(b?.channel ?? '') + '\0' + String(b?.botId ?? '')
+            if (seen.has(k) || seen.size >= 200) return false
+            seen.add(k)
+            return true
+          }).map((b) => ({ channel: String(b?.channel ?? ''), botId: String(b?.botId ?? '') }))
+          return ok(await collectRoutes(home, clean))
         }
         case 'fs.defaultRoot':
           return ok({ path: homedir() })
