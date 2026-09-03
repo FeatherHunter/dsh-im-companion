@@ -69,9 +69,10 @@ export function maskChat(key: string, channel = ''): string {
   return '其他 ' + (key.length > 10 ? key.slice(0, 10) + '…' : key)
 }
 
-/** sess 截断 8 位（R3 脱敏口径）。 */
+/** sess 脱敏：16 位截断。真机 id 是 session- 长串（前缀本身占 8 位），
+ * 按旧 8 位口径永远只剩“session-…”毫无区分度；16 位留可定位前缀，完整 id 不出 host。 */
 export function maskSession(sessionId: string): string {
-  return sessionId.length > 8 ? sessionId.slice(0, 8) + '…' : sessionId
+  return sessionId.length > 16 ? sessionId.slice(0, 16) + '…' : sessionId
 }
 
 /** 幽灵 key：仅飞书 direct: 存量（他渠道 direct: 现行仍在产，见上游 delivery-suggestions）。 */
