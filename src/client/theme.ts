@@ -271,29 +271,28 @@ const CSS = `
 .b3-header-btn { flex: 1; font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--af-hairline-strong); background: var(--af-bg); color: var(--af-primary); cursor: pointer; } .b3-header-btn:hover { border-color: var(--af-accent); color: var(--af-accent); } .b3-header-btn.primary { background: var(--af-accent); border-color: var(--af-accent); color: #fff; } .b3-header-btn.primary:hover { color: #fff; opacity: .88; } .b3-header-btn:disabled { opacity: .6; cursor: default; } .b3-header-result { margin-top: 8px; font-size: 12px; color: var(--af-secondary); word-break: break-all; } .b3-header-result.ok { color: var(--af-success); } .b3-header-result.err { color: var(--af-danger); } @keyframes b3-header-breathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--af-success) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 `
 
-/** 按功能命名空间安装样式（F0 先合并点③）：各 feature 自带 CSS 经此注入，互不串色；返回清理函数。 */
-export function installFeatureStyles(id: string, css: string): () => void {
+/* 热重载安全：同名标签复写内容并加代戳（代际经 DOM 协调，跨 bundle 闭包也唯一）；清理函数只拆自己那代，旧 fiber 误伤不了新标签。 */
+function installTag(styleId: string, css: string): () => void {
   if (typeof document === 'undefined') return () => {}
-  const styleId = 'af-feature-' + id
-  if (document.getElementById(styleId)) return () => {}
-  const style = document.createElement('style')
-  style.id = styleId
   try {
+    let style = document.getElementById(styleId)
+    if (!style) { style = document.createElement('style'); style.id = styleId; document.head.appendChild(style) }
+    const prev = Number(style.getAttribute?.('data-gen') || 0)
+    const gen = (Number.isFinite(prev) ? prev : 0) + 1
     style.textContent = css
+    style.setAttribute('data-gen', String(gen))
+    return () => { try { const cur = document.getElementById(styleId); if (cur && cur.getAttribute?.('data-gen') === String(gen)) cur.remove() } catch {} }
   } catch {
     return () => {}
   }
-  document.head.appendChild(style)
-  return () => { style.remove() }
 }
 
-/** 安装全局样式（幂等）；返回清理函数。 */
+/** 按功能命名空间安装样式（F0 先合并点③）：各 feature 自带 CSS 经此注入，互不串色；返回清理函数。 */
+export function installFeatureStyles(id: string, css: string): () => void {
+  return installTag('af-feature-' + id, css)
+}
+
+/** 安装全局样式（幂等，热重载安全）；返回清理函数。 */
 export function installStyles(): () => void {
-  if (typeof document === 'undefined') return () => {}
-  if (document.getElementById(STYLE_ID)) return () => {}
-  const style = document.createElement('style')
-  style.id = STYLE_ID
-  style.textContent = CSS
-  document.head.appendChild(style)
-  return () => { style.remove() }
+  return installTag(STYLE_ID, CSS)
 }
