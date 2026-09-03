@@ -3,6 +3,7 @@
  * 已绑定 → full（呼吸点 + 详情）。健康语义复用 B1（任一在线即在线，失败按未知）。
  * 发测试消息只走 dsh-im 已保存目标（PROACTIVE_DELIVERY 契约）：无目标不谎报发送。 */
 import { badgeForWorkspace, basenameOfPath, type BadgeKind } from './bindings'
+import { channelColor, channelLabel, healthOf, HEALTH_LABELS, type HealthKind } from './config'
 import type { BotSnap, RpcCall } from './fleet-api'
 import { EMPTY_META } from './meta'
 import { viewName } from './model'
@@ -41,6 +42,14 @@ export function resolveWorkspacePath(sessionId: string, items: readonly Workspac
 export type OverlayMode = 'hidden' | 'unbound' | 'full'
 export type DotKind = BadgeKind
 
+export interface OverlayChannel {
+  channel: string
+  label: string
+  statusText: string
+  color: string
+  kind: HealthKind
+}
+
 export interface HeaderOverlay {
   mode: OverlayMode
   agent: string
@@ -49,6 +58,8 @@ export interface HeaderOverlay {
   dotKind: DotKind
   /** full 态下首选 Bot（优先在线），其余态为 null。 */
   bot: BotSnap | null
+  /** full 态下按渠道聚合的行（同渠道多 Bot 取最优可达性，与 B1 同 verdict）。 */
+  channels: OverlayChannel[]
 }
 
 /** 当前工作区浮层状态：纯函数，调用方按 mode 决定渲染（hidden 返回 null）。 */
@@ -59,13 +70,13 @@ export function headerOverlayFor(
   names: Record<string, string> = {},
 ): HeaderOverlay {
   if (!workspacePath) {
-    return { mode: 'hidden', agent: '', label: '', tooltip: '', dotKind: 'unbound', bot: null }
+    return { mode: 'hidden', agent: '', label: '', tooltip: '', dotKind: 'unbound', bot: null, channels: [] }
   }
   const badge = badgeForWorkspace(workspacePath, bots, nowMs)
   const base = basenameOfPath(workspacePath)
   const agent = viewName(base, { ...EMPTY_META, names }, base, workspacePath)
   if (badge.kind === 'unbound') {
-    return { mode: 'unbound', agent, label: badge.label, tooltip: badge.tooltip, dotKind: 'unbound', bot: null }
+    return { mode: 'unbound', agent, label: badge.label, tooltip: badge.tooltip, dotKind: 'unbound', bot: null, channels: [] }
   }
   return {
     mode: 'full',
@@ -74,7 +85,22 @@ export function headerOverlayFor(
     tooltip: badge.tooltip,
     dotKind: badge.kind,
     bot: chooseBot(bots, workspacePath),
+    channels: channelsOf(bots.filter((b) => b && b.workspace === workspacePath)),
   }
+}
+
+/** 按渠道聚合展示行：同渠道多 Bot 取最优（任一在线即在线），stale 按待确认。 */
+export function channelsOf(bound: BotSnap[]): OverlayChannel[] {
+  const byCh = new Map<string, BotSnap[]>()
+  for (const b of bound ?? []) {
+    if (!b || !b.channel) continue
+    byCh.set(b.channel, [...(byCh.get(b.channel) ?? []), b])
+  }
+  return [...byCh.entries()].map(([channel, list]) => {
+    const kinds = list.map((b) => (b.stale ? 'warn' : healthOf(b.healthStatus, b.connected)) as HealthKind)
+    const kind: HealthKind = kinds.includes('online') ? 'online' : kinds.includes('warn') ? 'warn' : 'offline'
+    return { channel, label: channelLabel(channel), statusText: HEALTH_LABELS[kind], color: channelColor(channel), kind }
+  })
 }
 
 /** 首选 Bot：优先在线绑定，否则首个绑定；无绑定为 null（调用方走 unbound）。 */

@@ -37,7 +37,7 @@ try {
   process.exit(1);
 }
 const mod = (f: string) => import(pathToFileURL(join(tmp, f)).href);
-const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, sendToSuggestion, listSuggestions, testDraftTarget, suggestionLabel, SEND_TEST_EVENT } = await mod('header-overlay.js');
+const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, sendToSuggestion, listSuggestions, testDraftTarget, suggestionLabel, channelsOf, SEND_TEST_EVENT } = await mod('header-overlay.js');
 const { mergeStaleBots } = await mod('fleet-api.js');
 const { buildModel } = await mod('model.js');
 
@@ -66,6 +66,8 @@ test('headerOverlayFor：时机三态', () => {
   assert.equal(full.mode, 'full');
   assert.equal(full.agent, 'Xiaoshuai'); // 无自定义名时与面板一致：目录名首字母大写
   assert.match(full.label, /在线/);
+  assert.equal(full.channels.length, 1);
+  assert.equal(full.channels[0].label, '飞书');
 });
 
 test('headerOverlayFor：可达性与 B1 同 verdict（任一在线即在线）', () => {
@@ -229,6 +231,23 @@ test('runTestSend 无目标分支：1 个直发 / N 个回列表 / 0 个给指�
   const win = await sendToSuggestion(one as any, bot, { kind: 'user', route: { openId: 'ou_x' } }, W1, '小帅');
   assert.equal(win.ok, true);
   assert.match(win.text, /草稿测试/);
+});
+
+test('channelsOf：多渠道成行，同渠道取最优，stale 按待确认', () => {
+  const rows = channelsOf([
+    snap({ channel: 'feishu', botId: 'f1' }),
+    snap({ channel: 'qq', botId: 'q1', healthKind: 'offline', healthStatus: 'offline', connected: false }),
+    snap({ channel: 'qq', botId: 'q2' }),
+  ]);
+  assert.equal(rows.length, 2);
+  assert.equal(rows[0].label, '飞书');
+  assert.equal(rows[0].statusText, '在线');
+  assert.match(rows[0].color, /^#/);
+  assert.equal(rows[1].label, 'QQ');
+  assert.equal(rows[1].statusText, '在线'); // 同渠道任一在线即在线
+  const stale = channelsOf([snap({ stale: true, healthKind: 'warn' })]);
+  assert.equal(stale[0].statusText, '待确认');
+  assert.deepEqual(channelsOf([]), []);
 });
 
 test('同名目录不串名：全路径键隔离，旧 basename 键兼容', () => {

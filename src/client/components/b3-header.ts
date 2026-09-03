@@ -185,7 +185,22 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
 
   const detail = overlay.mode === 'unbound'
     ? React.createElement('div', { className: 'b3-header-sub' }, '该工作区尚未绑定机器人。到 dsh-im 设置页接入后，圆点会显示状态。')
-    : React.createElement('div', { className: 'b3-header-sub', title: overlay.tooltip }, overlay.tooltip)
+    : React.createElement(
+      'div',
+      { className: 'b3-header-channels', title: overlay.tooltip },
+      ...overlay.channels.map((ch) =>
+        React.createElement(
+          'div',
+          { className: 'b3-header-chrow', key: ch.channel },
+          React.createElement(
+            'span',
+            { className: 'b3-header-chbadge', style: { background: ch.color } },
+            ch.label.charAt(0) || '?',
+          ),
+          React.createElement('span', null, ch.label + ' · ' + ch.statusText),
+        ),
+      ),
+    )
 
   const sendBtn = overlay.mode === 'full'
     ? React.createElement(
