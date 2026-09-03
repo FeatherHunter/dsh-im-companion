@@ -23,6 +23,8 @@ export interface B3HeaderDeps {
   subscribe: (fn: (snap: StreamSnapshot) => void) => () => void
   /** 仅发测试消息写路径使用；读快照一律走 subscribe。 */
   createRpc: () => RpcCall | null
+  /** 自定义名表（与面板同一套 meta.names）；取不到按空表，显示回退目录名。 */
+  loadCustomNames: () => Promise<Record<string, string>>
 }
 
 function emit(name: string, detail: Record<string, unknown>): void {
@@ -41,7 +43,7 @@ function dotTitle(dot: DotKind): string {
   return '未绑定'
 }
 
-export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspacePath, subscribe, createRpc }) => {
+export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspacePath, subscribe, createRpc, loadCustomNames }) => {
   const [bots, setBots] = React.useState<BotSnap[]>([])
   const [hasSnap, setHasSnap] = React.useState(false)
   const [open, setOpen] = React.useState(false)
@@ -49,17 +51,30 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   const [result, setResult] = React.useState<{ ok: boolean; text: string } | null>(null)
   const [sgList, setSgList] = React.useState<DeliverySuggestion[] | null>(null)
 
+  const [names, setNames] = React.useState<Record<string, string>>({})
   React.useEffect(() => {
+    let disposed = false
     let unsub: (() => void) | null = null
     try {
       unsub = subscribe((snap) => {
         setBots(snap.bots)
         setHasSnap(snap.updatedAt > 0)
+        try {
+          const p = loadCustomNames()
+          if (p && typeof (p as Promise<Record<string, string>>).then === 'function') {
+            void (p as Promise<Record<string, string>>).then((n) => {
+              if (!disposed) setNames(n ?? {})
+            }).catch(() => {})
+          }
+        } catch {
+          /* 名表失败即回退目录名 */
+        }
       })
     } catch {
       unsub = null
     }
     return () => {
+      disposed = true
       try {
         unsub?.()
       } catch {
@@ -114,7 +129,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   } catch {
     workspacePath = undefined
   }
-  const overlay = hasSnap ? headerOverlayFor(workspacePath, bots, Date.now()) : null
+  const overlay = hasSnap ? headerOverlayFor(workspacePath, bots, Date.now(), names) : null
   if (!overlay || overlay.mode === 'hidden') return null
 
   const bot = overlay.mode === 'full' ? overlay.bot : null

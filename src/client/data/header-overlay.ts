@@ -2,8 +2,10 @@
  * 时机三态：未就绪（服务缺失/首轮快照前）→ hidden（不渲染）；已知无绑定 → unbound（灰色提示）；
  * 已绑定 → full（呼吸点 + 详情）。健康语义复用 B1（任一在线即在线，失败按未知）。
  * 发测试消息只走 dsh-im 已保存目标（PROACTIVE_DELIVERY 契约）：无目标不谎报发送。 */
-import { badgeForWorkspace, type BadgeKind } from './bindings'
+import { badgeForWorkspace, basenameOfPath, type BadgeKind } from './bindings'
 import type { BotSnap, RpcCall } from './fleet-api'
+import { EMPTY_META } from './meta'
+import { viewName } from './model'
 
 /** 发测试消息意图事件名：detail = { workspace, agent, botId, channel, targetId }（只读意图，见组件）。 */
 export const SEND_TEST_EVENT = 'dsh-im-companion:send-test'
@@ -54,17 +56,20 @@ export function headerOverlayFor(
   workspacePath: string | undefined,
   bots: BotSnap[],
   nowMs = Date.now(),
+  names: Record<string, string> = {},
 ): HeaderOverlay {
   if (!workspacePath) {
     return { mode: 'hidden', agent: '', label: '', tooltip: '', dotKind: 'unbound', bot: null }
   }
   const badge = badgeForWorkspace(workspacePath, bots, nowMs)
+  const base = basenameOfPath(workspacePath)
+  const agent = viewName(base, { ...EMPTY_META, names }, base, workspacePath)
   if (badge.kind === 'unbound') {
-    return { mode: 'unbound', agent: badge.agent, label: badge.label, tooltip: badge.tooltip, dotKind: 'unbound', bot: null }
+    return { mode: 'unbound', agent, label: badge.label, tooltip: badge.tooltip, dotKind: 'unbound', bot: null }
   }
   return {
     mode: 'full',
-    agent: badge.agent,
+    agent,
     label: badge.label,
     tooltip: badge.tooltip,
     dotKind: badge.kind,

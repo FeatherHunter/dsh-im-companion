@@ -118,7 +118,7 @@ async function renderSession(sessionId: string): Promise<{ text: string; btn: an
 
 const full = await renderSession('sess-aaa');
 checks.push(['full 态渲染呼吸点', !!full.btn]);
-checks.push(['full 态标题带 Agent', String(full.btn?.getAttribute?.('title') ?? '').includes('xiaoshuai')]);
+checks.push(['full 态标题带 Agent', String(full.btn?.getAttribute?.('title') ?? '').includes('Xiaoshuai')]); // 与面板一致：首字母大写
 checks.push(['full 态标题带在线', String(full.btn?.getAttribute?.('title') ?? '').includes('在线')]);
 
 const unbound = await renderSession('sess-bbb');

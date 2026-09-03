@@ -64,7 +64,7 @@ test('headerOverlayFor：时机三态', () => {
   assert.equal(headerOverlayFor('D:\\agents\\empty', [], now).mode, 'unbound'); // 已知工作区无绑定：灰色提示
   const full = headerOverlayFor(W1, [snap()], now);
   assert.equal(full.mode, 'full');
-  assert.equal(full.agent, 'xiaoshuai');
+  assert.equal(full.agent, 'Xiaoshuai'); // 无自定义名时与面板一致：目录名首字母大写
   assert.match(full.label, /在线/);
 });
 
@@ -177,6 +177,15 @@ test('runTestSend：离线/待确认预检 direct 返回，不调 rpc', async ()
   assert.equal(r2.ok, false);
   assert.match(r2.text, /待确认/);
   assert.equal(calls, 0); // 预检拦截，零 RPC
+});
+
+test('headerOverlayFor：自定义名与面板一致（全路径优先，旧键兼容）', () => {
+  const now = 90000;
+  const bots = [snap()];
+  assert.equal(headerOverlayFor(W1, bots, now, { [W1]: '小帅' }).agent, '小帅');
+  assert.equal(headerOverlayFor(W1, bots, now, { 'xiaoshuai': '旧名' }).agent, '旧名');
+  assert.equal(headerOverlayFor(W1, bots, now, {}).agent, 'Xiaoshuai');
+  assert.equal(headerOverlayFor('D:\\agents\\empty', [], now, { 'D:\\agents\\empty': '空房' }).agent, '空房');
 });
 
 test('草稿测试流：建议列举/草稿发送/展示名', async () => {

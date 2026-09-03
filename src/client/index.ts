@@ -108,6 +108,14 @@ export function apply(ctx: any): void {
       return undefined
     }
   }
+  const loadB3CustomNames = async (): Promise<Record<string, string>> => {
+    try {
+      const doc = await featureCtx.meta.loadMeta()
+      return doc?.names ?? {}
+    } catch {
+      return {}
+    }
+  }
   const subscribeB3 = (fn: (snap: StreamSnapshot) => void): (() => void) => {
     try {
       return stream.subscribe(fn)
@@ -130,7 +138,7 @@ export function apply(ctx: any): void {
         order: 30,
         inject: () => ({}),
       }, (props: { sessionId?: string }) =>
-        B3HeaderAction({ sessionId: props?.sessionId ?? '', getWorkspacePath: getB3WorkspacePath, subscribe: subscribeB3, createRpc: createB3Rpc })),
+        B3HeaderAction({ sessionId: props?.sessionId ?? '', getWorkspacePath: getB3WorkspacePath, subscribe: subscribeB3, createRpc: createB3Rpc, loadCustomNames: loadB3CustomNames })),
     )
   } catch {
     /* 老宿主无该槽位就跳过（设置面板不受影响） */

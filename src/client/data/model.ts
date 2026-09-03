@@ -78,7 +78,7 @@ function mergeStatus(kinds: HealthKind[]): HealthKind {
 }
 
 /* 家的身份键 = 工作区全路径；同名目录不再串名。读兼容旧 basename 键（先写的新键优先）。 */
-function viewName(base: string, meta: AgentMetaDoc, fallback: string, path = ''): string {
+export function viewName(base: string, meta: AgentMetaDoc, fallback: string, path = ''): string {
   if (!base && !path) return fallback
   if (path && meta.names[path]) return meta.names[path]
   if (base && meta.names[base]) return meta.names[base]
