@@ -4,6 +4,7 @@
  * 发测试消息：优先已保存目标；无目标时用已聊会话做草稿测试（不存任何东西），
  * 多个会话先选再发，成功同时派发 SEND_TEST_EVENT；未绑定只给静态指引，无死按钮。 */
 import * as React from 'react'
+import { channelGlyphSvg } from '../icons'
 import type { BotSnap, RpcCall } from '../data/fleet-api'
 import type { StreamSnapshot } from '../data/connection-stream'
 import {
@@ -192,11 +193,20 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
         React.createElement(
           'div',
           { className: 'b3-header-chrow', key: ch.channel },
-          React.createElement(
-            'span',
-            { className: 'b3-header-chbadge', style: { background: ch.color } },
-            ch.label.charAt(0) || '?',
-          ),
+          (() => {
+            const logo = channelGlyphSvg(ch.channel, 18)
+            if (logo) {
+              return React.createElement('span', {
+                className: 'b3-header-chlogo',
+                dangerouslySetInnerHTML: { __html: logo },
+              })
+            }
+            return React.createElement(
+              'span',
+              { className: 'b3-header-chbadge', style: { background: ch.color } },
+              ch.label.charAt(0) || '?',
+            )
+          })(),
           React.createElement('span', null, ch.label + ' · ' + ch.statusText),
         ),
       ),

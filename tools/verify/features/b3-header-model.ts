@@ -15,6 +15,9 @@ const SRC = join(REPO, 'src', 'client', 'data');
 const FILES = ['config.ts', 'fleet-api.ts', 'bindings.ts', 'header-overlay.ts', 'model.ts', 'meta.ts'];
 
 const stage = mkdtempSync(join(tmpdir(), 'b3-src-'));
+for (const f of ['icons.ts']) {
+  writeFileSync(join(stage, f), readFileSync(join(REPO, 'src', 'client', f), 'utf8'));
+}
 for (const f of FILES) {
   const raw = readFileSync(join(SRC, f), 'utf8');
   // 仅测试副本：将 bundler 风格 extensionless 改写为 nodenext 可解（产物代码不动）。
@@ -27,6 +30,7 @@ try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
     ...FILES.map((f) => join(stage, f)),
+    join(stage, 'icons.ts'),
     '--ignoreConfig',
     '--outDir', tmp, '--module', 'nodenext', '--target', 'es2023',
     '--moduleResolution', 'nodenext', '--skipLibCheck',
@@ -40,6 +44,7 @@ const mod = (f: string) => import(pathToFileURL(join(tmp, f)).href);
 const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, sendToSuggestion, listSuggestions, testDraftTarget, suggestionLabel, channelsOf, SEND_TEST_EVENT } = await mod('header-overlay.js');
 const { mergeStaleBots } = await mod('fleet-api.js');
 const { buildModel } = await mod('model.js');
+const { channelGlyphSvg } = await mod('icons.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over: Record<string, unknown> = {}) => ({
@@ -262,6 +267,17 @@ test('同名目录不串名：全路径键隔离，旧 basename 键兼容', () =
   assert.equal(vb.name, '旧名'); // 无全路径键时旧键仍生效，不丢数据
   const m2 = buildModel([a, b], { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }, 'agent', '');
   assert.equal(m2.agents.find((v) => v.workspace === 'D:\\a\\xiaoshuai').name, 'Xiaoshuai'); // 无名时目录名首字母大写
+});
+
+test('channelGlyphSvg：九渠道全覆盖，未知回 null（回退首字徽标）', () => {
+  for (const ch of ['feishu', 'weixin', 'qq', 'slack', 'telegram', 'discord', 'whatsapp', 'dingtalk', 'wecom']) {
+    const svg = channelGlyphSvg(ch, 18);
+    assert.ok(svg && svg.startsWith('<svg'), ch);
+    assert.match(svg, new RegExp('data-channel-logo="' + ch + '"'));
+    assert.ok(svg.length > 150, ch + ' 疑似截断');
+  }
+  assert.equal(channelGlyphSvg('nope'), null);
+  assert.match(channelGlyphSvg('feishu'), /#00D6B9/); // 品牌色保留
 });
 
 console.log('header-overlay-model: ALL PASS');
