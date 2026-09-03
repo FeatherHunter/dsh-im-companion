@@ -154,10 +154,11 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       setTimeout(() => {
         try {
           row.style.display = 'none'
-          const ph = document.createElement('div')
-          ph.setAttribute('class', 'e2-row e2-ph')
-          const live = dragId ? lastBots.find((b) => b.botId === dragId) : undefined
-          ph.textContent = live?.botName || dragId || ''
+          const ph = row.cloneNode(true) as HTMLElement
+          ph.classList.remove('e2-dragging')
+          ph.classList.add('e2-ph')
+          ph.removeAttribute('draggable')
+          ph.removeAttribute('id')
           row.parentNode?.insertBefore(ph, row.nextSibling)
           dragPh = ph
         } catch { /* 占位失败不阻断拖拽 */ }
@@ -221,6 +222,9 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       const live = lastBots.find((b) => b.botId === desc.botId)
       const bot = { botId: desc.botId, channel: desc.channel, workspace: live?.workspace ?? '' }
       if (sec && sec.hasAttribute('data-e2-new')) {
+        /* 目录选择器是共享遮罩（层级低于本面板）：先收起面板再选，选完用户重进（快照已刷新）。 */
+        try { board?.close() } catch { /* 忽略 */ }
+        board = null
         void (async () => {
           const picked = await pickDir(ctx, live?.workspace ?? '')
           if (!picked) return

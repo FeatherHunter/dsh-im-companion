@@ -27,7 +27,6 @@ const ENTRIES = [
   join(CLIENT, 'dom.ts'),
   join(CLIENT, 'theme.ts'),
   join(CLIENT, 'icons.ts'),
-  join(CLIENT, 'ui', 'modal.ts'),
   join(CLIENT, 'ui', 'dir-picker.ts'),
   join(CLIENT, 'ui', 'sheet.ts'),
   join(CLIENT, 'ui', 'toast.ts'),
@@ -121,6 +120,9 @@ test('manifest 注册：workspace-rail 槽位 + 进 FEATURES', () => {
 test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('.e2-'));
   assert.ok(!String(styles.CSS).includes('.af-'));
+  assert.ok(String(styles.CSS).includes('z-index:1400'), '面板压过宿主 chrome');
+  assert.ok(String(styles.CSS).includes('z-index:1600'), '确认框在最顶');
+  assert.ok(String(styles.CSS).includes('.e2-tape{') && String(styles.CSS).includes('text-overflow:ellipsis'), '门牌不出框');
 });
 
 test('视图暴露挂载入口', () => {
@@ -139,12 +141,12 @@ const e2StubNode: any = (tag: string) => {
     parentNode: null as any, parentElement: null as any,
     style: { setProperty(k: string, v: string) { (this as any)[k] = String(v); } } as Record<string, string>, dataset: {} as Record<string, string>,
     attrs: {} as Record<string, string>, listeners: {} as Record<string, any[]>, _text: '',
-    classList: { add(...cs: string[]) { for (const c of cs) n._cls.add(c); }, remove(...cs: string[]) { for (const c of cs) n._cls.delete(c); }, contains(c: string) { return n._cls.has(c); } },
+    classList: { add(...cs: string[]) { for (const c of cs) n._cls.add(c); n.attrs.class = [...n._cls].join(' '); }, remove(...cs: string[]) { for (const c of cs) n._cls.delete(c); n.attrs.class = [...n._cls].join(' '); }, contains(c: string) { return n._cls.has(c); } },
     _cls: new Set<string>(),
     get firstChild() { return n.children[0] ?? null; },
     get textContent(): string { return n._text + n.children.map((c: any) => (c.nodeType === 3 ? c.text : (typeof c.textContent === 'string' ? c.textContent : ''))).join(''); },
     set textContent(v: string) { n._text = String(v); },
-    setAttribute(k: string, v: string) { n.attrs[k] = String(v); },
+    setAttribute(k: string, v: string) { n.attrs[k] = String(v); if (k === 'class') n._cls = new Set(String(v).split(' ').filter(Boolean)); },
     getAttribute(k: string) { return n.attrs[k] ?? null; },
     hasAttribute(k: string) { return Object.prototype.hasOwnProperty.call(n.attrs, k); },
     removeAttribute(k: string) { delete n.attrs[k]; },
@@ -159,6 +161,18 @@ const e2StubNode: any = (tag: string) => {
       c.parentNode = n; c.parentElement = n; return c;
     },
     replaceChildren() { for (const c of [...n.children]) n.removeChild(c); },
+    cloneNode(deep: boolean) {
+      const c: any = e2StubNode(n.tagName.toLowerCase());
+      c.attrs = { ...n.attrs };
+      c._cls = new Set(n._cls);
+      c._text = n._text;
+      for (const k of Object.keys(n.style ?? {})) { try { c.style[k] = (n.style as any)[k]; } catch { /* ignore */ } }
+      if (deep) for (const ch of n.children ?? []) {
+        if (ch.nodeType === 3) c.appendChild({ nodeType: 3, text: ch.text, parentNode: null });
+        else if (typeof ch.cloneNode === 'function') c.appendChild(ch.cloneNode(true));
+      }
+      return c;
+    },
     closest(sel: string) {
       if (sel.startsWith('.') && String(n.attrs?.class ?? '').split(' ').includes(sel.slice(1))) return n;
       const p = n.parentElement;
@@ -184,7 +198,7 @@ const e2StubNode: any = (tag: string) => {
     addEventListener(t: string, fn: any) { (n.listeners[t] || (n.listeners[t] = [])).push(fn); },
     removeEventListener(t: string, fn: any) { n.listeners[t] = (n.listeners[t] ?? []).filter((f: any) => f !== fn); },
   };
-  Object.defineProperty(n, 'className', { get: () => n.attrs.class ?? '', set: (v: string) => { n.attrs.class = String(v); } });
+  Object.defineProperty(n, 'className', { get: () => n.attrs.class ?? '', set: (v: string) => { n.attrs.class = String(v); n._cls = new Set(String(v).split(' ').filter(Boolean)); } });
   e2Nodes.push(n);
   return n;
 };
@@ -379,6 +393,9 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取
   await sleep(10);
   assert.equal(rowF.style.display, 'none', '原牌隐身');
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '只留一块歪斜影子');
+  const ph = findClass(e2Doc.body, 'e2-ph')[0];
+  assert.ok(String(ph.textContent).includes('f1'), '影子名字不少');
+  assert.equal(findClass(ph, 'e2-hdot').length, 1, '影子健康灯不少');
   lastDoc('dragend')();
   await sleep(10);
   assert.equal(rowF.style.display, '', '取消后原牌回来');

@@ -1,6 +1,5 @@
 /** e2-adopt 写管道：绑定写透 + 确认弹窗 + 撤销窗 + 目录选择（纯行为，无布局）。 */
 import { h } from '../../client/dom'
-import { showModal } from '../../client/ui/modal'
 import { toast } from '../../client/ui/toast'
 import { openDirPicker } from '../../client/ui/dir-picker'
 import type { FeatureCtx } from '../protocol'
@@ -51,25 +50,36 @@ export function showUndo(ctx: FeatureCtx, channel: string, botId: string, from: 
   } catch { /* 提示失败不阻断已落地绑定 */ }
 }
 
+/* 自有确认框（不复用共享 showModal：其遮罩层级低于本面板，确认框会被压住。行为同源：Esc/点阴影关闭）。 */
 export function askMove(ctx: FeatureCtx, channel: string, botId: string, from: string, to: string): void {
   try {
-    const m = showModal([
-      h('div', { className: 'e2-confirm' }, '“' + botId + '”现属' + shortName(from) + '，换绑到“' + shortName(to) + '”？'),
-      h('div', { className: 'e2-confirm-btns' },
-        h('button', { onClick: () => m.close() }, '留在这里'),
-        h('button', {
-          onClick: () => {
-            m.close()
-            void (async () => {
-              if (await setWorkspace(ctx, channel, botId, to, '换绑')) {
-                const back = undoTarget(from)
-                if (back) showUndo(ctx, channel, botId, back, '已换绑到' + shortName(to))
-                else toast('已换绑到' + shortName(to), 'check')
-              }
-            })()
-          },
-        }, '确认换绑')),
-    ])
+    dismissUndo()
+    const box = h('div', { className: 'e2-confirmbox', role: 'dialog', 'aria-modal': 'true' }) as HTMLElement
+    let closed = false
+    const close = (): void => {
+      if (closed) return
+      closed = true
+      try { box.remove() } catch { /* 忽略 */ }
+      try { document.removeEventListener('keydown', onKey, true) } catch { /* 忽略 */ }
+    }
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') close() }
+    const go = (): void => {
+      close()
+      void (async () => {
+        if (await setWorkspace(ctx, channel, botId, to, '换绑')) {
+          const back = undoTarget(from)
+          if (back) showUndo(ctx, channel, botId, back, '已换绑到' + shortName(to))
+          else toast('已换绑到' + shortName(to), 'check')
+        }
+      })()
+    }
+    const btns = h('div', { className: 'e2-confirm-btns' },
+      h('button', { onClick: close }, '留在这里'),
+      h('button', { onClick: go }, '确认换绑'))
+    box.appendChild(h('div', { className: 'e2-confirm' }, '“' + botId + '”现属' + shortName(from) + '，换绑到“' + shortName(to) + '”？', btns) as unknown as Node)
+    box.addEventListener('mousedown', (e: Event) => { if (e.target === box) close() })
+    document.addEventListener('keydown', onKey, true)
+    document.body.appendChild(box)
   } catch { /* 弹层失败则不动（fail-closed） */ }
 }
 
