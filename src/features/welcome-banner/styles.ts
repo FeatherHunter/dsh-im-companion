@@ -28,7 +28,7 @@ const SKY: string[] = [
 ".wb-star { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #ffffff; animation: wb-tw 2.8s ease-in-out infinite; }",
 "@keyframes wb-tw { 50% { opacity: .15; } }",
 ".wb-horizon { position: absolute; left: 0; right: 0; bottom: 0; height: 130px; background: linear-gradient(transparent,rgba(255,150,80,.4)); pointer-events: none; }",
-".wb-copy { position: absolute; left: 0; right: 0; bottom: 0; box-sizing: border-box; padding: 26px; text-align: center; }",
+".wb-copy { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); box-sizing: border-box; padding: 26px; text-align: center; }",
 ".wb-title { font-size: 24px; font-weight: 800; color: #ffffff; text-shadow: 0 2px 14px rgba(0,0,0,.35); opacity: 0; transform: translateY(26px); animation: wb-rise .7s cubic-bezier(.2,.7,.2,1) forwards; }",
 ".wb-sub { font-size: 13px; color: #ffffff; opacity: 0; transform: translateY(26px); text-shadow: 0 1px 8px rgba(0,0,0,.35); margin-top: 4px; animation: wb-rise .7s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: .12s; }",
 ".wb-cta { margin-top: 26px; text-align: center; opacity: 0; transform: translateY(26px); animation: wb-rise .7s cubic-bezier(.2,.7,.2,1) forwards; animation-delay: .24s; }",

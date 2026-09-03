@@ -191,6 +191,7 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf(".wb-banner{") >= 0, "token 必须声明在 .wb-banner 根上");
   assert.ok(css.indexOf("min-height:") >= 0, "HOME 气场：横幅必须有最小高度占领对话区");
   assert.ok(css.indexOf("width: 100%") >= 0 && css.indexOf("align-self: stretch") >= 0, "卡片必须占满父容器宽度（flex 父容器下防塌成细条，真机竖条回归）");
+  assert.ok(css.indexOf("top: 50%") >= 0 && css.indexOf("translateY(-50%)") >= 0, "文案块必须在天空区垂直居中");
   for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-horizon", ".wb-title", ".wb-enter"]) {
     assert.ok(css.indexOf(cls) >= 0, "P 天空样式缺失：" + cls);
   }
