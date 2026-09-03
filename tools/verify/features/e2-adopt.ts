@@ -415,6 +415,34 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静
   assert.ok(bodyText().includes('x1'), '冻结期到的新机器人松手后出现');
 });
 
+test('view：按住熔断重绘 + 内容不变跳过 + 按下拦截金丝雀', async () => {
+  mountStage(okRpc);
+  const sent = stageBots();
+  e2Emit!({ bots: sent });
+  openPanel();
+  await sleep(10);
+  const row0 = sectionRows(panelSections()[0])[0];
+  e2Emit!({ bots: sent.map((b) => ({ ...b })) });
+  await sleep(10);
+  assert.ok(sectionRows(panelSections()[0])[0] === row0, '空转快照不重建 DOM');
+  lastDoc('pointerdown')({ target: row0 });
+  e2Emit!({ bots: [...sent.map((b) => ({ ...b })), { channel: 'qq', botId: 'x9', workspace: '', botName: '', connected: false, healthKind: 'offline' }] });
+  await sleep(10);
+  assert.ok(sectionRows(panelSections()[0])[0] === row0, '按住时节点稳定（原生拖拽才有机会出生）');
+  assert.ok(!bodyText().includes('x9'), '熔断期间不渲染');
+  lastDoc('pointerup')({});
+  await sleep(10);
+  assert.ok(bodyText().includes('x9'), '松手后补刷');
+  const freshRow = sectionRows(panelSections()[0])[0];
+  const countCanary = () => (bodyText().match(/被页面其它层拦截/g) || []).length;
+  lastDoc('pointerdown')({ target: freshRow, defaultPrevented: true });
+  assert.equal(countCanary(), 1, '拦截金丝雀应响一声');
+  lastDoc('pointerup')({});
+  lastDoc('pointerdown')({ target: freshRow, defaultPrevented: true });
+  lastDoc('pointerup')({});
+  assert.equal(countCanary(), 1, '金丝雀只响一次');
+});
+
 test('view：撤销窗过期 → 落定提示且窗消失', async () => {
   const realSetTimeout = globalThis.setTimeout;
   const timers: any[] = [];

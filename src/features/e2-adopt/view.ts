@@ -1,5 +1,4 @@
-/** e2-adopt 视图：左栏头按钮 → 中央驾驶舱（彩色地盘纯拖拽 + “＋ 新地盘”兜底空人）。
- * 自有 DOM（e2-*）+ 共享 modal/toast/dir-picker 原语；宿主只读（头栏定位复用 B2 口径），不行行业务节点。无自有轮询；写走渠道 RPC + 写后立刷。 */
+/** e2-adopt 视图：左栏头按钮 → 中央驾驶舱（纯拖拽 + “＋ 新地盘”兜底）。自有 DOM（e2-*）；无自有轮询；写走渠道 RPC + 写后立刷。 */
 import { h } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
@@ -10,12 +9,8 @@ import { actDrop, dismissUndo, pickDir } from './acts'
 import { openBoard, type BoardHandle } from './panel'
 import { CSS } from './styles'
 
-const MIME = 'application/x-e2-adopt-bot'
-const ENTRY_CLASS = 'e2-entry'
-const SEC_CLASS = 'e2-sec'
-const ROW_CLASS = 'e2-row'
-const OK_CLASS = 'e2-drop-ok'
-const WARN_CLASS = 'e2-drop-warn'
+const COCKPIT_CLASS = 'e2-cockpit', MIME = 'application/x-e2-adopt-bot', ENTRY_CLASS = 'e2-entry'
+const SEC_CLASS = 'e2-sec', ROW_CLASS = 'e2-row', OK_CLASS = 'e2-drop-ok', WARN_CLASS = 'e2-drop-warn'
 const GROUP_SEL = 'div[role="treeitem"][aria-expanded]'
 
 let entryBtn: HTMLElement | null = null
@@ -27,17 +22,15 @@ function reloadMeta(ctx: FeatureCtx): void {
   try {
     void ctx.meta.loadMeta().then((doc) => {
       lastMeta = doc
-      if (hadDrag) return
+      if (hadDrag || pressDown) return
       try { board?.repaint(lastBots) } catch { /* 忽略 */ }
     }, () => undefined)
   } catch { /* 读不到昵称就用目录名（fail-closed 展示） */ }
 }
-let dragId: string | null = null
-let dragEl: Element | null = null
+let dragId: string | null = null, dragEl: Element | null = null, dragStartX: number | null = null
 let dragDesc: { botId: string | null; channel: string | null } | null = null
-let dragStartX: number | null = null
-let hadDrag = false
-let dropped = false
+let hadDrag = false, dropped = false, pressDown = false, pressSkip = 0, diagShown = false
+let pressAt = 0, lastSig = ''
 const claim = (): number => {
   try {
     const w = window as unknown as Record<string, number>
@@ -45,12 +38,10 @@ const claim = (): number => {
     return w.__e2Gen
   } catch { return 1 }
 }
-/* 单挂载假设：宿主同时只保留一代挂载；重挂载由代际哨兵 + dispose 清理旧代。模块级状态皆属当前代。 */
 const alive = (g: number): boolean => {
   try { return (window as unknown as Record<string, number>).__e2Gen === g } catch { return true }
 }
 
-/* 头栏定位（评审声明：与 left-filter/header-btn.resolveHeader 同语义，重复优于跨 feature 引用）。 */
 function resolveHeader(container: Element): Element | null {
   try {
     let path: Element | null = container
@@ -90,7 +81,6 @@ function hasMime(e: DragEvent): boolean {
 
 function openPanel(ctx: FeatureCtx): void {
   try {
-    /* 样式兜底重装（幂等：同名标签复写；覆盖 HMR/新 fiber 漏装。CSS 失效首先怀疑 lib 未重新构建）。 */
     try { installFeatureStyles('e2-adopt', CSS) } catch { /* 忽略 */ }
     try { board?.close() } catch { /* 忽略 */ }
     board = null
@@ -127,21 +117,23 @@ function ensureEntry(ctx: FeatureCtx, g: number): void {
 
 export function mountE2Adopt(ctx: FeatureCtx): () => void {
   const g = claim()
-  hadDrag = false
-  dropped = false
-  dragId = null
-  dragEl = null
-  dragDesc = null
-  dragStartX = null
+  hadDrag = false; dropped = false; pressDown = false; pressSkip = 0; lastSig = ''
+  dragId = null; dragEl = null; dragDesc = null; dragStartX = null
   try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
   reloadMeta(ctx)
+  /* 面板签名：展示字段不变就不重建 DOM（15s 空转快照不再掀桌）。 */
+  const sigOf = (bots: BotSnap[]): string => (bots || []).map((b) => b.channel + '|' + b.botId + '|' + b.workspace + '|' + b.botName + '|' + b.healthKind + '|' + (b.stale ? 1 : 0) + '|' + (b.connected ? 1 : 0)).join('\n')
+  const paint = (): void => { try { board?.repaint(lastBots) } catch { /* 忽略 */ } try { lastSig = sigOf(lastBots) } catch { /* 忽略 */ } }
   const off = ctx.subscribe((snap) => {
     if (!alive(g)) return
     lastBots = snap.bots
     try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
-    /* 拖拽中冻结重绘：快照照收（数据不丢），DOM 等松手再刷，否则占位符被连盘端走。 */
-    if (hadDrag) return
-    try { board?.repaint(lastBots) } catch { /* 忽略 */ }
+    /* 按住/拖飞中冻结：按下点节点一换，原生拖拽还没出生就没了（静默拖不动的主因）。 */
+    if (pressDown) { try { if (Date.now() - pressAt > 10000) pressDown = false } catch { pressDown = false } }
+    if (hadDrag || pressDown) { if (pressDown) pressSkip++; return }
+    const s = sigOf(snap.bots)
+    if (s === lastSig) return
+    paint()
   })
 
   const onDragStart = (e: Event): void => {
@@ -152,6 +144,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       if (!row || !de.dataTransfer) return
       hadDrag = true
       dropped = false
+      pressDown = false
       dragId = row.getAttribute('data-e2-bot')
       dragEl = row
       dragDesc = { botId: row.getAttribute('data-e2-bot'), channel: row.getAttribute('data-e2-channel') }
@@ -170,27 +163,19 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       de.preventDefault()
       const sec = (de.target as Element)?.closest?.('.' + SEC_CLASS) as Element | null
       clearAfford()
-      if (!sec) {
-        de.dataTransfer.dropEffect = 'none'
-        return
-      }
+      if (!sec) { de.dataTransfer.dropEffect = 'none'; return }
       const ws = sec.getAttribute('data-e2-ws')
       if (!ws && !sec.hasAttribute('data-e2-new')) {
         de.dataTransfer.dropEffect = 'none'
         return
       }
-      if (!ws) {
-        de.dataTransfer.dropEffect = 'move'
-        sec.classList.add(OK_CLASS)
-        return
-      }
+      if (!ws) { de.dataTransfer.dropEffect = 'move'; sec.classList.add(OK_CLASS); return }
       de.dataTransfer.dropEffect = 'move'
       const live = dragId ? lastBots.find((b) => b.botId === dragId) : undefined
       sec.classList.add(live?.workspace && live.workspace !== ws ? WARN_CLASS : OK_CLASS)
     } catch { /* 忽略 */ }
   }
   function clearGhost(): void {
-    try { dragEl?.classList.remove('e2-dragging') } catch { /* 忽略 */ }
     try { dragEl?.classList.remove('e2-ph') } catch { /* 忽略 */ }
     try { (dragEl as HTMLElement).style.removeProperty('transform') } catch { /* 忽略 */ }
     try { (dragEl as HTMLElement).style.transform = '' } catch { /* 忽略 */ }
@@ -241,13 +226,31 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     dragId = null
     dragStartX = null
     dragDesc = null
+    pressDown = false
+    pressSkip = 0
     clearGhost()
     /* 取消静默回原位：点击微抖也会走 dragstart+dragend，弹 toast 等于点一下骂一句。 */
     hadDrag = false
     dropped = false
     if (alive(g)) clearAfford()
-    /* 拖拽期间冻结的快照在此补刷。 */
-    try { board?.repaint(lastBots) } catch { /* 忽略 */ }
+    if (alive(g)) paint()
+  }
+  /* 按住熔断 + 按下拦截金丝雀：mousedown 被 preventDefault 则原生拖拽永不出生（它杀）。 */
+  const onPress = (e: Event): void => {
+    if (!alive(g)) return
+    try {
+      const t = (e as PointerEvent).target as Element | null
+      if (!t?.closest?.('.' + COCKPIT_CLASS)) return
+      pressDown = true
+      try { pressAt = Date.now() } catch { pressAt = 0 }
+      if (!diagShown && (e as PointerEvent).defaultPrevented) { diagShown = true; toast('按住被页面其它层拦截了，拖拽可能失灵（诊断提示，看到请告诉我）') }
+    } catch { /* 忽略 */ }
+  }
+  const onRelease = (): void => {
+    if (!pressDown && pressSkip === 0) return
+    pressDown = false
+    if (pressSkip > 0 && alive(g)) paint()
+    pressSkip = 0
   }
 
   /* 影子跟手倒：起点以左向左歪，以右向右歪（H 定稿）。与主 dragover 并存，只动影子。 */
@@ -260,6 +263,9 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     } catch { /* 忽略 */ }
   }
   try {
+    document.addEventListener('pointerdown', onPress)
+    document.addEventListener('pointerup', onRelease)
+    document.addEventListener('pointercancel', onRelease)
     document.addEventListener('dragstart', onDragStart)
     document.addEventListener('dragover', onDragOver)
     document.addEventListener('dragover', onTilt)
@@ -269,6 +275,9 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
 
   return () => {
     try {
+      document.removeEventListener('pointerdown', onPress)
+      document.removeEventListener('pointerup', onRelease)
+      document.removeEventListener('pointercancel', onRelease)
       document.removeEventListener('dragstart', onDragStart)
       document.removeEventListener('dragover', onDragOver)
       document.removeEventListener('dragover', onTilt)
