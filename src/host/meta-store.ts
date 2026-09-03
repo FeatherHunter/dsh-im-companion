@@ -7,14 +7,22 @@ export interface LocalAgent {
   workspace: string
 }
 
+export interface CtxEnhance {
+  enabled: boolean
+  level: string
+}
+
 export interface AgentMetaDoc {
   version: 1
   names: Record<string, string>
   avatars: Record<string, string>
   locals: LocalAgent[]
+  /** C1a 身份配置（companion 自持；dsh-im 侧能力 research 并行）：预设单选/custom:名前缀，上下文开关+三档。 */
+  presets: Record<string, string>
+  ctxEnhance: Record<string, CtxEnhance>
 }
 
-const EMPTY: AgentMetaDoc = { version: 1, names: {}, avatars: {}, locals: [] }
+const EMPTY: AgentMetaDoc = { version: 1, names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }
 
 function sanitizeString(value: unknown, max = 512): string {
   if (typeof value !== 'string') return ''
@@ -39,6 +47,8 @@ export class AgentMetaStore {
       names: { ...this.doc.names },
       avatars: { ...this.doc.avatars },
       locals: this.doc.locals.map((l) => ({ ...l })),
+      presets: { ...this.doc.presets },
+      ctxEnhance: Object.fromEntries(Object.entries(this.doc.ctxEnhance).map(([k, v]) => [k, { ...v }])),
     }
   }
 
@@ -51,6 +61,8 @@ export class AgentMetaStore {
           version: 1,
           names: cleanRecord(parsed.names),
           avatars: cleanRecord(parsed.avatars),
+          presets: cleanRecord(parsed.presets),
+          ctxEnhance: cleanCtxRecord(parsed.ctxEnhance),
           locals: Array.isArray(parsed.locals)
             ? parsed.locals
                 .filter((l) => l && typeof l.name === 'string')
@@ -119,6 +131,48 @@ export class AgentMetaStore {
     }
     await this.persist()
   }
+
+  async setPreset(key: string, preset: string): Promise<void> {
+    await this.load()
+    const k = sanitizeString(key, 256)
+    const v = normalizePresetValue(preset)
+    if (!k || !v) return
+    this.doc.presets[k] = v
+    await this.persist()
+  }
+
+  async setCtx(key: string, cfg: { enabled?: unknown; level?: unknown }): Promise<void> {
+    await this.load()
+    const k = sanitizeString(key, 256)
+    const level = typeof cfg?.level === 'string' && CTX_LEVELS.includes(cfg.level) ? cfg.level : null
+    if (!k || !level) return
+    this.doc.ctxEnhance[k] = { enabled: cfg?.enabled === true, level }
+    await this.persist()
+  }
+}
+
+const PRESET_IDS = ['default', 'cs', 'coder']
+const CTX_LEVELS = ['low', 'mid', 'high']
+
+/** 预设值校验（与 client/data/meta.ts 同值；host/client 分构建，常量各持一份）：合法返回原值，否则 null。 */
+export function normalizePresetValue(value: unknown): string | null {
+  const s = sanitizeString(value, 40)
+  if (!s) return null
+  if (PRESET_IDS.includes(s)) return s
+  if (s.startsWith('custom:') && s.length > 7) return s
+  return null
+}
+
+function cleanCtxRecord(input: unknown): Record<string, CtxEnhance> {
+  const out: Record<string, CtxEnhance> = {}
+  if (input && typeof input === 'object') {
+    for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+      const row = v as { enabled?: unknown; level?: unknown } | null
+      const level = typeof row?.level === 'string' && CTX_LEVELS.includes(row.level) ? row.level : null
+      if (k && level) out[k] = { enabled: row?.enabled === true, level }
+    }
+  }
+  return out
 }
 
 function cleanRecord(input: unknown): Record<string, string> {

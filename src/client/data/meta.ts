@@ -8,13 +8,21 @@ export interface LocalAgent {
   workspace: string
 }
 
+export interface CtxEnhance {
+  enabled: boolean
+  level: string
+}
+
 export interface AgentMetaDoc {
   names: Record<string, string>
   avatars: Record<string, string>
   locals: LocalAgent[]
+  /** C1a 身份配置（与 host/meta-store.ts 同形；旧快照缺字段时读方 ?? {} 兜底）。 */
+  presets: Record<string, string>
+  ctxEnhance: Record<string, CtxEnhance>
 }
 
-export const EMPTY_META: AgentMetaDoc = { names: {}, avatars: {}, locals: [] }
+export const EMPTY_META: AgentMetaDoc = { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }
 
 export interface MetaStore {
   loadMeta(): Promise<AgentMetaDoc>
@@ -24,6 +32,8 @@ export interface MetaStore {
   addLocal(name: string): Promise<void>
   removeLocal(name: string): Promise<void>
   renameLocal(from: string, to: string): Promise<void>
+  setPreset(key: string, preset: string): Promise<void>
+  setCtx(key: string, cfg: { enabled: boolean; level: string }): Promise<void>
 }
 
 /** 经 host 桥调用（channel 前缀 + 信封），由 host 侧持久化到 meta.json。 */
@@ -61,6 +71,12 @@ export class RpcMetaStore implements MetaStore {
   async renameLocal(from: string, to: string): Promise<void> {
     await this.call('meta.local.rename', { from, to })
   }
+  async setPreset(key: string, preset: string): Promise<void> {
+    await this.call('meta.preset.set', { key, preset })
+  }
+  async setCtx(key: string, cfg: { enabled: boolean; level: string }): Promise<void> {
+    await this.call('meta.ctx.set', { key, enabled: cfg.enabled, level: cfg.level })
+  }
 }
 
 /** localStorage 降级实现（兼容历史键名 af-fleet-names / af-fleet-avatars / af-fleet-agents）。 */
@@ -68,6 +84,8 @@ export class LocalMetaStore implements MetaStore {
   private readonly K_NAMES = 'af-fleet-names'
   private readonly K_AVATARS = 'af-fleet-avatars'
   private readonly K_LOCALS = 'af-fleet-agents'
+  private readonly K_PRESETS = 'af-fleet-presets'
+  private readonly K_CTX = 'af-fleet-ctx'
 
   constructor(private readonly storage: Storage | null) {}
 
@@ -93,7 +111,9 @@ export class LocalMetaStore implements MetaStore {
     const names = this.readJson<Record<string, string>>(this.K_NAMES, {})
     const avatars = this.readJson<Record<string, string>>(this.K_AVATARS, {})
     const locals = this.readJson<LocalAgent[]>(this.K_LOCALS, [])
-    return { names, avatars, locals }
+    const presets = this.readJson<Record<string, string>>(this.K_PRESETS, {})
+    const ctxEnhance = this.readJson<Record<string, CtxEnhance>>(this.K_CTX, {})
+    return { names, avatars, locals, presets, ctxEnhance }
   }
 
   async rename(key: string, name: string): Promise<void> {
@@ -127,6 +147,16 @@ export class LocalMetaStore implements MetaStore {
     const doc = await this.loadMeta()
     for (const l of doc.locals) if (l.name === from) l.name = to
     this.writeJson(this.K_LOCALS, doc.locals)
+  }
+  async setPreset(key: string, preset: string): Promise<void> {
+    const doc = await this.loadMeta()
+    doc.presets[key] = preset
+    this.writeJson(this.K_PRESETS, doc.presets)
+  }
+  async setCtx(key: string, cfg: { enabled: boolean; level: string }): Promise<void> {
+    const doc = await this.loadMeta()
+    doc.ctxEnhance[key] = { enabled: cfg.enabled, level: cfg.level }
+    this.writeJson(this.K_CTX, doc.ctxEnhance)
   }
 }
 

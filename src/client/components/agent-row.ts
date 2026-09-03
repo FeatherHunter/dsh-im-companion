@@ -5,7 +5,7 @@ import { makeAvatar } from '../ui/avatar'
 import { makeButton } from '../ui/button'
 import { makeNameEditor } from '../ui/field'
 import { makeRow } from '../ui/list'
-import { HEALTH_LABELS, stateColor } from '../data/config'
+import { HEALTH_LABELS, OPEN_DRAWER_EVENT, stateColor, type OpenDrawerDetail } from '../data/config'
 import { paletteOf, type AgentView } from '../data/model'
 import { openMoreMenu } from './row-actions'
 
@@ -90,6 +90,14 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
   })
   const actions = h('div', { className: 'af-actions' }, status, connectBtn)
   if (isAgent) {
+    const detailBtn = makeButton({
+      kind: 'primary',
+      size: 'sm',
+      label: '详情',
+      title: '打开 Agent 详情抽屉',
+      onClick: () => emitOpenDrawer(view.key),
+    })
+    actions.appendChild(detailBtn)
     const moreBtn = h('button', {
       className: 'af-more-btn',
       type: 'button',
@@ -107,4 +115,15 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
 
   row.append(avatar, main, actions)
   return row
+}
+
+/** C1a 抽屉打开意图（§10 例外：A1 行唯一新增触碰点；C1a 特性监听，无反向依赖）。 */
+function emitOpenDrawer(key: string): void {
+  try {
+    if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
+    const detail: OpenDrawerDetail = { key }
+    window.dispatchEvent(new window.CustomEvent(OPEN_DRAWER_EVENT, { detail }))
+  } catch {
+    /* 派发失败静默（抽屉打不开但行不受影响） */
+  }
 }

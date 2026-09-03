@@ -18,6 +18,13 @@ export const HEALTH_LABELS: Record<HealthKind, string> = {
   online: '在线', warn: '待确认', offline: '离线',
 }
 
+/** C1a 抽屉打开事件名：detail = { key }（key = AgentView.key；A1 行派发，C1a 特性监听，见 OPEN_AGENT_EVENT 先例）。 */
+export const OPEN_DRAWER_EVENT = 'dsh-im-companion:open-drawer'
+
+export interface OpenDrawerDetail {
+  key: string
+}
+
 export function healthOf(status?: string | null, connected?: boolean): HealthKind {
   const s = String(status ?? '').toLowerCase()
   if (s === 'healthy' || s === 'online' || s === 'connected' || s === 'ok') return 'online'

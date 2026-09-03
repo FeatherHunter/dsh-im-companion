@@ -33,7 +33,7 @@ export interface FeatureManifest {
 }
 ```
 
-- `FeatureCtx`（特性上下文，唯一入口）：{ rpc: RpcCall; subscribe(fn): () => void; meta: MetaStore; slots: SlotsService; get(name): unknown }
+- `FeatureCtx`（特性上下文，唯一入口）：{ rpc: RpcCall; subscribe(fn): () => void; refresh(): Promise<void>; meta: MetaStore; slots: SlotsService; get(name): unknown }（refresh 为 C1a 写后立刷追加，§4）
 - 注册：client/index.ts 只做「导入 FEATURES 列表 → 循环 register」；新增功能 = 加一行 import + 一行数组项。
 - 卸载即净：mount 返回 dispose；容器卸载时统一回收（同现有 ctx.effect 纪律）。
 

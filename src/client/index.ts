@@ -30,6 +30,7 @@ export function apply(ctx: any): void {
   const featureCtx: FeatureCtx = {
     rpc,
     subscribe: (fn) => stream.subscribe(fn),
+    refresh: () => stream.refresh(),
     get meta() {
       if (!metaCache) throw new Error('[dsh-im-companion] meta 未就绪')
       return metaCache

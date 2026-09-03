@@ -71,6 +71,21 @@ export function createAgentFleetHandler(store: AgentMetaStore): (endpoint: strin
           await store.renameLocal(from, to)
           return ok({})
         }
+        case 'meta.preset.set': {
+          const key = String(p.key ?? '')
+          const preset = String(p.preset ?? '')
+          if (!key || !preset) return fail('bad-request', 'key 与 preset 必填')
+          await store.setPreset(key, preset)
+          return ok({})
+        }
+        case 'meta.ctx.set': {
+          const key = String(p.key ?? '')
+          if (!key || typeof p.enabled === 'undefined' || typeof p.level === 'undefined') {
+            return fail('bad-request', 'key/enabled/level 必填')
+          }
+          await store.setCtx(key, { enabled: p.enabled, level: p.level })
+          return ok({})
+        }
         case 'fs.defaultRoot':
           return ok({ path: homedir() })
         case 'fs.list': {

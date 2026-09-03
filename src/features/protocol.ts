@@ -12,6 +12,8 @@ export interface SlotsService {
 export interface FeatureCtx {
   rpc: RpcCall | null
   subscribe(fn: (snap: StreamSnapshot) => void): () => void
+  /** 写后立刷（F0 §4）：特性写渠道数据后触发单份轮询立即刷新并广播。 */
+  refresh(): Promise<void>
   meta: MetaStore
   slots: SlotsService
   get(name: string): unknown
