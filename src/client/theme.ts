@@ -262,6 +262,45 @@ const CSS = `
   z-index: 1100; pointer-events: none; font-family: -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
 }
 .af-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---- B1 左栏徽标（MutationObserver 叠加，不占布局） ---- */
+.af-left-badge { display: inline-flex; align-items: center; gap: 5px; margin-left: 6px; padding: 1px 7px 1px 5px; border-radius: 999px; font-size: 10px; line-height: 14px; font-weight: 600; background: color-mix(in srgb, var(--af-primary) 7%, transparent); color: var(--af-secondary); white-space: nowrap; cursor: pointer; }
+.af-left-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.af-left-badge.online .af-left-dot { background: var(--af-success); animation: afBreathe 1.6s infinite; }
+.af-left-badge.warn .af-left-dot { background: var(--af-warn); }
+.af-left-badge.offline .af-left-dot { background: color-mix(in srgb, var(--af-primary) 35%, transparent); }
+.af-left-badge.unbound .af-left-dot { background: transparent; border: 1.5px solid color-mix(in srgb, var(--af-primary) 35%, transparent); width: 4px; height: 4px; }
+@keyframes afBreathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--af-success) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+
+/* ---- B3 Header 浮层（C 变体：呼吸点 + 详情） ---- */
+.af-b3 { ${TOKEN_BLOCK} display: inline-flex; align-items: center; color: var(--af-primary); font-family: -apple-system, "SF Pro Text", "PingFang SC", sans-serif; }
+.af-b3-dotbtn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--af-hairline-strong); background: var(--af-surface); cursor: pointer; display: inline-grid; place-items: center; padding: 0; }
+.af-b3-dotbtn:hover { border-color: var(--af-accent); }
+.af-b3-dotbtn:focus-visible { outline: 2px solid var(--af-accent); outline-offset: 1px; }
+.af-b3-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.af-b3-dot.online, .af-b3-dotbtn.online .af-b3-dot { background: var(--af-success); animation: afBreathe 1.6s infinite; }
+.af-b3-dot.warn, .af-b3-dotbtn.warn .af-b3-dot { background: var(--af-warn); }
+.af-b3-dot.offline, .af-b3-dotbtn.offline .af-b3-dot { background: color-mix(in srgb, var(--af-primary) 35%, transparent); }
+.af-b3-dot.unbound, .af-b3-dotbtn.unbound .af-b3-dot { background: transparent; border: 1.5px solid color-mix(in srgb, var(--af-primary) 35%, transparent); width: 7px; height: 7px; }
+.af-b3-pop {
+  ${TOKEN_BLOCK}
+  position: fixed; top: 56px; right: 12px; z-index: 1200; width: 280px;
+  background: var(--af-surface-2); border: 1px solid var(--af-hairline-strong); border-radius: 14px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .25); color: var(--af-primary);
+  font-family: -apple-system, "SF Pro Text", "PingFang SC", sans-serif;
+  padding: 12px; font-size: 12px; line-height: 18px;
+}
+.af-b3-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.af-b3-sub { color: var(--af-secondary); margin-bottom: 8px; word-break: break-all; }
+.af-b3-row { display: flex; gap: 8px; }
+.af-b3-btn { flex: 1; font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--af-hairline-strong); background: var(--af-bg); color: var(--af-primary); cursor: pointer; }
+.af-b3-btn:hover { border-color: var(--af-accent); color: var(--af-accent); }
+.af-b3-btn.primary { background: var(--af-accent); border-color: var(--af-accent); color: #fff; }
+.af-b3-btn.primary:hover { color: #fff; opacity: .88; }
+.af-b3-btn:disabled { opacity: .6; cursor: default; }
+.af-b3-result { margin-top: 8px; font-size: 12px; color: var(--af-secondary); word-break: break-all; }
+.af-b3-result.ok { color: var(--af-success); }
+.af-b3-result.err { color: var(--af-danger); }
 `
 
 /** 安装全局样式（幂等）；返回清理函数。 */

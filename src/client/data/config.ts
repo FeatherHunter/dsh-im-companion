@@ -18,7 +18,9 @@ export const HEALTH_LABELS: Record<HealthKind, string> = {
   online: '在线', warn: '待确认', offline: '离线',
 }
 
-export function healthOf(status?: string | null, connected?: boolean): HealthKind {
+export function healthOf(status?: string | null, connected?: boolean, failed?: boolean): HealthKind {
+  /* B1 结论：轮询失败 = 未知 → 待确认，绝不谎报离线 */
+  if (failed) return 'warn'
   const s = String(status ?? '').toLowerCase()
   if (s === 'healthy' || s === 'online' || s === 'connected' || s === 'ok') return 'online'
   if (s === 'degraded' || s === 'checking' || s === 'unknown') return 'warn'

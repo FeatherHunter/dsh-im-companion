@@ -50,3 +50,15 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 > ```
 >
 > 后续打标签严格遵循技能规则（`triage` / `wayfinder` / `to-spec` 等技能文档为准），不额外强制任何标签。
+
+---
+
+## 军规（认领票后必守 · 所有 session 自动注入）
+
+**最高原则（§0）**：契约优先——一切实现不得违背 `docs/features-contract.md`；共享文件只增不改；模块间无隐式共享；先合并点单 PR 先行入库。
+
+**充分解耦七律（§1）**：①功能自包含（`src/features/<id>/`，manifest 唯一出口，feature 之间禁 import）②单向依赖（feature→共享层/host 桥，禁反向、禁引 A1 私有）③契约通道白名单（rpc/subscribe/meta/slots 四种能力，禁自开轮询/直写 localStorage）④共享层 Added-only（只加导出/追加样式/追加 case）⑤数据单写多读（唯一轮询 connection-stream）⑥样式图标命名空间（installFeatureStyles + 功能前缀类）⑦可移除性（stash 掉任一功能后 npm run check 仍全绿）。
+
+**开工四步**：① 读票（先读 `docs/features-contract.md` 再动）② `gh issue edit <n> --add-assignee @me` 认领 ③ 只写自己的目录、共享只加不改、≤300 行 ④ 完工前 `npm run check` 全绿（build+typecheck+verify+guard）→ 提审（等用户点头后才关闭）。
+
+**提审两闸门**：原型/真机需用户确认；未过不关闭、不写实现。

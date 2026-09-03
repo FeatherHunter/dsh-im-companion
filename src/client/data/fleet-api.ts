@@ -19,6 +19,8 @@ export interface BotSnap {
   avatarUrl: string
   healthSummary: string
   lastCheckedAt: number | null
+  /** B1 结论：该通道轮询失败时保留旧快照并标 stale（时间冻结，按未知/待确认展示）。 */
+  stale?: boolean
 }
 
 /** provision.begin 返回/快照中的授权状态（跨渠道同名）。 */
@@ -54,6 +56,24 @@ function unwrap(raw: unknown): unknown {
   return raw
 }
 
+/** 原始单 bot → BotSnap（两处拉取共用；新快照恒 stale:false）。 */
+function toBotSnap(channel: string, b: RawBot): BotSnap {
+  const hs = b.health?.status ?? b.status ?? null
+  return {
+    channel,
+    botId: b.botId ?? '',
+    workspace: b.workspace ?? b.workspacePath ?? '',
+    connected: b.connected === true,
+    healthStatus: hs,
+    healthKind: healthOf(hs, b.connected),
+    botName: b.bot?.name ?? '',
+    avatarUrl: b.bot?.avatarUrl ?? '',
+    healthSummary: b.health?.summary ?? '',
+    lastCheckedAt: typeof b.health?.lastCheckedAt === 'number' ? b.health.lastCheckedAt : null,
+    stale: false,
+  }
+}
+
 function extractBots(value: unknown): RawBot[] {
   const r = value as { bots?: RawBot[]; snapshot?: { bots?: RawBot[] }; data?: { bots?: RawBot[] } } | null
   if (!r) return []
@@ -69,55 +89,36 @@ export async function fetchChannelStatus(rpc: RpcCall, channel: string): Promise
   const raw = await rpc('/' + channel, 'connection.status', {}, AbortSignal.timeout(RPC_TIMEOUT_MS))
   const value = unwrap(raw) as { bots?: RawBot[]; provisioning?: ProvisionState | null; snapshot?: { bots?: RawBot[]; provisioning?: ProvisionState | null } } | null
   const botsRaw = value?.bots ?? value?.snapshot?.bots ?? []
-  const bots = botsRaw.map((b): BotSnap => {
-    const hs = b.health?.status ?? b.status ?? null
-    return {
-      channel,
-      botId: b.botId ?? '',
-      workspace: b.workspace ?? b.workspacePath ?? '',
-      connected: b.connected === true,
-      healthStatus: hs,
-      healthKind: healthOf(hs, b.connected),
-      botName: b.bot?.name ?? '',
-      avatarUrl: b.bot?.avatarUrl ?? '',
-      healthSummary: b.health?.summary ?? '',
-      lastCheckedAt: typeof b.health?.lastCheckedAt === 'number' ? b.health.lastCheckedAt : null,
-    }
-  })
+  const bots = botsRaw.map((b): BotSnap => toBotSnap(channel, b))
   const provisioning = value?.provisioning ?? value?.snapshot?.provisioning ?? null
   return { bots, provisioning: provisioning && typeof provisioning === 'object' ? provisioning : null }
 }
 
-/** 并发拉取全部渠道连接状态；失败渠道降级为空数组并记入 failed。 */
-export async function fetchBots(rpc: RpcCall): Promise<{ bots: BotSnap[]; failed: string[] }> {
+/** 并发拉取全部渠道连接状态；失败渠道记入 failed。
+ * B1 结论：传输失败的渠道保留上一轮快照并标 stale（时间冻结、按未知展示），
+ * 而不是丢弃谎报离线；ok:false（渠道未配置）是权威空，不保留。 */
+export async function fetchBots(rpc: RpcCall, prev: BotSnap[] = []): Promise<{ bots: BotSnap[]; failed: string[] }> {
   const results = await Promise.allSettled(
     CHANNEL_ORDER.map(async (ch) => {
       const raw = await rpc('/' + ch, 'connection.status', {}, AbortSignal.timeout(RPC_TIMEOUT_MS))
       const value = unwrap(raw)
       const doc = value as { ok?: boolean; error?: unknown } | null
       if (doc && doc.ok === false) return []
-      return extractBots(value).map((b): BotSnap => {
-        const hs = b.health?.status ?? b.status ?? null
-        return {
-          channel: ch,
-          botId: b.botId ?? '',
-          workspace: b.workspace ?? b.workspacePath ?? '',
-          connected: b.connected === true,
-          healthStatus: hs,
-          healthKind: healthOf(hs, b.connected),
-          botName: b.bot?.name ?? '',
-          avatarUrl: b.bot?.avatarUrl ?? '',
-          healthSummary: b.health?.summary ?? '',
-          lastCheckedAt: typeof b.health?.lastCheckedAt === 'number' ? b.health.lastCheckedAt : null,
-        }
-      })
+      return extractBots(value).map((b): BotSnap => toBotSnap(ch, b))
     }),
   )
   const bots: BotSnap[] = []
   const failed: string[] = []
   results.forEach((res, i) => {
-    if (res.status === 'fulfilled') bots.push(...res.value)
-    else failed.push(CHANNEL_ORDER[i])
+    if (res.status === 'fulfilled') {
+      bots.push(...res.value)
+    } else {
+      const ch = CHANNEL_ORDER[i]
+      failed.push(ch)
+      for (const p of prev) {
+        if (p.channel === ch) bots.push({ ...p, stale: true, healthKind: 'warn' })
+      }
+    }
   })
   return { bots, failed }
 }
