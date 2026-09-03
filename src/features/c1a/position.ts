@@ -1,21 +1,43 @@
-/** C1a 抽屉定位（drawer 瘦身拆出）：贴设置面板（.af-root）并占满其全部区域；resize 跟随。 */
-import { sheetGeometry } from './data'
+/** C1a 抽屉定位（drawer 瘦身拆出）：贴设置面板可见区并占满之；resize 跟随。
+ * 锚点：.af-root（插件面板）的可见矩形 = 与全部裁剪祖先（面板/弹窗 padding-box）求交；
+ * 内容高于面板可视区时，抽屉底边锁在面板底，不再顶到 DSH 视口底。（真机 #9 反馈） */
+import { clipRect, sheetGeometry, type PanelRect } from './data'
 
-interface Rect { top: number; right: number; bottom: number; left: number }
+/** .af-root 祖先链中的裁剪框：scroll/hidden/clip 容器的 padding-box（设置面板可视区即其一）。 */
+function clipBoxes(el: HTMLElement): PanelRect[] {
+  const clips: PanelRect[] = []
+  let cur: HTMLElement | null = el.parentElement
+  while (cur && cur !== document.documentElement && cur !== document.body) {
+    let cs: CSSStyleDeclaration | null = null
+    try {
+      cs = window.getComputedStyle(cur)
+    } catch {
+      /* 样式不可读则跳过该祖先 */
+    }
+    if (cs && (cs.overflowY !== 'visible' || cs.overflowX !== 'visible')) {
+      const b = cur.getBoundingClientRect()
+      const left = b.left + (cur.clientLeft || 0)
+      const top = b.top + (cur.clientTop || 0)
+      clips.push({ top, left, right: left + (cur.clientWidth || 0), bottom: top + (cur.clientHeight || 0) })
+    }
+    cur = cur.parentElement
+  }
+  return clips
+}
 
-function panelRect(): Rect | null {
+function panelRect(): PanelRect | null {
   try {
     if (typeof window === 'undefined' || typeof document === 'undefined') return null
     const el = document.querySelector('.af-root') as HTMLElement | null
-    const r = el && typeof el.getBoundingClientRect === 'function' ? el.getBoundingClientRect() : null
-    if (!r) return null
-    return { top: r.top, right: r.right, bottom: r.bottom, left: r.left }
+    if (!el || typeof el.getBoundingClientRect !== 'function') return null
+    const r = el.getBoundingClientRect()
+    return clipRect({ top: r.top, right: r.right, bottom: r.bottom, left: r.left }, clipBoxes(el))
   } catch {
     return null
   }
 }
 
-/** 占满面板：找不到面板时不动（调用方 CSS 视口右沿 360 兜底）。 */
+/** 占满面板可视区：找不到面板（或无可见面积）时不动（调用方 CSS 视口右沿兜底）。 */
 export function placeSheetPanel(panel: HTMLElement): void {
   try {
     const vp = { width: window.innerWidth || 0, height: window.innerHeight || 0 }

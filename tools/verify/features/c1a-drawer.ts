@@ -299,6 +299,28 @@ test('drawer：抽屉占满面板几何（视口右沿兜底）', () => {
   assert.equal(data.sheetGeometry({ top: 0, right: 0, bottom: 0, left: 0 }, { width: 1600, height: 900 }), null);
 });
 
+test('drawer：可见矩形裁剪——内容高于面板时底边锁面板底（#9 真机根因）', () => {
+  // .af-root 内容顶 200 底 1400（Agent 列表超长）；面板可视 200..800；视口高 900
+  const content = { top: 200, right: 1200, bottom: 1400, left: 220 };
+  const pane = [{ top: 200, left: 200, right: 1230, bottom: 800 }];
+  // 旧逻辑：直接用内容矩形 → bottom 偏移被钳成 0 → 抽屉顶到视口（DSH）底
+  const legacy = data.sheetGeometry(content, { width: 1600, height: 900 });
+  assert.equal(legacy.bottom, 0);
+  // 新逻辑：先裁剪 → 底边锁面板底 → bottom = 视口高 - 面板底 = 100
+  const visible = data.clipRect(content, pane);
+  assert.deepEqual(visible, { top: 200, right: 1200, bottom: 800, left: 220 });
+  const fixed = data.sheetGeometry(visible, { width: 1600, height: 900 });
+  assert.deepEqual(fixed, { top: 200, right: 400, bottom: 100, width: 980 });
+  // 面板滚出内容顶（.af-root 顶在面板上方）→ 顶边也夹到面板顶
+  assert.deepEqual(data.clipRect({ top: -50, right: 1200, bottom: 1200, left: 220 }, pane),
+    { top: 200, right: 1200, bottom: 800, left: 220 });
+  // 无裁剪祖先：原样返回
+  assert.deepEqual(data.clipRect({ top: 10, right: 900, bottom: 600, left: 100 }, []),
+    { top: 10, right: 900, bottom: 600, left: 100 });
+  // 完全裁没（面板已滚过内容）：null，调用方走兜底
+  assert.equal(data.clipRect({ top: 0, right: 500, bottom: 400, left: 100 }, [{ top: 500, left: 0, right: 900, bottom: 900 }]), null);
+});
+
 test('model：按渠道视图优先用户头像（与按Agent一致）', () => {
   const m = modelMod.buildModel([bot({ avatarUrl: 'chan.png' })], metaDoc({ avatars: { [W1]: 'user.png' } }), 'channel', '');
   assert.equal(m.channelGroups[0].views[0].avatar, 'user.png');

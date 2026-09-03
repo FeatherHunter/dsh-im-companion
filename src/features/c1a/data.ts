@@ -69,6 +69,24 @@ export function sheetGeometry(panel: PanelRect | null, viewport: { width: number
   }
 }
 
+/** 可见矩形：元素矩形与一组裁剪框（祖先 padding-box，升序）求交；求交无效回 null。
+ * 溢出场景真机根因：.af-root 高度=Agent 列表内容高度，高于设置面板可视区时
+ * 底边被 sheetGeometry 的 Math.max(0) 钳成 0 → 抽屉顶到 DSH 视口底。
+ * 先裁剪到面板可视区，底边即锁在面板底（不再越界）。 */
+export function clipRect(rect: PanelRect, clips: PanelRect[]): PanelRect | null {
+  let out: PanelRect = { ...rect }
+  for (const c of clips) {
+    out = {
+      top: Math.max(out.top, c.top),
+      right: Math.min(out.right, c.right),
+      bottom: Math.min(out.bottom, c.bottom),
+      left: Math.max(out.left, c.left),
+    }
+    if (out.right <= out.left || out.bottom <= out.top) return null
+  }
+  return out
+}
+
 /** 性格框预填：各渠道引导语一致则回填（接着改），不一致/全空则空（防把别家的话塞进框）。 */
 export function personalityPrefill(bots: DrawerBot[]): string {
   const guides = [...new Set(bots.map((b) => ((b.ctx as UpstreamCtx | null)?.guidance ?? '').trim()))]
