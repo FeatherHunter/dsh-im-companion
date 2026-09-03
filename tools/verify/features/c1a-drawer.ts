@@ -234,7 +234,7 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
   });
   const all = texts(root).join('|');
-  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文增强', 'senderId', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '发测试消息']) {
+  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文增强', 'senderId', '性格', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '发测试消息']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
   assert.ok(findByClass(root, 'c1a-summary').length >= 1);
@@ -258,10 +258,10 @@ test('view：多渠道不一致渲染占位且可继续操作', () => {
   assert.ok(all.includes('多渠道不一致'));
 });
 
-test('drawer：抽屉贴面板右沿几何（视口右沿兜底）', () => {
+test('drawer：抽屉占满面板几何（视口右沿兜底）', () => {
   assert.deepEqual(
     data.sheetGeometry({ top: 60, right: 1200, bottom: 800, left: 220 }, { width: 1600, height: 900 }),
-    { top: 60, right: 400, bottom: 100, width: 360 },
+    { top: 60, right: 400, bottom: 100, width: 980 },
   );
   const narrow = data.sheetGeometry({ top: 0, right: 300, bottom: 600, left: 0 }, { width: 1440, height: 900 });
   assert.equal(narrow.width, 300);
@@ -311,6 +311,33 @@ test('dir-picker：列出子目录并可取消', async () => {
   assert.ok(cancel);
   cancel.dispatchEvent({ type: 'click' });
   assert.equal(await promise, null);
+});
+
+test('data：性格预填一致回填、分歧置空', () => {
+  const same = [{ ctx: { ...CTX0, guidance: 'warm' } }, { ctx: { ...CTX0, guidance: ' warm ' } }];
+  assert.equal(data.personalityPrefill(same), 'warm');
+  const diff = [{ ctx: { ...CTX0, guidance: 'a' } }, { ctx: { ...CTX0, guidance: 'b' } }];
+  assert.equal(data.personalityPrefill(diff), '');
+  assert.equal(data.personalityPrefill([]), '');
+});
+
+test('actions：性格应用覆盖各渠道引导语且保留字段开关', async () => {
+  const sent: any[] = [];
+  const deps = {
+    rpc: async (_ch: string, _ep: string, p: any) => { sent.push(p); return { ok: true, value: {} }; },
+    refresh: async () => undefined,
+    reloadMeta: async () => undefined,
+    paint: () => undefined,
+    notify: (_m: string) => undefined,
+  };
+  const m = { bots: [{ channel: 'feishu', botId: 'b1', ctx: { ...CTX0 } }] };
+  await actions.applyPersonality(m, deps, '幽默一点');
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].config.guidance, '幽默一点');
+  assert.deepEqual(sent[0].config.fields, ['senderId']);
+  assert.equal(sent[0].config.directEnabled, true);
+  await actions.applyPersonality(m, deps, '   ');
+  assert.equal(sent.length, 1);
 });
 
 test('view：发送按钮预告目标渠道', () => {

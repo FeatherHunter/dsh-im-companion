@@ -17,6 +17,22 @@ export function rpcOf(
   return rpc('/' + channel, endpoint, payload, AbortSignal.timeout(8000)).then((raw) => unwrapRpc(raw))
 }
 
+/** 性格应用：同一段性格覆盖全部渠道引导语（字段与开关原样回填）；调用方保证已读到真值。 */
+export async function applyPersonality(model: DrawerModel, deps: WriteDeps, text: string): Promise<void> {
+  const t = text.trim().slice(0, 8000)
+  if (!t) {
+    deps.notify('先写点性格描述再应用')
+    return
+  }
+  await writeBots(model, deps, '性格', (b) => {
+    const cur = b.ctx ?? { groupEnabled: false, directEnabled: false, fields: [], guidance: '' }
+    return rpcOf(deps.rpc, b.channel, 'bot.context-enhancement.set', {
+      botId: b.botId,
+      config: { groupEnabled: cur.groupEnabled, directEnabled: cur.directEnabled, fields: [...cur.fields], guidance: t },
+    })
+  })
+}
+
 /** 逐渠道写透：部分失败如实透出（失败渠道名），成功后 refresh 广播。 */
 export async function writeBots(
   model: DrawerModel, deps: WriteDeps, kind: string,

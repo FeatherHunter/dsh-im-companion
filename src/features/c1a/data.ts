@@ -55,18 +55,24 @@ export interface DrawerModel {
 export interface PanelRect { top: number; right: number; bottom: number; left: number }
 export interface SheetGeom { top: number; right: number; bottom: number; width: number }
 
-/** 抽屉贴设置面板右沿：fixed 相对视口，用面板矩形反推四边；面板找不到回 null（调用方保持视口右沿兜底）。 */
+/** 抽屉占满设置面板：fixed 相对视口，用面板矩形反推四边，宽 = 面板全宽；面板找不到回 null（调用方 CSS 视口右沿兜底）。 */
 export function sheetGeometry(panel: PanelRect | null, viewport: { width: number; height: number }): SheetGeom | null {
   if (!panel || !(viewport.width > 0 && viewport.height > 0)) return null
   const pw = panel.right - panel.left
   if (!(pw > 0)) return null
-  const width = pw < 420 ? Math.max(0, pw) : 360
+  const width = Math.max(0, Math.round(pw))
   return {
     top: Math.max(0, Math.round(panel.top)),
     right: Math.max(0, Math.round(viewport.width - panel.right)),
     bottom: Math.max(0, Math.round(viewport.height - panel.bottom)),
     width: Math.round(width),
   }
+}
+
+/** 性格框预填：各渠道引导语一致则回填（接着改），不一致/全空则空（防把别家的话塞进框）。 */
+export function personalityPrefill(bots: DrawerBot[]): string {
+  const guides = [...new Set(bots.map((b) => ((b.ctx as UpstreamCtx | null)?.guidance ?? '').trim()))]
+  return guides.length === 1 ? guides[0] : ''
 }
 
 export interface RouteEntry { chat: string; sessionId: string }

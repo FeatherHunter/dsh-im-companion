@@ -8,10 +8,11 @@ import { chooseBot, runTestSend } from '../../client/data/header-overlay'
 import type { AgentPresetCatalog } from '../../client/data/fleet-api'
 import type { FeatureCtx } from '../protocol'
 import { channelLabel, type OpenDrawerDetail } from '../../client/data/config'
-import { rpcOf, writeBots, type WriteDeps } from './actions'
+import { applyPersonality, rpcOf, writeBots, type WriteDeps } from './actions'
+import { followSheetResize, placeSheetPanel } from './position'
 import {
   OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, loadingModel,
-  presetPayloadFor, sheetGeometry, type DrawerModel,
+  presetPayloadFor, type DrawerModel,
 } from './data'
 import { quietCallbacks, renderDrawerContent, type DrawerCallbacks } from './view'
 
@@ -84,7 +85,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
           /* ignore */
         }
         try {
-          window.removeEventListener('resize', onResize)
+          stopFollow()
         } catch {
           /* ignore */
         }
@@ -125,30 +126,10 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   } catch {
     /* 定时器不可用则不设限 */
   }
-  const placeSheet = (): void => {
-    try {
-      if (!sheet || typeof window === 'undefined' || typeof document === 'undefined') return
-      const el = document.querySelector('.af-root') as HTMLElement | null
-      const r = el && typeof el.getBoundingClientRect === 'function' ? el.getBoundingClientRect() : null
-      const g = sheetGeometry(
-        r ? { top: r.top, right: r.right, bottom: r.bottom, left: r.left } : null,
-        { width: window.innerWidth || 0, height: window.innerHeight || 0 },
-      )
-      if (!g || !sheet) return
-      sheet.panel.style.top = g.top + 'px'
-      sheet.panel.style.right = g.right + 'px'
-      sheet.panel.style.bottom = g.bottom + 'px'
-      sheet.panel.style.width = g.width + 'px'
-    } catch {
-      /* 定位失败保持视口右沿兜底 */
-    }
-  }
-  const onResize = (): void => {
-    if (!closed) placeSheet()
-  }
-  placeSheet()
+  placeSheetPanel(sheet.panel)
+  let stopFollow: () => void = () => undefined
   try {
-    window.addEventListener('resize', onResize)
+    stopFollow = followSheetResize(sheet.panel)
   } catch {
     /* 监听失败忽略（位置定格） */
   }
@@ -170,7 +151,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     try {
       const target = chooseBot(lastBots, model.workspace)
       const targetLabel = target ? channelLabel(target.channel) : null
-      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, targetLabel))
+      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, targetLabel, draftPers))
     } catch {
       /* keep old frame */
     }
@@ -183,6 +164,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     }
   }
   let draftWs: string | null = null
+  let draftPers: string | null = null
   const deps = (): WriteDeps => ({ rpc: fctx.rpc, refresh: () => fctx.refresh(), reloadMeta, paint, notify: toast })
   const cbs = (model: DrawerModel): DrawerCallbacks => {
     const flipOne = (channel: string, botId: string, which: 'group' | 'direct'): void => {
@@ -257,6 +239,24 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     },
     onDraftWorkspace: (v) => {
       draftWs = v
+    },
+    onApplyPersonality: (text) => {
+      if (model.bots.some((b) => b.ctx === undefined)) {
+        toast('有渠道真值尚未读到，稍后再应用（防覆盖）')
+        return
+      }
+      if (!text.trim()) {
+        toast('先写点性格描述再应用')
+        return
+      }
+      void (async () => {
+        await applyPersonality(model, deps(), text)
+        draftPers = null
+        paint()
+      })()
+    },
+    onDraftPersonality: (v) => {
+      draftPers = v
     },
     onRemoveBot: (channel, botId) => {
       if (!fctx.rpc) {
