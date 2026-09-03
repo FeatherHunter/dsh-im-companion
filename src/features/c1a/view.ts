@@ -45,7 +45,7 @@ function presetSelect(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
     onChange: () => cbs.onPreset((sel as HTMLSelectElement).value),
   }) as HTMLSelectElement
   if (model.preset === PRESET_MIXED) {
-    sel.appendChild(h('option', { value: PRESET_MIXED, selected: true }, '多渠道不一致…'))
+    sel.appendChild(h('option', { value: PRESET_MIXED, selected: true }, '多渠道不一致，请选择具体预设'))
   }
   const dflt = model.presetCatalog.defaultId
   sel.appendChild(h('option', { value: PRESET_FOLLOW, selected: model.preset === PRESET_FOLLOW },
@@ -111,11 +111,8 @@ function ctxSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
       cur && cur.fields.length ? cur.fields.join('、') : '未设置')
     card.appendChild(listRow('字段', fields))
     const g = (cur?.guidance ?? '').trim()
-    const guide = h('span', {
-      title: g || '无引导语',
-      style: { fontSize: '12px', maxWidth: '60%', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-    }, g ? (g.length > 40 ? g.slice(0, 40) + '…' : g) : '无引导语')
-    card.appendChild(listRow('引导语', guide))
+    card.appendChild(h('div', { className: 'c1a-cap' }, '引导语'))
+    card.appendChild(h('div', { className: 'c1a-note', title: g || '无引导语' }, g || '无引导语'))
     frag.appendChild(card)
   }
   const note = h('div', { className: 'c1a-meta' }, '打开后 AI 能看到消息哪来的；字段与引导语请去 dsh-im 上游改（或用性格页覆盖）。')
@@ -155,7 +152,7 @@ function personalitySection(prefill: string, draft: string | null, cbs: DrawerCa
   const card = h('div', { className: 'c1a-list c1a-nobox' })
   const area = h('textarea', {
     rows: 4, value: draft ?? prefill,
-    placeholder: '比如：说话幽默，像朋友一样；群里严肃、私聊放飞…',
+    placeholder: '比如：说话幽默，像朋友一样；群里严肃、私聊放飞等',
     'aria-label': '性格语气',
   }) as HTMLTextAreaElement
   area.addEventListener('change', () => cbs.onDraftPersonality(area.value))
@@ -264,7 +261,7 @@ export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, dr
   const stateVal = h('span', { style: { fontSize: '12px' } },
     '路由 ' + model.routes.length + ' · 渠道 ' + model.channels.length + ' · ' + model.statusLabel)
   sum.appendChild(listRow('状态', stateVal))
-  const sumNote = h('div', { className: 'c1a-meta' }, '沟通模式：DSH 用哪种方式回话（PTC/标准/创造…），不是角色性格。写入真系统，新会话生效。')
+  const sumNote = h('div', { className: 'c1a-meta' }, '沟通模式：DSH 用哪种方式回话（如 PTC、标准、创造等），不是角色性格。写入真系统，新会话生效。')
   sumNote.setAttribute('style', 'padding:6px 4px 0')
   const body = h('div', { className: 'c1a-dbody' }, sum, sumNote, ctxSection(model, cbs),
     personalitySection(personalityPrefill(model.bots), draftPers, cbs),

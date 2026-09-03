@@ -288,6 +288,25 @@ test('view：多渠道不一致渲染占位且可继续操作', () => {
   assert.ok(all.includes('多渠道不一致'));
 });
 
+test('view：弹窗内无省略号——引导语全文换行展示', () => {
+  const longGuide = '你是飞书群里的靠谱助手，说话简洁幽默，重要事项逐条列出并艾特相关人，闲聊时可以接梗但不刷屏。';
+  assert.ok(longGuide.length > 40);
+  const catalogs = { feishu: { defaultId: '', items: [] } };
+  const model = data.buildDrawerModel([bot({
+    contextEnhancement: { groupEnabled: true, directEnabled: true, fields: ['senderId'], guidance: longGuide },
+  })], metaDoc(), W1, catalogs);
+  const noop = () => {};
+  const root = view.renderDrawerContent(model, {
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
+    onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
+    onRemoveBot: noop, onTestSend: noop, onClose: noop,
+  });
+  const all = texts(root).join('|');
+  assert.ok(all.includes(longGuide), '引导语被截断');
+  assert.ok(!all.includes('…'), '弹窗内仍有省略号');
+  assert.equal(findByClass(root, 'c1a-note').length, 1);
+});
+
 test('drawer：抽屉占满面板几何（视口右沿兜底）', () => {
   assert.deepEqual(
     data.sheetGeometry({ top: 60, right: 1200, bottom: 800, left: 220 }, { width: 1600, height: 900 }),
