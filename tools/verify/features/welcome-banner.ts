@@ -25,6 +25,7 @@ const ENTRIES = [
   join(WB, "anchor.ts"),
   join(WB, "styles.ts"),
   join(WB, "view.ts"),
+  join(WB, "overlay.ts"),
   join(WB, "manifest.ts"),
   join(REPO, "src", "client", "theme.ts"),
 ];
@@ -220,6 +221,7 @@ function stubEl(tag: string): any {
 }
 (globalThis as any).document = { createElement: stubEl, createTextNode: stubText };
 const view: any = req("./features/welcome-banner/view.js");
+const overlay: any = req("./features/welcome-banner/overlay.js");
 
 test("渲染 bound 横幅（问候+身份+路由+双按钮）", () => {
   const bots = [snap({ agentPreset: "cs", contextEnhancement: { groupEnabled: true, directEnabled: false, fields: [], guidance: "" } })];
@@ -289,6 +291,8 @@ test("label 反查路径（歧义宁缺勿错配）", () => {
     { path: "D:\\a\\same", name: "甲" },
     { path: "D:\\b\\same", name: "乙" },
   ]), null);
+  assert.equal(data.matchWorkspaceLabel("XIAOSHUAI", cands), "D:\\agents\\xiaoshuai");
+  assert.equal(data.matchWorkspaceLabel("  小帅  ", cands), "D:\\agents\\xiaoshuai");
 });
 
 test("hero 三信号确认", () => {
@@ -321,10 +325,10 @@ test("挂载永不抛错（ hostile 环境全静默）", () => {
     get: () => { throw new Error("no get"); },
     slots: { inject: () => { throw new Error("must never be called"); } },
   };
-  const stop = view.mountBanner(badCtx);
+  const stop = overlay.mountBanner(badCtx);
   assert.equal(typeof stop, "function");
   stop();
-  const stop2 = view.mountBanner({} as any);
+  const stop2 = overlay.mountBanner({} as any);
   assert.equal(typeof stop2, "function");
   stop2();
 });
@@ -340,6 +344,7 @@ test("DOM 叠加挂载：hero 下出现横幅、卸载即净", async () => {
     textContent: "探索未至之境 预览版 选择工作区 xiaoshuai",
     closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
     querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "xiaoshuai" } : null,
+    getBoundingClientRect: () => ({ width: 600, height: 200 }),
     parentNode: parentStub,
   };
   (globalThis as any).document = {
@@ -360,7 +365,7 @@ test("DOM 叠加挂载：hero 下出现横幅、卸载即净", async () => {
     get: () => undefined,
     slots: { inject: () => { throw new Error("zero-slot: must never touch slots"); } },
   };
-  const stop = view.mountBanner(fctx);
+  const stop = overlay.mountBanner(fctx);
   await new Promise((r) => setTimeout(r, 30));
   assert.ok(inserted.length >= 1, "至少绘制一次");
   const card = inserted[inserted.length - 1];
@@ -369,6 +374,51 @@ test("DOM 叠加挂载：hero 下出现横幅、卸载即净", async () => {
   assert.ok(names.some((t: string) => t.indexOf("小帅") >= 0), "meta 到达后应显示自定义名：" + names.join("|"));
   stop();
   assert.equal(removed.length, inserted.length, "每次绘制都要在卸载时回收");
+});
+
+test("藏起来的 hero 不绘制（有消息会话不打扰）", async () => {
+  const inserted: any[] = [];
+  const hiddenHero: any = {
+    textContent: "探索未至之境 预览版 选择工作区 xiaoshuai",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "xiaoshuai" } : null,
+    getBoundingClientRect: () => ({ width: 0, height: 0 }),
+    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: () => {} },
+  };
+  (globalThis as any).document = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel === '[data-phase="hero"]' ? [hiddenHero] : [],
+  };
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      fn({ bots: [snap({})], failed: [], updatedAt: 2, catalogs: CATALOGS });
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => META },
+    get: () => undefined,
+    slots: {},
+  };
+  const stop = overlay.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(inserted.length, 0, "不可见 hero 必须零绘制");
+  stop();
+});
+
+test("路由标题文案：私聊在前有名有数", () => {
+  const model = data.buildBannerModel([snap({})], META, W1, CATALOGS);
+  const el = view.renderBanner({
+    greeting: "你好", model, workspaceLabel: "xiaoshuai",
+    routes: [
+      { chat: "私聊 ab", sessionId: "s1", channel: "feishu" },
+      { chat: "群聊 cd", sessionId: "s2", channel: "feishu" },
+    ],
+    callbacks: { onDetail: () => {}, onRefresh: () => {}, onDismiss: () => {} },
+  });
+  const title = el.querySelector(".wb-routetitle").textContent;
+  assert.equal(title, "已接入 2 个会话：私聊 1 · 群聊 1");
 });
 
 rmSync(tmp, { recursive: true, force: true });

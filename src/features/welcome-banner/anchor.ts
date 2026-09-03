@@ -40,6 +40,19 @@ export function heroWorkspaceLabel(heroRoot: unknown): string {
   }
 }
 
+/** 可见性门：DSH 为保输入草稿常驻 DOM 树，空态切走后 hero 可能 display:none 留存；
+ * 只看属性会把“藏起来的空态”当成当前空态。fail-closed：量不到尺寸一律算不可见。 */
+export function isVisible(node: unknown): boolean {
+  try {
+    const el = node as { getBoundingClientRect?: () => { width?: unknown; height?: unknown } } | null;
+    if (!el || typeof el.getBoundingClientRect !== "function") return false;
+    const r = el.getBoundingClientRect();
+    return !!r && typeof r.width === "number" && typeof r.height === "number" && r.width > 0 && r.height > 0;
+  } catch {
+    return false;
+  }
+}
+
 export function phaseAttr(node: unknown): string | null {
   try {
     const el = node as { closest?: (s: string) => unknown } | null;

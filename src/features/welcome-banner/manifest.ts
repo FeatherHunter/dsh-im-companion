@@ -4,7 +4,7 @@
  * data-phase=hero 三信号门控（仅空会话渲染），hero chip 文本反查工作区，X 关闭为内存态。 */
 import { installFeatureStyles } from "../../client/theme";
 import type { FeatureManifest } from "../protocol";
-import { mountBanner } from "./view";
+import { mountBanner } from "./overlay";
 import { CSS } from "./styles";
 
 export const feature: FeatureManifest = {

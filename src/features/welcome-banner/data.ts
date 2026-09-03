@@ -15,14 +15,19 @@ export interface WsCandidate {
 export function matchWorkspaceLabel(label: string, candidates: WsCandidate[]): string | null {
   const t = (label ?? "").trim();
   if (!t) return null;
+  const fold = (s: string): string => s.toLowerCase();
+  const ft = fold(t);
   const list = (candidates ?? []).filter((c) => c && typeof c.path === "string" && c.path);
-  const byName = list.filter((c) => c.name === t);
+  const byName = list.filter((c) => fold(c.name) === ft);
   if (byName.length === 1) return byName[0].path;
   if (byName.length > 1) return null;
-  const byBase = list.filter((c) => basenameOf(c.path) === t);
+  const byBase = list.filter((c) => fold(basenameOf(c.path)) === ft);
   if (byBase.length === 1) return byBase[0].path;
   if (byBase.length > 1) return null;
-  const bySuffix = list.filter((c) => c.path === t || c.path.endsWith("/" + t) || c.path.endsWith("\\" + t));
+  const bySuffix = list.filter((c) => {
+    const p = c.path;
+    return p === t || fold(p).endsWith("/" + ft) || p.endsWith("\\" + t);
+  });
   if (bySuffix.length === 1) return bySuffix[0].path;
   return null;
 }
