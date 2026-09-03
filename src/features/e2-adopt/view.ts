@@ -34,7 +34,7 @@ function reloadMeta(ctx: FeatureCtx): void {
 }
 let dragId: string | null = null
 let dragEl: Element | null = null
-let dragPh: Element | null = null
+let dragDesc: { botId: string | null; channel: string | null } | null = null
 let dragStartX: number | null = null
 let hadDrag = false
 let dropped = false
@@ -131,7 +131,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   dropped = false
   dragId = null
   dragEl = null
-  dragPh = null
+  dragDesc = null
   dragStartX = null
   try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
   reloadMeta(ctx)
@@ -154,21 +154,10 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       dropped = false
       dragId = row.getAttribute('data-e2-bot')
       dragEl = row
+      dragDesc = { botId: row.getAttribute('data-e2-bot'), channel: row.getAttribute('data-e2-channel') }
       try { dragStartX = de.clientX } catch { dragStartX = null }
-      try { row.classList.add('e2-dragging') } catch { /* 忽略 */ }
-      /* 先同步立影子（拖起瞬间即有），再延迟藏原牌（让浏览器先抓完原生拖影，否则拖影是空的）。 */
-      try {
-        const ph = row.cloneNode(true) as HTMLElement
-        ph.classList.remove('e2-dragging')
-        ph.classList.add('e2-ph')
-        ph.removeAttribute('draggable')
-        ph.removeAttribute('id')
-        row.parentNode?.insertBefore(ph, row.nextSibling)
-        dragPh = ph
-      } catch { /* 占位失败不阻断拖拽 */ }
-      setTimeout(() => {
-        try { row.style.display = 'none' } catch { /* 忽略 */ }
-      }, 0)
+      /* 原牌就地变影子（空白相纸）：不动布局、不藏源——display:none 会让 Chrome 直接取消本次拖拽，时好时坏的根因。 */
+      try { row.classList.add('e2-ph') } catch { /* 忽略 */ }
       de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') }))
       de.dataTransfer.effectAllowed = 'move'
     } catch { /* 忽略 */ }
@@ -177,7 +166,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     if (!alive(g)) return
     try {
       const de = e as DragEvent
-      if (!hasMime(de) || !de.dataTransfer) return
+      if ((!hasMime(de) && !hadDrag) || !de.dataTransfer) return
       de.preventDefault()
       const sec = (de.target as Element)?.closest?.('.' + SEC_CLASS) as Element | null
       clearAfford()
@@ -202,24 +191,26 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   }
   function clearGhost(): void {
     try { dragEl?.classList.remove('e2-dragging') } catch { /* 忽略 */ }
-    try { (dragEl as HTMLElement | null)?.style && ((dragEl as HTMLElement).style.display = '') } catch { /* 忽略 */ }
-    try { dragPh?.remove() } catch { /* 忽略 */ }
+    try { dragEl?.classList.remove('e2-ph') } catch { /* 忽略 */ }
+    try { (dragEl as HTMLElement).style.removeProperty('transform') } catch { /* 忽略 */ }
+    try { (dragEl as HTMLElement).style.transform = '' } catch { /* 忽略 */ }
     dragEl = null
-    dragPh = null
   }
 
   const onDrop = (e: Event): void => {
     if (!alive(g)) return
     try {
       const de = e as DragEvent
-      if (!hasMime(de) || !de.dataTransfer) return
+      if ((!hasMime(de) && !hadDrag) || !de.dataTransfer) return
       de.preventDefault()
       clearAfford()
       clearGhost()
       dropped = true
       dragId = null
-      let desc: { botId?: string; channel?: string } = {}
+      let desc: { botId?: string | null; channel?: string | null } = {}
       try { desc = JSON.parse(de.dataTransfer.getData(MIME) || '{}') } catch { /* 载荷坏则拒收 */ }
+      if ((!desc.botId || !desc.channel) && dragDesc?.botId && dragDesc?.channel) desc = { botId: dragDesc.botId, channel: dragDesc.channel }
+      dragDesc = null
       if (!desc.botId || !desc.channel) {
         toast('拖拽数据无效，未绑定任何工作区')
         return
@@ -249,8 +240,9 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   const onDragEnd = (): void => {
     dragId = null
     dragStartX = null
+    dragDesc = null
     clearGhost()
-    if (hadDrag && !dropped && alive(g)) toast('已取消拖拽，回到原位')
+    /* 取消静默回原位：点击微抖也会走 dragstart+dragend，弹 toast 等于点一下骂一句。 */
     hadDrag = false
     dropped = false
     if (alive(g)) clearAfford()
@@ -262,9 +254,9 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   const onTilt = (e: Event): void => {
     if (!alive(g)) return
     try {
-      if (dragId === null || dragStartX === null || !dragPh) return
+      if (dragId === null || dragStartX === null || !dragEl) return
       const dx = (e as DragEvent).clientX - dragStartX
-      ;(dragPh as HTMLElement).style.transform = dx < 0 ? 'rotate(-4deg)' : 'rotate(4deg)'
+      ;(dragEl as HTMLElement).style.transform = dx < 0 ? 'rotate(-4deg)' : 'rotate(4deg)'
     } catch { /* 忽略 */ }
   }
   try {

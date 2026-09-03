@@ -378,7 +378,7 @@ test('view：全已分配 → 无未分配组；组内放下 → 不写', async 
   assert.equal(e2RpcCalls.length, 0);
 });
 
-test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取消提示', async () => {
+test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静默回原位', async () => {
   mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
   openPanel();
@@ -390,13 +390,13 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取
   const secs = panelSections();
   const rowF = sectionRows(secs[0])[0];
   lastDoc('dragstart')({ target: rowF, clientX: 500, dataTransfer: { setData() {}, effectAllowed: '' } });
-  assert.ok(rowF.classList.contains('e2-dragging'), '拖起应有 ghost 态');
+  assert.ok(rowF.classList.contains('e2-ph'), '拖起原牌就地变影子（空白相纸）');
   await sleep(10);
   for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 100, preventDefault() {}, dataTransfer: { types: ['application/x-e2-adopt-bot'] } });
   assert.ok(String(findClass(e2Doc.body, 'e2-ph')[0]?.style?.transform ?? '').includes('-4deg'), '往左拖影子向左倒');
   for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 900, preventDefault() {}, dataTransfer: { types: ['application/x-e2-adopt-bot'] } });
   assert.ok(String(findClass(e2Doc.body, 'e2-ph')[0]?.style?.transform ?? '').includes('rotate(4deg)'), '往右拖影子向右倒');
-  assert.equal(rowF.style.display, 'none', '原牌隐身');
+  assert.equal(rowF.style.display ?? '', '', '原牌不藏源（display:none 会取消拖拽）');
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '只留一块歪斜影子');
   const ph = findClass(e2Doc.body, 'e2-ph')[0];
   assert.ok(String(ph.textContent).includes('f1'), '影子名字不少');
@@ -404,13 +404,13 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取
   e2Emit!({ bots: [...stageBots(), { channel: 'qq', botId: 'x1', workspace: '', botName: '', connected: false, healthKind: 'offline' }] });
   await sleep(10);
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '拖拽中快照不掀桌');
-  assert.equal(sectionRows(panelSections()[0]).length, 3, '拖拽中只多影子（2 牌 + 影），新机器人不插队');
+  assert.equal(sectionRows(panelSections()[0]).length, 2, '拖拽中不加塞（原牌即影子），新机器人不插队');
   lastDoc('dragend')();
   await sleep(10);
-  assert.equal(rowF.style.display, '', '取消后原牌回来');
+  assert.equal(rowF.style.display ?? '', '', '取消后原牌回来');
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 0, '影子清理');
   assert.ok(!rowF.classList.contains('e2-dragging'), '放下/取消后 ghost 态清除');
-  assert.ok(bodyText().includes('已取消拖拽'));
+  assert.ok(!bodyText().includes('已取消拖拽'), '取消静默回原位（点一下不骂一句）');
   assert.equal(sectionRows(panelSections()[0]).length, 3, '松手后补刷冻结期的快照');
   assert.ok(bodyText().includes('x1'), '冻结期到的新机器人松手后出现');
 });
