@@ -46,7 +46,7 @@ export function badgeForWorkspace(workspacePath: string, bots: BotSnap[], nowMs 
     return {
       kind: 'unbound',
       label: '未绑定',
-      tooltip: '尚未绑定任何 Bot。点击打开 IM机器人辅助去绑定。',
+      tooltip: '尚未绑定任何 Bot，去 IM机器人辅助绑定后此处点亮。',
       workspace: workspacePath,
       agent,
     }
