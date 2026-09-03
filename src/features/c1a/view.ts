@@ -51,13 +51,14 @@ function presetSelect(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
 function ctxSwitch(label: string, value: boolean | null, ready: boolean, onFlip: () => void): HTMLElement {
   const btn = makeButton({
     kind: 'ghost', size: 'sm',
-    label: !ready || value === null ? '…' : value ? '开' : '关',
-    title: ready ? label + '开关（写入真系统即时生效）' : '真值尚未读到，禁用写（防覆盖已有配置）',
-    onClick: () => { if (ready && value !== null) onFlip() },
+    label: value === true ? '开' : value === false ? '关' : '…',
+    title: !ready ? '真值尚未读到，禁用写（防覆盖已有配置）'
+      : value === null ? label + '各渠道不一致，点按统一打开' : label + '开关（写入真系统即时生效）',
+    onClick: () => { if (ready) onFlip() },
   })
   btn.setAttribute('role', 'switch')
   btn.setAttribute('aria-checked', value === true ? 'true' : 'false')
-  if (!ready || value === null) btn.setAttribute('disabled', 'true')
+  if (!ready) btn.setAttribute('disabled', 'true')
   return h('span', { className: 'c1a-fld' }, h('span', { className: 'c1a-lab' }, label), btn)
 }
 

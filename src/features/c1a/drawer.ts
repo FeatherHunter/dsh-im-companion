@@ -180,7 +180,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   }
   /** 逐渠道写透：部分失败如实透出（失败渠道名），成功后 refresh 广播。 */
   const writeBots = async (
-    model: DrawerModel, kind: string, run: (b: DrawerBot) => Promise<void>,
+    model: DrawerModel, kind: string, run: (b: DrawerBot) => Promise<void>, note = '，新会话生效',
   ): Promise<void> => {
     if (!fctx.rpc) {
       toast('连接服务不可用')
@@ -202,7 +202,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         lastErr = String((e as Error)?.message ?? e)
       }
     }
-    if (!fails.length) toast(kind + '已写入真系统，新会话生效', 'check')
+    if (!fails.length) toast(kind + '已写入真系统' + note, 'check')
     else if (ok > 0) toast(kind + '部分写入（成功 ' + ok + ' 个），失败：' + fails.join('、'))
     else toast(kind + '写入失败：' + lastErr)
     try {
@@ -233,8 +233,10 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     }
     return {
     onPreset: (id) => {
-      if (id === PRESET_MIXED || !model.presetReady) {
-        toast('预设真值尚未读全，稍后再试')
+      const problem = !model.presetReady ? '预设真值尚未读全，稍后再试'
+        : id === PRESET_MIXED ? '多渠道不一致，请选一个具体预设' : ''
+      if (problem) {
+        toast(problem)
         paint()
         return
       }
@@ -252,7 +254,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         toast('请输入绝对路径形式的工作区目录')
         return
       }
-      void writeBots(model, '绑定工作区', (b) => rpcOf(b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }))
+      void writeBots(model, '绑定工作区', (b) => rpcOf(b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }), '')
     },
     onRemoveBot: (channel, botId) => {
       if (!fctx.rpc) {

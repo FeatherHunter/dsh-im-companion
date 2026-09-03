@@ -236,6 +236,23 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
   assert.ok(all.includes('随 E3（#14）落地'));
 });
 
+test('view：多渠道不一致渲染占位且可继续操作', () => {
+  const catalogs = { feishu: { defaultId: '', items: [{ id: 'coder', label: '代码助手' }] } };
+  const model = data.buildDrawerModel(
+    [bot({ botId: 'b1' }), bot({ botId: 'b2', channel: 'qq', agentPreset: 'coder', workspace: W1,
+      contextEnhancement: { groupEnabled: true, directEnabled: true, fields: [], guidance: '' } })],
+    metaDoc(), W1, catalogs);
+  assert.equal(model.preset, data.PRESET_MIXED);
+  assert.equal(model.ctxReady, true);
+  const noop = () => {};
+  const root = view.renderDrawerContent(model, {
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
+    onSaveWorkspace: noop, onRemoveBot: noop, onTestSend: noop, onClose: noop,
+  });
+  const all = texts(root).join('|');
+  assert.ok(all.includes('多渠道不一致'));
+});
+
 test('drawer：抽屉贴面板右沿几何（视口右沿兜底）', () => {
   assert.deepEqual(
     data.sheetGeometry({ top: 60, right: 1200, bottom: 800, left: 220 }, { width: 1600, height: 900 }),
