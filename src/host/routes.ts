@@ -54,27 +54,21 @@ export function parseSessionsText(text: string): Record<string, string> {
   }
 }
 
-function head(id: string, n: number): string {
-  return id.length > n + 1 ? id.slice(0, n) + '…' : id
-}
-
-/** 会话展示脱敏：种类 + id 头部（现状无昵称来源）。
- * 头部放宽到 12 位：真机 openId 前缀噪音大（ou_ 占 3 位），6 位时行行长得一样；
- * 这是用户自己面板内的自展数据，12 位仍不露全 id，长度红线内可辨识即可。 */
-export function maskChat(key: string, channel = ''): string {
+/** 会话展示（用户决议 2026-09-03：自展面板全显）：种类 + 完整 id；昵称现状无来源。
+ * 备查权衡：完整 openId/sessionId 会出现在面板与截图里；R3 脱敏口径让位给用户决定。 */
+export function formatChat(key: string, channel = ''): string {
   const cut = key.indexOf(':')
   const pre = cut < 0 ? '' : key.slice(0, cut)
   const id = cut < 0 ? key : key.slice(cut + 1)
-  if (pre === 'p2p') return '私聊 ' + head(id, 12)
-  if (pre === 'group') return '群聊 ' + head(id, 12)
-  if (pre === 'direct') return (channel === 'feishu' ? '旧映射 ' : '会话 ') + head(id, 12)
-  return '其他 ' + (key.length > 10 ? key.slice(0, 10) + '…' : key)
+  if (pre === 'p2p') return '私聊 ' + id
+  if (pre === 'group') return '群聊 ' + id
+  if (pre === 'direct') return (channel === 'feishu' ? '旧映射 ' : '会话 ') + id
+  return '其他 ' + key
 }
 
-/** sess 脱敏：16 位截断。真机 id 是 session- 长串（前缀本身占 8 位），
- * 按旧 8 位口径永远只剩“session-…”毫无区分度；16 位留可定位前缀，完整 id 不出 host。 */
-export function maskSession(sessionId: string): string {
-  return sessionId.length > 16 ? sessionId.slice(0, 16) + '…' : sessionId
+/** sess 展示（同上决议）：完整 id，复制即所得。 */
+export function formatSession(sessionId: string): string {
+  return sessionId
 }
 
 /** 幽灵 key：仅飞书 direct: 存量（他渠道 direct: 现行仍在产，见上游 delivery-suggestions）。 */
@@ -114,7 +108,7 @@ export async function collectRoutes(
       const dedupe = channel + '\0' + botId + '\0' + k
       if (seen.has(dedupe)) continue
       seen.add(dedupe)
-      routes.push({ channel, botId, chat: maskChat(k, channel), session: maskSession(v), ghost: isGhost(k, channel) })
+      routes.push({ channel, botId, chat: formatChat(k, channel), session: formatSession(v), ghost: isGhost(k, channel) })
     }
   }
   routes.sort((a, b) =>

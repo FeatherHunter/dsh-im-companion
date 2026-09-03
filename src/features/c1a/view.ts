@@ -189,11 +189,12 @@ function routesSection(model: DrawerModel): HTMLElement {
   for (const r of model.routes) {
     const row = h('div', { className: 'c1a-route' + (r.ghost ? ' c1a-ghost' : '') })
     const who = (r.channel ? channelLabel(r.channel) + '·' : '') + r.chat
-    row.appendChild(h('span', { title: r.ghost ? '旧 direct: 存量映射，可忽略' : who }, who))
-    row.appendChild(h('code', null, '→ ' + r.sessionId))
-    if (r.ghost) row.appendChild(h('span', { className: 'c1a-meta' }, '旧映射'))
+    row.appendChild(h('div', { className: 'c1a-rchat', title: r.ghost ? '旧 direct: 存量映射，可忽略' : who }, who))
+    const low = h('div', { className: 'c1a-rlow' })
+    if (r.ghost) low.appendChild(h('span', { className: 'c1a-meta' }, '旧映射'))
+    low.appendChild(h('code', null, '→ ' + r.sessionId))
     const btn = makeButton({
-      kind: 'ghost', size: 'sm', label: '复制', title: '复制会话标识（截断 8 位，便于人工查找）',
+      kind: 'ghost', size: 'sm', label: '复制', title: '复制完整会话标识',
       onClick: () => {
         try {
           const nav = (globalThis as unknown as { navigator?: { clipboard?: { writeText(s: string): unknown } } }).navigator
@@ -204,7 +205,8 @@ function routesSection(model: DrawerModel): HTMLElement {
         }
       },
     })
-    row.appendChild(h('span', { className: 'c1a-push' }, btn))
+    low.appendChild(h('span', { className: 'c1a-push' }, btn))
+    row.appendChild(low)
     sec.appendChild(row)
   }
   return sec
