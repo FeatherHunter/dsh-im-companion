@@ -147,6 +147,7 @@ test('runTestSend：全路径如实（无 rpc/无 bot/无目标/成功/失败）
   const win = await runTestSend(good as any, bot, W1, '小帅');
   assert.equal(win.ok, true);
   assert.match(win.text, /群/);
+  assert.match(win.text, /飞书/); // 成功文案必带渠道
   assert.equal(win.event?.targetId, 't1');
   assert.equal(win.event?.workspace, W1);
   const down = async (_ch: string, ep: string) =>
@@ -237,6 +238,7 @@ test('runTestSend 无目标分支：1 个直发 / N 个回列表 / 0 个给指�
   assert.equal(win.ok, true);
   assert.match(win.text, /一次性/);
   assert.match(win.text, /未保存/);
+  assert.match(win.text, /飞书/); // 草稿文案同样必带渠道
 });
 
 test('channelsOf：多渠道成行，同渠道取最优，stale 按待确认', () => {
