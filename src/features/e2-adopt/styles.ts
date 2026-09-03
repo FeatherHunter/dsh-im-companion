@@ -7,7 +7,7 @@ export const CSS = [
   '.e2-cockpit{--e2-paper:#f5f1e6;--e2-card:#fffdf8;--e2-ink:#3d3225;--e2-faint:rgba(90,70,40,.55);--e2-line:rgba(90,70,40,.16);position:relative;width:min(920px,94vw);max-height:86vh;overflow:auto;background:var(--e2-paper);color:var(--e2-ink);border-radius:16px;padding:18px 18px 20px;box-shadow:0 24px 64px rgba(0,0,0,.35)}',
   '@media (prefers-color-scheme: dark){.e2-cockpit{--e2-paper:#201b14;--e2-card:rgba(255,250,240,.055);--e2-ink:#f4ede1;--e2-faint:rgba(244,237,225,.55);--e2-line:rgba(244,237,225,.14);border:1px solid rgba(255,255,255,.08);box-shadow:0 24px 80px rgba(0,0,0,.6)}}',
   '.e2-x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:1px solid var(--e2-line);background:transparent;color:inherit;font-size:15px;line-height:1;cursor:pointer;opacity:.7}',
-  '.e2-panel-title{font-size:16px;font-weight:700;margin:0 0 4px;padding-right:36px}',
+  '.e2-panel-title{font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px;padding-right:36px;color:var(--e2-ink,#3d3225)}',
   '.e2-panel-sub{font-size:12px;color:var(--e2-faint);margin:0 0 14px;line-height:1.6}',
   '.e2-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}',
   '.e2-sec{background:var(--e2-card);border-radius:6px;padding:12px 12px 10px;box-shadow:0 4px 16px rgba(90,70,40,.12);color:var(--e2-ink)}',

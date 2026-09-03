@@ -27,6 +27,7 @@ function reloadMeta(ctx: FeatureCtx): void {
   try {
     void ctx.meta.loadMeta().then((doc) => {
       lastMeta = doc
+      if (hadDrag) return
       try { board?.repaint(lastBots) } catch { /* 忽略 */ }
     }, () => undefined)
   } catch { /* 读不到昵称就用目录名（fail-closed 展示） */ }
@@ -138,6 +139,8 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     if (!alive(g)) return
     lastBots = snap.bots
     try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
+    /* 拖拽中冻结重绘：快照照收（数据不丢），DOM 等松手再刷，否则占位符被连盘端走。 */
+    if (hadDrag) return
     try { board?.repaint(lastBots) } catch { /* 忽略 */ }
   })
 
@@ -153,18 +156,18 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       dragEl = row
       try { dragStartX = de.clientX } catch { dragStartX = null }
       try { row.classList.add('e2-dragging') } catch { /* 忽略 */ }
-      /* 原牌隐身 + 歪斜占位符：setTimeout 让浏览器先抓完原生拖影再藏，否则拖影是空的（Firefox 会直接取消拖拽）。 */
+      /* 先同步立影子（拖起瞬间即有），再延迟藏原牌（让浏览器先抓完原生拖影，否则拖影是空的）。 */
+      try {
+        const ph = row.cloneNode(true) as HTMLElement
+        ph.classList.remove('e2-dragging')
+        ph.classList.add('e2-ph')
+        ph.removeAttribute('draggable')
+        ph.removeAttribute('id')
+        row.parentNode?.insertBefore(ph, row.nextSibling)
+        dragPh = ph
+      } catch { /* 占位失败不阻断拖拽 */ }
       setTimeout(() => {
-        try {
-          row.style.display = 'none'
-          const ph = row.cloneNode(true) as HTMLElement
-          ph.classList.remove('e2-dragging')
-          ph.classList.add('e2-ph')
-          ph.removeAttribute('draggable')
-          ph.removeAttribute('id')
-          row.parentNode?.insertBefore(ph, row.nextSibling)
-          dragPh = ph
-        } catch { /* 占位失败不阻断拖拽 */ }
+        try { row.style.display = 'none' } catch { /* 忽略 */ }
       }, 0)
       de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') }))
       de.dataTransfer.effectAllowed = 'move'
@@ -251,6 +254,8 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     hadDrag = false
     dropped = false
     if (alive(g)) clearAfford()
+    /* 拖拽期间冻结的快照在此补刷。 */
+    try { board?.repaint(lastBots) } catch { /* 忽略 */ }
   }
 
   /* 影子跟手倒：起点以左向左歪，以右向右歪（H 定稿）。与主 dragover 并存，只动影子。 */

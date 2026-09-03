@@ -401,12 +401,18 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 取
   const ph = findClass(e2Doc.body, 'e2-ph')[0];
   assert.ok(String(ph.textContent).includes('f1'), '影子名字不少');
   assert.equal(findClass(ph, 'e2-hdot').length, 1, '影子健康灯不少');
+  e2Emit!({ bots: [...stageBots(), { channel: 'qq', botId: 'x1', workspace: '', botName: '', connected: false, healthKind: 'offline' }] });
+  await sleep(10);
+  assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '拖拽中快照不掀桌');
+  assert.equal(sectionRows(panelSections()[0]).length, 3, '拖拽中只多影子（2 牌 + 影），新机器人不插队');
   lastDoc('dragend')();
   await sleep(10);
   assert.equal(rowF.style.display, '', '取消后原牌回来');
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 0, '影子清理');
   assert.ok(!rowF.classList.contains('e2-dragging'), '放下/取消后 ghost 态清除');
   assert.ok(bodyText().includes('已取消拖拽'));
+  assert.equal(sectionRows(panelSections()[0]).length, 3, '松手后补刷冻结期的快照');
+  assert.ok(bodyText().includes('x1'), '冻结期到的新机器人松手后出现');
 });
 
 test('view：撤销窗过期 → 落定提示且窗消失', async () => {
