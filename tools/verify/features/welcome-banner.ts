@@ -1,7 +1,8 @@
 // E4 welcome-banner 自验证（F0 每功能自验证）：纯数据层 + 样式命名空间 + 注册表（node --test，零第三方依赖）。
 // 做法：用仓库自带 tsc 把特性链转译到临时目录，再断言转译产物。
-// 覆盖定稿：时段问候边界、路由计数（无时间不断言活跃）、Top3 余数、双槽位无死按钮、
-// 横幅模型（身份/预设标签/上下文/缺席回 null）、路由读取静默失败、样式 wb- 命名空间、注册表收录。
+// 覆盖 P 时辰：时段映射、十五句文案锁死、copy 回绕、诚实 sub 模板、路由计数、
+// 横幅模型（身份/预设标签/上下文/缺席回 null）、路由读取静默失败、样式 wb- 命名空间、注册表收录、
+// hero 门/可见性门/未绑定零 UI/卸载即净。
 import { mkdtempSync, rmSync, readFileSync as readSrcFile } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -61,22 +62,22 @@ const snap = (over: Record<string, unknown> = {}) => ({
 const META = { names: { [W1]: "小帅" }, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
 const CATALOGS = { feishu: { defaultId: "default", items: [{ id: "cs", label: "客服话术" }] } };
 
-test("问候边界", () => {
-  assert.equal(data.greetingForHour(0), "夜深了");
-  assert.equal(data.greetingForHour(5), "夜深了");
-  assert.equal(data.greetingForHour(6), "早上好");
-  assert.equal(data.greetingForHour(8), "早上好");
-  assert.equal(data.greetingForHour(9), "上午好");
-  assert.equal(data.greetingForHour(11), "上午好");
-  assert.equal(data.greetingForHour(12), "中午好");
-  assert.equal(data.greetingForHour(13), "中午好");
-  assert.equal(data.greetingForHour(14), "下午好");
-  assert.equal(data.greetingForHour(17), "下午好");
-  assert.equal(data.greetingForHour(18), "晚上好");
-  assert.equal(data.greetingForHour(22), "晚上好");
-  assert.equal(data.greetingForHour(23), "夜深了");
-  assert.equal(data.greetingForHour(-1), "你好");
-  assert.equal(data.greetingForHour(24), "你好");
+test("时段映射边界（凌晨≠深夜）", () => {
+  assert.equal(data.segOfHour(2), "wee");
+  assert.equal(data.segOfHour(4), "wee");
+  assert.equal(data.segOfHour(5), "dawn");
+  assert.equal(data.segOfHour(8), "dawn");
+  assert.equal(data.segOfHour(9), "day");
+  assert.equal(data.segOfHour(16), "day");
+  assert.equal(data.segOfHour(17), "dusk");
+  assert.equal(data.segOfHour(19), "dusk");
+  assert.equal(data.segOfHour(20), "night");
+  assert.equal(data.segOfHour(0), "night");
+  assert.equal(data.segOfHour(1), "night");
+  assert.equal(data.segOfHour(23), "night");
+  assert.equal(data.segOfHour(-1), "night");
+  assert.equal(data.segOfHour(24), "night");
+  assert.equal(data.segOfHour(NaN), "night");
 });
 
 test("路由计数只按脱敏前缀", () => {
@@ -94,19 +95,45 @@ test("路由计数只按脱敏前缀", () => {
   assert.deepEqual(data.summarizeRoutes(null), { total: 0, p2p: 0, group: 0, ghost: 0 });
 });
 
-test("Top3 余数", () => {
-  const rows = [1, 2, 3, 4, 5].map((i) => ({ chat: "私聊 " + i, sessionId: "s" + i }));
-  const t = data.pickTopRoutes(rows, 3);
-  assert.equal(t.shown.length, 3);
-  assert.equal(t.overflow, 2);
-  assert.equal(t.shown[0].sessionId, "s1");
-  assert.equal(data.pickTopRoutes(rows.slice(0, 2), 3).overflow, 0);
-  assert.equal(data.pickTopRoutes(rows, 0).shown.length, 0);
+test("copyFor 归一化与回绕", () => {
+  assert.equal(data.copyFor("day", 0).t, "家里亮堂，随时回来");
+  assert.equal(data.copyFor("day", 3).idx, 0);
+  assert.equal(data.copyFor("day", -1).idx, 2);
+  assert.equal(data.copyFor("day", 2).idx, 2);
+  assert.equal(data.normalizeCopyIdx(4), 1);
+  assert.equal(data.copyFor("nope", 0).seg, "night");
+  assert.equal(data.copyFor("wee", 0).horizon, true);
+  assert.equal(data.copyFor("wee", 0).moon, true);
+  assert.equal(data.copyFor("night", 1).moon, true);
+  assert.equal(data.copyFor("night", 1).horizon, false);
+  assert.equal(data.copyFor("dawn", 2).moon, false);
 });
 
-test("双槽位无死按钮", () => {
-  assert.deepEqual(data.actionSlotsFor(true), ["detail", "refresh"]);
-  assert.deepEqual(data.actionSlotsFor(false), ["refresh"]);
+test("displaySub 诚实模板", () => {
+  assert.equal(data.displaySub("飞书在线 · 整个世界都睡了，除了我", 3, "小帅"), "整个世界都睡了，除了我");
+  assert.equal(data.displaySub("飞书在线 · 1 个会话已就位", 5, "小帅"), "5 个会话已就位");
+  assert.equal(data.displaySub("飞书在线 · 1 个会话候着", 0, "小帅"), "0 个会话候着");
+  assert.equal(data.displaySub("飞书在线 · 1 个会话已就位", null, "小帅"), "会话已就位");
+  assert.equal(data.displaySub("飞书在线 · 小帅守着今天", 1, "星火"), "星火守着今天");
+  assert.equal(data.displaySub("飞书在线 · 小帅守着今天", 1, "小帅"), "小帅守着今天");
+});
+
+test("PH 十五句完整性（原型冻结文案锁死）", () => {
+  const segs = ["wee", "dawn", "day", "dusk", "night"];
+  assert.deepEqual(data.TIME_SEGS, segs);
+  for (const seg of segs) {
+    for (let i = 0; i < 3; i++) {
+      const c = data.copyFor(seg, i);
+      assert.equal(c.seg, seg);
+      assert.equal(c.idx, i);
+      assert.ok(c.t.length > 0 && c.s.length > 0 && c.b.length > 0 && c.bs.length > 0);
+      assert.ok(c.s.indexOf("·") >= 0, seg + "#" + i + " 副标题须带“·”分隔 mock 健康前缀");
+      assert.ok(c.sky.indexOf("wb-sky-") === 0);
+    }
+  }
+  assert.equal(data.copyFor("day", 0).bs, "门开着");
+  assert.equal(data.copyFor("dawn", 0).b, "回家吃早饭");
+  assert.equal(data.copyFor("dusk", 0).b, "回家吃饭");
 });
 
 test("横幅模型映射身份与上游标签", () => {
@@ -122,7 +149,7 @@ test("横幅模型映射身份与上游标签", () => {
   assert.deepEqual(m.bots, [{ channel: "feishu", botId: "b1" }]);
 });
 
-test("横幅模型缺席回 null（视图转静态指引）", () => {
+test("横幅模型缺席回 null（调用方零 UI）", () => {
   assert.equal(data.buildBannerModel([snap()], META, "D:\\agents\\nobody", CATALOGS), null);
   assert.equal(data.buildBannerModel([snap()], META, "", CATALOGS), null);
   assert.equal(data.buildBannerModel([], META, W1, CATALOGS), null);
@@ -163,6 +190,12 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf("--af-accent:") >= 0, "TOKEN_BLOCK 必须随横幅下发（对话树无 .af-root，缺此则全部 var(--af-*) 被丢弃）");
   assert.ok(css.indexOf(".wb-banner{") >= 0, "token 必须声明在 .wb-banner 根上");
   assert.ok(css.indexOf("min-height:") >= 0, "HOME 气场：横幅必须有最小高度占领对话区");
+  for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-horizon", ".wb-title", ".wb-enter", ".wb-swap"]) {
+    assert.ok(css.indexOf(cls) >= 0, "P 天空样式缺失：" + cls);
+  }
+  for (const dead of [".wb-x", ".wb-route", ".wb-guide", ".wb-avatar"]) {
+    assert.equal(css.indexOf(dead), -1, "旧 A 样式必须移除：" + dead);
+  }
 });
 
 test("manifest 与注册表收录", () => {
@@ -227,43 +260,66 @@ function stubEl(tag: string): any {
 const view: any = req("./features/welcome-banner/view.js");
 const overlay: any = req("./features/welcome-banner/overlay.js");
 
-test("渲染 bound 横幅（问候+身份+路由+双按钮）", () => {
-  const bots = [snap({ agentPreset: "cs", contextEnhancement: { groupEnabled: true, directEnabled: false, fields: [], guidance: "" } })];
-  const model = data.buildBannerModel(bots, META, W1, CATALOGS);
+test("渲染 P 主页（天空+标题+进门+换一句）", () => {
+  const copy = data.copyFor("day", 0);
   const calls: string[] = [];
-  const el = view.renderBanner({
-    greeting: "早上好", model, workspaceLabel: "xiaoshuai",
-    routes: [
-      { chat: "私聊 ab12cd", sessionId: "sess-0001", channel: "feishu" },
-      { chat: "群聊 ef34gh", sessionId: "sess-0002", channel: "feishu" },
-    ],
-    callbacks: { onDetail: () => calls.push("detail"), onRefresh: () => calls.push("refresh"), onDismiss: () => calls.push("dismiss") },
+  const el = view.renderHome({
+    copy, status: "online", stateLabel: "在线",
+    subSuffix: data.displaySub(copy.s, 2, "小帅"),
+    callbacks: { onEnter: () => calls.push("enter"), onSwap: () => calls.push("swap") },
   });
   assert.ok(String(el.className).split(" ").includes("wb-banner"), "根节点即 wb-banner 卡片");
-  assert.ok(el.querySelector(".wb-name").textContent.indexOf("早上好") >= 0);
-  assert.ok(el.querySelector(".wb-name").textContent.indexOf("小帅") >= 0);
-  assert.equal(el.querySelectorAll(".wb-route").length, 2);
-  assert.ok(el.querySelector(".wb-x"), "可关闭 X 必须存在");
+  assert.ok(el.querySelector(".wb-sky"), "天空层必须存在");
+  assert.ok(el.querySelector(".wb-sky-day"), "白天须用 day 天空");
+  assert.ok(el.querySelector(".wb-sun"), "白天须有太阳");
+  assert.equal(el.querySelector(".wb-title").textContent, "家里亮堂，随时回来");
+  const sub = el.querySelector(".wb-sub").textContent;
+  assert.ok(sub.indexOf("在线") >= 0 && sub.indexOf("小帅守着今天") >= 0, "副标题=真实健康+文案后缀：" + sub);
   const btns = el.querySelectorAll("button").map((b: any) => b.textContent);
-  assert.ok(btns.includes("Agent 详情") && btns.includes("检查连接"), "双槽位按钮齐全：" + btns.join(","));
-  assert.ok(btns.every((t: string) => t !== "去绑定" && t !== "打开工作区"), "无落点的按钮不得出现");
+  assert.ok(btns.some((t: string) => t.indexOf("回家") >= 0 && t.indexOf("门开着") >= 0), "进门按钮主副文案齐全：" + btns.join("|"));
+  assert.ok(btns.some((t: string) => t.indexOf("换一句") >= 0 && t.indexOf("1/3") >= 0), "换一句须带计数：" + btns.join("|"));
+  assert.equal(el.querySelector(".wb-x"), null, "P 无 X（进门即关闭）");
+  assert.equal(el.querySelectorAll(".wb-route").length, 0, "P 无路由列表");
+  assert.ok(btns.every((t: string) => t.indexOf("Agent 详情") < 0 && t.indexOf("检查连接") < 0), "旧 A 按钮不得出现");
 });
 
-test("渲染 unbound 指引（静态文案+单按钮）", () => {
-  const el = view.renderBanner({
-    greeting: "晚上好", model: null, workspaceLabel: "dsh-im", routes: [],
-    callbacks: { onDetail: () => {}, onRefresh: () => {}, onDismiss: () => {} },
-  });
-  assert.ok(el.querySelector(".wb-guide").textContent.indexOf("绑定") >= 0);
-  const btns = el.querySelectorAll("button").map((b: any) => b.textContent);
-  assert.deepEqual(btns.filter((t: string) => t !== "✕"), ["检查连接"]);
+test("未绑定工作区零绘制（纯净原生空态）", async () => {
+  const inserted: any[] = [];
+  const heroStub: any = {
+    textContent: "探索未至之境 预览版 选择工作区 nobody",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "nobody" } : null,
+    getBoundingClientRect: () => ({ width: 600, height: 200 }),
+    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: () => {} },
+  };
+  (globalThis as any).document = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+  };
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      fn({ bots: [snap({})], failed: [], updatedAt: 3, catalogs: CATALOGS });
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => META },
+    get: () => undefined,
+    slots: {},
+  };
+  const stop = overlay.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 30));
+  assert.equal(inserted.length, 0, "未绑定必须零 UI");
+  stop();
 });
 
 test("渲染类名全在 wb- 命名空间", () => {
-  const model = data.buildBannerModel([snap({})], META, W1, CATALOGS);
-  const el = view.renderBanner({
-    greeting: "你好", model, workspaceLabel: "xiaoshuai", routes: [],
-    callbacks: { onDetail: () => {}, onRefresh: () => {}, onDismiss: () => {} },
+  const wee = data.copyFor("wee", 2);
+  const el = view.renderHome({
+    copy: wee, status: "online", stateLabel: "在线",
+    subSuffix: data.displaySub(wee.s, null, "小帅"),
+    callbacks: { onEnter: () => {}, onSwap: () => {} },
   });
   const seen = new Set<string>();
   const walk = (n: any) => {
@@ -374,8 +430,11 @@ test("DOM 叠加挂载：hero 下出现横幅、卸载即净", async () => {
   assert.ok(inserted.length >= 1, "至少绘制一次");
   const card = inserted[inserted.length - 1];
   assert.ok(String(card.className).split(" ").includes("wb-banner"));
-  const names = card.querySelectorAll(".wb-name").map((n: any) => n.textContent);
-  assert.ok(names.some((t: string) => t.indexOf("小帅") >= 0), "meta 到达后应显示自定义名：" + names.join("|"));
+  assert.ok(card.querySelector(".wb-sky"), "P 天空必须绘制");
+  assert.ok(card.querySelector(".wb-title").textContent.length > 0, "标题必须有文案");
+  const btns = card.querySelectorAll("button").map((n: any) => n.textContent);
+  assert.ok(btns.some((t: string) => t.indexOf("回家") >= 0), "进门按钮必须存在：" + btns.join("|"));
+  assert.ok(btns.some((t: string) => t.indexOf("换一句") >= 0), "换一句必须存在：" + btns.join("|"));
   stop();
   assert.equal(removed.length, inserted.length, "每次绘制都要在卸载时回收");
 });
@@ -411,18 +470,14 @@ test("藏起来的 hero 不绘制（有消息会话不打扰）", async () => {
   stop();
 });
 
-test("路由标题文案：私聊在前有名有数", () => {
-  const model = data.buildBannerModel([snap({})], META, W1, CATALOGS);
-  const el = view.renderBanner({
-    greeting: "你好", model, workspaceLabel: "xiaoshuai",
-    routes: [
-      { chat: "私聊 ab", sessionId: "s1", channel: "feishu" },
-      { chat: "群聊 cd", sessionId: "s2", channel: "feishu" },
-    ],
-    callbacks: { onDetail: () => {}, onRefresh: () => {}, onDismiss: () => {} },
-  });
-  const title = el.querySelector(".wb-routetitle").textContent;
-  assert.equal(title, "已接入 2 个会话：私聊 1 · 群聊 1");
+test("换一句回绕：三套之后回到第一句", () => {
+  const seg = "dusk";
+  assert.equal(data.copyFor(seg, 0).idx, 0);
+  assert.equal(data.copyFor(seg, 1).idx, 1);
+  assert.equal(data.copyFor(seg, 2).idx, 2);
+  assert.equal(data.copyFor(seg, 3).idx, 0);
+  const titles = [0, 1, 2].map((i) => data.copyFor(seg, i).t);
+  assert.equal(new Set(titles).size, 3, "同段三句互不相同");
 });
 
 rmSync(tmp, { recursive: true, force: true });

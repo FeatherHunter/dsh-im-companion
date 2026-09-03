@@ -1,19 +1,22 @@
 /** welcome-banner 挂载编排（DOM 叠加扫描 + 绘制调度）：与 view.ts 的纯渲染分离，
- * 纯粹为了 300 行红线；逻辑归属仍是 welcome-banner 自包含目录（单向依赖 view 的 render）。 */
-import { OPEN_DRAWER_EVENT } from "../../client/data/config";
+ * 纯粹为了 300 行红线；逻辑归属仍是 welcome-banner 自包含目录（单向依赖 view 的 render）。
+ * P 时辰 v1：出现规则沿用 hero 门 + 可见性门；未绑定零 UI；中央“进门”仅收起卡片；
+ * “换一句”按 hero key 记内存 idx，同段三套轮换。 */
 import { fetchRouteRows, type BotSnap } from "../../client/data/fleet-api";
 import type { AgentMetaDoc } from "../../client/data/meta";
 import { basenameOf, viewName } from "../../client/data/model";
 import type { FeatureCtx } from "../protocol";
 import {
-  buildBannerModel, greetingForHour, matchWorkspaceLabel,
+  buildBannerModel, copyFor, displaySub, matchWorkspaceLabel, segOfHour, summarizeRoutes,
   type RouteRef, type WsCandidate,
 } from "./data";
 import { eachHero, heroConfirmed, heroWorkspaceLabel, isVisible, phaseAttr, textOf } from "./anchor";
-import { renderBanner } from "./view";
+import { renderHome } from "./view";
 
-/** X 关闭记忆（内存态，key = hero label；切会话即新 key，天然恢复）。 */
+/** 进门关闭记忆（内存态，key = hero label；切会话即新 key，天然恢复）。 */
 const DISMISSED = new Set<string>();
+/** 换一句记忆（内存态，key = hero label，值 0-2）。 */
+const SWAP = new Map<string, number>();
 /** 热更新/双挂载代际哨兵（同 left-badges）。 */
 let activeGen = 0;
 /** 决策日志（验收排障用：横幅没出现时看第一条 info 就知道卡在哪一关）。 */
@@ -26,21 +29,13 @@ function infoOnce(key: string, msg: string): void {
   } catch { /* 无 console 环境静默 */ }
 }
 
-function emitDrawer(key: string): void {
-  try {
-    if (typeof window === "undefined" || typeof window.CustomEvent !== "function") return;
-    window.dispatchEvent(new window.CustomEvent(OPEN_DRAWER_EVENT, { detail: { key } }));
-  } catch {
-    /* 派发失败不影响展示 */
-  }
-}
-
 interface MountState {
   gen: number;
   bots: BotSnap[];
   catalogs: Record<string, { defaultId: string; items: { id: string; label: string }[] }>;
   metaDoc: AgentMetaDoc | null;
   routes: RouteRef[];
+  routesOk: boolean;
   painted: Map<string, { node: unknown; parent: unknown; sig: string }>;
   timer: unknown;
 }
@@ -95,25 +90,29 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
   }
   const emptyMeta = { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
   const model = path ? buildBannerModel(st.bots, st.metaDoc ?? emptyMeta, path, st.catalogs ?? {}) : null;
-  if (path && !model) {
+  if (!model) {
+    infoOnce("unbound:" + label, "工作区 \"" + label + "\" 未绑定 Agent，零 UI（纯净原生空态）。");
     removePainted(st, key);
     return;
   }
-  const mine = model
-    ? st.routes.filter((r) => r && typeof r.chat === "string" && model.bots.some((b) => b.channel === r.channel && (!r.botId || b.botId === r.botId)))
-    : [];
-  const greeting = greetingForHour(new Date().getHours());
-  const showLabel = path ? basenameOf(path) || path : label;
+  const mine = st.routes.filter((r) => r && typeof r.chat === "string" && model.bots.some((b) => b.channel === r.channel && (!r.botId || b.botId === r.botId)));
+  const total = st.routesOk ? summarizeRoutes(mine).total : null;
+  const seg = segOfHour(new Date().getHours());
+  const copy = copyFor(seg, SWAP.get(key) ?? 0);
+  const subSuffix = displaySub(copy.s, total, model.name);
+  const showSig = model.key + "|" + seg + "|" + copy.idx + "|" + model.status + "|" + (total === null ? "x" : total);
   let card: unknown = null;
   try {
-    card = renderBanner({
-      greeting, model, workspaceLabel: showLabel, routes: mine,
+    card = renderHome({
+      copy, status: model.status, stateLabel: model.stateLabel, subSuffix,
       callbacks: {
-        onDetail: () => { if (model) emitDrawer(model.key); },
-        onRefresh: () => { try { void fctx.refresh(); } catch { /* ignore */ } },
-        onDismiss: () => {
+        onEnter: () => {
           try { DISMISSED.add(key); } catch { /* ignore */ }
           removePainted(st, key);
+        },
+        onSwap: () => {
+          try { SWAP.set(key, (copy.idx + 1) % 3); } catch { /* ignore */ }
+          paintHero(fctx, st, heroRoot);
         },
       },
     });
@@ -124,13 +123,12 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
       insertBefore?: (n: unknown, ref: unknown) => void;
     } | null;
     if (!parent || typeof parent.insertBefore !== "function") return;
-    const sig = (model ? model.key + "|" + model.name : "unbound") + "|" + mine.length;
     const prev = st.painted.get(key);
-    if (prev && (prev.parent as unknown) === (parent as unknown) && prev.node && prev.sig === sig) return;
+    if (prev && (prev.parent as unknown) === (parent as unknown) && prev.node && prev.sig === showSig) return;
     removePainted(st, key);
     parent.insertBefore(card, heroRoot);
-    st.painted.set(key, { node: card, parent, sig });
-    infoOnce("painted:" + key, "横幅已挂载到空态上方（" + key + "，模型=" + (model ? model.name : "未绑定指引") + "）。");
+    st.painted.set(key, { node: card, parent, sig: showSig });
+    infoOnce("painted:" + key, "P 横幅已挂载到空态上方（" + key + "，时段=" + seg + " 第" + (copy.idx + 1) + "句）。");
   } catch { /* 宿主 DOM 变化即跳过本轮 */ }
 }
 
@@ -168,7 +166,7 @@ export function mountBanner(fctx: FeatureCtx): () => void {
     if (!doc) {
       return () => { try { if (activeGen === gen) activeGen += 1; } catch { /* ignore */ } };
     }
-    const st: MountState = { gen, bots: [], catalogs: {}, metaDoc: null, routes: [], painted: new Map(), timer: null };
+    const st: MountState = { gen, bots: [], catalogs: {}, metaDoc: null, routes: [], routesOk: false, painted: new Map(), timer: null };
     let unsub: () => void = noop;
     try {
       unsub = fctx.subscribe((s) => {
@@ -176,8 +174,9 @@ export function mountBanner(fctx: FeatureCtx): () => void {
           if (activeGen !== gen) return;
           st.bots = (s && Array.isArray(s.bots) ? s.bots : []) as BotSnap[];
           st.catalogs = (s && s.catalogs) || {};
+          st.routesOk = false;
           void fetchRouteRows(fctx.rpc, st.bots.map((b) => ({ channel: b.channel, botId: b.botId })))
-            .then((r) => { if (activeGen === gen) { st.routes = r; scanAll(fctx, st, doc); } })
+            .then((r) => { if (activeGen === gen) { st.routes = r; st.routesOk = true; scanAll(fctx, st, doc); } })
             .catch(() => undefined);
           scanAll(fctx, st, doc);
         } catch { /* 单拍异常静默 */ }
@@ -204,9 +203,7 @@ export function mountBanner(fctx: FeatureCtx): () => void {
     return () => {
       try { if (activeGen === gen) activeGen += 1; } catch { /* ignore */ }
       try { unsub(); } catch { /* ignore */ }
-      try {
-        if (st.timer !== null && st.timer !== undefined && typeof clearTimeout === "function") clearTimeout(st.timer as never);
-      } catch { /* ignore */ }
+      try { if (st.timer !== null && st.timer !== undefined && typeof clearTimeout === "function") clearTimeout(st.timer as never); } catch { /* ignore */ }
       try { st.timer = null; } catch { /* ignore */ }
       try { obs?.disconnect?.(); } catch { /* ignore */ }
       try {
