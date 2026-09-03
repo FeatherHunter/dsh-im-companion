@@ -23,5 +23,6 @@ div[role="treeitem"][aria-expanded][data-lb-kind="offline"]::after { background:
 .left-badges-card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 0; }
 .left-badges-card-glyph { display: inline-flex; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary, #6e6e73); }
 .left-badges-card-foot { margin-top: 6px; font-size: 10px; line-height: 14px; color: var(--dsw-alias-label-tertiary, #98989d); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .left-badges-card-dot.online, div[role="treeitem"][aria-expanded][data-lb-kind="online"]::after { animation: none; } }
 @keyframes left-badges-breathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--dsw-alias-state-success-primary, #30d158) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 `

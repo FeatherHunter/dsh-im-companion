@@ -65,6 +65,20 @@ function el(tag: string, cls: string, text?: string): HTMLElement | null {
   }
 }
 
+const BREATH_BASE_MS = 1600
+/** 呼吸相位：同渠道稳定、渠道间错开（ organic 节奏，见#6）；重渲染不跳变。 */
+export function breathPhase(channel: string): { delay: string; duration: string } {
+  try {
+    let h = 5381
+    const s = String(channel || '?')
+    for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0
+    const u = Math.abs(h)
+    return { delay: '-' + ((u % BREATH_BASE_MS) / 1000).toFixed(2) + 's', duration: (1.6 + ((u >> 3) % 800) / 1000).toFixed(2) + 's' }
+  } catch {
+    return { delay: '0s', duration: '1.6s' }
+  }
+}
+
 function dot(kind: HealthKind): HTMLElement | null {
   const d = el('span', DOT_CLASS + ' ' + kind)
   return d
@@ -172,6 +186,16 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
         const g = el('span', GLYPH_CLASS)
         const d = dot(ch.kind)
         if (!g || !d) continue
+        try {
+          const ph = breathPhase(ch.channel)
+          const st = (d as unknown as { style?: { animationDelay?: string; animationDuration?: string } }).style
+          if (st) {
+            st.animationDelay = ph.delay
+            st.animationDuration = ph.duration
+          }
+        } catch {
+          /* 呼吸相位失败用默认节奏 */
+        }
         try {
           if (ch.glyph) (g as unknown as { innerHTML?: string }).innerHTML = ch.glyph
           else g.textContent = (ch.channel || '?').slice(0, 1).toUpperCase()

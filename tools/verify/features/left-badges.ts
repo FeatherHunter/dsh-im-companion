@@ -282,6 +282,10 @@ test('hover-card：卡片数据（未绑定null/渠道行/时间）', () => {
   assert.equal(d.channels[0].kind, 'online');
   assert.ok(String(d.channels[0].glyph).includes('<svg'));
   assert.match(d.time, /最后检测/);
+  const p1 = hover.breathPhase('feishu');
+  assert.equal(hover.breathPhase('feishu').delay, p1.delay, '同渠道节奏稳定');
+  assert.match(p1.delay, /^-\d+\.\d+s$/);
+  assert.match(p1.duration, /^\d+\.\d+s$/);
 });
 
 test('debug-report（TEMP-DEBUG）：无 DOM 归零 + rpc 空 no-op 不抛', () => {
