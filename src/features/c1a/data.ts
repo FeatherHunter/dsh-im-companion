@@ -69,6 +69,15 @@ export function sheetGeometry(panel: PanelRect | null, viewport: { width: number
   }
 }
 
+/** 重绘指纹：同构快照字符串相等即跳过重绘（15s 轮询不抖动滚动/焦点）；模型只含纯数据，无易变字段。 */
+export function modelSig(model: DrawerModel): string {
+  try {
+    return JSON.stringify(model)
+  } catch {
+    return ''
+  }
+}
+
 /** 可见矩形：元素矩形与一组裁剪框（祖先 padding-box，升序）求交；求交无效回 null。
  * 溢出场景真机根因：.af-root 高度=Agent 列表内容高度，高于设置面板可视区时
  * 底边被 sheetGeometry 的 Math.max(0) 钳成 0 → 抽屉顶到 DSH 视口底。

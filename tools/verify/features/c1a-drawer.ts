@@ -308,6 +308,17 @@ test('view：弹窗内无省略号——引导语全文换行展示', () => {
   assert.equal(findByClass(root, 'c1a-note').length, 1);
 });
 
+test('paint：同构快照指纹稳定，真变才变（15s 轮询不抖动）', () => {
+  const mk = (ctx: typeof CTX0) => data.buildDrawerModel([bot({ contextEnhancement: { ...ctx } })], metaDoc(), W1, {});
+  const a = mk({ ...CTX0 });
+  const b = mk({ ...CTX0 });
+  assert.ok(a && b);
+  assert.equal(data.modelSig(a), data.modelSig(b));
+  const c = mk({ ...CTX0, directEnabled: false });
+  assert.ok(c);
+  assert.notEqual(data.modelSig(a), data.modelSig(c));
+});
+
 test('drawer：抽屉占满面板几何（视口右沿兜底）', () => {
   assert.deepEqual(
     data.sheetGeometry({ top: 60, right: 1200, bottom: 800, left: 220 }, { width: 1600, height: 900 }),

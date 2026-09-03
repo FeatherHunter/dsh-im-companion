@@ -11,7 +11,7 @@ import { channelLabel, type OpenDrawerDetail } from '../../client/data/config'
 import { applyPersonality, rpcOf, writeBots, type WriteDeps } from './actions'
 import {
   OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, fetchRoutes, loadingModel,
-  presetPayloadFor, type DrawerModel, type RouteEntry,
+  modelSig, presetPayloadFor, type DrawerModel, type RouteEntry,
 } from './data'
 import { quietCallbacks, renderDrawerContent, type DrawerCallbacks } from './view'
 
@@ -116,6 +116,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   } catch {
     /* 定时器不可用则不设限 */
   }
+  let lastSig: string | null = null
   const paint = (): void => {
     if (closed || !meta || !sheet) return
     const model = buildDrawerModel(lastBots, meta, key, lastCatalogs, lastRoutes)
@@ -124,18 +125,28 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         settled = false
         toast('该 Agent 已不在列表，关闭抽屉')
         closeAll()
-      } else {
+      } else if (lastSig !== 'loading') {
+        lastSig = 'loading'
         paintLoading()
       }
       return
     }
+    /* 同构快照跳过重绘：15s 轮询不再抖动滚动/焦点 */
+    const sig = modelSig(model)
+    if (settled && sig && sig === lastSig) return
     settled = true
     clearGiveUp()
+    const bd = sheet.panel.querySelector('.c1a-dbody') as HTMLElement | null
+    const st = bd ? bd.scrollTop : 0
+    const sl = bd ? bd.scrollLeft : 0
     try {
       mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, draftPers))
     } catch {
       /* keep old frame */
     }
+    const nb = sheet.panel.querySelector('.c1a-dbody') as HTMLElement | null
+    if (nb) { nb.scrollTop = st; nb.scrollLeft = sl }
+    lastSig = sig
   }
   const reloadMeta = async (): Promise<void> => {
     try {
