@@ -237,7 +237,7 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
   });
   const all = texts(root).join('|');
-  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '性格', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '发测试消息']) {
+  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '性格', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
   assert.ok(findByClass(root, 'c1a-summary').length >= 1);
@@ -388,7 +388,7 @@ test('data：路由取数经自有通道，失败静默空数组', async () => {
   assert.deepEqual(await data.fetchRoutes(async () => { throw new Error('down'); }, bots), []);
 });
 
-test('view：发送按钮预告目标渠道', () => {
+test('view：渠道行自带发送测试按钮（分渠道直发）', () => {
   const catalogs = { feishu: { defaultId: '', items: [] } };
   const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs);
   const noop = () => {};
@@ -397,10 +397,17 @@ test('view：发送按钮预告目标渠道', () => {
     onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
   };
-  const withTarget = texts(view.renderDrawerContent(model, cbs, null, '飞书')).join('|');
-  assert.ok(withTarget.includes('发测试消息（→飞书）'));
-  const withoutTarget = texts(view.renderDrawerContent(model, cbs)).join('|');
-  assert.ok(withoutTarget.includes('发测试消息'));
+  const all = texts(view.renderDrawerContent(model, cbs)).join('|');
+  assert.ok(all.includes('测试'));
+  assert.ok(!all.includes('发测试消息'));
+  const seen: string[] = [];
+  const cbs2 = { ...cbs, onTestSend: (ch: string, id: string) => { seen.push(ch + '/' + id); } };
+  const root2 = view.renderDrawerContent(model, cbs2);
+  const btns = root2.querySelectorAll('.af-btn');
+  const send = btns.find((b: any) => b.textContent === '测试');
+  assert.ok(send);
+  send.dispatchEvent({ type: 'click' });
+  assert.deepEqual(seen, ['feishu/b1']);
 });
 
 // ---- E3 路由投影（#14 砍完形态）：只读 bound 投影，无名版脱敏 + direct 幽灵 key ----

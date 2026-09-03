@@ -138,9 +138,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     settled = true
     clearGiveUp()
     try {
-      const target = chooseBot(lastBots, model.workspace)
-      const targetLabel = target ? channelLabel(target.channel) : null
-      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, targetLabel, draftPers))
+      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, draftPers))
     } catch {
       /* keep old frame */
     }
@@ -262,10 +260,14 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         }
       })()
     },
-    onTestSend: () => {
+    onTestSend: (channel, botId) => {
       void (async () => {
         try {
-          const bot = chooseBot(lastBots, model.workspace)
+          const bot = lastBots.find((b) => b && b.channel === channel && b.botId === botId) ?? null
+          if (!bot) {
+            toast('该渠道机器人已不在列表')
+            return
+          }
           const outcome = await runTestSend(fctx.rpc, bot, model.workspace, model.name)
           toast(outcome.text, outcome.ok ? 'check' : undefined)
         } catch (e) {

@@ -28,6 +28,7 @@ export const CSS = [
 '.c1a-foot{display:flex;gap:8px}',
 '.c1a-cap{font-size:11px;font-weight:700;color:var(--dsw-alias-label-secondary,#888);margin:10px 4px 4px}',
 '.c1a-list{border:1px solid var(--dsw-alias-separator,#eee);border-radius:13px;padding:2px 14px;background:var(--dsw-alias-bg-base,#fff)}',
+'.c1a-nobox{border:0 !important;padding:2px 0 !important;background:transparent !important}',
 '.c1a-row{display:flex;align-items:center;gap:10px;min-height:48px;padding:8px 0;border-top:1px solid var(--dsw-alias-separator,#eee);font-size:13px}',
 '.c1a-row:first-child{border-top:0}',
 '.c1a-row .c1a-lab{color:var(--dsw-alias-label-secondary,#888);flex:none}',

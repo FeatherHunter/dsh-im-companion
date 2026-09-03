@@ -33,7 +33,7 @@ export interface DrawerCallbacks {
   onApplyPersonality(text: string): void
   onDraftPersonality(draft: string): void
   onRemoveBot(channel: string, botId: string): void
-  onTestSend(): void
+  onTestSend(channel: string, botId: string): void
   onClose(): void
 }
 
@@ -152,7 +152,7 @@ function workspaceSection(model: DrawerModel, draft: string | null, cbs: DrawerC
 function personalitySection(prefill: string, draft: string | null, cbs: DrawerCallbacks): HTMLElement {
   const frag = h('div', null)
   frag.appendChild(caption('性格/语气 · 一框写全渠道'))
-  const card = h('div', { className: 'c1a-list' })
+  const card = h('div', { className: 'c1a-list c1a-nobox' })
   const area = h('textarea', {
     rows: 4, value: draft ?? prefill,
     placeholder: '比如：说话幽默，像朋友一样；群里严肃、私聊放飞…',
@@ -180,6 +180,7 @@ function personalitySection(prefill: string, draft: string | null, cbs: DrawerCa
 
 function routesSection(model: DrawerModel): HTMLElement {
   const sec = h('details', { className: 'c1a-sec' })
+  sec.setAttribute('open', '')
   sec.appendChild(h('summary', null, '会话路由摘要（' + model.routes.length + '）'))
   if (!model.routes.length) {
     sec.appendChild(h('div', { className: 'c1a-empty' }, '暂无已绑定会话映射（只读投影，随轮询刷新）。'))
@@ -211,6 +212,7 @@ function routesSection(model: DrawerModel): HTMLElement {
 
 function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
   const sec = h('details', { className: 'c1a-sec' })
+  sec.setAttribute('open', '')
   sec.appendChild(h('summary', null, '渠道管理（' + model.channels.length + '）'))
   if (!model.channels.length) {
     sec.appendChild(h('div', { className: 'c1a-empty' }, '尚未接入渠道，用行内接入添加。'))
@@ -226,6 +228,10 @@ function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement 
       ? h('span', { className: 'c1a-chlogo', html: logo })
       : h('span', { className: 'c1a-chlogo c1a-chbadge', title: label }, label.charAt(0) || '?'))
     row.appendChild(h('span', { title: label + '·' + health + '·' + ch.botId }, label))
+    const send = makeButton({
+      kind: 'tinted', size: 'sm', label: '测试', title: '向本渠道发送测试消息',
+      onClick: () => cbs.onTestSend(ch.id, ch.botId),
+    })
     const btn = makeButton({
       kind: 'ghost', size: 'sm', iconName: 'trash', label: '解绑', title: '移除该渠道机器人（需二次确认）',
       onClick: () => {
@@ -237,14 +243,17 @@ function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement 
         cbs.onRemoveBot(ch.id, ch.botId)
       },
     })
-    row.appendChild(h('span', { style: { marginLeft: 'auto' } }, btn))
+    const tail = h('span', { style: { marginLeft: 'auto', display: 'inline-flex', gap: '6px' } })
+    tail.appendChild(send)
+    tail.appendChild(btn)
+    row.appendChild(tail)
     sec.appendChild(row)
   }
   return sec
 }
 
 /** 纯渲染（dom-shim 可测）：模型 + 回调 → 抽屉体。 */
-export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, draftWs: string | null = null, sendTarget: string | null = null, draftPers: string | null = null): HTMLElement {
+export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, draftWs: string | null = null, draftPers: string | null = null): HTMLElement {
   const closeBtn = makeButton({ kind: 'ghost', size: 'sm', label: '关闭', title: '关闭抽屉', onClick: () => cbs.onClose() })
   const head = h('div', { className: 'c1a-dhead' },
     h('span', { className: 'c1a-dot ' + model.status }),
@@ -260,13 +269,5 @@ export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, dr
   const body = h('div', { className: 'c1a-dbody' }, sum, sumNote, ctxSection(model, cbs),
     personalitySection(personalityPrefill(model.bots), draftPers, cbs),
     workspaceSection(model, draftWs, cbs), routesSection(model), channelsSection(model, cbs))
-  const sendLabel = sendTarget ? '发测试消息（→' + sendTarget + '）' : '发测试消息'
-  const sendBtn = makeButton({
-    kind: 'primary', size: 'sm', label: sendLabel,
-    title: sendTarget ? '经已保存目标发送到' + sendTarget + '（与 B3 同语义）' : '尚无可发送目标：先绑定在线机器人',
-    onClick: () => cbs.onTestSend(),
-  })
-  sendBtn.classList.add('c1a-hero')
-  body.appendChild(h('div', { className: 'c1a-foot' }, sendBtn))
   return h('div', { className: 'c1a-drawer' }, head, body)
 }
