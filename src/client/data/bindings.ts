@@ -53,16 +53,12 @@ export function badgeForWorkspace(workspacePath: string, bots: BotSnap[], nowMs 
   }
   const kinds = bound.map(kindOf)
   const kind: HealthKind = kinds.includes('online') ? 'online' : kinds.includes('warn') ? 'warn' : 'offline'
-  const parts = bound.map((b) => {
-    if (b.stale) return channelLabel(b.channel) + '·未知（轮询失败）'
-    return channelLabel(b.channel) + '·' + HEALTH_LABELS[kindOf(b)]
-  })
-  const last = Math.max(...bound.map((b) => b.lastCheckedAt ?? 0))
-  if (last > 0) {
-    const age = Math.max(0, Math.round((nowMs - last) / 1000))
-    parts.push('最后检测 ' + timeText(last) + (age > 0 ? '（' + age + ' 秒前）' : ''))
-  } else {
-    parts.push('最后检测 暂无')
+  const label = HEALTH_LABELS[kind]
+  const lines = [label + ' · ' + agent]
+  for (const b of bound) {
+    lines.push(b.stale ? channelLabel(b.channel) + ' · 未知（轮询失败）' : channelLabel(b.channel) + ' · ' + HEALTH_LABELS[kindOf(b)])
   }
-  return { kind, label: HEALTH_LABELS[kind], tooltip: parts.join('；'), workspace: workspacePath, agent }
+  const last = Math.max(...bound.map((b) => b.lastCheckedAt ?? 0))
+  lines.push(last > 0 ? '最后检测 ' + timeText(last) : '最后检测 暂无')
+  return { kind, label, tooltip: lines.join('\n'), workspace: workspacePath, agent }
 }
