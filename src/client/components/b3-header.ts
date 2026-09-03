@@ -1,16 +1,18 @@
 /** B3 Header 浮层（C 变体 verdict #8）：conversation.session.header.utilities 呼吸点 + 详情。
- * 平时仅圆点零打扰；点击展开详情（Agent 健康 + 绑定渠道 + 打开工作区/发测试消息）。
+ * 平时仅圆点零打扰；点击展开详情（Agent 健康 + 绑定渠道 + 发测试消息）。
  * 防御式：任何异常只隐藏自己，绝不影响原生 Header；订阅 stream 纯渲染，卸载即退订。
- * 点击只读：打开工作区派发 OPEN_AGENT_EVENT（与 B1 同缝）；发测试消息只走 dsh-im
- * 已保存目标（无目标不清谎报发送，只给去配置指引），成功同时派发 SEND_TEST_EVENT。 */
+ * 发测试消息：优先已保存目标；无目标时用已聊会话做草稿测试（不存任何东西），
+ * 多个会话先选再发，成功同时派发 SEND_TEST_EVENT；未绑定只给静态指引，无死按钮。 */
 import * as React from 'react'
-import { OPEN_AGENT_EVENT } from '../data/bindings'
 import type { BotSnap, RpcCall } from '../data/fleet-api'
 import type { StreamSnapshot } from '../data/connection-stream'
 import {
   SEND_TEST_EVENT,
   headerOverlayFor,
   runTestSend,
+  sendToSuggestion,
+  suggestionLabel,
+  type DeliverySuggestion,
   type DotKind,
 } from '../data/header-overlay'
 
@@ -45,6 +47,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   const [open, setOpen] = React.useState(false)
   const [busy, setBusy] = React.useState(false)
   const [result, setResult] = React.useState<{ ok: boolean; text: string } | null>(null)
+  const [sgList, setSgList] = React.useState<DeliverySuggestion[] | null>(null)
 
   React.useEffect(() => {
     let unsub: (() => void) | null = null
@@ -68,6 +71,7 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   React.useEffect(() => {
     setOpen(false)
     setResult(null)
+    setSgList(null)
   }, [sessionId])
 
   React.useEffect(() => {
@@ -115,15 +119,29 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
 
   const bot = overlay.mode === 'full' ? overlay.bot : null
 
-  const onOpenWorkspace = (): void => {
-    emit(OPEN_AGENT_EVENT, { workspace: workspacePath ?? '', agent: overlay.agent })
-  }
-
   const onSendTest = async (): Promise<void> => {
     if (busy) return
     setBusy(true)
     try {
       const outcome = await runTestSend(createRpc(), bot, workspacePath ?? '', overlay.agent)
+      if (outcome.event) emit(SEND_TEST_EVENT, outcome.event)
+      setSgList(outcome.suggestions ?? null)
+      setResult({ ok: outcome.ok, text: outcome.text })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const onPickSg = async (sg: DeliverySuggestion): Promise<void> => {
+    if (busy || !bot) return
+    const rpc = createRpc()
+    if (!rpc) {
+      setResult({ ok: false, text: '无法连接 Host 连接服务，稍后重试。' })
+      return
+    }
+    setBusy(true)
+    try {
+      const outcome = await sendToSuggestion(rpc, bot, sg, workspacePath ?? '', overlay.agent)
       if (outcome.event) emit(SEND_TEST_EVENT, outcome.event)
       setResult({ ok: outcome.ok, text: outcome.text })
     } finally {
@@ -137,10 +155,11 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
     {
       type: 'button',
       className: 'b3-header-dotbtn ' + overlay.dotKind,
-      title: overlay.mode === 'unbound' ? '未绑定：点击去设置' : overlay.agent + ' · ' + overlay.label + '（点击查看详情）',
-      'aria-label': overlay.mode === 'unbound' ? '未绑定，点击去设置' : overlay.agent + dotTitle(overlay.dotKind as DotKind),
+      title: overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + ' · ' + overlay.label + '（点击查看详情）',
+      'aria-label': overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + dotTitle(overlay.dotKind as DotKind),
       onClick: () => {
         setResult(null)
+        setSgList(null)
         setOpen(!open)
       },
     },
@@ -150,28 +169,38 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
   if (!open) return React.createElement('span', { className: 'b3-header' }, btn)
 
   const detail = overlay.mode === 'unbound'
-    ? React.createElement('div', { className: 'b3-header-sub' }, '该工作区尚未绑定机器人。')
+    ? React.createElement('div', { className: 'b3-header-sub' }, '该工作区尚未绑定机器人。到 dsh-im 设置页接入后，圆点会显示状态。')
     : React.createElement('div', { className: 'b3-header-sub', title: overlay.tooltip }, overlay.agent + ' · ' + overlay.label)
 
-  const actions = overlay.mode === 'unbound'
-    ? React.createElement('button', { type: 'button', className: 'b3-header-btn primary', onClick: onOpenWorkspace }, '去设置')
-    : React.createElement(
-        React.Fragment,
-        null,
-        React.createElement('button', { type: 'button', className: 'b3-header-btn', onClick: onOpenWorkspace }, '打开工作区'),
+  const sendBtn = overlay.mode === 'full'
+    ? React.createElement(
+      'button',
+      { type: 'button', className: 'b3-header-btn primary', disabled: busy, onClick: () => void onSendTest() },
+      busy ? '发送中…' : '发测试消息',
+    )
+    : null
+
+  const sgBtns = sgList && sgList.length && overlay.mode === 'full'
+    ? React.createElement(
+      'div',
+      { className: 'b3-header-row' },
+      ...sgList.slice(0, 5).map((sg, i) =>
         React.createElement(
           'button',
-          { type: 'button', className: 'b3-header-btn primary', disabled: busy, onClick: () => void onSendTest() },
-          busy ? '发送中…' : '发测试消息',
+          { type: 'button', key: i, className: 'b3-header-btn', disabled: busy, onClick: () => void onPickSg(sg) },
+          suggestionLabel(sg),
         ),
-      )
+      ),
+    )
+    : null
 
   const pop = React.createElement(
     'div',
     { className: 'b3-header-pop', role: 'dialog', 'aria-label': overlay.agent + ' 状态详情' },
     React.createElement('div', { className: 'b3-header-title' }, overlay.mode === 'unbound' ? '未绑定' : overlay.agent + ' · ' + overlay.label),
     detail,
-    React.createElement('div', { className: 'b3-header-row' }, actions),
+    sendBtn ? React.createElement('div', { className: 'b3-header-row' }, sendBtn) : null,
+    sgBtns,
     result ? React.createElement('div', { className: 'b3-header-result ' + (result.ok ? 'ok' : 'err') }, result.text) : null,
   )
 

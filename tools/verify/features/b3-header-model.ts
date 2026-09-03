@@ -37,7 +37,7 @@ try {
   process.exit(1);
 }
 const mod = (f: string) => import(pathToFileURL(join(tmp, f)).href);
-const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, SEND_TEST_EVENT } = await mod('header-overlay.js');
+const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, sendToSuggestion, listSuggestions, testDraftTarget, suggestionLabel, SEND_TEST_EVENT } = await mod('header-overlay.js');
 const { mergeStaleBots } = await mod('fleet-api.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
@@ -131,7 +131,7 @@ test('runTestSend：全路径如实（无 rpc/无 bot/无目标/成功/失败）
   assert.equal((await runTestSend(null, bot, W1, '小帅')).ok, false);
   assert.match((await runTestSend(async () => ({}), null, W1, '小帅')).text, /尚未绑定/);
   const empty = async () => ({ ok: true, value: { botId: 'b1', targets: [] } });
-  assert.match((await runTestSend(empty as any, bot, W1, '小帅')).text, /投递目标/);
+  assert.match((await runTestSend(empty as any, bot, W1, '小帅')).text, /说一句话/);
   const good = async (_ch: string, ep: string) =>
     ep === 'target.list'
       ? { ok: true, value: { botId: 'b1', targets: [{ targetId: 't1', name: '群' }] } }
@@ -176,6 +176,49 @@ test('runTestSend：离线/待确认预检 direct 返回，不调 rpc', async ()
   assert.equal(r2.ok, false);
   assert.match(r2.text, /待确认/);
   assert.equal(calls, 0); // 预检拦截，零 RPC
+});
+
+test('草稿测试流：建议列举/草稿发送/展示名', async () => {
+  const rpc = async (_ch: string, ep: string) => {
+    if (ep === 'target.suggestion.list') return { ok: true, value: { botId: 'b1', suggestions: [{ kind: 'group', route: { chatId: 'oc_abc123' } }] } };
+    if (ep === 'target.test') return { ok: true, value: { sent: true } };
+    throw new Error('unexpected ' + ep);
+  };
+  const sgs = await listSuggestions(rpc as any, 'b1');
+  assert.equal(sgs.length, 1);
+  assert.equal(suggestionLabel(sgs[0]), '群聊 · …c123');
+  const r = await testDraftTarget(rpc as any, 'b1', sgs[0]);
+  assert.equal(r.sent, true);
+  const bad = async () => ({ ok: false, error: { code: 'target-rejected', message: 'no' } });
+  await assert.rejects(() => testDraftTarget(bad as any, 'b1', sgs[0]),
+    (e: unknown) => (e as { code?: string }).code === 'target-rejected');
+});
+
+test('runTestSend 无目标分支：1 个直发 / N 个回列表 / 0 个给指引', async () => {
+  const bot = snap({ botId: 'b1' });
+  const none = async (_ch: string, ep: string) => ({ ok: true, value: ep === 'target.list' ? { targets: [] } : { suggestions: [] } });
+  const r0 = await runTestSend(none as any, bot, W1, '小帅');
+  assert.equal(r0.ok, false);
+  assert.match(r0.text, /说一句话/);
+  const one = async (_ch: string, ep: string) => {
+    if (ep === 'target.list') return { ok: true, value: { targets: [] } };
+    if (ep === 'target.suggestion.list') return { ok: true, value: { suggestions: [{ kind: 'user', route: { openId: 'ou_x' } }] } };
+    return { ok: true, value: { sent: true } };
+  };
+  const r1 = await runTestSend(one as any, bot, W1, '小帅');
+  assert.equal(r1.ok, true);
+  assert.equal(r1.event?.channel, 'feishu');
+  const many = async (_ch: string, ep: string) => {
+    if (ep === 'target.list') return { ok: true, value: { targets: [] } };
+    return { ok: true, value: { suggestions: [{ kind: 'user', route: { a: 1 } }, { kind: 'group', route: { b: 2 } }] } };
+  };
+  const rN = await runTestSend(many as any, bot, W1, '小帅');
+  assert.equal(rN.ok, false);
+  assert.equal(rN.suggestions?.length, 2);
+  assert.match(rN.text, /选择/);
+  const win = await sendToSuggestion(one as any, bot, { kind: 'user', route: { openId: 'ou_x' } }, W1, '小帅');
+  assert.equal(win.ok, true);
+  assert.match(win.text, /草稿测试/);
 });
 
 console.log('header-overlay-model: ALL PASS');

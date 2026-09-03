@@ -1,5 +1,5 @@
 /** B3 Header 浮层纯数据层（C 变体 verdict #8）。
- * 时机三态：工作区不可解析 → hidden（不注入）；已知无绑定 → unbound（灰色提示）；
+ * 时机三态：未就绪（服务缺失/首轮快照前）→ hidden（不渲染）；已知无绑定 → unbound（灰色提示）；
  * 已绑定 → full（呼吸点 + 详情）。健康语义复用 B1（任一在线即在线，失败按未知）。
  * 发测试消息只走 dsh-im 已保存目标（PROACTIVE_DELIVERY 契约）：无目标不谎报发送。 */
 import { badgeForWorkspace, type BadgeKind } from './bindings'
@@ -93,6 +93,26 @@ export interface DeliveryTarget {
   kind?: string
 }
 
+/** 已聊会话建议（target.suggestion.list）：{kind, route}，来自持久化会话映射，无名氏。 */
+export interface DeliverySuggestion {
+  kind: string
+  route: Record<string, unknown>
+}
+
+const KIND_LABELS: Record<string, string> = {
+  user: '私聊', group: '群聊', conversation: '会话', thread: '串',
+  chat: '聊天', topic: '话题', channel: '频道',
+}
+
+/** 建议展示名：类型 + 路由脱敏（只露后 4 位）。 */
+export function suggestionLabel(sg: DeliverySuggestion): string {
+  const kind = KIND_LABELS[sg.kind] ?? sg.kind
+  const first = Object.values(sg.route ?? {})[0]
+  const s = String(first ?? '')
+  const tail = s.length > 4 ? '…' + s.slice(-4) : s
+  return tail ? kind + ' · ' + tail : kind
+}
+
 function codedError(code: string, message: string): Error {
   const e = new Error(message || code)
   ;(e as { code?: string }).code = code
@@ -114,6 +134,30 @@ async function callDelivery(rpc: RpcCall, endpoint: string, payload: Record<stri
   return unwrapValue(raw)
 }
 
+/** 列出已聊会话建议（无目标时的草稿测试来源，不存任何东西）。 */
+export async function listSuggestions(rpc: RpcCall, botId: string): Promise<DeliverySuggestion[]> {
+  const value = (await callDelivery(rpc, 'target.suggestion.list', { botId })) as {
+    suggestions?: DeliverySuggestion[]
+  } | null
+  const out = value?.suggestions
+  if (!Array.isArray(out)) return []
+  return out.filter((s) => s && typeof s.kind === 'string' && s.route && typeof s.route === 'object')
+}
+
+/** 草稿测试（target.test）：用建议路由直发官方测试文案，不创建不保存目标。 */
+export async function testDraftTarget(
+  rpc: RpcCall,
+  botId: string,
+  target: DeliverySuggestion,
+): Promise<{ sent: true }> {
+  const value = (await callDelivery(rpc, 'target.test', {
+    botId,
+    target: { kind: target.kind, route: target.route },
+  })) as { sent?: boolean } | null
+  if (!value || value.sent !== true) throw codedError('delivery-failed', 'delivery-failed')
+  return { sent: true }
+}
+
 /** 列出机器人已保存投递目标（dsh-im 设置页配置）。 */
 export async function listTargets(rpc: RpcCall, botId: string): Promise<DeliveryTarget[]> {
   const value = (await callDelivery(rpc, 'target.list', { botId })) as { targets?: DeliveryTarget[] } | null
@@ -126,6 +170,8 @@ export interface TestSendOutcome {
   ok: boolean
   text: string
   event?: { workspace: string; agent: string; botId: string; channel: string; targetId: string }
+  /** 多个可投递会话时回传列表，由调用方渲染选择器（单选后调 sendToSuggestion）。 */
+  suggestions?: DeliverySuggestion[]
 }
 
 export async function runTestSend(
@@ -142,15 +188,43 @@ export async function runTestSend(
   if (bot.stale) return { ok: false, text: '该机器人状态待确认（轮询失败），请稍后重试。' }
   try {
     const targets = await listTargets(rpc, bot.botId)
-    if (!targets.length) {
-      return { ok: false, text: '该机器人尚未配置投递目标，请到 dsh-im 设置页新建目标后重试。' }
+    if (targets.length) {
+      const target = targets[0]
+      await sendTestMessage(rpc, bot.botId, target.targetId, buildTestText(agent))
+      return {
+        ok: true,
+        text: '已发送到「' + (target.name || target.targetId) + '」。',
+        event: { workspace: workspacePath, agent, botId: bot.botId, channel: bot.channel, targetId: target.targetId },
+      }
     }
-    const target = targets[0]
-    await sendTestMessage(rpc, bot.botId, target.targetId, buildTestText(agent))
+    const sgs = await listSuggestions(rpc, bot.botId)
+    if (!sgs.length) {
+      return { ok: false, text: '该机器人还没有可投递会话：先在平台上和它说一句话，再点发送。' }
+    }
+    if (sgs.length === 1) {
+      return sendToSuggestion(rpc, bot, sgs[0], workspacePath, agent)
+    }
+    return { ok: false, text: '找到 ' + sgs.length + ' 个可投递会话，请选择一个发送测试消息。', suggestions: sgs }
+  } catch (e) {
+    const code = (e as { code?: string })?.code
+    return { ok: false, text: '发送失败' + (code ? '（' + code + '）' : '') + '：' + String((e as Error)?.message ?? e) }
+  }
+}
+
+/** 向指定建议会话做草稿测试（选择器确认后调用）：成功带回投递事件供上抛。 */
+export async function sendToSuggestion(
+  rpc: RpcCall,
+  bot: BotSnap,
+  sg: DeliverySuggestion,
+  workspacePath: string,
+  agent: string,
+): Promise<TestSendOutcome> {
+  try {
+    await testDraftTarget(rpc, bot.botId, sg)
     return {
       ok: true,
-      text: '已发送到「' + (target.name || target.targetId) + '」。',
-      event: { workspace: workspacePath, agent, botId: bot.botId, channel: bot.channel, targetId: target.targetId },
+      text: '测试消息已发送到「' + suggestionLabel(sg) + '」（草稿测试，未保存目标）。',
+      event: { workspace: workspacePath, agent, botId: bot.botId, channel: bot.channel, targetId: '' },
     }
   } catch (e) {
     const code = (e as { code?: string })?.code
