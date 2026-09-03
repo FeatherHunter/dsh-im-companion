@@ -136,6 +136,15 @@ test('bindings：四态 + tooltip 最后检测 + 暂无占位', () => {
   assert.match(noTime.tooltip, /最后检测 暂无/);
 });
 
+test('view：resolveWorkspace 名称匹配（basename/Bot名/大小写）', () => {
+  const bots = [snap({ workspace: W1, botName: '小帅' })];
+  assert.equal(view.resolveWorkspace('xiaoshuai', bots), W1);
+  assert.equal(view.resolveWorkspace('XiaoShuai', bots), W1);
+  assert.equal(view.resolveWorkspace('小帅', bots), W1);
+  assert.equal(view.resolveWorkspace(W1, bots), W1);
+  assert.equal(view.resolveWorkspace('dsh-im', bots), 'dsh-im');
+});
+
 test('registry：left-badges 在列，带样式与槽位', () => {
   const f = registry.FEATURES.find((x: any) => x.id === 'left-badges');
   assert.ok(f);
@@ -164,7 +173,7 @@ test('view：行装饰 + 点击只读事件 + 无变化不碰 DOM', () => {
     set textContent(v: string) { this.text = String(v); },
   });
   const row = stubEl('div');
-  row.setAttribute('data-workspace-path', W1);
+  row.textContent = 'xiaoshuai';
   const docStub: any = { querySelectorAll: () => [row], createElement: (t: string) => stubEl(t), body: stubEl('body') };
   const events: any[] = [];
   const winStub: any = {

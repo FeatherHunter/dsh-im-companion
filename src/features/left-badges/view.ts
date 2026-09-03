@@ -6,8 +6,10 @@ import type { BotSnap } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
 
-/** 左侧工作区行的候选钩子（逐个尝试；命中即用，未命中静默）。 */
-const ROW_SELECTORS = ['[data-workspace-id]', '[data-workspace-path]']
+/** 左侧工作区行钩子（DSH 本体取证：dsh-client-ui-workspace 以 div[role=treeitem][aria-expanded]
+ * 渲染工作区分组行，会话行无 aria-expanded；类名系 CSS Modules 哈希、不可依赖）。
+ * 行内唯一可见文本即工作区展示名（projectText>title），故 key 取行文本做名称匹配。 */
+const ROW_SELECTORS = ['div[role="treeitem"][aria-expanded]']
 const BADGE_CLASS = 'left-badges-badge'
 const DOT_CLASS = 'left-badges-dot'
 const LABEL_CLASS = 'left-badges-label'
@@ -53,9 +55,8 @@ function collectRows(): Element[] {
 
 function rowKey(row: Element): string {
   try {
-    const byPath = typeof row.getAttribute === 'function' ? row.getAttribute('data-workspace-path') : null
-    const byId = typeof row.getAttribute === 'function' ? row.getAttribute('data-workspace-id') : null
-    return (byPath || byId || '').trim()
+    const t = typeof row.textContent === 'string' ? row.textContent : ''
+    return t.trim()
   } catch {
     return ''
   }
@@ -65,26 +66,21 @@ function normPath(s: string): string {
   return String(s ?? '').replace(/\\/g, '/').toLowerCase()
 }
 
-/** key（行属性，可能是全路径或简称）→ bots 中的规范 workspace 路径；找不到就原样返回（判未绑定）。 */
+/** key（行可见文本 = 工作区展示名）→ bots 中的规范 workspace 路径；找不到就原样返回（判未绑定）。
+ * 匹配面（大小写不敏感）：展示名 = 路径全等 / 路径 basename / Bot 名（覆盖重命名行）。 */
 export function resolveWorkspace(key: string, bots: BotSnap[]): string {
   const k = normPath(key).trim()
   if (!k) return key
-  for (const b of bots) if (b.workspace && normPath(b.workspace) === k) return b.workspace
-  const base = k.split('/').filter(Boolean).pop() ?? ''
-  if (base) {
-    for (const b of bots) {
-      const p = normPath(b.workspace).split('/').filter(Boolean).pop() ?? ''
-      if (p && p === base) {
-        try {
-          console.debug('[dsh-im-companion] 左栏行按简称匹配：' + key + ' → ' + b.workspace + '（同名工作区可能错绑）')
-        } catch {
-          /* 日志失败忽略 */
-        }
-        return b.workspace
-      }
-    }
+  for (const b of bots) {
+    if (b.workspace && (normPath(b.workspace) === k || basenameOf(b.workspace) === k)) return b.workspace
+    if (b.botName && normPath(b.botName).trim() === k) return b.workspace
   }
   return key
+}
+
+function basenameOf(ws: string): string {
+  const parts = normPath(ws).split('/').filter(Boolean)
+  return parts[parts.length - 1] ?? ''
 }
 
 /* TODO(#6)：OPEN_AGENT_EVENT 的消费者（设置面板 #agent= 高亮联动）在后续票落地；此前事件只发无收。 */
