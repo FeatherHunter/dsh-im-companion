@@ -1,16 +1,16 @@
-/** C1a 抽屉视图层：B 变体纯渲染（无 RPC、无订阅，dom-shim 可测）。 */
+/** C1a 抽屉视图层：A' 纯渲染（无 RPC、无订阅，dom-shim 可测）。
+ * 预设下拉读动态目录＋跟随默认；上下文双开关（群/私聊各一）；fields/guidance 只读展示。 */
 import { h } from '../../client/dom'
 import { makeButton } from '../../client/ui/button'
 import { HEALTH_LABELS, channelLabel } from '../../client/data/config'
-import { CTX_LEVELS, PRESET_OPTIONS, type DrawerModel } from './data'
+import { PRESET_FOLLOW, PRESET_MIXED, type DrawerModel } from './data'
 
 /** 加载态静默回调：除关闭外全是空操作（数据到之前误点不写坏任何东西）。 */
 export function quietCallbacks(onClose: () => void): DrawerCallbacks {
   return {
     onPreset: () => undefined,
-    onCustomName: () => undefined,
-    onToggleCtx: () => undefined,
-    onLevel: () => undefined,
+    onToggleGroup: () => undefined,
+    onToggleDirect: () => undefined,
     onSaveWorkspace: () => undefined,
     onRemoveBot: () => undefined,
     onTestSend: () => undefined,
@@ -20,9 +20,8 @@ export function quietCallbacks(onClose: () => void): DrawerCallbacks {
 
 export interface DrawerCallbacks {
   onPreset(id: string): void
-  onCustomName(name: string): void
-  onToggleCtx(): void
-  onLevel(lv: string): void
+  onToggleGroup(): void
+  onToggleDirect(): void
   onSaveWorkspace(path: string): void
   onRemoveBot(channel: string, botId: string): void
   onTestSend(): void
@@ -31,34 +30,35 @@ export interface DrawerCallbacks {
 
 function presetSelect(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
   const sel = h('select', {
-    title: '身份预设（改动即时保存）',
+    title: model.presetReady ? '身份预设（写入真系统，新会话生效）' : '预设真值尚未读到，只读展示',
     'aria-label': '身份预设',
+    disabled: !model.presetReady,
     onChange: () => cbs.onPreset((sel as HTMLSelectElement).value),
-  })
-  for (const o of PRESET_OPTIONS) {
+  }) as HTMLSelectElement
+  if (model.preset === PRESET_MIXED) {
+    sel.appendChild(h('option', { value: PRESET_MIXED, selected: true }, '多渠道不一致…'))
+  }
+  const dflt = model.presetCatalog.defaultId
+  sel.appendChild(h('option', { value: PRESET_FOLLOW, selected: model.preset === PRESET_FOLLOW },
+    dflt ? '跟随默认（' + dflt + '）' : '跟随默认'))
+  for (const o of model.presetCatalog.items) {
     sel.appendChild(h('option', { value: o.id, selected: model.preset === o.id }, o.label))
   }
+  if (!model.presetReady) sel.title = '预设真值尚未读到，稍后重试'
   return sel
 }
 
-function ctxControls(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement[] {
-  const toggle = makeButton({
+function ctxSwitch(label: string, value: boolean | null, ready: boolean, onFlip: () => void): HTMLElement {
+  const btn = makeButton({
     kind: 'ghost', size: 'sm',
-    label: model.ctx.enabled ? '开' : '关',
-    title: '上下文增强开关（改动即时保存）',
-    onClick: () => cbs.onToggleCtx(),
+    label: !ready || value === null ? '…' : value ? '开' : '关',
+    title: ready ? label + '开关（写入真系统即时生效）' : '真值尚未读到，禁用写（防覆盖已有配置）',
+    onClick: () => { if (ready && value !== null) onFlip() },
   })
-  toggle.setAttribute('role', 'switch')
-  toggle.setAttribute('aria-checked', model.ctx.enabled ? 'true' : 'false')
-  const seg = h('span', { className: 'c1a-seg' })
-  for (const lv of CTX_LEVELS) {
-    seg.appendChild(h('button', {
-      type: 'button',
-      className: lv.id === model.ctx.level ? 'c1a-on' : undefined,
-      onClick: () => cbs.onLevel(lv.id),
-    }, lv.label))
-  }
-  return [toggle, seg]
+  btn.setAttribute('role', 'switch')
+  btn.setAttribute('aria-checked', value === true ? 'true' : 'false')
+  if (!ready || value === null) btn.setAttribute('disabled', 'true')
+  return h('span', { className: 'c1a-fld' }, h('span', { className: 'c1a-lab' }, label), btn)
 }
 
 function workspaceSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
@@ -71,6 +71,17 @@ function workspaceSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement
     onClick: () => cbs.onSaveWorkspace(input.value),
   })
   sec.appendChild(h('div', { className: 'c1a-fld' }, input, save))
+  return sec
+}
+
+function ctxReadonly(model: DrawerModel): HTMLElement {
+  const sec = h('details', { className: 'c1a-sec' })
+  sec.appendChild(h('summary', null, '上下文来源与引导语（只读）'))
+  const fields = model.ctxFields.length ? model.ctxFields.join('、') : '未设置'
+  sec.appendChild(h('div', { className: 'c1a-meta' }, '字段：' + fields))
+  const g = model.ctxGuidance.trim()
+  sec.appendChild(h('div', { className: 'c1a-note' }, g ? (g.length > 120 ? g.slice(0, 120) + '…' : g) : '无引导语'))
+  sec.appendChild(h('div', { className: 'c1a-meta' }, '如需修改字段或引导语，请去 dsh-im 上游改，抽屉只动开关。'))
   return sec
 }
 
@@ -128,16 +139,12 @@ export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks): H
     h('span', null, model.name + '·详情'),
     h('span', { style: { marginLeft: 'auto' } }, closeBtn))
   const sum = h('div', { className: 'c1a-summary' })
-  sum.appendChild(h('div', { className: 'c1a-meta' }, '摘要（改动即时保存）'))
+  sum.appendChild(h('div', { className: 'c1a-meta' }, '摘要（写入真系统，新会话生效）'))
   sum.appendChild(h('div', { className: 'c1a-fld' }, h('span', { className: 'c1a-lab' }, '预设'), presetSelect(model, cbs)))
-  if (model.preset === 'custom') {
-    const custom = h('input', { type: 'text', value: model.customName, placeholder: '自定义预设名', 'aria-label': '自定义预设名' }) as HTMLInputElement
-    custom.addEventListener('change', () => cbs.onCustomName(custom.value))
-    sum.appendChild(h('div', { className: 'c1a-fld' }, h('span', { className: 'c1a-lab' }, '自定'), custom))
-  }
-  sum.appendChild(h('div', { className: 'c1a-fld' }, h('span', { className: 'c1a-lab' }, '上下文'), ...ctxControls(model, cbs)))
+  sum.appendChild(ctxSwitch('群聊增强', model.ctxGroup, model.ctxReady, () => cbs.onToggleGroup()))
+  sum.appendChild(ctxSwitch('私聊增强', model.ctxDirect, model.ctxReady, () => cbs.onToggleDirect()))
   sum.appendChild(h('div', { className: 'c1a-meta' }, '路由 ' + model.routes.length + ' 条·渠道 ' + model.channels.length + ' 个·' + model.statusLabel))
-  const body = h('div', { className: 'c1a-dbody' }, sum, workspaceSection(model, cbs), routesSection(model), channelsSection(model, cbs))
+  const body = h('div', { className: 'c1a-dbody' }, sum, ctxReadonly(model), workspaceSection(model, cbs), routesSection(model), channelsSection(model, cbs))
   body.appendChild(h('div', { className: 'c1a-foot' },
     makeButton({ kind: 'primary', size: 'sm', label: '发测试消息', title: '经已保存目标发送（与 B3 同语义）', onClick: () => cbs.onTestSend() })))
   return h('div', { className: 'c1a-drawer' }, head, body)

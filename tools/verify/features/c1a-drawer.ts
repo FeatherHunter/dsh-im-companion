@@ -17,6 +17,7 @@ const FEAT = join(REPO, 'src', 'features', 'c1a');
 const ENTRIES = [
   join(HOST, 'meta-store.ts'),
   join(DATA, 'config.ts'),
+  join(DATA, 'fleet-api.ts'),
   join(DATA, 'meta.ts'),
   join(DATA, 'model.ts'),
   join(DATA, 'header-overlay.ts'),
@@ -47,6 +48,7 @@ const storeMod: any = req('./host/meta-store.js');
 const config: any = req('./client/data/config.js');
 const clientMeta: any = req('./client/data/meta.js');
 const data: any = req('./features/c1a/data.js');
+const fleetApi: any = req('./client/data/fleet-api.js');
 const styles: any = req('./features/c1a/styles.js');
 const registry: any = req('./features/index.js');
 
@@ -62,10 +64,12 @@ const drawerMod: any = req('./features/c1a/drawer.js');
 const sheet: any = req('./client/ui/sheet.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
+const CTX0 = { groupEnabled: false, directEnabled: true, fields: ['senderId'], guidance: 'hi' };
 const bot = (over = {}) => ({
   channel: 'feishu', botId: 'b1', workspace: W1, connected: true,
   healthStatus: 'healthy', healthKind: 'online', botName: '', avatarUrl: '',
-  healthSummary: '', lastCheckedAt: 1000, stale: false, ...over,
+  healthSummary: '', lastCheckedAt: 1000, stale: false,
+  agentPreset: null, contextEnhancement: { ...CTX0 }, ...over,
 });
 const metaDoc = (over = {}) => ({ names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, ...over });
 
@@ -97,30 +101,64 @@ test('host：非法预设/强度静默忽略，合法落盘且重载仍在', asy
   }
 });
 
-// ---- data 纯逻辑 ----
-test('data：预设/强度归一化 + 标签', () => {
-  assert.equal(data.normalizePreset('cs'), 'cs');
-  assert.equal(data.normalizePreset('custom:abc'), 'custom:abc');
-  assert.equal(data.normalizePreset('nope'), 'default');
-  assert.equal(data.normalizePreset(undefined), 'default');
-  assert.equal(data.normalizeLevel('high'), 'high');
-  assert.equal(data.normalizeLevel('ultra'), 'mid');
-  assert.equal(data.presetLabel('cs', ''), '客服话术');
-  assert.equal(data.presetLabel('custom:夜间档', ''), '自定义·夜间档');
+// ---- fleet-api 上游回流归一 ----
+test('fleet-api：上游预设/上下文/目录归一化', () => {
+  assert.equal(fleetApi.normalizeUpstreamPreset(null), null);
+  assert.equal(fleetApi.normalizeUpstreamPreset(''), null);
+  assert.equal(fleetApi.normalizeUpstreamPreset('coder'), 'coder');
+  assert.equal(fleetApi.normalizeUpstreamPreset('NOPE_UPPER'), undefined);
+  assert.equal(fleetApi.normalizeUpstreamPreset(undefined), undefined);
+  assert.deepEqual(fleetApi.normalizeUpstreamCtx(null), null);
+  assert.equal(fleetApi.normalizeUpstreamCtx(undefined), undefined);
+  assert.deepEqual(fleetApi.normalizeUpstreamCtx({ groupEnabled: true }),
+    { groupEnabled: true, directEnabled: false, fields: [], guidance: '' });
+  assert.deepEqual(fleetApi.normalizeUpstreamCatalog(null), { defaultId: '', items: [] });
+  const cat = fleetApi.normalizeUpstreamCatalog({ defaultId: 'coder', items: [{ id: 'coder', label: '代码' }, 'cs', 'BAD!!'] });
+  assert.equal(cat.defaultId, 'coder');
+  assert.deepEqual(cat.items.map((i) => i.id), ['coder', 'cs']);
 });
 
-test('data：抽屉模型派生（默认/已存/未知键/路由 seat 空）', () => {
+// ---- data 纯逻辑：payload 与读守卫 ----
+test('data：预设/上下文 payload 与盲写守卫', () => {
+  assert.deepEqual(data.presetPayloadFor('b1', data.PRESET_FOLLOW), { botId: 'b1', agentPreset: null });
+  assert.deepEqual(data.presetPayloadFor('b1', 'coder'), { botId: 'b1', agentPreset: 'coder' });
+  assert.equal(data.presetPayloadFor('b1', data.PRESET_MIXED), null);
+  assert.equal(data.presetPayloadFor('', 'coder'), null);
+  assert.equal(data.presetPayloadFor('b1', 'BAD ID!!'), null);
+  const full = data.ctxPayloadFor({ groupEnabled: false, directEnabled: true, fields: ['senderId'], guidance: 'hi' }, 'group', true);
+  assert.deepEqual(full, { groupEnabled: true, directEnabled: true, fields: ['senderId'], guidance: 'hi' });
+  assert.equal(data.ctxPayloadFor(undefined, 'group', true), null);
+  assert.deepEqual(Object.keys(data.ctxPayloadFor(null, 'direct', true)).sort(), ['directEnabled', 'fields', 'groupEnabled', 'guidance']);
+  assert.throws(() => data.unwrapRpc({ ok: false, error: { message: 'nope' } }), /nope/);
+  data.unwrapRpc({ ok: true, value: {} });
+});
+
+test('data：抽屉模型派生自上游真值（一致/混合/未读/未知键/路由 seat 空）', () => {
   assert.equal(data.buildDrawerModel([bot()], metaDoc(), 'nope:'), null);
-  const m0 = data.buildDrawerModel([bot()], metaDoc(), W1);
+  const catalogs = { feishu: { defaultId: 'coder', items: [{ id: 'coder', label: '代码助手' }] } };
+  const m0 = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs);
   assert.equal(m0.name, 'Xiaoshuai');
-  assert.equal(m0.preset, 'default');
-  assert.deepEqual(m0.ctx, { enabled: false, level: 'mid' });
+  assert.equal(m0.preset, data.PRESET_FOLLOW);
+  assert.equal(m0.presetReady, true);
+  assert.equal(m0.presetCatalog.items.length, 1);
+  assert.equal(m0.ctxGroup, false);
+  assert.equal(m0.ctxDirect, true);
+  assert.equal(m0.ctxReady, true);
+  assert.deepEqual(m0.ctxFields, ['senderId']);
+  assert.equal(m0.ctxGuidance, 'hi');
   assert.equal(m0.bound, true);
   assert.deepEqual(m0.routes, []);
   assert.equal(m0.channels.length, 1);
-  const m1 = data.buildDrawerModel([bot()], metaDoc({ presets: { xiaoshuai: 'coder' }, ctxEnhance: { xiaoshuai: { enabled: true, level: 'low' } } }), W1);
+  const m1 = data.buildDrawerModel([bot({ agentPreset: 'coder' })], metaDoc(), W1, catalogs);
   assert.equal(m1.preset, 'coder');
-  assert.deepEqual(m1.ctx, { enabled: true, level: 'low' });
+  const mixed = data.buildDrawerModel(
+    [bot({ botId: 'b1' }), bot({ botId: 'b2', channel: 'qq', agentPreset: 'coder', workspace: W1 })],
+    metaDoc(), W1, catalogs);
+  assert.equal(mixed.preset, data.PRESET_MIXED);
+  const unread = data.buildDrawerModel([bot({ agentPreset: undefined, contextEnhancement: undefined })], metaDoc(), W1, catalogs);
+  assert.equal(unread.presetReady, false);
+  assert.equal(unread.ctxReady, false);
+  assert.equal(unread.ctxGroup, null);
   assert.equal(typeof data.OPEN_DRAWER_EVENT ?? config.OPEN_DRAWER_EVENT, 'string');
   assert.equal(config.OPEN_DRAWER_EVENT, 'dsh-im-companion:open-drawer');
 });
@@ -182,15 +220,16 @@ function findByClass(el: any, cls: string): any[] {
   return hit;
 }
 
-test('view：B 变体渲染含摘要直改 + 折叠详情 + 空路由席位', () => {
-  const model = data.buildDrawerModel([bot()], metaDoc(), W1);
+test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位', () => {
+  const catalogs = { feishu: { defaultId: '', items: [{ id: 'coder', label: '代码助手' }] } };
+  const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs);
   const noop = () => {};
   const root = view.renderDrawerContent(model, {
-    onPreset: noop, onCustomName: noop, onToggleCtx: noop, onLevel: noop,
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
     onSaveWorkspace: noop, onRemoveBot: noop, onTestSend: noop, onClose: noop,
   });
   const all = texts(root).join('|');
-  for (const needle of ['Xiaoshuai', '客服话术', '绑定工作区', '会话路由摘要', '渠道管理', '发测试消息']) {
+  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '群聊增强', '私聊增强', '只读', '新会话生效', '绑定工作区', '会话路由摘要', '渠道管理', '发测试消息']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
   assert.ok(findByClass(root, 'c1a-summary').length >= 1);

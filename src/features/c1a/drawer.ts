@@ -1,11 +1,16 @@
-/** C1a 抽屉容器：事件开合 + 写透 + stream 保活（P0-3）。 */
+/** C1a 抽屉容器：事件开合 + 真系统写透 + stream 保活（P0-3）。
+ * A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写；host 自持账本弃用不断路。 */
 import { mount } from '../../client/dom'
 import { showSheet } from '../../client/ui/sheet'
 import { toast } from '../../client/ui/toast'
 import { chooseBot, runTestSend } from '../../client/data/header-overlay'
+import type { AgentPresetCatalog } from '../../client/data/fleet-api'
 import type { FeatureCtx } from '../protocol'
 import type { OpenDrawerDetail } from '../../client/data/config'
-import { OPEN_DRAWER_EVENT, buildDrawerModel, loadingModel, sheetGeometry, type DrawerModel } from './data'
+import {
+  OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, loadingModel,
+  presetPayloadFor, sheetGeometry, unwrapRpc, type DrawerBot, type DrawerModel,
+} from './data'
 import { quietCallbacks, renderDrawerContent, type DrawerCallbacks } from './view'
 
 let currentClose: (() => void) | null = null
@@ -55,6 +60,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   let sheet: ReturnType<typeof showSheet> | null = null
   let closed = false
   let lastBots: SnapBots = []
+  let lastCatalogs: Record<string, AgentPresetCatalog> = {}
   const closeAll = (): void => {
     try {
       sheet?.close()
@@ -146,7 +152,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   }
   const paint = (): void => {
     if (closed || !meta || !sheet) return
-    const model = buildDrawerModel(lastBots, meta, key)
+    const model = buildDrawerModel(lastBots, meta, key, lastCatalogs)
     if (!model) {
       if (settled) {
         settled = false
@@ -172,85 +178,81 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       /* keep old meta */
     }
   }
-  const cbs = (model: DrawerModel): DrawerCallbacks => ({
+  /** 逐渠道写透：部分失败如实透出（失败渠道名），成功后 refresh 广播。 */
+  const writeBots = async (
+    model: DrawerModel, kind: string, run: (b: DrawerBot) => Promise<void>,
+  ): Promise<void> => {
+    if (!fctx.rpc) {
+      toast('连接服务不可用')
+      return
+    }
+    if (!model.bots.length) {
+      toast('该 Agent 尚未绑定机器人')
+      return
+    }
+    const fails: string[] = []
+    let ok = 0
+    let lastErr = ''
+    for (const b of model.bots) {
+      try {
+        await run(b)
+        ok++
+      } catch (e) {
+        fails.push(b.channel)
+        lastErr = String((e as Error)?.message ?? e)
+      }
+    }
+    if (!fails.length) toast(kind + '已写入真系统，新会话生效', 'check')
+    else if (ok > 0) toast(kind + '部分写入（成功 ' + ok + ' 个），失败：' + fails.join('、'))
+    else toast(kind + '写入失败：' + lastErr)
+    try {
+      await reloadMeta()
+      await fctx.refresh()
+    } catch {
+      /* 刷新失败忽略（下轮 15s 自愈） */
+    }
+    paint()
+  }
+  const rpcOf = (channel: string, endpoint: string, payload: Record<string, unknown>): Promise<void> => {
+    const rpc = fctx.rpc
+    if (!rpc) return Promise.reject(new Error('连接服务不可用'))
+    return rpc('/' + channel, endpoint, payload, AbortSignal.timeout(8000)).then((raw) => unwrapRpc(raw))
+  }
+  const cbs = (model: DrawerModel): DrawerCallbacks => {
+    const flipCtx = (which: 'group' | 'direct', kind: string): void => {
+      if (!model.ctxReady) {
+        toast('上下文配置尚未读到，稍后再试（防覆盖已有配置）')
+        return
+      }
+      const cur = which === 'group' ? model.ctxGroup : model.ctxDirect
+      void writeBots(model, kind, (b) => {
+        const cfg = ctxPayloadFor(b.ctx, which, cur !== true)
+        if (!cfg) return Promise.reject(new Error('上下文真值缺失'))
+        return rpcOf(b.channel, 'bot.context-enhancement.set', { botId: b.botId, config: cfg })
+      })
+    }
+    return {
     onPreset: (id) => {
-      if (id === 'custom') {
+      if (id === PRESET_MIXED || !model.presetReady) {
+        toast('预设真值尚未读全，稍后再试')
         paint()
         return
       }
-      void (async () => {
-        try {
-          await fctx.meta.setPreset(model.storeKey, id)
-          await reloadMeta()
-          toast('预设已保存', 'check')
-        } catch (e) {
-          toast('保存失败：' + String((e as Error)?.message ?? e))
-        }
-        paint()
-      })()
+      void writeBots(model, '预设', (b) => {
+        const p = presetPayloadFor(b.botId, id)
+        if (!p) return Promise.reject(new Error('预设 id 非法'))
+        return rpcOf(b.channel, 'bot.preset.set', p)
+      })
     },
-    onCustomName: (name) => {
-      const v = name.trim()
-      void (async () => {
-        try {
-          await fctx.meta.setPreset(model.storeKey, v ? 'custom:' + v : 'default')
-          await reloadMeta()
-          toast('预设已保存', 'check')
-        } catch (e) {
-          toast('保存失败：' + String((e as Error)?.message ?? e))
-        }
-        paint()
-      })()
-    },
-    onToggleCtx: () => {
-      void (async () => {
-        try {
-          await fctx.meta.setCtx(model.storeKey, { enabled: !model.ctx.enabled, level: model.ctx.level })
-          await reloadMeta()
-          toast('上下文增强已保存', 'check')
-        } catch (e) {
-          toast('保存失败：' + String((e as Error)?.message ?? e))
-        }
-        paint()
-      })()
-    },
-    onLevel: (lv) => {
-      void (async () => {
-        try {
-          await fctx.meta.setCtx(model.storeKey, { enabled: model.ctx.enabled, level: lv })
-          await reloadMeta()
-          toast('上下文增强已保存', 'check')
-        } catch (e) {
-          toast('保存失败：' + String((e as Error)?.message ?? e))
-        }
-        paint()
-      })()
-    },
+    onToggleGroup: () => flipCtx('group', '群聊增强'),
+    onToggleDirect: () => flipCtx('direct', '私聊增强'),
     onSaveWorkspace: (path) => {
       const ws = path.trim()
       if (!ws || !(ws.startsWith('/') || /^[A-Za-z]:[\\/]/.test(ws))) {
         toast('请输入绝对路径形式的工作区目录')
         return
       }
-      if (!fctx.rpc) {
-        toast('连接服务不可用')
-        return
-      }
-      if (!model.bots.length) {
-        toast('该 Agent 尚未绑定机器人')
-        return
-      }
-      void (async () => {
-        try {
-          for (const b of model.bots) {
-            await fctx.rpc?.('/' + b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }, AbortSignal.timeout(8000))
-          }
-          toast('绑定工作区已保存', 'check')
-          await fctx.refresh()
-        } catch (e) {
-          toast('保存失败：' + String((e as Error)?.message ?? e))
-        }
-      })()
+      void writeBots(model, '绑定工作区', (b) => rpcOf(b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }))
     },
     onRemoveBot: (channel, botId) => {
       if (!fctx.rpc) {
@@ -259,7 +261,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       }
       void (async () => {
         try {
-          await fctx.rpc?.('/' + channel, 'bot.delete', { botId, confirm: true }, AbortSignal.timeout(8000))
+          await rpcOf(channel, 'bot.delete', { botId, confirm: true })
           toast('渠道机器人已移除', 'check')
           await fctx.refresh()
         } catch (e) {
@@ -279,11 +281,13 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       })()
     },
     onClose: () => closeAll(),
-  })
+    }
+  }
   let unsub: () => void = () => undefined
   try {
     unsub = fctx.subscribe((snap) => {
       lastBots = snap.bots
+      lastCatalogs = (snap as { catalogs?: Record<string, AgentPresetCatalog> }).catalogs ?? {}
       paint()
     })
   } catch {

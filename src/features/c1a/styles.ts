@@ -25,4 +25,5 @@ export const CSS = [
 '.c1a-foot{display:flex;gap:8px}',
 '.c1a-empty{font-size:12px;color:var(--dsw-alias-label-secondary,#888)}',
 '.c1a-ws{font-size:12px;word-break:break-all}',
+'.c1a-note{font-size:12px;word-break:break-all;background:var(--dsw-alias-bg-base,#fff);border:1px dashed var(--dsw-alias-separator,#ddd);border-radius:8px;padding:6px 8px}',
 ].join('');

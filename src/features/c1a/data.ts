@@ -1,56 +1,54 @@
-/** C1a 抽屉数据层（DOM-free，可 node 直测）：B 变体模型派生 + 身份写透键 + 路由 seat（E3 #14 待填）。
- * 预设存 companion meta（host/meta-store.ts）：取值为 default|cs|coder 或 custom:名前缀（与 host 同值，各持一份）。 */
+/** C1a 抽屉数据层（DOM-free，可 node 直测）：A' 方案——读上游真值，写上游真接口。
+ * 第一性：dsh-im 是唯一真源，companion 不自持第二账本（host meta presets/ctx 端点保留不断路，抽屉不再用）。
+ * 读：connection.status 经 BotSnap.agentPreset/contextEnhancement + catalogs 回流（fleet-api 提取）。
+ * 写：bot.preset.set {botId, agentPreset}；bot.context-enhancement.set {botId, config 全量4键，读-改-写}。
+ * 守卫：读不到（undefined）就不写——盲写覆盖用户引导语是正确性红线。 */
 import { OPEN_DRAWER_EVENT, type HealthKind } from '../../client/data/config'
 import { buildModel } from '../../client/data/model'
-import type { BotSnap } from '../../client/data/fleet-api'
+import type { AgentPresetCatalog, BotSnap, UpstreamCtx } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 
 export { OPEN_DRAWER_EVENT }
 
-export const PRESET_OPTIONS = [
-  { id: 'default', label: '默认助手' },
-  { id: 'cs', label: '客服话术' },
-  { id: 'coder', label: '代码助手' },
-  { id: 'custom', label: '自定义' },
-] as const
+/** 跟随默认（上游 null）：改动只对新会话生效，已有会话不受影响。 */
+export const PRESET_FOLLOW = '__follow__'
+/** 多渠道值不一致：展示占位，不可写出（写时按当前下拉值批量写全部渠道）。 */
+export const PRESET_MIXED = '__mixed__'
 
-export const CTX_LEVELS = [
-  { id: 'low', label: '精简' },
-  { id: 'mid', label: '均衡' },
-  { id: 'high', label: '详尽' },
-] as const
+const PRESET_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 
-export type CtxLevel = 'low' | 'mid' | 'high'
-
-/* bare 'custom' 只是 select 中间态（待输入名），永不持久化（host 拒绝）；落盘值恒为 id 或 custom:<名>。 */
-const PRESET_IDS = ['default', 'cs', 'coder', 'custom']
-
-export function normalizePreset(value: unknown): string {
-  const s = String(value ?? '').trim()
-  if (PRESET_IDS.includes(s)) return s
-  if (s.startsWith('custom:') && s.length > 7 && s.length <= 40) return s
-  return 'default'
+export interface DrawerBot {
+  channel: string
+  botId: string
+  preset: string | null | undefined
+  ctx: UpstreamCtx | null | undefined
 }
 
-export function presetLabel(value: string): string {
-  if (value.startsWith('custom:')) return '自定义·' + value.slice(7)
-  const hit = PRESET_OPTIONS.find((o) => o.id === value)
-  return hit ? hit.label : '默认助手'
+export interface DrawerModel {
+  key: string
+  name: string
+  workspace: string
+  statusLabel: string
+  status: string
+  bound: boolean
+  /** 预设展示值：上游 id | PRESET_FOLLOW | PRESET_MIXED。 */
+  preset: string
+  presetCatalog: AgentPresetCatalog
+  /** false = 还有渠道没读到真值，下拉禁用（只读展示）。 */
+  presetReady: boolean
+  /** null = 未读到/不一致（开关禁用或标不一致）；布尔 = 各渠道一致当前值。 */
+  ctxGroup: boolean | null
+  ctxDirect: boolean | null
+  ctxReady: boolean
+  ctxFields: string[]
+  ctxGuidance: string
+  channels: { id: string; label: string; status: HealthKind; botId: string }[]
+  bots: DrawerBot[]
+  routes: RouteEntry[]
 }
 
-export interface PanelRect {
-  top: number
-  right: number
-  bottom: number
-  left: number
-}
-
-export interface SheetGeom {
-  top: number
-  right: number
-  bottom: number
-  width: number
-}
+export interface PanelRect { top: number; right: number; bottom: number; left: number }
+export interface SheetGeom { top: number; right: number; bottom: number; width: number }
 
 /** 抽屉贴设置面板右沿：fixed 相对视口，用面板矩形反推四边；面板找不到回 null（调用方保持视口右沿兜底）。 */
 export function sheetGeometry(panel: PanelRect | null, viewport: { width: number; height: number }): SheetGeom | null {
@@ -66,84 +64,102 @@ export function sheetGeometry(panel: PanelRect | null, viewport: { width: number
   }
 }
 
-export function normalizeLevel(value: unknown): CtxLevel {
-  const s = String(value ?? '')
-  return s === 'low' || s === 'mid' || s === 'high' ? s : 'mid'
-}
+export interface RouteEntry { chat: string; sessionId: string }
+export function fetchRoutesFor(): RouteEntry[] { return [] }
 
-export interface RouteEntry {
-  chat: string
-  sessionId: string
-}
-
-export function fetchRoutesFor(): RouteEntry[] {
-  return []
-}
-
-export interface DrawerChannel {
-  id: string
-  label: string
-  status: HealthKind
-  botId: string
-}
-
-export interface DrawerCtx {
-  enabled: boolean
-  level: CtxLevel
-}
-
-export interface DrawerModel {
-  key: string
-  storeKey: string
-  name: string
-  workspace: string
-  statusLabel: string
-  status: string
-  bound: boolean
-  preset: string
-  customName: string
-  ctx: DrawerCtx
-  channels: DrawerChannel[]
-  bots: { channel: string; botId: string }[]
-  routes: RouteEntry[]
-}
-
-/** 等待数据时的占位模型（key 回填，供关闭/重试逻辑识别）。 */
+/** 等待数据时的占位模型（key 回填，供关闭/重试逻辑识别；读写全禁用）。 */
 export function loadingModel(key: string): DrawerModel {
   return {
-    key, storeKey: key, name: '加载中', workspace: '', statusLabel: '等待数据', status: 'warn',
-    bound: false, preset: 'default', customName: '', ctx: { enabled: false, level: 'mid' },
+    key, name: '加载中', workspace: '', statusLabel: '等待数据', status: 'warn',
+    bound: false, preset: PRESET_FOLLOW, presetCatalog: { defaultId: '', items: [] }, presetReady: false,
+    ctxGroup: null, ctxDirect: null, ctxReady: false, ctxFields: [], ctxGuidance: '',
     channels: [], bots: [], routes: [],
   }
 }
 
-export function storeKeyOf(base: string, key: string): string {
-  return base || key
+/** 上游信封解包：{ok:false} 抛错，其余透传（与 fleet-api unwrap 同语义，抽屉写路径用）。 */
+export function unwrapRpc(raw: unknown): void {
+  const r = raw as { ok?: boolean; error?: { code?: string; message?: string } } | null
+  if (r && r.ok === false) throw new Error(r.error?.message ?? r.error?.code ?? '上游写入失败')
 }
 
-export function buildDrawerModel(bots: BotSnap[], meta: AgentMetaDoc, key: string): DrawerModel | null {
+/** 预设写 payload：跟随默认→null；非法 id→null（调用方禁用写并提示）。 */
+export function presetPayloadFor(botId: string, preset: string): { botId: string; agentPreset: string | null } | null {
+  if (!botId) return null
+  if (preset === PRESET_FOLLOW) return { botId, agentPreset: null }
+  const id = preset.trim()
+  if (!PRESET_ID_RE.test(id)) return null
+  return { botId, agentPreset: id }
+}
+
+/** 上下文写 payload（读-改-写）：只翻一个开关，fields/guidance 原样回填全量4键；未读到→null（禁用写）。 */
+export function ctxPayloadFor(
+  current: UpstreamCtx | null | undefined, which: 'group' | 'direct', next: boolean,
+): { groupEnabled: boolean; directEnabled: boolean; fields: string[]; guidance: string } | null {
+  if (current === undefined) return null
+  const base = current ?? { groupEnabled: false, directEnabled: false, fields: [], guidance: '' }
+  return {
+    groupEnabled: which === 'group' ? next : base.groupEnabled,
+    directEnabled: which === 'direct' ? next : base.directEnabled,
+    fields: [...base.fields],
+    guidance: base.guidance,
+  }
+}
+
+function mergeCatalogs(channels: string[], catalogs: Record<string, AgentPresetCatalog>): AgentPresetCatalog {
+  const out: { id: string; label: string }[] = []
+  const seen = new Set<string>()
+  let defaultId = ''
+  for (const ch of channels) {
+    const c = catalogs[ch]
+    if (!c) continue
+    if (!defaultId && c.defaultId) defaultId = c.defaultId
+    for (const it of c.items ?? []) {
+      if (!it || seen.has(it.id)) continue
+      seen.add(it.id)
+      out.push({ id: it.id, label: it.label || it.id })
+    }
+  }
+  return { defaultId, items: out }
+}
+
+export function buildDrawerModel(
+  bots: BotSnap[], meta: AgentMetaDoc, key: string, catalogs: Record<string, AgentPresetCatalog> = {},
+): DrawerModel | null {
   const fleet = buildModel(bots, meta, 'agent', '')
   const view = fleet.agents.find((a) => a.key === key)
   if (!view) return null
-  const skey = storeKeyOf(view.base, view.key)
-  const presets = meta.presets ?? {}
-  const ctxs = meta.ctxEnhance ?? {}
-  const preset = normalizePreset(presets[skey] ?? 'default')
-  const rawCtx = ctxs[skey]
-  const botOf = (ch: string): string => view.bots.find((b) => b.channel === ch)?.botId ?? ''
+  const dbots: DrawerBot[] = view.bots.map((b) => {
+    const s = bots.find((x) => x && x.channel === b.channel && x.botId === b.botId)
+    return { channel: b.channel, botId: b.botId, preset: s?.agentPreset, ctx: s?.contextEnhancement }
+  })
+  const presetReady = dbots.length > 0 && dbots.every((b) => b.preset !== undefined)
+  const pvals = [...new Set(dbots.map((b) => (b.preset ?? null) as string | null))]
+  const preset = !presetReady ? PRESET_FOLLOW : pvals.length === 1 ? (pvals[0] ?? PRESET_FOLLOW) : PRESET_MIXED
+  const ctxReady = dbots.length > 0 && dbots.every((b) => b.ctx !== undefined)
+  const groups = [...new Set(dbots.map((b) => (b.ctx as UpstreamCtx | null)?.groupEnabled === true))]
+  const directs = [...new Set(dbots.map((b) => (b.ctx as UpstreamCtx | null)?.directEnabled === true))]
+  const firstCtx = (dbots[0]?.ctx as UpstreamCtx | null) ?? null
   return {
     key: view.key,
-    storeKey: skey,
     name: view.name,
     workspace: view.workspace,
     statusLabel: view.stateLabel,
     status: view.status,
     bound: view.workspace !== '',
-    preset: preset.startsWith('custom:') ? 'custom' : preset,
-    customName: preset.startsWith('custom:') ? preset.slice(7) : '',
-    ctx: { enabled: rawCtx?.enabled === true, level: normalizeLevel(rawCtx?.level) },
-    channels: view.channels.map((c) => ({ id: c.id, label: c.label, status: c.status, botId: botOf(c.id) })),
-    bots: view.bots.map((b) => ({ channel: b.channel, botId: b.botId })),
+    preset: preset === '' ? PRESET_FOLLOW : preset,
+    presetCatalog: mergeCatalogs(view.channels.map((c) => c.id), catalogs),
+    presetReady,
+    ctxGroup: !ctxReady ? null : groups.length === 1 ? groups[0] : null,
+    ctxDirect: !ctxReady ? null : directs.length === 1 ? directs[0] : null,
+    ctxReady,
+    ctxFields: firstCtx?.fields ?? [],
+    ctxGuidance: firstCtx?.guidance ?? '',
+    channels: view.channels.map((c) => ({
+      id: c.id, label: c.label, status: c.status,
+      botId: view.bots.find((b) => b.channel === c.id)?.botId ?? '',
+    })),
+    bots: dbots,
     routes: fetchRoutesFor(),
   }
 }
