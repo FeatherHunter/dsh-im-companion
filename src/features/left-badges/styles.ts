@@ -15,9 +15,9 @@ div[role="treeitem"][aria-expanded][data-lb-kind="offline"]::after { background:
 .left-badges-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 .left-badges-card-name { font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .left-badges-card-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.left-badges-card-dot.big { width: 10px; height: 10px; }
-.left-badges-card-dot.online { background: var(--dsw-alias-state-success-primary, #30d158); }
-.left-badges-card-dot.big.online { animation: left-badges-breathe 1.6s infinite; }
+
+.left-badges-card-dot.online { background: var(--dsw-alias-state-success-primary, #30d158); animation: left-badges-breathe 1.6s infinite; }
+
 .left-badges-card-dot.warn { background: var(--dsw-alias-state-warn-primary, #ff9f0a); }
 .left-badges-card-dot.offline { background: color-mix(in srgb, currentColor 40%, transparent); }
 .left-badges-card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 0; }

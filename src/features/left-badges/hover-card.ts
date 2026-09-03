@@ -19,14 +19,14 @@ export interface CardData {
 }
 
 /** 卡片数据（纯函数可单测）：未绑定返回 null（无卡）。 */
-export function buildCardData(workspacePath: string, bots: BotSnap[]): CardData | null {
+export function buildCardData(workspacePath: string, bots: BotSnap[], displayName?: string): CardData | null {
   try {
     const badge = badgeForWorkspace(workspacePath, bots)
     if (badge.kind === 'unbound') return null
     const bound = bots.filter((b) => b.workspace === workspacePath)
     if (!bound.length) return null
     return {
-      agent: badge.agent,
+      agent: displayName || badge.agent,
       kind: badge.kind,
       channels: bound.map((b) => ({
         channel: b.channel,
@@ -65,8 +65,8 @@ function el(tag: string, cls: string, text?: string): HTMLElement | null {
   }
 }
 
-function dot(kind: HealthKind, big: boolean): HTMLElement | null {
-  const d = el('span', DOT_CLASS + ' ' + kind + (big ? ' big' : ''))
+function dot(kind: HealthKind): HTMLElement | null {
+  const d = el('span', DOT_CLASS + ' ' + kind)
   return d
 }
 
@@ -158,10 +158,8 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       }
       const head = el('div', HEAD_CLASS)
       const name = el('span', NAME_CLASS, data.agent)
-      const hd = dot(data.kind, true)
-      if (!head || !name || !hd) return false
+      if (!head || !name) return false
       head.appendChild(name)
-      head.appendChild(hd)
       const parts: unknown[] = [head]
       for (const ch of data.channels) {
         const row = el('div', ROW_CLASS)
@@ -172,7 +170,7 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
           /* 无障碍标签失败忽略 */
         }
         const g = el('span', GLYPH_CLASS)
-        const d = dot(ch.kind, false)
+        const d = dot(ch.kind)
         if (!g || !d) continue
         try {
           if (ch.glyph) (g as unknown as { innerHTML?: string }).innerHTML = ch.glyph

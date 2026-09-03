@@ -170,6 +170,7 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
   if (typeof document === 'undefined') return noop
   let current: BotSnap[] = []
   let hasSnap = false
+  let customNames: Record<string, string> = {}
   let observer: MutationObserver | undefined
   const repaint = (): void => {
     if (!hasSnap) return
@@ -194,6 +195,20 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     unsub = ctx.subscribe((snap: StreamSnapshot) => {
       current = snap.bots
       hasSnap = snap.updatedAt > 0
+      try {
+        const m = ctx.meta
+        if (m && typeof m.loadMeta === 'function') {
+          void m.loadMeta().then((doc) => {
+            try {
+              if (doc && doc.names) customNames = doc.names
+            } catch {
+              /* 名表刷新失败保留旧表 */
+            }
+          }).catch(() => {})
+        }
+      } catch {
+        /* meta 未就绪下轮再试 */
+      }
       if (!genAlive(activeGen)) return
       /* TEMP-DEBUG(#6)：快照到达即上报（定位后删除） */
       try {
@@ -231,7 +246,9 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
         try {
           const key = rowKey(row)
           if (!key) return null
-          return buildCardData(resolveWorkspace(key, current), current)
+          const ws = resolveWorkspace(key, current)
+          const custom = customNames[ws] || customNames[basenameOf(ws)] || ''
+          return buildCardData(ws, current, custom || undefined)
         } catch {
           return null
         }

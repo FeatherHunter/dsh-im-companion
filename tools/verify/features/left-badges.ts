@@ -276,6 +276,7 @@ test('hover-card：卡片数据（未绑定null/渠道行/时间）', () => {
     snap({ channel: 'qq', botId: 'q', healthKind: 'offline', healthStatus: 'offline', connected: false }),
   ]);
   assert.equal(d.agent, 'xiaoshuai');
+  assert.equal(hover.buildCardData(W1, [snap({ lastCheckedAt: 5000 })], '小帅2').agent, '小帅2');
   assert.equal(d.kind, 'online');
   assert.equal(d.channels.length, 2);
   assert.equal(d.channels[0].kind, 'online');
