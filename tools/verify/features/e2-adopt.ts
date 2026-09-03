@@ -301,6 +301,7 @@ test('view：头栏安装分身份入口，点击开面板（含未分配组）'
   assert.equal(sectionRows(secs[1]).length, 1);
   assert.ok(String(secs[3].attrs?.class ?? '').split(' ').includes('e2-sec-new'));
   assert.ok(bodyText().includes('小帅2'), '门牌用设置里的中文名');
+  assert.ok(bodyText().includes('1 个联系方式'), '计数按联系方式，不按人头');
   const faces = findClass(e2Doc.body, 'e2-face');
   assert.ok(faces.some((f: any) => f.textContent === '小'), '门牌有首字头像');
   const dots = findClass(e2Doc.body, 'e2-hdot');

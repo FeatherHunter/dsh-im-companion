@@ -46,7 +46,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
   const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') api.close() }
   try { document.addEventListener('keydown', onKey, true) } catch { /* 忽略 */ }
 
-  const homeCard = (plate: HomePlate, ws: string | null, bots: BotSnap[], dashed: boolean, extra: Record<string, string>, hint = ''): HTMLElement => {
+  const homeCard = (plate: HomePlate, ws: string | null, bots: BotSnap[], dashed: boolean, extra: Record<string, string>, hint = '', count = ''): HTMLElement => {
     const box = h('div', { className: SEC_CLASS + ' e2-av-' + (plate.color % 8) + (dashed ? ' e2-sec-unbound' : '') }) as HTMLElement
     if (ws) box.setAttribute('data-e2-ws', ws)
     for (const k of Object.keys(extra)) box.setAttribute(k, extra[k])
@@ -56,7 +56,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
     titles.appendChild(h('span', { className: 'e2-home' }, plate.name) as unknown as Node)
     if (plate.sub) titles.appendChild(h('span', { className: 'e2-sub' }, plate.sub) as unknown as Node)
     head.appendChild(titles as unknown as Node)
-    head.appendChild(h('span', { className: 'e2-n' }, '住着 ' + bots.length + ' 位') as unknown as Node)
+    if (count) head.appendChild(h('span', { className: 'e2-n' }, count) as unknown as Node)
     box.appendChild(head as unknown as Node)
     for (const b of bots) {
       const row = h('div', { className: ROW_CLASS }) as HTMLElement
@@ -78,10 +78,10 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       const { unbound, groups } = boardGroups(bots)
       grid.replaceChildren()
       if (unbound.length > 0) {
-        grid.appendChild(homeCard({ name: '还没进家门的', sub: '先落到任意家', initial: '？', color: 0 }, null, unbound, true, {}))
+        grid.appendChild(homeCard({ name: '还没进家门的', sub: '先落到任意家', initial: '？', color: 0 }, null, unbound, true, {}, '', unbound.length + ' 个'))
       }
       for (const g of groups) {
-        grid.appendChild(homeCard(homePlate(g.workspace, meta), g.workspace, g.bots, false, {}))
+        grid.appendChild(homeCard(homePlate(g.workspace, meta), g.workspace, g.bots, false, {}, '', g.bots.length + ' 个联系方式'))
       }
       grid.appendChild(homeCard(
         { name: '＋ 安新家', sub: '', initial: '＋', color: 0 }, null, [], true,
