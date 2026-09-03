@@ -273,4 +273,36 @@ test("渲染类名全在 wb- 命名空间", () => {
   for (const cls of seen) assert.ok(css.indexOf("." + cls) >= 0, "渲染类 ." + cls + " 必须在 styles.ts 有定义");
 });
 
+test("槽位注册与卸载（真槽位 conversation.session）", () => {
+  const calls: any[] = [];
+  let disposed = false;
+  const fctx: any = {
+    rpc: null,
+    subscribe: () => () => undefined,
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => ({ names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }) },
+    get: () => undefined,
+    slots: {
+      inject: (name: string, fn: any) => { calls.push(["inject", name]); return fn(); },
+      register: (opts: any, comp: any) => {
+        calls.push(["register", opts.name, opts.id, typeof comp]);
+        return () => { disposed = true; };
+      },
+    },
+  };
+  const stop = view.mountBanner(fctx);
+  assert.deepEqual(calls.map((c) => c[0]), ["inject", "register"]);
+  assert.equal(calls[1][1], "conversation.session");
+  assert.equal(calls[1][2], "dsh-im-companion:welcome-banner");
+  assert.equal(calls[1][3], "function");
+  stop();
+  assert.equal(disposed, true);
+});
+
+test("无槽位服务静默无挂载", () => {
+  const stop = view.mountBanner({ slots: {} });
+  assert.equal(typeof stop, "function");
+  stop();
+});
+
 rmSync(tmp, { recursive: true, force: true });
