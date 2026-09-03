@@ -200,6 +200,7 @@ test('manifest：c1a 注册进 FEATURES，样式命名空间干净', () => {
   assert.ok(Array.isArray(found.slots));
   assert.match(styles.CSS, /.c1a-/);
   assert.doesNotMatch(styles.CSS, /.af-/);
+  assert.doesNotMatch(styles.CSS, /dsw-alias-bg-subtle/);
   assert.equal(typeof sheet.showSheet, 'function');
 });
 

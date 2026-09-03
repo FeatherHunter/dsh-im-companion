@@ -48,5 +48,5 @@ export const CSS = [
 '.c1a-chbadge{border-radius:50%;background:var(--dsw-alias-brand-primary,#1677ff);color:#fff;font-size:10px;font-weight:700}',
 '.c1a-chctx{border-top:1px solid var(--dsw-alias-separator,#eee);padding:6px 0;display:grid;gap:4px}',
 '.c1a-list textarea,.c1a-sec textarea{display:block;width:100%;height:96px;box-sizing:border-box;padding:8px 10px;border:1px solid var(--dsw-alias-separator,#ddd);border-radius:8px;font:inherit;font-size:12px;background:var(--dsw-alias-bg-base,#fff);color:inherit;resize:none}',
-'.c1a-note{font-size:12px;word-break:break-all;background:var(--dsw-alias-bg-subtle,#f6f8fa);border-radius:8px;padding:6px 8px}',
+'.c1a-note{font-size:12px;word-break:break-all;background:var(--dsw-alias-bg-layer-1,#f6f8fa);color:var(--dsw-alias-label-primary,#1c1c1e);border:1px solid var(--dsw-alias-separator,#ddd);border-radius:8px;padding:6px 8px}',
 ].join('');
