@@ -32,7 +32,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
     overlay = h('div', { className: 'e2-overlay' }) as HTMLElement
     const dialog = h('div', { className: 'e2-cockpit', role: 'dialog', 'aria-modal': 'true', 'aria-label': '重新分配机器人归属' }) as HTMLElement
     const closeBtn = h('button', { className: 'e2-x', title: '关闭', 'aria-label': '关闭', onClick: () => api.close() }, '×') as HTMLElement
-    dialog.appendChild(h('h2', { className: 'e2-panel-title' }, '串门 · 搬家') as unknown as Node)
+    dialog.appendChild(h('h2', { className: 'e2-panel-title' }, '机器人搬家') as unknown as Node)
     dialog.appendChild(h('p', { className: 'e2-panel-sub' }, '把成员拖到另一个家完成换绑（会二次确认）。绿灯表示这部“电话”能打通。') as unknown as Node)
     dialog.appendChild(closeBtn as unknown as Node)
     grid = h('div', { className: 'e2-grid' }) as HTMLElement
