@@ -123,6 +123,10 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('z-index:1400'), '面板压过宿主 chrome');
   assert.ok(String(styles.CSS).includes('z-index:1600'), '确认框在最顶');
   assert.ok(String(styles.CSS).includes('.e2-tape{') && String(styles.CSS).includes('text-overflow:ellipsis'), '门牌不出框');
+  assert.ok(String(styles.CSS).includes('flex-wrap:wrap'), '砖墙流');
+  assert.ok(String(styles.CSS).includes('width:fit-content'), '宽随内容');
+  assert.ok(String(styles.CSS).includes('align-items:flex-start'), '高矮不齐');
+  assert.ok(!String(styles.CSS).includes('grid-template-columns'), '旧均分网格下线');
 });
 
 test('视图暴露挂载入口', () => {
