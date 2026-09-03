@@ -55,10 +55,20 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 
 ## 军规（认领票后必守 · 所有 session 自动注入）
 
-**最高原则（§0）**：契约优先——一切实现不得违背 `docs/features-contract.md`；共享文件只增不改；模块间无隐式共享；先合并点单 PR 先行入库。
+**第一原则（§0）· 充分解耦，压倒一切——产品代码与开发产物都必须解耦。**
+理由：未解耦的改动是 O(N²) 传染——碰一处、全线受影响、并行即冲突；解耦后每功能可独立演进/验证/整体移除，并行开发零摩擦。`docs/features-contract.md` 是解耦的载体与判据，不是独立目标：任何"为快绕过契约"的决定 = 违反第一原则。
 
-**充分解耦七律（§1）**：①功能自包含（`src/features/<id>/`，manifest 唯一出口，feature 之间禁 import）②单向依赖（feature→共享层/host 桥，禁反向、禁引 A1 私有）③契约通道白名单（rpc/subscribe/meta/slots 四种能力，禁自开轮询/直写 localStorage）④共享层 Added-only（只加导出/追加样式/追加 case）⑤数据单写多读（唯一轮询 connection-stream）⑥样式图标命名空间（installFeatureStyles + 功能前缀类）⑦可移除性（stash 掉任一功能后 npm run check 仍全绿）。
+**解耦九律（§1）**
+- ① 功能自包含：`src/features/<id>/` 唯一出口 manifest.ts；feature 之间禁止 import。
+- ② 单向依赖：feature → 共享层 / host 桥；禁反向、禁引他人 feature、禁引 A1 私有（panel*/connect-flow/row-actions 等）。
+- ③ 契约通道白名单：rpc / subscribe / meta / slots 四种能力；禁自开轮询、直写 localStorage、越权 DOM 操作。
+- ④ 共享层 Added-only：只加导出/追加样式类/追加 rpc case；禁改既有签名、行为、重排。
+- ⑤ 数据单写多读：唯一轮询 `connection-stream`；写走 dsh-im 渠道 RPC / host 端点，写后 `stream.refresh()` 广播；禁第二份轮询。
+- ⑥ 样式图标命名空间：`installFeatureStyles(id, css)`；类前缀 `<feature>-*`；禁占用 .af-* 私有约定。
+- ⑦ 可移除性：`git stash` 掉任一功能 → `npm run check` 仍全绿（复杂度 O(N) 证明）。
+- ⑧ **开发产物同步解耦**：每功能的验证/原型/模拟数据归入自己的命名空间——`tools/verify/features/<id>.ts`、`prototypes/<id>/`、preview mock 按功能注册；禁止向共享的 render-client / preview-host / 根目录原型"追加再追加"；共享开发文件同样只允许加"注册点"。
+- ⑨ 合并协议（并发正确性）：先合并点单 PR 先行入库；追加共享文件前先 `git pull`；merge 冲突时以"双方追加都保留"为准重做；契约先行——改共享协议必须先更新契约再改码。
 
-**开工四步**：① 读票（先读 `docs/features-contract.md` 再动）② `gh issue edit <n> --add-assignee @me` 认领 ③ 只写自己的目录、共享只加不改、≤300 行 ④ 完工前 `npm run check` 全绿（build+typecheck+verify+guard）→ 提审（等用户点头后才关闭）。
+**开工四步**：① 读票 + `docs/features-contract.md`（§0/§1）② `gh issue edit <n> --add-assignee @me` 认领 ③ 只写自己的目录（开发产物同）+ 单文件 ≤300 行 ④ `npm run check` 全绿 → 提审（证据：截图/verify 输出/边界报告）→ 用户点头后才关闭。
 
-**提审两闸门**：原型/真机需用户确认；未过不关闭、不写实现。
+**提审两闸门**：原型、真机验收均需用户确认；未过不关闭、不写实现。

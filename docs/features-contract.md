@@ -1,7 +1,7 @@
-# Features 契约（F0 决议）
+# Features 契约（F0 决议 · v2）
 
 > 权威依据：Wayfinder 地图 [FeatherHunter/dsh-im-companion#1](https://github.com/FeatherHunter/dsh-im-companion/issues/1) · F0 票决议（#3）。
-> 第一性原理：**模块间无隐式共享**——共享只走契约；**复杂度 O(N)**——功能可独立增删/验证/替换；**触碰面无交集**——并行 session 开发的前提。
+> 第一性原理：**模块间无隐式共享**——共享只走契约；**复杂度 O(N)**——功能可独立增删/验证/替换；**触碰面无交集**——并行 session 开发的前提；**开发产物同样解耦**（用户 2026-09-02 裁定）——验证/原型/模拟数据按功能命名空间，杜绝"共享文件追加再追加"。
 
 ## 1. 目录形态（功能即模块）
 
@@ -71,3 +71,18 @@ export interface FeatureManifest {
 
 A 线：B1（bindings/overlay 奠基）→ B2 ∥ E1；B 线：B3 ∥ C1b ∥ E4 ∥ E2；C 线：D1 ∥ E3；D 线：C1a（承接 E3 UI seat）。
 四线文件域正交；每线开工前先合入 §3 先合并点。
+
+## 8. 开发产物解耦（新增 · 用户裁定）
+
+- 每功能自验证：`tools/verify/features/<id>.ts`（或现有验证器按功能分区）；共享验证器（render-client 等）只允许新增注册点/分区，禁止改他人分区。
+- 原型资产：`prototypes/<id>/`（禁止根目录散放 prototype-*.html，既有 B1/B3 原型迁入）。
+- 预览 harness：mock 数据按功能模块注册（`src/dev/features/<id>-mock.ts`），preview-host 只做装配。
+- 守卫脚本：按功能归属（guard/boundaries 为契约层工具，功能自检脚本放 `<feature>/tools/`）。
+- 依赖检查：feature 开发产物之间同样禁止 import 耦合。
+
+## 9. 合并协议（并发正确性）
+
+- 先合并点单 PR 先行入库（connection-stream / bindings / installFeatureStyles / icons 追加 / rpc case 骨架）。
+- 追加共享文件前 `git pull`（以最新为基线再追加）。
+- merge 冲突一律以"双方追加都保留"为准重做；删改他人追加 = 违约。
+- 契约变更先行：改共享协议前先更新本契约并在地图 Decisions 记录，再改码。

@@ -8,11 +8,9 @@ import { OPEN_AGENT_EVENT } from '../data/badges'
 import { fetchBots, type BotSnap, type RpcCall } from '../data/fleet-api'
 import {
   SEND_TEST_EVENT,
-  buildTestText,
   chooseBot,
   headerOverlayFor,
-  listTargets,
-  sendTestMessage,
+  runTestSend,
   type DotKind,
 } from '../data/header-overlay'
 
@@ -98,35 +96,11 @@ export const B3HeaderAction: React.FC<B3HeaderDeps> = ({ sessionId, getWorkspace
 
   const onSendTest = async (): Promise<void> => {
     if (busy) return
-    const rpc = createRpc()
-    if (!rpc) {
-      setResult({ ok: false, text: '无法连接 Host 连接服务，稍后重试。' })
-      return
-    }
-    if (!bot) {
-      setResult({ ok: false, text: '该工作区尚未绑定机器人，先去绑定后再试。' })
-      return
-    }
     setBusy(true)
     try {
-      const targets = await listTargets(rpc, bot.botId)
-      if (!targets.length) {
-        setResult({ ok: false, text: '该机器人尚未配置投递目标，请到 dsh-im 设置页新建目标后重试。' })
-        return
-      }
-      const target = targets[0]
-      await sendTestMessage(rpc, bot.botId, target.targetId, buildTestText(overlay.agent))
-      emit(SEND_TEST_EVENT, {
-        workspace: workspacePath ?? '',
-        agent: overlay.agent,
-        botId: bot.botId,
-        channel: bot.channel,
-        targetId: target.targetId,
-      })
-      setResult({ ok: true, text: '已发送到「' + (target.name || target.targetId) + '」。' })
-    } catch (e) {
-      const code = (e as { code?: string })?.code
-      setResult({ ok: false, text: '发送失败' + (code ? '（' + code + '）' : '') + '：' + String((e as Error)?.message ?? e) })
+      const outcome = await runTestSend(createRpc(), bot, workspacePath ?? '', overlay.agent)
+      if (outcome.event) emit(SEND_TEST_EVENT, outcome.event)
+      setResult({ ok: outcome.ok, text: outcome.text })
     } finally {
       setBusy(false)
     }

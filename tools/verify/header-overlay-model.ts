@@ -37,7 +37,7 @@ try {
   process.exit(1);
 }
 const mod = (f: string) => import(pathToFileURL(join(tmp, f)).href);
-const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, SEND_TEST_EVENT } = await mod('header-overlay.js');
+const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, SEND_TEST_EVENT } = await mod('header-overlay.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over: Record<string, unknown> = {}) => ({
@@ -123,6 +123,31 @@ test('sendTestMessage：成功透传 sent；失败抛码；无目标不调用 rp
     (e: unknown) => (e as { code?: string }).code === 'bot-not-connected');
   const boom = async () => { throw new Error('net down'); };
   await assert.rejects(() => sendTestMessage(boom as any, 'b1', 't1', 'hi'), /net down/);
+});
+
+test('runTestSend：全路径如实（无 rpc/无 bot/无目标/成功/失败）', async () => {
+  const bot = snap({ botId: 'b1' });
+  assert.equal((await runTestSend(null, bot, W1, '小帅')).ok, false);
+  assert.match((await runTestSend(async () => ({}), null, W1, '小帅')).text, /尚未绑定/);
+  const empty = async () => ({ ok: true, value: { botId: 'b1', targets: [] } });
+  assert.match((await runTestSend(empty as any, bot, W1, '小帅')).text, /投递目标/);
+  const good = async (_ch: string, ep: string) =>
+    ep === 'target.list'
+      ? { ok: true, value: { botId: 'b1', targets: [{ targetId: 't1', name: '群' }] } }
+      : { ok: true, value: { sent: true } };
+  const win = await runTestSend(good as any, bot, W1, '小帅');
+  assert.equal(win.ok, true);
+  assert.match(win.text, /群/);
+  assert.equal(win.event?.targetId, 't1');
+  assert.equal(win.event?.workspace, W1);
+  const down = async (_ch: string, ep: string) =>
+    ep === 'target.list'
+      ? { ok: true, value: { botId: 'b1', targets: [{ targetId: 't1' }] } }
+      : { ok: false, error: { code: 'bot-not-connected', message: 'offline' } };
+  const lost = await runTestSend(down as any, bot, W1, '小帅');
+  assert.equal(lost.ok, false);
+  assert.match(lost.text, /bot-not-connected/);
+  assert.equal(lost.event, undefined);
 });
 
 console.log('header-overlay-model: ALL PASS');

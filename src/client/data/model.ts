@@ -13,8 +13,6 @@ export interface AgentChannelView {
   id: string
   label: string
   status: HealthKind
-  /** B1 结论：该通道轮询失败（旧快照，时间冻结），tooltip 须标出未知。 */
-  stale?: boolean
 }
 
 export interface AgentView {
@@ -98,17 +96,15 @@ function channelsOf(snaps: BotSnap[]): AgentChannelView[] {
     id,
     label: channelLabel(id),
     status: mergeStatus(list.map((s) => s.healthKind)),
-    stale: list.some((s) => s.stale),
   }))
 }
 
 const STATUS_RANK: Record<HealthKind, number> = { online: 0, warn: 1, offline: 2 }
 
 function healthDetailOf(channels: AgentChannelView[], bots: BotSnap[]): string {
-  const parts = channels.map((c) => c.label + ' · ' + HEALTH_LABELS[c.status] + (c.stale ? '（轮询失败）' : ''))
+  const parts = channels.map((c) => c.label + ' · ' + HEALTH_LABELS[c.status])
   const last = Math.max(...bots.map((b) => b.lastCheckedAt ?? 0), 0)
   if (last > 0) parts.push('最后检测 ' + new Date(last).toLocaleTimeString('zh-CN', { hour12: false }))
-  else parts.push('最后检测 暂无')
   const firstDown = bots.find((b) => b.healthKind !== 'online')
   if (firstDown?.healthSummary) parts.push(firstDown.healthSummary)
   return parts.join('；')
@@ -191,7 +187,6 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
       const status = mergeStatus(list.map((s) => s.healthKind))
       const name = viewName(base, meta, first.botName || '未命名 Agent')
       const avatar = list.map((s) => s.avatarUrl).find(Boolean) ?? null
-      const chView: AgentChannelView = { id: ch, label: channelLabel(ch), status, stale: list.some((s) => s.stale) }
       return {
         key: 'ch:' + ch + ':' + wsKey,
         base,
@@ -199,13 +194,13 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
         initial: initialOf(name),
         avatar,
         workspace: path,
-        channels: [chView],
+        channels: [{ id: ch, label: channelLabel(ch), status }],
         status,
         stateLabel: HEALTH_LABELS[status],
         isLocal: false,
         sub: base || '未绑定工作区',
         workspaceLine: path ? '工作区 · ' + path : '未绑定工作区',
-        healthDetail: healthDetailOf([chView], list),
+        healthDetail: healthDetailOf([{ id: ch, label: channelLabel(ch), status }], list),
         bots: botRefsOf(list),
       }
     })
