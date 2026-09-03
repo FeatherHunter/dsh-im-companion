@@ -223,6 +223,7 @@ e2Doc.body = e2StubNode('body');
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let e2Emit: ((snap: any) => void) | null = null;
 let e2RpcCalls: any[] = [];
+let e2DiagLog: string[] = [];
 let e2RefreshCalls = 0;
 let e2PickDir: string | null = W_B;
 let e2Meta: any = { names: { xiaoshuai: '小帅2', ali: '阿梨' }, avatars: {} };
@@ -241,6 +242,7 @@ const mountStage = (rpc: any) => {
   e2Doc.body = e2StubNode('body');
   for (const k of Object.keys(docListeners)) delete docListeners[k];
   e2RpcCalls = [];
+  e2DiagLog = [];
   e2RefreshCalls = 0;
   e2Groups = [];
   const page = e2StubNode('div');
@@ -256,8 +258,9 @@ const mountStage = (rpc: any) => {
   row.textContent = 'xiaoshuai';
   section.appendChild(row);
   e2Groups.push(row);
+  const diagRpc = (...a: any[]) => { if (a[1] === 'e2.diag') { e2DiagLog.push(String(a[2]?.line ?? '')); return Promise.resolve({}); } return (rpc as any)(...a); };
   const ctx: any = {
-    rpc,
+    rpc: diagRpc,
     subscribe: (fn: any) => { e2Emit = fn; return () => { e2Emit = null; }; },
     refresh: async () => { e2RefreshCalls++; },
     meta: { loadMeta: async () => e2Meta }, slots: {}, get: (name: string) => (name === 'uiWorkspace' ? { pickDirectory: async () => e2PickDir } : undefined),
@@ -338,6 +341,7 @@ test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async ()
   fireDrop(secB, { botId: 'q1', channel: 'qq' });
   await sleep(20);
   assert.equal(e2RpcCalls.length, 0);
+  assert.ok(e2DiagLog.some((l) => l.includes(' drop ')), '黑匣子记录放下');
   findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
   await sleep(20);
   assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
@@ -433,6 +437,8 @@ test('view：按住熔断重绘 + 内容不变跳过 + 按下拦截金丝雀', a
   lastDoc('pointerup')({});
   await sleep(10);
   assert.ok(bodyText().includes('x9'), '松手后补刷');
+  assert.ok(e2DiagLog.some((l) => l.includes(' press ')), '黑匣子记录按下（含 draggable 采样）');
+  assert.ok(e2DiagLog.every((l) => l.includes(' d4 ')), '黑匣子带版本号');
   const freshRow = sectionRows(panelSections()[0])[0];
   const countCanary = () => (bodyText().match(/被页面其它层拦截/g) || []).length;
   lastDoc('pointerdown')({ target: freshRow, defaultPrevented: true });

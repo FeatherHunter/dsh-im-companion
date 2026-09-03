@@ -5,7 +5,7 @@ import type { AgentMetaDoc } from '../../client/data/meta'
 import { installFeatureStyles } from '../../client/theme'
 import { toast } from '../../client/ui/toast'
 import type { FeatureCtx } from '../protocol'
-import { actDrop, dismissUndo, pickDir } from './acts'
+import { actDrop, diag, dismissUndo, pickDir } from './acts'
 import { openBoard, type BoardHandle } from './panel'
 import { CSS } from './styles'
 
@@ -86,6 +86,7 @@ function openPanel(ctx: FeatureCtx): void {
     board = null
     board = openBoard(ctx, lastMeta)
     board.repaint(lastBots)
+    diag(ctx, 'open', 'rpc=' + (ctx.rpc ? 1 : 0))
     reloadMeta(ctx)
   } catch { /* 打不开就不开 */ }
 }
@@ -146,6 +147,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       dropped = false
       pressDown = false
       dragId = row.getAttribute('data-e2-bot')
+      diag(ctx, 'dragstart', String(dragId))
       dragEl = row
       dragDesc = { botId: row.getAttribute('data-e2-bot'), channel: row.getAttribute('data-e2-channel') }
       try { dragStartX = de.clientX } catch { dragStartX = null }
@@ -201,6 +203,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
         return
       }
       const sec = (de.target as Element)?.closest?.('.' + SEC_CLASS) as Element | null
+      diag(ctx, 'drop', String(sec?.getAttribute?.('data-e2-ws') ?? 'gap'))
       const live = lastBots.find((b) => b.botId === desc.botId)
       const bot = { botId: desc.botId, channel: desc.channel, workspace: live?.workspace ?? '' }
       if (sec && sec.hasAttribute('data-e2-new')) {
@@ -226,8 +229,8 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     dragId = null
     dragStartX = null
     dragDesc = null
-    pressDown = false
-    pressSkip = 0
+    pressDown = false; pressSkip = 0
+    diag(ctx, 'dragend', dropped ? 'dropped' : 'cancel')
     clearGhost()
     /* 取消静默回原位：点击微抖也会走 dragstart+dragend，弹 toast 等于点一下骂一句。 */
     hadDrag = false
@@ -243,6 +246,8 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       if (!t?.closest?.('.' + COCKPIT_CLASS)) return
       pressDown = true
       try { pressAt = Date.now() } catch { pressAt = 0 }
+      const pr = t.closest?.('.' + ROW_CLASS) as Element | null
+      diag(ctx, 'press', 'pd=' + ((e as PointerEvent).defaultPrevented ? 1 : 0) + ' drag=' + (pr?.getAttribute?.('draggable') ?? '?'))
       if (!diagShown && (e as PointerEvent).defaultPrevented) { diagShown = true; toast('按住被页面其它层拦截了，拖拽可能失灵（诊断提示，看到请告诉我）') }
     } catch { /* 忽略 */ }
   }

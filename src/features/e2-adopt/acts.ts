@@ -3,7 +3,18 @@ import { h } from '../../client/dom'
 import { toast } from '../../client/ui/toast'
 import { openDirPicker } from '../../client/ui/dir-picker'
 import type { FeatureCtx } from '../protocol'
+import type { RpcCall } from '../../client/data/fleet-api'
 import { UNDO_WINDOW_MS, resolveDrop, shortName, undoTarget } from './model'
+
+/* 临时黑匣子（只为定位“拖不动”，定案即删）：拖拽关键事件 → host 落盘 e2-drag.log。 */
+export const E2_DIAGV = 'd4'
+export function diag(ctx: FeatureCtx, ev: string, info: string): void {
+  try {
+    const rpc = (ctx as unknown as { rpc?: RpcCall | null }).rpc ?? null
+    if (!rpc) return
+    void rpc('/im-companion', 'e2.diag', { line: Date.now() + ' ' + E2_DIAGV + ' ' + ev + ' ' + info }, AbortSignal.timeout(3000)).catch(() => undefined)
+  } catch { /* 诊断不上报不阻断 */ }
+}
 
 let undoTimer: ReturnType<typeof setTimeout> | null = null
 let undoEl: HTMLElement | null = null

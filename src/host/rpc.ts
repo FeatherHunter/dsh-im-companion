@@ -110,6 +110,16 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: { dshHome?:
           const entries = await listDirectories(dir)
           return ok({ path: dir, parent: path.dirname(dir) === dir ? null : path.dirname(dir), entries })
         }
+        case 'e2.diag': {
+          const line = String(p.line ?? '').slice(0, 500)
+          if (!line) return fail('bad-request', 'line 必填')
+          try {
+            const f = path.join(dshHome, 'integrations', 'dsh-im-companion', 'e2-drag.log')
+            await fs.mkdir(path.dirname(f), { recursive: true })
+            await fs.appendFile(f, line + '\n', 'utf8')
+          } catch { /* 诊断写入失败静默 */ }
+          return ok({})
+        }
         default:
           return fail('bad-request', '未知端点: ' + endpoint)
       }
