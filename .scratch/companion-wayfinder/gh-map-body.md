@@ -8,7 +8,7 @@
 
 ## Notes
 
-- **开工必读**：docs/features-contract.md（§0 最高原则 + §1 解耦七律）——每个 session 开工前先读，AGENTS.md 已自动注入指针。
+- **开工必读**：docs/features-contract.md（§0 第一原则·充分解耦含开发产物 + §1 解耦九律）——每个 session 开工前先读，AGENTS.md 自动注入指针（军规 v2，2026-09-02）。
 
 - 领域：CONTEXT.md（Agent/Workspace/Bot/Channel/Session/Health/Binding/Fleet）+ 新增 Feature/契约/红线 术语。
 - 技能：每票必读 dsh-plugin-ui-debug（真机闭环）、codebase-design + domain-modeling（解耦）、prototype（交互稿）；研究类用 research。

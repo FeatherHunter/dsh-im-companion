@@ -8,7 +8,7 @@ Part of #1
 
 ## 开工必读
 
-先读 docs/features-contract.md（§0 最高原则 + §1 解耦七律）；认领即 assign @me；只写自己的目录、共享只加不改；完工前 npm run check 全绿 + 可移除性试验。提审等用户点头后才可关闭。
+先读 docs/features-contract.md（§0 最高原则 + §1 解耦九律）；认领即 assign @me；只写自己的目录、共享只加不改；完工前 npm run check 全绿 + 可移除性试验。提审等用户点头后才可关闭。
 
 ## 进度：0%
 
