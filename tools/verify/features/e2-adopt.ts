@@ -150,9 +150,9 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('#f7eed6'), '白天有朝阳（天光做实）');
   assert.ok(String(styles.CSS).includes('inset 0 1px 0 rgba(255,255,255'), '白天有人家见光（与黑夜开灯镜像）');
   assert.ok(String(styles.CSS).includes('rgba(6,8,16'), '黑夜有夜空');
-  assert.ok(String(styles.CSS).includes('linear-gradient(180deg, #6b5c42'), '黑夜房间亮堂（拒绝黑黄）');
-  assert.ok(String(styles.CSS).includes('.e2-row{background:#77684c'), '黑夜人更亮（扁平暖人）');
-  assert.ok(String(styles.CSS).includes('255,200,135'), '灯光去屎黄（亮暖桃金）');
+  assert.ok(String(styles.CSS).includes('linear-gradient(180deg, #7a6547'), '黑夜房间蜜黄（拒绝土黄）');
+  assert.ok(String(styles.CSS).includes('.e2-row{background:#7d6850'), '黑夜人坐灯下（扁平暖人）');
+  assert.ok(String(styles.CSS).includes('255,203,138'), '灯光蜜色（去浊）');
   assert.ok(String(styles.CSS).includes('.e2-row::before{display:none}'), '黑夜纸光线退役');
   assert.ok(String(styles.CSS).includes('255,251,238'), '巷子口白天铺暖地');
   assert.ok(String(styles.CSS).includes('at 50% 45%'), '巷子口黑夜整体提亮（不如家里亮，但亮）');
