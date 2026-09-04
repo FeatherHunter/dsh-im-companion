@@ -169,7 +169,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       clearAfford()
       if (!sec) { de.dataTransfer.dropEffect = 'none'; return }
       const ws = sec.getAttribute('data-e2-ws')
-      if (!ws && !sec.hasAttribute('data-e2-new')) {
+      if (!ws && !sec.hasAttribute('data-e2-plaza')) {
         de.dataTransfer.dropEffect = 'none'
         return
       }

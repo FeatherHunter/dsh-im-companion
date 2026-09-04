@@ -386,6 +386,17 @@ test('view：巷子口歇脚——有家暂存不写，关面板送回', async (
   assert.ok(sectionRows(panelSections()[0]).some((r: any) => r.getAttribute('data-e2-bot') === 'q1'), '重进面板小帅回 A 家');
 });
 
+test('view：巷子口上悬停 → 允许放下（禁行标是 bug）', async () => {
+  mountStage(okRpc);
+  e2Emit!({ bots: stageBots() });
+  openPanel();
+  const plaza = panelSections().find((s: any) => s.getAttribute('data-e2-plaza') === '1');
+  const dt: any = { types: [MIME], dropEffect: '' };
+  for (const h of docListeners['dragover'] ?? []) h({ target: plaza, clientX: 100, preventDefault() {}, dataTransfer: dt });
+  assert.equal(dt.dropEffect, 'move', '巷子口悬停必须 move，不能 none');
+  assert.ok(plaza.classList.contains('e2-drop-ok'), '巷子口悬停高亮');
+});
+
 test('view：全已分配 → 无未分配组；组内放下 → 不写', async () => {
   mountStage(okRpc);
   e2Emit!({ bots: bots.map((b) => ({ ...b, workspace: b.workspace || W_A })) });
