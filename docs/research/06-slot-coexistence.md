@@ -59,7 +59,7 @@ view.ts 改成 slots.inject(SLOT_NAME, () => comp)（inject 要的是注册闭�
 
 ## 5. 给全仓的规则增补（建议进 contract §3 或军规）
 
-- single/chain 槽位是宿主保留地：伴生功能只许进 list-kind（unique id），违者启动期连带宿主一起死，
+- single/chain 槽位是宿主保留地：辅助功能只许进 list-kind（unique id），违者启动期连带宿主一起死，
   且 try/catch 因延迟执行兜不住。
 - 新槽位使用前必须先读 bundle 声明（kind/scope/props 三件套），把行号写进代码注释（本次：15814-15911）。
 - 冲突面排序：零注册 DOM 叠加 > list-kind 条目 > 一切碰 single/chain 的想法。
