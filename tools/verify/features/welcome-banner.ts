@@ -207,6 +207,7 @@ test("样式命名空间 wb-", () => {
   for (const dead of [".wb-x", ".wb-route", ".wb-guide", ".wb-avatar", ".wb-swaprow", ".wb-swap", ".wb-rays"]) {
     assert.equal(css.indexOf(dead), -1, "旧 A 样式必须移除：" + dead);
   }
+  assert.equal(String(styles.SKY_CSS ?? "").indexOf("color-mix"), -1, "宿主 Chromium 不支持 color-mix：整声明被丢弃，按钮会裸奔，禁回潮（token 块除外）");
 });
 
 test("manifest 与注册表收录", () => {
