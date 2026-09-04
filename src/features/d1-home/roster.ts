@@ -128,8 +128,26 @@ export function mountRoster(ctx: FeatureCtx): () => void {
   } catch {
     return noop
   }
+  /* 设置页后打开兜底：轮询快照到时设置页还没开，paint 会扑空；
+   * 盯住 .af-root 出现就地补画，不用干等下一轮 15s。 */
+  let observer: MutationObserver | undefined
+  try {
+    if (typeof MutationObserver !== 'undefined') {
+      observer = new MutationObserver(() => {
+        try {
+          if (!hasSnap) return
+          if (sec && sec.isConnected) return
+          if (!document.querySelector('.af-root')) return
+          paint(ctx)
+        } catch { /* 下次再试 */ }
+      })
+      observer.observe(document.body ?? document.documentElement, { childList: true, subtree: true })
+    }
+  } catch { /* 无 observer 就只靠快照重绘 */ }
+  try { paint(ctx) } catch { /* 忽略 */ }
   return () => {
     try { off?.() } catch { /* 忽略 */ }
+    try { observer?.disconnect() } catch { /* 忽略 */ }
     try { dismissUndo() } catch { /* 忽略 */ }
     try {
       sec?.remove()
