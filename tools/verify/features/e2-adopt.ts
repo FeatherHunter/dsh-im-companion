@@ -143,6 +143,8 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('radial-gradient(100% 90% at 50% 0%'), '照片卡顶部晕带');
   assert.ok(String(styles.CSS).includes('.e2-row::before'), '纸面高光线');
   assert.ok(String(styles.CSS).includes('nth-child(3n)'), '胶带角度不全一个样');
+  assert.ok(String(styles.CSS).includes('repeating-linear-gradient'), '巷子石板路（深浅各一版）');
+  assert.ok(String(styles.CSS).includes('radial-gradient(140% 42%'), '面板天光/夜光');
   assert.ok(String(styles.CSS).split('\n').every((ln: string) => ((ln.match(/\{/g) || []).length === (ln.match(/\}/g) || []).length)), '每行花括号配平（失衡会吞掉后面的规则）');
 });
 
