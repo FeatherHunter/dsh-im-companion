@@ -442,7 +442,7 @@ test('view：按住熔断重绘 + 内容不变跳过 + 按下拦截金丝雀', a
   await sleep(10);
   assert.ok(bodyText().includes('x9'), '松手后补刷');
   assert.ok(e2DiagLog.some((l) => l.includes(' press ')), '黑匣子记录按下（含 draggable 采样）');
-  assert.ok(e2DiagLog.every((l) => l.includes(' d5 ')), '黑匣子带版本号');
+  assert.ok(e2DiagLog.every((l) => l.includes(' d6 ')), '黑匣子带版本号');
   const freshRow = sectionRows(panelSections()[0])[0];
   const countCanary = () => (bodyText().match(/被页面其它层拦截/g) || []).length;
   lastDoc('pointerdown')({ target: freshRow, defaultPrevented: true });

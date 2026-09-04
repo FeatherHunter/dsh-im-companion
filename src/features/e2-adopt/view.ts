@@ -148,7 +148,9 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       dragId = row.getAttribute('data-e2-bot')
       dragEl = row
       dragDesc = { botId: row.getAttribute('data-e2-bot'), channel: row.getAttribute('data-e2-channel') }
-      try { dragStartX = de.clientX; row.classList.add('e2-ph') } catch { dragStartX = null }
+      try { dragStartX = de.clientX } catch { dragStartX = null }
+      /* 出生后置：分发内只采样不动源节点（mock 第69行同款）；回调重验仍在飞才变影子。 */
+      try { const src = row, id = dragId; setTimeout(() => { try { if (dragId === id && id !== null) src.classList.add('e2-ph') } catch { /* 忽略 */ } }, 0) } catch { /* 忽略 */ }
       try { de.dataTransfer.effectAllowed = 'move' } catch { /* 忽略 */ }
       try { de.dataTransfer.setData('text/plain', String(dragId)) } catch { /* 忽略 */ }
       try { de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') })) } catch { /* 置数失败不阻断 */ }
@@ -180,7 +182,6 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   function clearGhost(): void {
     try { dragEl?.classList.remove('e2-ph') } catch { /* 忽略 */ }
     try { (dragEl as HTMLElement).style.removeProperty('transform') } catch { /* 忽略 */ }
-    try { (dragEl as HTMLElement).style.transform = '' } catch { /* 忽略 */ }
     dragEl = null
   }
 
@@ -226,9 +227,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     } catch { /* 忽略 */ }
   };
   const onDragEnd = (): void => {
-    dragId = null
-    dragStartX = null
-    dragDesc = null
+    dragId = null; dragStartX = null; dragDesc = null
     pressDown = false; pressSkip = 0
     diag(ctx, 'dragend', dropped ? 'dropped' : 'cancel')
     clearGhost()
