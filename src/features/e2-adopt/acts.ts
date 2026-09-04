@@ -1,20 +1,8 @@
-/** e2-adopt 写管道：绑定写透 + 确认弹窗 + 撤销窗 + 目录选择（纯行为，无布局）。 */
+/** e2-adopt 写管道：绑定写透 + 确认弹窗 + 撤销窗（纯行为，无布局）。 */
 import { h } from '../../client/dom'
 import { toast } from '../../client/ui/toast'
-import { openDirPicker } from '../../client/ui/dir-picker'
 import type { FeatureCtx } from '../protocol'
-import type { RpcCall } from '../../client/data/fleet-api'
 import { UNDO_WINDOW_MS, resolveDrop, shortName, undoTarget } from './model'
-
-/* 临时黑匣子（只为定位“拖不动”，定案即删）：拖拽关键事件 → host 落盘 e2-drag.log。 */
-export const E2_DIAGV = 'd6'
-export function diag(ctx: FeatureCtx, ev: string, info: string): void {
-  try {
-    const rpc = (ctx as unknown as { rpc?: RpcCall | null }).rpc ?? null
-    if (!rpc) return
-    void rpc('/im-companion', 'e2.diag', { line: Date.now() + ' ' + E2_DIAGV + ' ' + ev + ' ' + info }, AbortSignal.timeout(3000)).catch(() => undefined)
-  } catch { /* 诊断不上报不阻断 */ }
-}
 
 let undoTimer: ReturnType<typeof setTimeout> | null = null
 let undoEl: HTMLElement | null = null
@@ -92,20 +80,6 @@ export function askMove(ctx: FeatureCtx, channel: string, botId: string, from: s
     document.addEventListener('keydown', onKey, true)
     document.body.appendChild(box)
   } catch { /* 弹层失败则不动（fail-closed） */ }
-}
-
-/* 目录选择（评审声明：与 c1a/drawer 原生优先口径同源，重复优于跨 feature 引用）。 */
-export function pickDir(ctx: FeatureCtx, initial: string): Promise<string | null> {
-  try {
-    const svc: unknown = typeof ctx.get === 'function' ? ctx.get('uiWorkspace') : undefined
-    const pick = (svc as { pickDirectory?: unknown } | null)?.pickDirectory
-    const native = typeof pick === 'function'
-      ? () => Promise.resolve((pick as () => unknown)()).then((p: unknown) => (typeof p === 'string' ? p : null))
-      : undefined
-    return openDirPicker(ctx.rpc, initial, native).promise
-  } catch {
-    return Promise.resolve(null)
-  }
 }
 
 export function actDrop(ctx: FeatureCtx, bot: { botId: string; channel: string; workspace: string }, target: { kind: 'workspace'; workspace: string } | { kind: 'empty' }): void {

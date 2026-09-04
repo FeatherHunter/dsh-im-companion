@@ -1,14 +1,14 @@
-/** e2-adopt 驾驶舱：拍立得墙（胶带门牌 + 成员照片 + 健康灯）+ “＋ 安新家”兜底空人。
+/** e2-adopt 驾驶舱：拍立得墙（胶带门牌 + 成员照片 + 健康灯）+ 巷子口公共区（一区两徽章：歇脚中/新来的）。
  * 纯展示装配；写操作由 view 的文档级拖放接管（家卡即 data-e2-ws 目标）。 */
 import { channelLabel } from '../../client/data/config'
 import { h } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
-import { boardGroups, homePlate, type HomePlate } from './model'
+import { boardGroups, homePlate, shortName, type HomePlate } from './model'
 
 export interface BoardHandle {
-  repaint(bots: BotSnap[]): void
+  repaint(bots: BotSnap[], staged: Map<string, string>): void
   close(): void
 }
 
@@ -45,7 +45,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
   const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') api.close() }
   try { document.addEventListener('keydown', onKey, true) } catch { /* 忽略 */ }
 
-  const homeCard = (plate: HomePlate, ws: string | null, bots: BotSnap[], dashed: boolean, extra: Record<string, string>, hint = ''): HTMLElement => {
+  const homeCard = (plate: HomePlate, ws: string | null, bots: BotSnap[], dashed: boolean, extra: Record<string, string>, hint = '', badgeOf: (b: BotSnap) => string = () => ''): HTMLElement => {
     const box = h('div', { className: SEC_CLASS + (dashed ? ' e2-sec-unbound' : '') }) as HTMLElement
     if (ws) box.setAttribute('data-e2-ws', ws)
     for (const k of Object.keys(extra)) box.setAttribute(k, extra[k])
@@ -63,27 +63,30 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       top.appendChild(h('span', { className: 'e2-who' }, botLabel(b)) as unknown as Node)
       row.appendChild(top as unknown as Node)
       row.appendChild(h('span', { className: 'e2-cap' }, channelLabel(b.channel) + ' · ' + (b.stale ? '状态未知' : b.healthKind === 'online' ? '永远在线，除了睡着的时候' : b.healthKind === 'warn' ? '偶尔打盹' : '睡着了')) as unknown as Node)
+      const badge = badgeOf(b)
+      if (badge) row.appendChild(h('span', { className: 'e2-badge' }, badge) as unknown as Node)
       box.appendChild(row as unknown as Node)
     }
     if (hint) box.appendChild(h('div', { className: 'e2-plus-hint' }, hint) as unknown as Node)
     return box
   }
 
-  const repaint = (bots: BotSnap[]): void => {
+  const repaint = (bots: BotSnap[], staged: Map<string, string>): void => {
     if (!grid) return
     try {
-      const { unbound, groups } = boardGroups(bots)
+      const byId = new Map((bots || []).map((b) => [b.botId, b] as const))
+      const resting = [...staged.keys()].map((id) => byId.get(id)).filter((b): b is BotSnap => !!b)
+      const { unbound, groups } = boardGroups((bots || []).filter((b) => !staged.has(b.botId)))
       grid.replaceChildren()
-      if (unbound.length > 0) {
-        grid.appendChild(homeCard({ name: '还没进家门的', sub: '', initial: '', color: 0 }, null, unbound, true, {}, ''))
-      }
       for (const g of groups) {
         const plate = homePlate(g.workspace, meta)
         grid.appendChild(homeCard(plate, g.workspace, g.bots, false, {}, ''))
       }
       grid.appendChild(homeCard(
-        { name: '＋ 安新家', sub: '', initial: '', color: 0 }, null, [], true,
-        { 'data-e2-new': '1', class: 'e2-sec e2-sec-unbound e2-sec-new' }, '把照片拖到这里，选个空房子接住',
+        { name: '巷子口', sub: '', initial: '', color: 0 }, null, [...resting, ...unbound], true,
+        { 'data-e2-plaza': '1', class: 'e2-sec e2-sec-unbound e2-sec-new' },
+        '串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。',
+        (b) => staged.has(b.botId) ? '歇脚中 · 出来自' + shortName(staged.get(b.botId) ?? '') : '新来的 · 等安家',
       ))
     } catch { /* 渲染失败保持旧面板（fail-closed） */ }
   }

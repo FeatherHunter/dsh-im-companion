@@ -232,9 +232,7 @@ e2Doc.body = e2StubNode('body');
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let e2Emit: ((snap: any) => void) | null = null;
 let e2RpcCalls: any[] = [];
-let e2DiagLog: string[] = [];
 let e2RefreshCalls = 0;
-let e2PickDir: string | null = W_B;
 let e2Meta: any = { names: { xiaoshuai: '小帅2', ali: '阿梨' }, avatars: {} };
 let e2Unmount: (() => void) | null = null;
 let nonce = 0;
@@ -251,7 +249,6 @@ const mountStage = (rpc: any) => {
   e2Doc.body = e2StubNode('body');
   for (const k of Object.keys(docListeners)) delete docListeners[k];
   e2RpcCalls = [];
-  e2DiagLog = [];
   e2RefreshCalls = 0;
   e2Groups = [];
   const page = e2StubNode('div');
@@ -267,12 +264,11 @@ const mountStage = (rpc: any) => {
   row.textContent = 'xiaoshuai';
   section.appendChild(row);
   e2Groups.push(row);
-  const diagRpc = (...a: any[]) => { if (a[1] === 'e2.diag') { e2DiagLog.push(String(a[2]?.line ?? '')); return Promise.resolve({}); } return (rpc as any)(...a); };
   const ctx: any = {
-    rpc: diagRpc,
+    rpc,
     subscribe: (fn: any) => { e2Emit = fn; return () => { e2Emit = null; }; },
     refresh: async () => { e2RefreshCalls++; },
-    meta: { loadMeta: async () => e2Meta }, slots: {}, get: (name: string) => (name === 'uiWorkspace' ? { pickDirectory: async () => e2PickDir } : undefined),
+    meta: { loadMeta: async () => e2Meta }, slots: {},
   };
   e2Unmount = view.mountE2Adopt(ctx);
   return {};
@@ -312,7 +308,7 @@ const panelSections = () => {
 };
 const sectionRows = (sec: any) => findClass(sec, 'e2-row');
 
-test('view：头栏安装串门入口，点击开面板（含未分配组）', async () => {
+test('view：头栏安装串门入口，点击开面板（家 + 巷子口）', async () => {
   mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
   await sleep(10);
@@ -321,11 +317,12 @@ test('view：头栏安装串门入口，点击开面板（含未分配组）', a
   assert.ok(String(btn.innerHTML ?? '').includes('<svg'));
   openPanel();
   const secs = panelSections();
-  assert.equal(secs.length, 4);
-  assert.ok(String(secs[0].attrs?.class ?? '').split(' ').includes('e2-sec-unbound'));
-  assert.equal(sectionRows(secs[0]).length, 2);
+  assert.equal(secs.length, 3);
+  assert.equal(sectionRows(secs[0]).length, 1);
   assert.equal(sectionRows(secs[1]).length, 1);
-  assert.ok(String(secs[3].attrs?.class ?? '').split(' ').includes('e2-sec-new'));
+  const plaza = secs[2];
+  assert.equal(plaza.getAttribute('data-e2-plaza'), '1');
+  assert.equal(sectionRows(plaza).length, 2);
   assert.ok(bodyText().includes('小帅2'), '门牌用设置里的中文名');
   assert.ok(!bodyText().includes('联系方式'), '计数按机器人，不按联系方式');
   assert.ok(!bodyText().includes('个机器人'), '计数文案下线');
@@ -343,13 +340,12 @@ test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async ()
   e2Emit!({ bots: stageBots() });
   openPanel();
   const secs = panelSections();
-  const secB = secs[2];
-  const rowQ = sectionRows(secs[1]).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
+  const secB = secs[1];
+  const rowQ = sectionRows(secs[0]).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
   assert.ok(rowQ, 'A 组应有 q1');
   fireDrop(secB, { botId: 'q1', channel: 'qq' });
   await sleep(20);
   assert.equal(e2RpcCalls.length, 0);
-  assert.ok(e2DiagLog.some((l) => l.includes(' drop ')), '黑匣子记录放下');
   findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
   await sleep(20);
   assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
@@ -360,20 +356,34 @@ test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async ()
   assert.deepEqual(e2RpcCalls[1]?.payload, { botId: 'q1', workspace: W_A });
 });
 
-test('view：胶带门牌 + “＋ 安新家”经目录选择绑定空人', async () => {
+test('view：巷子口歇脚——有家暂存不写，关面板送回', async () => {
   mountStage(okRpc);
   e2Emit!({ bots: stageBots() });
   openPanel();
-  const secs = panelSections();
-  const tapes = findClass(e2Doc.body, 'e2-tape').map((t: any) => t.textContent);
-  assert.ok(tapes.includes('小帅2') && tapes.includes('阿梨'), '每家有胶带门牌');
-  const plus = secs.find((s: any) => String(s.attrs?.class ?? '').split(' ').includes('e2-sec-new'));
-  assert.ok(plus, '应有新地盘兜底区');
-  e2PickDir = 'D:\\agents\\newbie';
-  fireDrop(plus, { botId: 'f1', channel: 'feishu' });
-  await sleep(20);
-  assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'f1', workspace: 'D:\\agents\\newbie' });
-  assert.equal(e2RefreshCalls, 1);
+  const plaza = panelSections().find((s: any) => s.getAttribute('data-e2-plaza') === '1');
+  assert.ok(plaza, '应有巷子口公共区');
+  assert.ok(findClass(e2Doc.body, 'e2-tape').some((t: any) => t.textContent === '巷子口'), '胶带门牌巷子口');
+  fireDrop(plaza, { botId: 'q1', channel: 'qq' });
+  await sleep(10);
+  assert.equal(e2RpcCalls.length, 0, '歇脚不写服务器');
+  const plaza2 = panelSections().find((s: any) => s.getAttribute('data-e2-plaza') === '1');
+  const names = sectionRows(plaza2).map((r: any) => findClass(r, 'e2-who')[0]?.textContent);
+  assert.ok(names.includes('小帅'), '小帅去巷子口歇着');
+  assert.ok(bodyText().includes('歇脚中'), '歇脚徽章');
+  assert.ok(bodyText().includes('拖进一家才算搬完'), '歇脚提示');
+  const holders = panelSections().filter((s: any) => sectionRows(s).some((r: any) => r.getAttribute('data-e2-bot') === 'q1'));
+  assert.equal(holders.length, 1, '小帅只在 computed 一个区');
+  assert.equal(holders[0].getAttribute('data-e2-plaza'), '1', '且那个区就是巷子口');
+  const secB2 = panelSections().find((s: any) => s.getAttribute('data-e2-ws') === W_B);
+  fireDrop(secB2, { botId: 'q1', channel: 'qq' });
+  await sleep(10);
+  assert.ok(findTextBtn(e2Doc.body, '确认换绑'), '歇脚后进他家要敲门');
+  findClass(e2Doc.body, 'e2-x')[0].listeners.click[0]();
+  await sleep(10);
+  assert.ok(bodyText().includes('已送回原来的家'), '关面板点名送回');
+  assert.equal(e2RpcCalls.length, 0, '全程没写服务器');
+  openPanel();
+  assert.ok(sectionRows(panelSections()[0]).some((r: any) => r.getAttribute('data-e2-bot') === 'q1'), '重进面板小帅回 A 家');
 });
 
 test('view：全已分配 → 无未分配组；组内放下 → 不写', async () => {
@@ -402,8 +412,9 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静
   const secs = panelSections();
   const rowF = sectionRows(secs[0])[0];
   lastDoc('dragstart')({ target: rowF, clientX: 500, dataTransfer: { setData() {}, effectAllowed: '' } });
-  assert.ok(rowF.classList.contains('e2-ph'), '拖起原牌就地变影子（空白相纸）');
+  assert.ok(!rowF.classList.contains('e2-ph'), '分发内不动源节点（出生后置）');
   await sleep(10);
+  assert.ok(rowF.classList.contains('e2-ph'), '分发后影子晚到');
   for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 100, preventDefault() {}, dataTransfer: { types: ['application/x-e2-adopt-bot'] } });
   assert.ok(String(findClass(e2Doc.body, 'e2-ph')[0]?.style?.transform ?? '').includes('-4deg'), '往左拖影子向左倒');
   for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 900, preventDefault() {}, dataTransfer: { types: ['application/x-e2-adopt-bot'] } });
@@ -411,23 +422,23 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静
   assert.equal(rowF.style.display ?? '', '', '原牌不藏源（display:none 会取消拖拽）');
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '只留一块歪斜影子');
   const ph = findClass(e2Doc.body, 'e2-ph')[0];
-  assert.ok(String(ph.textContent).includes('f1'), '影子名字不少');
+  assert.ok(String(ph.textContent).includes('小帅'), '影子名字不少');
   assert.equal(findClass(ph, 'e2-hdot').length, 1, '影子健康灯不少');
   e2Emit!({ bots: [...stageBots(), { channel: 'qq', botId: 'x1', workspace: '', botName: '', connected: false, healthKind: 'offline' }] });
   await sleep(10);
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '拖拽中快照不掀桌');
-  assert.equal(sectionRows(panelSections()[0]).length, 2, '拖拽中不加塞（原牌即影子），新机器人不插队');
+  assert.equal(sectionRows(panelSections()[0]).length, 1, '拖拽中 A 组不加塞，新机器人不插队');
   lastDoc('dragend')();
   await sleep(10);
   assert.equal(rowF.style.display ?? '', '', '取消后原牌回来');
   assert.equal(findClass(e2Doc.body, 'e2-ph').length, 0, '影子清理');
   assert.ok(!rowF.classList.contains('e2-dragging'), '放下/取消后 ghost 态清除');
   assert.ok(!bodyText().includes('已取消拖拽'), '取消静默回原位（点一下不骂一句）');
-  assert.equal(sectionRows(panelSections()[0]).length, 3, '松手后补刷冻结期的快照');
+  assert.equal(sectionRows(panelSections()[2]).length, 3, '松手后巷子口补刷冻结期的新机器人');
   assert.ok(bodyText().includes('x1'), '冻结期到的新机器人松手后出现');
 });
 
-test('view：按住熔断重绘 + 内容不变跳过 + 按下拦截金丝雀', async () => {
+test('view：按住熔断重绘 + 内容不变跳过', async () => {
   mountStage(okRpc);
   const sent = stageBots();
   e2Emit!({ bots: sent });
@@ -445,16 +456,6 @@ test('view：按住熔断重绘 + 内容不变跳过 + 按下拦截金丝雀', a
   lastDoc('pointerup')({});
   await sleep(10);
   assert.ok(bodyText().includes('x9'), '松手后补刷');
-  assert.ok(e2DiagLog.some((l) => l.includes(' press ')), '黑匣子记录按下（含 draggable 采样）');
-  assert.ok(e2DiagLog.every((l) => l.includes(' d6 ')), '黑匣子带版本号');
-  const freshRow = sectionRows(panelSections()[0])[0];
-  const countCanary = () => (bodyText().match(/被页面其它层拦截/g) || []).length;
-  lastDoc('pointerdown')({ target: freshRow, defaultPrevented: true });
-  assert.equal(countCanary(), 1, '拦截金丝雀应响一声');
-  lastDoc('pointerup')({});
-  lastDoc('pointerdown')({ target: freshRow, defaultPrevented: true });
-  lastDoc('pointerup')({});
-  assert.equal(countCanary(), 1, '金丝雀只响一次');
 });
 
 test('view：撤销窗过期 → 落定提示且窗消失', async () => {
@@ -466,7 +467,7 @@ test('view：撤销窗过期 → 落定提示且窗消失', async () => {
     e2Emit!({ bots: stageBots() });
     openPanel();
     const secs = panelSections();
-    fireDrop(secs[2], { botId: 'q1', channel: 'qq' });
+    fireDrop(secs[1], { botId: 'q1', channel: 'qq' });
     findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
     await new Promise((r) => realSetTimeout(r, 20));
     const t = timers.filter((x) => x.ms === 5000).pop();

@@ -1,11 +1,11 @@
-/** e2-adopt 视图：左栏头按钮 → 中央驾驶舱（纯拖拽 + “＋ 新地盘”兜底）。自有 DOM（e2-*）；无自有轮询；写走渠道 RPC + 写后立刷。 */
+/** e2-adopt 视图：左栏头按钮 → 中央驾驶舱（纯拖拽 + 巷子口歇脚）。自有 DOM（e2-*）；无自有轮询；写走渠道 RPC + 写后立刷。 */
 import { h } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import { installFeatureStyles } from '../../client/theme'
 import { toast } from '../../client/ui/toast'
 import type { FeatureCtx } from '../protocol'
-import { actDrop, diag, dismissUndo, pickDir } from './acts'
+import { actDrop, dismissUndo } from './acts'
 import { openBoard, type BoardHandle } from './panel'
 import { CSS } from './styles'
 
@@ -23,14 +23,16 @@ function reloadMeta(ctx: FeatureCtx): void {
     void ctx.meta.loadMeta().then((doc) => {
       lastMeta = doc
       if (hadDrag || pressDown) return
-      try { board?.repaint(lastBots) } catch { /* 忽略 */ }
+      try { board?.repaint(lastBots, staged) } catch { /* 忽略 */ }
     }, () => undefined)
   } catch { /* 读不到昵称就用目录名（fail-closed 展示） */ }
 }
 let dragId: string | null = null, dragEl: Element | null = null, dragStartX: number | null = null
 let dragDesc: { botId: string | null; channel: string | null } | null = null
-let hadDrag = false, dropped = false, pressDown = false, pressSkip = 0, diagShown = false
+let hadDrag = false, dropped = false, pressDown = false, pressSkip = 0
 let pressAt = 0, lastSig = ''
+/* 歇脚小本本：botId → 出来自哪家（只记不写，关面板即撕）。 */
+let staged = new Map<string, string>()
 const claim = (): number => {
   try {
     const w = window as unknown as Record<string, number>
@@ -85,8 +87,9 @@ function openPanel(ctx: FeatureCtx): void {
     try { board?.close() } catch { /* 忽略 */ }
     board = null
     board = openBoard(ctx, lastMeta)
-    board.repaint(lastBots)
-    diag(ctx, 'open', 'rpc=' + (ctx.rpc ? 1 : 0))
+    const rawClose = board.close.bind(board)
+    board.close = () => { try { if (staged.size) toast([...staged.keys()].map((id) => lastBots.find((b) => b.botId === id)?.botName || id).join('、') + '没安顿好，已送回原来的家') } catch { /* 提示失败不阻断 */ } staged.clear(); try { rawClose() } catch { /* 忽略 */ } }
+    board.repaint(lastBots, staged)
     reloadMeta(ctx)
   } catch { /* 打不开就不开 */ }
 }
@@ -119,12 +122,12 @@ function ensureEntry(ctx: FeatureCtx, g: number): void {
 export function mountE2Adopt(ctx: FeatureCtx): () => void {
   const g = claim()
   hadDrag = false; dropped = false; pressDown = false; pressSkip = 0; lastSig = ''
-  dragId = null; dragEl = null; dragDesc = null; dragStartX = null
+  dragId = null; dragEl = null; dragDesc = null; dragStartX = null; staged.clear()
   try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
   reloadMeta(ctx)
   /* 面板签名：展示字段不变就不重建 DOM（15s 空转快照不再掀桌）。 */
   const sigOf = (bots: BotSnap[]): string => (bots || []).map((b) => b.channel + '|' + b.botId + '|' + b.workspace + '|' + b.botName + '|' + b.healthKind + '|' + (b.stale ? 1 : 0) + '|' + (b.connected ? 1 : 0)).join('\n')
-  const paint = (): void => { try { board?.repaint(lastBots) } catch { /* 忽略 */ } try { lastSig = sigOf(lastBots) } catch { /* 忽略 */ } }
+  const paint = (): void => { try { board?.repaint(lastBots, staged) } catch { /* 忽略 */ } try { lastSig = sigOf(lastBots) } catch { /* 忽略 */ } }
   const off = ctx.subscribe((snap) => {
     if (!alive(g)) return
     lastBots = snap.bots
@@ -154,9 +157,6 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       try { de.dataTransfer.effectAllowed = 'move' } catch { /* 忽略 */ }
       try { de.dataTransfer.setData('text/plain', String(dragId)) } catch { /* 忽略 */ }
       try { de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') })) } catch { /* 置数失败不阻断 */ }
-      let nTypes = -1
-      try { nTypes = (de.dataTransfer.types || []).length } catch { /* 忽略 */ }
-      diag(ctx, 'dragstart', String(dragId) + ' conn=' + (row.isConnected ? 1 : 0) + ' pd=' + (de.defaultPrevented ? 1 : 0) + ' types=' + nTypes)
     } catch { /* 忽略 */ }
   }
   const onDragOver = (e: Event): void => {
@@ -204,21 +204,19 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
         return
       }
       const sec = (de.target as Element)?.closest?.('.' + SEC_CLASS) as Element | null
-      diag(ctx, 'drop', String(sec?.getAttribute?.('data-e2-ws') ?? 'gap'))
       const live = lastBots.find((b) => b.botId === desc.botId)
       const bot = { botId: desc.botId, channel: desc.channel, workspace: live?.workspace ?? '' }
-      if (sec && sec.hasAttribute('data-e2-new')) {
-        /* 目录选择器是共享遮罩（层级低于本面板）：先收起面板再选，选完用户重进（快照已刷新）。 */
-        try { board?.close() } catch { /* 忽略 */ }
-        board = null
-        void (async () => {
-          const picked = await pickDir(ctx, live?.workspace ?? '')
-          if (!picked) return
-          actDrop(ctx, bot, { kind: 'workspace', workspace: picked })
-        })()
+      if (sec && sec.hasAttribute('data-e2-plaza')) {
+        /* 巷子口歇脚：只记小本本不写服务器；拖进一家才走正常换绑，关面板即送回。 */
+        if (!live) { toast('没找着这张照片'); return }
+        if (!live.workspace) { toast('它已经在巷子口歇着了'); return }
+        staged.set(live.botId, live.workspace)
+        toast((live.botName || live.botId) + '去巷子口歇着了，拖进一家才算搬完')
+        if (alive(g)) paint()
         return
       }
       const to = sec?.getAttribute('data-e2-ws')
+      try { if (to && to === live?.workspace && desc.botId) staged.delete(desc.botId) } catch { /* 忽略 */ }
       if (!to) {
         toast('空白处不可放，请拖到分组上')
         return
@@ -229,7 +227,6 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   const onDragEnd = (): void => {
     dragId = null; dragStartX = null; dragDesc = null
     pressDown = false; pressSkip = 0
-    diag(ctx, 'dragend', dropped ? 'dropped' : 'cancel')
     clearGhost()
     /* 取消静默回原位：点击微抖也会走 dragstart+dragend，弹 toast 等于点一下骂一句。 */
     hadDrag = false
@@ -245,9 +242,6 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       if (!t?.closest?.('.' + COCKPIT_CLASS)) return
       pressDown = true
       try { pressAt = Date.now() } catch { pressAt = 0 }
-      const pr = t.closest?.('.' + ROW_CLASS) as Element | null
-      diag(ctx, 'press', 'pd=' + ((e as PointerEvent).defaultPrevented ? 1 : 0) + ' drag=' + (pr?.getAttribute?.('draggable') ?? '?') + ' pt=' + ((e as PointerEvent).pointerType ?? '?'))
-      if (!diagShown && (e as PointerEvent).defaultPrevented) { diagShown = true; toast('按住被页面其它层拦截了，拖拽可能失灵（诊断提示，看到请告诉我）') }
     } catch { /* 忽略 */ }
   }
   const onRelease = (): void => {
