@@ -27,7 +27,7 @@
     "build:host": "tsc -p tsconfig.json",
     "build:client": "tsdown",
     "typecheck": "tsc -p tsconfig.client.json",
-    "verify": "node tools/verify/render-client.ts && node --test tools/verify/features/left-badges.ts && node --test tools/verify/features/c1a-drawer.ts && node --test tools/verify/features/left-filter.ts && node --test tools/verify/features/e2-adopt.ts && node --test tools/verify/features/presence.ts && node --test tools/verify/features/welcome-banner.ts && node --test tools/verify/features/c1b-matrix.ts && node --test tools/verify/features/b3-header-model.ts && node tools/verify/features/b3-header-render.ts",
+    "verify": "node tools/verify/render-client.ts && node --test tools/verify/features/first-view.ts && node --test tools/verify/features/left-badges.ts && node --test tools/verify/features/c1a-drawer.ts && node --test tools/verify/features/left-filter.ts && node --test tools/verify/features/e2-adopt.ts && node --test tools/verify/features/presence.ts && node --test tools/verify/features/welcome-banner.ts && node --test tools/verify/features/c1b-matrix.ts && node --test tools/verify/features/b3-header-model.ts && node tools/verify/features/b3-header-render.ts",
     "guard": "node tools/guard/check-lines.ts",
     "check": "npm run build && npm run typecheck && npm run verify && npm run guard"
   },

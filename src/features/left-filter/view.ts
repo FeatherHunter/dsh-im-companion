@@ -1,14 +1,15 @@
 /** left-filter 叠加视图：订阅 stream 快照 → 顶部筛选条 + 整组藏显。
  * 隐藏单元见 dom-scope（最小独占祖先；扁平退化带会话兄弟），绝不写行内节点；重渲染换节点由 observer 重算。
- * 搜索态（button[role=treeitem] 结果行）按归属名二次映射，实现叠加 AND。无自有轮询。 */
+ * 搜索态（button[role=treeitem] 结果行）按归属名二次映射，实现叠加 AND。无自有轮询。
+ * 行悬停无原生 title（2026-09-04 用户裁定）：原生“助理：…”气泡与自画卡打架，永久退役，悬停只留自画卡。 */
 import { makeSegmented, type SegHandle } from '../../client/ui/segmented'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
-import { FILTERS, FILTER_LABEL, countsOf, passFilter, resolveResultKey, resolveWorkspaceKey, rowTip, segLabel, type FilterId } from './model'
+import { FILTERS, FILTER_LABEL, countsOf, passFilter, resolveResultKey, resolveWorkspaceKey, segLabel, type FilterId } from './model'
 import { ensureHeaderBtn, nextFilter, removeHeaderBtns, resolveHeader } from './header-btn'
 
-import { GROUP_SEL, RESULT_SEL, clearTips, hideRootsFor, restoreAll, setHidden, setRowTip, textOf } from './dom-scope'
+import { GROUP_SEL, RESULT_SEL, clearTips, hideRootsFor, restoreAll, setHidden, textOf } from './dom-scope'
 const STRIP_CLASS = 'left-filter-strip'
 const EMPTY_CLASS = 'left-filter-empty'
 let lastReasonSig = ''
@@ -121,7 +122,7 @@ function paint(bots: BotSnap[], gen: number): void {
   for (let i = 0; i < groups.length; i++) {
     const pass = passFilter(resolved[i], currentFilter, bots)
     const label = textOf(groups[i]).slice(0, 24) || resolved[i]
-    if (pass) { visKeys.push('g:' + resolved[i]); visLabels.push(label); setRowTip(groups[i], rowTip(resolved[i], bots)) }
+    if (pass) { visKeys.push('g:' + resolved[i]); visLabels.push(label); try { groups[i].removeAttribute('title'); groups[i].removeAttribute('data-lf-tip') } catch { /* 单行清理失败忽略 */ } }
     else { for (const h of allRoots[i]) hiddenSections.push(h); hiddenLabels.push(label) }
   }
   const hiddenResults: Element[] = []

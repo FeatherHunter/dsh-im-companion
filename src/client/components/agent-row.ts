@@ -1,7 +1,9 @@
-/** Agent 行组件：头像 + 名称（内联改名）+ 渠道状态胶囊 + 工作区行 + 状态 + 接入 + ⋯。 */
+/** Agent 行组件：头像 + 名称（内联改名）+ 渠道状态胶囊 + 工作区行 + 状态 + 接入 + ⋯。
+ * #26 赢家变体（D 拼装）：Xiao 系头像取特征音节 + 莫兰迪兜底、详情 ghost、整行悬停统一显现。 */
 import { h } from '../dom'
 import { icon } from '../icons'
 import { makeAvatar } from '../ui/avatar'
+import { firstViewCopy, winnerAvatarClass, winnerAvatarText } from './first-view-copy'
 import { makeButton } from '../ui/button'
 import { makeNameEditor } from '../ui/field'
 import { makeRow } from '../ui/list'
@@ -23,6 +25,7 @@ export interface RowCallbacks {
 export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVariant = 'agent'): HTMLDivElement {
   const row = makeRow()
   const isAgent = variant === 'agent'
+  const copy = firstViewCopy()
 
   let avatar: HTMLDivElement
   avatar = makeAvatar({
@@ -37,11 +40,16 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
         }
       : undefined,
   })
+  /* D 头像：仅无自定义图且 Xiao 系时替换兜底文案 + 莫兰迪色（img 层原样不动）。 */
+  if (!view.avatar && /^xiao/i.test(view.name.trim())) {
+    avatar.className = 'af-avatar ' + winnerAvatarClass(view.name, '')
+    avatar.replaceChildren(document.createTextNode(winnerAvatarText(view.name)))
+  }
 
   const nameWrap = h('div', { className: 'af-name' })
   const showName = () => {
     nameWrap.replaceChildren()
-    nameWrap.appendChild(h('span', null, view.name))
+    nameWrap.appendChild(h('span', { title: view.name }, view.name))
     if (!isAgent) return
     nameWrap.appendChild(h('button', {
       className: 'af-rename',
@@ -84,25 +92,26 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
   const connectBtn = makeButton({
     kind: 'tinted',
     size: 'sm',
-    label: '接入',
-    title: '接入新渠道',
+    label: copy.join,
+    title: copy.joinTitle,
     onClick: (e: Event) => cb.connect(view, e.currentTarget as HTMLElement),
   })
   const actions = h('div', { className: 'af-actions' }, status, connectBtn)
   if (isAgent) {
+    /* D 降噪：详情与接入同级 ghost，不再整排桃粉 primary。 */
     const detailBtn = makeButton({
-      kind: 'primary',
+      kind: 'ghost',
       size: 'sm',
-      label: '详情',
-      title: '打开 Agent 详情抽屉',
+      label: copy.detail,
+      title: copy.detailTitle,
       onClick: () => emitOpenDrawer(view.key),
     })
     actions.appendChild(detailBtn)
     const moreBtn = h('button', {
       className: 'af-more-btn',
       type: 'button',
-      title: '更多操作',
-      'aria-label': '更多操作 ' + view.name,
+      title: copy.moreActions(view.name),
+      'aria-label': copy.moreActions(view.name),
       onClick: (e: Event) => openMoreMenu(view, e.currentTarget as HTMLElement, {
         rename: () => startEdit(),
         pickWorkspace: () => cb.pickWorkspace(view),
@@ -112,6 +121,15 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
     }, icon('more', 18))
     actions.appendChild(moreBtn)
   }
+
+  /* B 悬停统一：触屏点行呼出按钮组（点中按钮/输入不翻转），键盘靠 focus-within 显现。 */
+  row.tabIndex = 0
+  row.title = copy.rowTip(view.name)
+  row.addEventListener('click', (e: Event) => {
+    const t = e.target as unknown as { closest?: (s: string) => unknown } | null
+    if (t && typeof t.closest === 'function' && t.closest('button,a,input')) return
+    row.classList.toggle('af-tap')
+  })
 
   row.append(avatar, main, actions)
   return row

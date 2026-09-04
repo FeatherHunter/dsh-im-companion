@@ -14,6 +14,7 @@
 | **Health** | Bot 的在线状态（`connection.status` / `health.status`），决定左侧徽标呼吸灯与 Header 浮层文案（在线 vs 草稿）。 |
 | **Binding** | “已绑定/未绑定”关系，指 Bot 是否已声明归属某 Workspace（原“已托管”歧义已废）。通过 `connection.rpc.call('/feishu','bot.workspace.set',{botId,workspace})` 落地。 |
 | **Fleet** | IM机器人辅助中的总览视图：按 Agent/渠道/工作区聚合的卡片（C1a 抽屉）与矩阵（C1b 表）。 |
+| **首屏** | 设置-IM机器人辅助第一眼面板整体（FleetPanel：标题栏 + 工具栏 + 新建条 + 主体列表 + 加载 / 空 / 错误态）。 |
 | **Feature（功能模块）** | 一个票=一个功能=一个自包含开发单元（src/features/<feature>/），可独立 session 开发；模块间只经契约交互。 |
 | **Contract（契约）** | 模块间唯一交互面：共享包导出接口（theme/ui 原语/data 层）、挂载点（slot/左栏 DOM）、host 桥端点前缀（/im-companion 下按功能隔离）。 |
 | **红线（300 行）** | 任何源文件 ≤300 行；lib/* 为构建产物豁免；由 T0 守卫脚本机械执行。 |

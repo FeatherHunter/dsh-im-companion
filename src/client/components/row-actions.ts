@@ -29,9 +29,14 @@ export function openMoreMenu(view: AgentView, anchor: HTMLElement, cb: RowAction
 
   if (!view.isLocal && view.bots.length) {
     items.push({ label: '渠道机器人', iconName: 'trash', sep: true })
+    /* 同渠道多机器人时文案一字不差无法区分：重名渠道追加 bot 短 ID（唯一按 bot 删，不按顺位）。 */
+    const dup = new Set(
+      view.bots.map((b) => b.channel).filter((c, _, all) => all.filter((x) => x === c).length > 1),
+    )
     for (const b of view.bots) {
+      const tag = dup.has(b.channel) ? '（' + shortBotId(b.botId) + '）' : ''
       items.push({
-        label: '移除渠道·' + channelLabel(b.channel) + ' 机器人',
+        label: '移除渠道·' + channelLabel(b.channel) + ' 机器人' + tag,
         iconName: 'trash',
         danger: true,
         confirm: true,
@@ -45,4 +50,10 @@ export function openMoreMenu(view: AgentView, anchor: HTMLElement, cb: RowAction
   }
 
   showMenu(anchor, items, 'bottom-left')
+}
+
+/** bot 短 ID：末 6 位（短 ID 原样），同渠道多机器人菜单项的唯一区分位。 */
+export function shortBotId(botId: string): string {
+  const s = String(botId ?? '')
+  return s.length > 8 ? '…' + s.slice(-6) : s
 }

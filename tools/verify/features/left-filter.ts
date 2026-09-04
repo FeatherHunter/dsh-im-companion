@@ -244,7 +244,8 @@ test('view：条带挂载 + 三段计数 + 整组藏显 + 卸载还原', () => {
   assert.equal(container.children[0], strip);
   assert.ok(segLabels(strip).includes('bound=有助理 2'), '计数准确：' + segLabels(strip));
   const boundRow = groupRows[0];
-  assert.match(String(boundRow.attrs?.title ?? ''), /助理：小帅/, '行悬停名牌报出助理');
+  assert.equal(boundRow.attrs?.title, undefined, '不再写原生 title（自画卡独占悬停，用户裁定 2026-09-04）');
+  assert.equal(boundRow.attrs?.['data-lf-tip'], undefined, '旧气泡残留也被清掉');
   const boundBtn = segButton(strip, 'bound');
   const countSpan = boundBtn.querySelector('.left-filter-n');
   assert.ok(countSpan, '数字降级为独立 span');

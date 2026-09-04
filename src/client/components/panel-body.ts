@@ -6,6 +6,7 @@ import { makeEmpty } from '../ui/empty'
 import { makeErrorRow, makeGroupedList, makeLoadingRow, makeSkeletonRows } from '../ui/list'
 import type { SegHandle } from '../ui/segmented'
 import { makeAgentRow, type RowCallbacks } from './agent-row'
+import { firstViewCopy, firstViewLang } from './first-view-copy'
 import type { PanelState } from './panel-data'
 
 export interface PanelBodyDeps {
@@ -23,11 +24,13 @@ export interface PanelBody {
 }
 
 export function createPanelBody(deps: PanelBodyDeps): PanelBody {
+  /* D 标题收起：计数进分段后缀，更新时间进分段悬停；标题 meta 行隐藏（空态三态文案本票不动）。 */
   function renderMeta(model: FleetModel): void {
-    deps.titleMetaEl.textContent = model.counts.agents + ' 个 Agent·' + model.counts.channels + ' 个渠道·'
-      + model.totalBots + ' 个机器人' + (deps.state.updatedAt ? '·更新于 ' + deps.state.updatedAt : '')
-    deps.seg.setLabel('agent', '按Agent (' + model.counts.agents + ')')
-    deps.seg.setLabel('channel', '按渠道 (' + model.counts.channels + ')')
+    const copy = firstViewCopy()
+    deps.titleMetaEl.hidden = true
+    deps.seg.setLabel('agent', copy.byAgent(model.counts.agents))
+    deps.seg.setLabel('channel', copy.byChannel(model.counts.channels))
+    deps.seg.el.title = copy.updatedTip(deps.state.updatedAt)
   }
 
   function rowsFor(model: FleetModel): ChildNode[] {
@@ -36,7 +39,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBody {
       for (const g of model.channelGroups) {
         out.push(h('div', { className: 'af-section' },
           g.label,
-          h('span', { className: 'af-section-count' }, g.count + ' 个 Agent'),
+          h('span', { className: 'af-section-count' }, g.count + (firstViewLang() === 'en' ? ' assistants' : ' 个助理')),
         ))
         out.push(makeGroupedList(...g.views.map((v) => makeAgentRow(v, deps.rowCallbacks(), 'channel'))))
       }

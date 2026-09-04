@@ -280,6 +280,10 @@ test('channelGlyphSvg：九渠道全覆盖，未知回 null（回退首字徽标
   }
   assert.equal(channelGlyphSvg('nope'), null);
   assert.match(channelGlyphSvg('feishu'), /#00D6B9/); // 品牌色保留
+  assert.match(channelGlyphSvg('weixin'), /#07C160/i); // 微信原始绿（用户裁定 2026-09-04，不再 currentColor 变白）
+  assert.doesNotMatch(channelGlyphSvg('weixin'), /currentColor/);
+  assert.match(channelGlyphSvg('qq'), /#12B7F5/i);
+  assert.match(channelGlyphSvg('whatsapp'), /#25D366/i);
 });
 
 test('chooseBot 传渠道：只在该渠道内选', () => {

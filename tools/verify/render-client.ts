@@ -95,9 +95,11 @@ console.log('---- rendered text (first 700) ----');
 console.log(text.slice(0, 700));
 
 const checks: [string, boolean][] = [
-  ['顶部标题 Agent', text.includes('Agent')],
-  ['按Agent 计数 (3)', text.includes('按Agent (3)')],
+  ['顶部标题 助理(#26 赢家)', text.includes('助理')],
+  ['英文副标 ASSISTANTS(#26)', text.includes('ASSISTANTS')],
+  ['按助理 计数 (3)(#26)', text.includes('按助理 (3)')],
   ['按渠道 计数 (2)', text.includes('按渠道 (2)')],
+  ['标题计数行收起(#26)', !text.includes('个机器人')],
   ['无按工作区(已砍)', !text.includes('按工作区')],
   ['渲染出内容(非空)', container.childNodes.length > 0 && !text.includes('还没有 Agent')],
   ['名字 Xiaoshuai', text.includes('Xiaoshuai')],
@@ -109,8 +111,9 @@ const checks: [string, boolean][] = [
   ['渠道标签 飞书', text.includes('飞书')],
   ['渠道标签 微信', text.includes('微信')],
   ['接入按钮', text.includes('接入')],
+  ['详情按钮(#26 ghost 同级)', text.includes('详情')],
+  ['引流关联卡 P2(#26)', text.includes('作者其他插件')],
   ['页面干净-无解释词', !text.includes('解耦') && !text.includes('试验') && !text.includes('B1 ')],
-  ['统计行', text.includes('3 个 Agent')],
   ['显示工作区绑定', text.includes('工作区·D:')],
 ];
 for (const [name, ok] of checks) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);

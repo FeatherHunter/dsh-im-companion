@@ -23,7 +23,9 @@ export const TOKEN_BLOCK = `
 const CSS = `
 .af-root,
 .af-menu,
-.af-toast {
+.af-toast,
+/* #26 追改：showModal 挂 document.body（根外），无此作用域 --af-bg 即透明（接入 QR 弹窗看不清） */
+.af-overlay {
   ${TOKEN_BLOCK}
   color: var(--af-primary);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
