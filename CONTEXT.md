@@ -25,7 +25,7 @@
 
 ## Boundaries
 
-- 本上下文仅覆盖 companion 伴生插件（`dsh-im-companion`），不含 `dsh-im` 上游实现。
+- 本上下文仅覆盖 companion 辅助插件（`dsh-im-companion`），不含 `dsh-im` 上游实现。
 - 术语 “托管” 禁用，一律使用 “绑定”。
 
 ## Open Questions

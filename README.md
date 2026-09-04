@@ -5,7 +5,7 @@
 
 **中文** · [English](docs/README.en.md)
 
-**给每个助理一个家，剩下的交给 IM 伴生。**  
+**给每个助理一个家，剩下的交给辅助。**  
 让 [dsh-im](https://github.com/FeatherHunter/dsh-im) 的机器人在 DSH 里化作以 Agent 为单位、看得见、搬得动的助理舰队。
 
 你的 star 是我夜空中最亮的星。
@@ -18,7 +18,7 @@
 
 <img src="assets/工作区-有助理的工作区一目了然-深色.png" width="300" alt="左栏工作区：全部、有助理、无助理，在线绿灯">
 
-**装它，1 分钟（先装 dsh-im，再装伴生）。**
+**装它，1 分钟（先装 dsh-im，再装辅助）。**
 
 </div>
 
@@ -26,7 +26,7 @@
 
 <div align="center">
 
-前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/FeatherHunter/dsh-im)（IM 机器人本体，伴生不含连接能力）。
+前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/FeatherHunter/dsh-im)（IM 机器人本体，辅助只做收纳、不含连接能力）。
 
 </div>
 
@@ -39,7 +39,7 @@ dsh plugin --profile desktop add dsh-im
 #     或者
 dsh plugin --profile web add dsh-im
 
-# 3 再装 IM 伴生（--profile 必填，装进实际使用的入口）
+# 3 再装辅助（--profile 必填，装进实际使用的入口）
 dsh plugin --profile desktop add dsh-im-companion
 #     或者
 dsh plugin --profile web add dsh-im-companion
@@ -60,10 +60,10 @@ dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://regis
 复制下面这段发给你的 AI：
 
 ```text
-请帮我安装 DeepSeek Harness 插件 dsh-im-companion（IM 伴生）。
+请帮我安装 DeepSeek Harness 插件 dsh-im-companion（IM 辅助）。
 先读仓库 README：https://github.com/FeatherHunter/dsh-im-companion
 先确认我实际使用的 DSH 入口对应哪个 profile（桌面应用走 desktop，自启 web 服务走 web），
-先确认 dsh-im 本体已装进同一个 profile（没装先装），再把伴生装进正确的 profile。
+先确认 dsh-im 本体已装进同一个 profile（没装先装），再把辅助装进正确的 profile。
 ```
 
 </details>
@@ -91,11 +91,11 @@ dsh plugin --profile desktop remove dsh-im-companion
 <details>
 <summary>能干净卸载吗？</summary>
 
-能。伴生不改 dsh-im 本体；卸载后面板和徽标一起消失，不留东西。
+能。辅助不改 dsh-im 本体；卸载后面板和徽标一起消失，不留东西。
 
 </details>
 
-<h2 align="center"><sub>WHY</sub><br>为什么要做 IM 伴生</h2>
+<h2 align="center"><sub>WHY</sub><br>为什么要做 IM 辅助</h2>
 
 <div align="center">
 
@@ -103,13 +103,13 @@ dsh-im 很强大：9 个渠道扫码即接入。但入口一多，问题就来�
 
 小帅住 xiaoshuai，小孙住 xiaosun：哪个已安家、哪个还空着、谁在线谁睡着，入口列表回答不了。
 
-IM 伴生在 dsh-im 之上加了一层“以 Agent 为家”的收纳：
+IM 辅助在 dsh-im 之上加了一层“以 Agent 为家”的收纳：
 
 **一块看得见的左栏**——全部、有助理、无助理，各归各位；在线绿灯，离线灰灯，一眼看清。
 
 **一支搬得动的舰队**——抽屉看家底，雷达看全局，串门拖一下就搬家。
 
-本体管接入，伴生管家人。
+本体管接入，辅助管安家。
 
 <strong>👇 点“有助理”，只看已安家的。</strong>
 
@@ -176,9 +176,9 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 </details>
 
 <details>
-<summary>不装 dsh-im，伴生能用吗？</summary>
+<summary>不装 dsh-im，辅助能用吗？</summary>
 
-不能。连接扫码凭据全在本体；伴生只做收纳总览。先装本体，再装伴生，且进同一个 profile。
+不能。连接扫码凭据全在本体；辅助只做收纳总览。先装本体，再装辅助，且进同一个 profile。
 
 </details>
 
@@ -225,7 +225,7 @@ python -m http.server 8788  # 预览 preview.html
 
 <div align="center">
 
-**[dsh-im](https://github.com/FeatherHunter/dsh-im)** —— IM 机器人本体：9 渠道扫码接入，伴生的上游，先装它
+**[dsh-im](https://github.com/FeatherHunter/dsh-im)** —— IM 机器人本体：9 渠道扫码接入，先装它
 
 **[dsh-mattpocock-skills-deck](https://github.com/FeatherHunter/dsh-mattpocock-skills-deck)** —— Matt Pocock 技能面板：25 个工程与效率技能即装即用
 
@@ -235,7 +235,7 @@ python -m http.server 8788  # 预览 preview.html
 
 有问题？[提交 ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues)，认领前先读 docs/agents 标签纪律。
 
-个人作品，同作者伴生。MIT © FeatherHunter
+个人作品，与 dsh-im 同一作者。MIT © FeatherHunter
 
 </div>
 
@@ -247,7 +247,7 @@ python -m http.server 8788  # 预览 preview.html
 
 首个公开版（v0.1.0）尚无外部贡献名单，虚位以待——第一个提 Issue 的朋友，你的名字会写在这里。
 
-也感谢上游 [dsh-im](https://github.com/FeatherHunter/dsh-im)：没有本体，就没有伴生。
+也感谢上游 [dsh-im](https://github.com/FeatherHunter/dsh-im)：没有本体，就没有辅助。
 
 </div>
 

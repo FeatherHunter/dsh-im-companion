@@ -20,7 +20,7 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 
 ## Project
 
-`dsh-im-companion` — dsh-im 解耦伴生插件（`D:\dsh-plugin\dsh-im-companion`），承接最大全集 11 项试验。详见 handoff：`C:\Users\辰辰洋洋\AppData\Local\Temp\dsh-im-companion-handoff-2026-09-02.md` 及 `README.md`。
+`dsh-im-companion` — dsh-im 辅助插件（解耦外挂）（`D:\dsh-plugin\dsh-im-companion`），承接最大全集 11 项试验。详见 handoff：`C:\Users\辰辰洋洋\AppData\Local\Temp\dsh-im-companion-handoff-2026-09-02.md` 及 `README.md`。
 
 * Host: `lib/index.js`（空壳）
 * Client: `lib/client.js`（React IM机器人辅助，`slots.inject('settings.section', order 22)`）
