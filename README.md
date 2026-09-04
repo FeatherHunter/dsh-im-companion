@@ -1,12 +1,249 @@
-# @dsh-external/dsh-agent-fleet
+<h1 align="center">dsh-im-companion
+</h1>
 
-以 Agent 为单位的 dsh-im 解耦伴生插件，承接全部10项最大合集试验
+<div align="center">
 
-由 dsh-super-injector dev_scaffold_plugin 生成。
+**中文** · [English](docs/README.en.md)
 
-## 构建与注入
+**给每个助理一个家，剩下的交给 IM 伴生。**  
+让 [dsh-im](https://github.com/FeatherHunter/dsh-im) 的机器人在 DSH 里化作以 Agent 为单位、看得见、搬得动的助理舰队。
+
+你的 star 是我夜空中最亮的星。
+
+*Give every agent a home — IM Companion handles the rest.*
+
+[![版本](https://img.shields.io/npm/v/dsh-im-companion?label=版本)](https://www.npmjs.com/package/dsh-im-companion) [![下载量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.npmjs.org%2Fdownloads%2Fpoint%2Flast-month%2Fdsh-im-companion&query=%24.downloads&label=下载量&suffix=/月&color=brightgreen)](https://www.npmjs.com/package/dsh-im-companion) [![最近更新](https://img.shields.io/github/last-commit/FeatherHunter/dsh-im-companion?label=最近更新&color=FE7D37)](https://github.com/FeatherHunter/dsh-im-companion/commits/master) [![许可证](https://img.shields.io/badge/许可证-BSD--3--Clause-lightgrey.svg)](LICENSE) [![伴生上游](https://img.shields.io/badge/伴生-dsh--im-3370ff)](https://github.com/FeatherHunter/dsh-im) [![期待你参与](https://img.shields.io/badge/期待你参与-brightgreen.svg)](https://github.com/FeatherHunter/dsh-im-companion/issues)
+
+<strong>有助理的工作区，一目了然。</strong>
+
+<img src="assets/工作区-有助理的工作区一目了然-深色.png" width="420" alt="左栏工作区：全部、有助理、待认领，在线绿灯">
+
+**装它，1 分钟（先装 dsh-im，再装伴生）。**
+
+</div>
+
+<h2 align="center"><sub>INSTALL</sub><br>安装</h2>
+
+<div align="center">
+
+前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/FeatherHunter/dsh-im)（IM 机器人本体，伴生不含连接能力）。
+
+</div>
 
 ```bash
-DSH_CHECKOUT=<checkout> bash scripts/build.sh
-# 注入器环境内：dev_inject_plugin <本目录>
+# 1 安装 DSH CLI（已装跳过）
+npm install -g @deepseek-ai/dsh
+
+# 2 先装本体 dsh-im（已装跳过，同样 --profile 必填）
+dsh plugin --profile desktop add dsh-im
+#     或者
+dsh plugin --profile web add dsh-im
+
+# 3 再装 IM 伴生（--profile 必填，装进实际使用的入口）
+dsh plugin --profile desktop add dsh-im-companion
+#     或者
+dsh plugin --profile web add dsh-im-companion
+
+# 锁定版本更稳（当前 0.1.0）
+dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://registry.npmjs.org
 ```
+
+<div align="center">
+
+装完**刷新页面（Ctrl+F5）或热重载插件**即生效，**重启是最后手段**：仅 host 装配结构动了且热重载吃不下时才完全退出重开。零配置。
+
+</div>
+
+<details>
+<summary>把安装交给你的 AI</summary>
+
+复制下面这段发给你的 AI：
+
+```text
+请帮我安装 DeepSeek Harness 插件 dsh-im-companion（IM 伴生）。
+先读仓库 README：https://github.com/FeatherHunter/dsh-im-companion
+先确认我实际使用的 DSH 入口对应哪个 profile（桌面应用走 desktop，自启 web 服务走 web），
+先确认 dsh-im 本体已装进同一个 profile（没装先装），再把伴生装进正确的 profile。
+```
+
+</details>
+
+<details>
+<summary>更新不生效时怎么装</summary>
+
+下面以 desktop 为例，web 用户请把 --profile desktop 换成 --profile web：
+
+```bash
+dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://registry.npmjs.org
+npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
+dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
+```
+
+</details>
+
+升级 · 卸载：
+
+```bash
+dsh plugin --profile desktop update dsh-im-companion
+dsh plugin --profile desktop remove dsh-im-companion
+```
+
+<details>
+<summary>解耦承诺：不改 dsh-im 一行代码，卸载即净</summary>
+
+- 零侵入：左栏徽标走 MutationObserver 叠加，设置面板走 slots 注入，host 只挂 /im-companion 通道。
+- 单份轮询：唯一数据源是 connection-stream（15s + 手动刷新广播），8 个功能模块只读快照。
+- 随装随走：remove 自动移除 bundle 条目与面板行为，不留定时器。
+
+</details>
+
+<h2 align="center"><sub>WHY</sub><br>为什么要做 IM 伴生</h2>
+
+<div align="center">
+
+dsh-im 非常强大：9 个渠道扫码即接入。但是，**你的每个助理住在哪里呢？**
+
+小帅住 xiaoshuai，小孙住 xiaosun——哪个已安家、哪个还空着、谁在线谁睡着，原生列表回答不了。
+
+IM 伴生在 dsh-im 之上加了一层以 Agent 为家的系统：
+
+**一块看得见的左栏** —— 全部、有助理、待认领各归各位；在线绿灯呼吸，离线灰灯安静。
+
+**一支搬得动的舰队** —— 每张助理卡本身就是家：详情抽屉、舰队雷达矩阵、串门搬家拖拽。
+
+本体管接入，伴生管家人。
+
+<strong>点“有助理”，只看已安家的。</strong>
+
+<img src="assets/工作区-一键过滤-有助理-深色.png" width="420" alt="一键过滤只看有助理">
+
+</div>
+
+<h2 align="center"><sub>IN ACTION</sub><br>真机演示</h2>
+
+<div align="center">
+
+<strong>悬停在线徽标：看双通道 + 最后检测时间。</strong>
+
+<img src="assets/工作区-悬停在在线按钮-看到各个渠道状态.png" width="400" alt="悬停看各渠道状态">
+
+<strong>串门搬家：把照片拖到另一家，二次确认。绿灯在岗，黄灯打盹，灰灯睡着。</strong>
+
+<img src="assets/搬家面板-以家为核心-机器人可以自由搬到其他家庭.png" width="720" alt="串门搬家面板">
+
+<strong>设置页首屏：标题栏 + 工具栏 + 新建条 + 主体列表。</strong>
+
+<img src="docs/screenshots/first-view-2026-09-04.png" width="720" alt="设置页首屏全貌">
+
+8 个功能模块：left-badges 左栏徽标 · left-filter 一键过滤 · session-header 工作区浮层 · detail-drawer 详情抽屉 · fleet-radar 舰队雷达 · adopt 一键领养/拖拽搬家 · presence 在场呼吸灯 · welcome-banner 拟人化迎宾。
+
+上游本体与接入教程：[dsh-im](https://github.com/FeatherHunter/dsh-im)
+
+</div>
+
+<h2 align="center"><sub>FAQ</sub><br>常见问题</h2>
+
+<details open>
+<summary>更新之后还是旧版本？</summary>
+
+这是桌面端 pnpm 供应链策略（minimumReleaseAge）导致的：刚发布的版本几小时内 update 会静默跳过。请 Ctrl+F5 刷新；还没更新就显式指定官方源装一次：
+
+```bash
+dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
+```
+
+</details>
+
+<details>
+<summary>不装 dsh-im，伴生能用吗？</summary>
+
+不能。连接扫码凭据全在本体；伴生只做收纳总览。先装本体，再装伴生，且进同一个 profile。
+
+</details>
+
+<details>
+<summary>刷新还是重启？</summary>
+
+优先热更新：重打 lib 后刷新页面或热重载即可；无必要绝不重启。重启仅在 host 装配结构动了且热重载吃不下时才用。
+
+</details>
+
+<h2 align="center"><sub>ARCHITECTURE</sub><br>架构</h2>
+
+<div align="center">
+
+契约是唯一的交互面，词汇表是唯一的命名依据。
+
+[docs/features-contract.md](docs/features-contract.md) · [CONTEXT.md](CONTEXT.md)
+
+</div>
+
+```text
+src/
+  client/            # 共享层（只加导出，不改既有行为）
+    theme.ts dom.ts icons.ts
+    ui/              # button/field/segmented/menu/avatar/list/empty/toast/modal
+    data/connection-stream.ts   # 唯一轮询源（15s + 手动刷新）
+    data/bindings.ts            # workspace 与 Bot 绑定 + 健康聚合
+  features/          # 8 个功能各一张票、自包含目录
+    left-badges/ left-filter/ session-header/ detail-drawer/
+    fleet-radar/ adopt/ presence/ welcome-banner/
+  host/rpc.ts        # 只追加 case：im-companion.<feature>.<action>
+```
+
+<h2 align="center"><sub>DEVELOPMENT</sub><br>开发</h2>
+
+改代码只改 src/features 下自己功能的目录；lib 是构建产物，别手改。单文件不超 300 行。
+
+```bash
+npm run build        # host(tsc) + client(tsdown) 到 lib/
+npm run typecheck
+npm run verify       # 渲染 + 功能断言 + 连接二维码
+npm run guard        # 300 行红线
+npm run check        # 上面全跑（提审前必绿）
+python -m http.server 8788  # 预览 preview.html
+```
+
+完整契约见 [docs/features-contract.md](docs/features-contract.md)。发布流程见 [scripts/wizard-release.sh](scripts/wizard-release.sh)（只扫码向导）。
+
+<h2 align="center"><sub>MORE</sub><br>作者的其他作品</h2>
+
+<div align="center">
+
+**[dsh-im](https://github.com/FeatherHunter/dsh-im)** —— IM 机器人本体：9 渠道扫码接入，伴生的上游，先装它
+
+**[dsh-mattpocock-skills-deck](https://github.com/FeatherHunter/dsh-mattpocock-skills-deck)** —— Matt Pocock 技能面板：25 个工程与效率技能即装即用
+
+**[dsh-better-sidebar](https://github.com/FeatherHunter/dsh-better-sidebar)** —— 窄屏更好用：并排看列表与详情
+
+---
+
+有问题？[提交 ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues)，认领前先读 docs/agents 标签纪律。
+
+个人作品，同作者伴生。BSD-3-Clause FeatherHunter
+
+</div>
+
+<h2 align="center"><sub>THANKS</sub><br>致谢</h2>
+
+<div align="left">
+
+感谢每一位提交 Issue、PR 与参与讨论的朋友。
+
+首个公开版（v0.1.0）尚无外部贡献名单，虚位以待——第一个提 Issue 的朋友，你的名字会写在这里。
+
+也感谢上游 [dsh-im](https://github.com/FeatherHunter/dsh-im)：没有本体，就没有伴生。
+
+</div>
+
+<h2 align="center"><sub>CONNECT</sub><br>加入我们</h2>
+
+<div align="center">
+
+Bug 与需求请直接提 ISSUE，更高效可追溯。
+
+[提交 ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues) · [上游 dsh-im](https://github.com/FeatherHunter/dsh-im)
+
+<sub>话题群二维码待补——有群后这里放永久有效二维码。</sub>
+
+</div>
