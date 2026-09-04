@@ -1,8 +1,10 @@
 /** e2-adopt 写管道：绑定写透 + 确认弹窗 + 撤销窗（纯行为，无布局）。 */
 import { h } from '../../client/dom'
 import { toast } from '../../client/ui/toast'
+import { channelLabel } from '../../client/data/config'
+import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
-import { UNDO_WINDOW_MS, resolveDrop, shortName, undoTarget } from './model'
+import { UNDO_WINDOW_MS, homePlate, resolveDrop, shortName, undoTarget } from './model'
 
 let undoTimer: ReturnType<typeof setTimeout> | null = null
 let undoEl: HTMLElement | null = null
@@ -50,7 +52,29 @@ export function showUndo(ctx: FeatureCtx, channel: string, botId: string, from: 
 }
 
 /* 自有确认框（不复用共享 showModal：其遮罩层级低于本面板，确认框会被压住。行为同源：Esc/点阴影关闭）。 */
-export function askMove(ctx: FeatureCtx, channel: string, botId: string, from: string, to: string): void {
+/** 换绑机器人展示信息（快照里有就多显示，没有回退编号，fail-closed）。 */
+export interface MoveBot {
+  botId: string
+  channel: string
+  workspace: string
+  botName?: string
+  stale?: boolean
+  healthKind?: string
+  connected?: boolean
+}
+
+function dispName(bot: MoveBot): string {
+  const n = bot.botName || bot.botId
+  return n.length > 18 ? n.slice(0, 12) + '…' : n
+}
+
+function healthText(bot: MoveBot): string {
+  if (bot.stale || bot.healthKind === 'warn') return '打盹'
+  if (bot.healthKind === 'online') return '在岗'
+  return '睡着了'
+}
+
+export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string, meta: AgentMetaDoc | null): void {
   try {
     dismissUndo()
     const box = h('div', { className: 'e2-confirmbox', role: 'dialog', 'aria-modal': 'true' }) as HTMLElement
@@ -65,9 +89,9 @@ export function askMove(ctx: FeatureCtx, channel: string, botId: string, from: s
     const go = (): void => {
       close()
       void (async () => {
-        if (await setWorkspace(ctx, channel, botId, to, '换绑')) {
+        if (await setWorkspace(ctx, bot.channel, bot.botId, to, '换绑')) {
           const back = undoTarget(from)
-          if (back) showUndo(ctx, channel, botId, back, '已换绑到' + shortName(to))
+          if (back) showUndo(ctx, bot.channel, bot.botId, back, '已换绑到' + shortName(to))
           else toast('已换绑到' + shortName(to), 'check')
         }
       })()
@@ -75,14 +99,21 @@ export function askMove(ctx: FeatureCtx, channel: string, botId: string, from: s
     const btns = h('div', { className: 'e2-confirm-btns' },
       h('button', { onClick: close }, '留在这里'),
       h('button', { onClick: go }, '确认换绑'))
-    box.appendChild(h('div', { className: 'e2-confirm' }, '“' + botId + '”现属' + shortName(from) + '，换绑到“' + shortName(to) + '”？', btns) as unknown as Node)
+    const fromPlate = homePlate(from, meta)
+    const toPlate = homePlate(to, meta)
+    const title = h('div', { className: 'e2-who' }, dispName(bot) + ' · ' + channelLabel(bot.channel) + ' · ' + healthText(bot))
+    box.appendChild(h('div', { className: 'e2-confirm' }, title,
+      h('div', {}, '从「' + fromPlate.name + '」') as unknown as Node,
+      h('span', { className: 'e2-cap' }, from) as unknown as Node,
+      h('div', {}, '到「' + toPlate.name + '」') as unknown as Node,
+      h('span', { className: 'e2-cap' }, to) as unknown as Node, btns) as unknown as Node)
     box.addEventListener('mousedown', (e: Event) => { if (e.target === box) close() })
     document.addEventListener('keydown', onKey, true)
     document.body.appendChild(box)
   } catch { /* 弹层失败则不动（fail-closed） */ }
 }
 
-export function actDrop(ctx: FeatureCtx, bot: { botId: string; channel: string; workspace: string }, target: { kind: 'workspace'; workspace: string } | { kind: 'empty' }): void {
+export function actDrop(ctx: FeatureCtx, bot: MoveBot, target: { kind: 'workspace'; workspace: string } | { kind: 'empty' }, meta: AgentMetaDoc | null): void {
   const v = resolveDrop(bot, target)
   if (v.kind === 'bind') {
     void (async () => {
@@ -93,7 +124,7 @@ export function actDrop(ctx: FeatureCtx, bot: { botId: string; channel: string; 
       }
     })()
   } else if (v.kind === 'confirm-move') {
-    askMove(ctx, bot.channel, bot.botId, v.from, v.to)
+    askMove(ctx, bot, v.from, v.to, meta)
   } else if (v.kind === 'noop') {
     toast('它已经在这里了')
   } else {

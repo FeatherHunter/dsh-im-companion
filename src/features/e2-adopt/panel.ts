@@ -5,7 +5,8 @@ import { h } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
-import { boardGroups, homePlate, shortName, type HomePlate } from './model'
+import { boardGroups, homeList, homePlate, shortName, type HomePlate } from './model'
+import type { WorkspaceItem } from '../../client/data/header-overlay'
 
 export interface BoardHandle {
   repaint(bots: BotSnap[], staged: Map<string, string>): void
@@ -22,6 +23,20 @@ function botLabel(b: BotSnap): string {
 function healthClass(b: BotSnap): string {
   const k = b.stale ? 'warn' : b.healthKind
   return k === 'online' ? 'e2-h-online' : k === 'warn' ? 'e2-h-warn' : 'e2-h-off'
+}
+
+/** 宿主工作区全名单（含无人之家；B3 同款 ctx.get('workspaces')，取不到按无名单处理）。 */
+export function listHomes(ctx: FeatureCtx): string[] {
+  try {
+    const get = ctx.get
+    if (typeof get !== 'function') return []
+    const svc = get('workspaces') as { list?: { getSnapshot?: () => { items?: WorkspaceItem[] } } } | null
+    const items = svc?.list?.getSnapshot?.()?.items
+    if (!Array.isArray(items)) return []
+    const out: string[] = []
+    for (const it of items) { const p = (it as WorkspaceItem)?.path; if (typeof p === 'string' && p && !out.includes(p)) out.push(p) }
+    return out
+  } catch { return [] }
 }
 
 export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHandle {
@@ -81,6 +96,11 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       for (const g of groups) {
         const plate = homePlate(g.workspace, meta)
         grid.appendChild(homeCard(plate, g.workspace, g.bots, false, {}, ''))
+      }
+      const have = new Set(groups.map((g) => g.workspace))
+      for (const w of homeList(bots || [], listHomes(ctx))) {
+        if (have.has(w)) continue
+        grid.appendChild(homeCard(homePlate(w, meta), w, [], false, {}, '空无一人，拖张照片进来'))
       }
       grid.appendChild(homeCard(
         { name: '巷子口', sub: '', initial: '', color: 0 }, null, [...resting, ...unbound], true,

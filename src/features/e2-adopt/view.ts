@@ -6,7 +6,7 @@ import { installFeatureStyles } from '../../client/theme'
 import { toast } from '../../client/ui/toast'
 import type { FeatureCtx } from '../protocol'
 import { actDrop, dismissUndo } from './acts'
-import { openBoard, type BoardHandle } from './panel'
+import { listHomes, openBoard, type BoardHandle } from './panel'
 import { CSS } from './styles'
 
 const COCKPIT_CLASS = 'e2-cockpit', MIME = 'application/x-e2-adopt-bot', ENTRY_CLASS = 'e2-entry'
@@ -126,7 +126,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
   try { ensureEntry(ctx, g) } catch { /* 忽略 */ }
   reloadMeta(ctx)
   /* 面板签名：展示字段不变就不重建 DOM（15s 空转快照不再掀桌）。 */
-  const sigOf = (bots: BotSnap[]): string => (bots || []).map((b) => b.channel + '|' + b.botId + '|' + b.workspace + '|' + b.botName + '|' + b.healthKind + '|' + (b.stale ? 1 : 0) + '|' + (b.connected ? 1 : 0)).join('\n')
+  const sigOf = (bots: BotSnap[]): string => (bots || []).map((b) => b.channel + '|' + b.botId + '|' + b.workspace + '|' + b.botName + '|' + b.healthKind + '|' + (b.stale ? 1 : 0) + '|' + (b.connected ? 1 : 0)).join('\n') + '\n@' + listHomes(ctx).join('|')
   const paint = (): void => { try { board?.repaint(lastBots, staged) } catch { /* 忽略 */ } try { lastSig = sigOf(lastBots) } catch { /* 忽略 */ } }
   const off = ctx.subscribe((snap) => {
     if (!alive(g)) return
@@ -205,7 +205,10 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       }
       const sec = (de.target as Element)?.closest?.('.' + SEC_CLASS) as Element | null
       const live = lastBots.find((b) => b.botId === desc.botId)
-      const bot = { botId: desc.botId, channel: desc.channel, workspace: live?.workspace ?? '' }
+      const bot = {
+        botId: desc.botId, channel: desc.channel, workspace: live?.workspace ?? '',
+        botName: live?.botName ?? '', stale: live?.stale ?? false, healthKind: live?.healthKind ?? '', connected: live?.connected ?? false,
+      }
       if (sec && sec.hasAttribute('data-e2-plaza')) {
         /* 巷子口歇脚：只记小本本不写服务器；拖进一家才走正常换绑，关面板即送回。 */
         if (!live) { toast('没找着这张照片'); return }
@@ -221,7 +224,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
         toast('空白处不可放，请拖到分组上')
         return
       }
-      actDrop(ctx, bot, { kind: 'workspace', workspace: to })
+      actDrop(ctx, bot, { kind: 'workspace', workspace: to }, lastMeta)
     } catch { /* 忽略 */ }
   };
   const onDragEnd = (): void => {

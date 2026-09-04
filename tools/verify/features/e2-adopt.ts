@@ -99,6 +99,12 @@ test('面板分组：未分配置顶（无则省略）+ 按归属聚合保序', 
   assert.deepEqual(none.groups.map((g: any) => g.workspace), [W_A, W_B]);
 });
 
+test('家单：有人家首见序 + 无人之家追尾去重', () => {
+  assert.deepEqual(model.homeList(bots, []), [W_A, W_B]);
+  assert.deepEqual(model.homeList(bots, [W_B, 'D:\\agents\\empty', W_A, '']), [W_A, W_B, 'D:\\agents\\empty']);
+  assert.deepEqual(model.homeList([], ['D:\\agents\\empty']), ['D:\\agents\\empty']);
+});
+
 test('门牌：设置中文名优先，头像字与色板稳定', () => {
   const p = model.homePlate(W_A, { names: { xiaoshuai: '小帅2' } });
   assert.equal(p.name, '小帅2');
@@ -233,6 +239,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 let e2Emit: ((snap: any) => void) | null = null;
 let e2RpcCalls: any[] = [];
 let e2RefreshCalls = 0;
+let e2WsItems: any[] = [];
 let e2Meta: any = { names: { xiaoshuai: '小帅2', ali: '阿梨' }, avatars: {} };
 let e2Unmount: (() => void) | null = null;
 let nonce = 0;
@@ -250,6 +257,7 @@ const mountStage = (rpc: any) => {
   for (const k of Object.keys(docListeners)) delete docListeners[k];
   e2RpcCalls = [];
   e2RefreshCalls = 0;
+  e2WsItems = [];
   e2Groups = [];
   const page = e2StubNode('div');
   e2Header = e2StubNode('div');
@@ -269,6 +277,7 @@ const mountStage = (rpc: any) => {
     subscribe: (fn: any) => { e2Emit = fn; return () => { e2Emit = null; }; },
     refresh: async () => { e2RefreshCalls++; },
     meta: { loadMeta: async () => e2Meta }, slots: {},
+    get: (name: string) => (name === 'workspaces' ? { list: { getSnapshot: () => ({ items: e2WsItems }) } } : undefined),
   };
   e2Unmount = view.mountE2Adopt(ctx);
   return {};
@@ -346,6 +355,9 @@ test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async ()
   fireDrop(secB, { botId: 'q1', channel: 'qq' });
   await sleep(20);
   assert.equal(e2RpcCalls.length, 0);
+  assert.ok(bodyText().includes('小帅 · QQ'), '弹窗标题有人名有渠道');
+  assert.ok(bodyText().includes('小帅2'), '弹窗有原家门牌名');
+  assert.ok(bodyText().includes('D:\\agents\\xiaoshuai'), '弹窗有原家路径');
   findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
   await sleep(20);
   assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
@@ -409,6 +421,21 @@ test('view：全已分配 → 无未分配组；组内放下 → 不写', async 
   await sleep(10);
   void rowQ;
   assert.equal(e2RpcCalls.length, 0);
+});
+
+test('view：无人之家上墙 + 拖入直接绑定', async () => {
+  mountStage(okRpc);
+  e2WsItems = [{ workspaceId: 'e', path: 'D:\\agents\\empty' }];
+  e2Emit!({ bots: stageBots() });
+  openPanel();
+  const empty = panelSections().find((s: any) => s.getAttribute('data-e2-ws') === 'D:\\agents\\empty');
+  assert.ok(empty, '无人之家上墙');
+  assert.equal(sectionRows(empty).length, 0, '空家没照片');
+  assert.ok(bodyText().includes('空无一人'), '空家提示');
+  fireDrop(empty, { botId: 'f1', channel: 'feishu' });
+  await sleep(20);
+  assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'f1', workspace: 'D:\\agents\\empty' });
+  assert.ok(bodyText().includes('已绑定到'), '绑定落定提示');
 });
 
 test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静默回原位', async () => {

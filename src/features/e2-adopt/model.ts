@@ -77,6 +77,14 @@ export function homePlate(workspace: string, meta: AgentMetaDoc | null): HomePla
 
 export interface BoardGroup { workspace: string; name: string; bots: BotSnap[] }
 
+/** 家单：有人家（机器人首见序）+ 无人之家（名单序追尾）。纯函数，视图只渲染。 */
+export function homeList(bots: BotSnap[], known: string[]): string[] {
+  const seen: string[] = []
+  for (const b of bots || []) { const w = b?.workspace ?? ''; if (w && !seen.includes(w)) seen.push(w) }
+  for (const w of known || []) { if (w && !seen.includes(w)) seen.push(w) }
+  return seen
+}
+
 /** 面板分组：未分配置顶（无则省略），其余按归属聚合（保序：首见顺序）。视图只渲染，不另做映射。 */
 export function boardGroups(bots: BotSnap[]): { unbound: BotSnap[]; groups: BoardGroup[] } {
   const unbound = unboundBots(bots)
