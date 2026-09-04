@@ -131,6 +131,7 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(!String(styles.CSS).includes('prefers-color-scheme'), '深浅跟宿主牌子，不问系统');
   assert.ok(String(styles.CSS).includes('body[data-ds-dark-theme]'), '深色挂钩宿主');
   assert.ok(String(styles.CSS).includes('Microsoft YaHei'), '中文字体备胎');
+  assert.ok(String(styles.CSS).split('\n').every((ln: string) => ((ln.match(/\{/g) || []).length === (ln.match(/\}/g) || []).length)), '每行花括号配平（失衡会吞掉后面的规则）');
 });
 
 test('视图暴露挂载入口', () => {
