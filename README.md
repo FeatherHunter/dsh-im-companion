@@ -131,12 +131,12 @@ IM 辅助就是干这个的——把机器人按助理收好：
 <div align="center">
 <table>
 <tr>
-<td align="center" width="50%">
-<sub>👇 悬停看双通道 + 最后检测时间</sub>
+<td align="center" valign="top" width="50%">
+<strong>👇 悬停看双通道 + 最后检测时间</strong>
 <br><img src="assets/工作区-悬停在在线按钮-看到各个渠道状态.png" width="330" alt="悬停看各渠道状态">
 </td>
-<td align="center" width="50%">
-<sub>👇 浅色主题同样可用</sub>
+<td align="center" valign="top" width="50%">
+<strong>👇 浅色主题同样可用</strong>
 <br><img src="assets/工作区-有助理-浅色.png" width="330" alt="浅色左栏同样有徽标和过滤">
 </td>
 </tr>
