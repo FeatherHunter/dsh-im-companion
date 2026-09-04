@@ -16,7 +16,7 @@
 
 <strong>有助理的工作区，一目了然。</strong>
 
-<img src="assets/工作区-有助理的工作区一目了然-深色.png" width="420" alt="左栏工作区：全部、有助理、待认领，在线绿灯">
+<img src="assets/工作区-有助理的工作区一目了然-深色.png" width="420" alt="左栏工作区：全部、有助理、无助理，在线绿灯">
 
 **装它，1 分钟（先装 dsh-im，再装伴生）。**
 
@@ -107,7 +107,7 @@ dsh-im 非常强大：9 个渠道扫码即接入。但是，**你的每个助理
 
 IM 伴生在 dsh-im 之上加了一层以 Agent 为家的系统：
 
-**一块看得见的左栏** —— 全部、有助理、待认领各归各位；在线绿灯呼吸，离线灰灯安静。
+**一块看得见的左栏** —— 全部、有助理、无助理各归各位；在线绿灯呼吸，离线灰灯安静。
 
 **一支搬得动的舰队** —— 每张助理卡本身就是家：详情抽屉、舰队雷达矩阵、串门搬家拖拽。
 
@@ -123,6 +123,22 @@ IM 伴生在 dsh-im 之上加了一层以 Agent 为家的系统：
 
 <div align="center">
 
+<strong>进设置 → IM机器人辅助：助理、渠道、在线状态一屏看尽。</strong>
+
+<img src="assets/设置-以Agent为核心-聚合视图-深色.png" width="720" alt="设置页助理聚合视图">
+
+<strong>点“添加接入”：选家后扫码即绑定。</strong>
+
+<img src="assets/设置-添加接入-二维码弹窗-深色.png" width="640" alt="添加接入二维码弹窗">
+
+<strong>点开助理卡：模式、状态、各渠道增强开关一目了然。</strong>
+
+<img src="assets/助理卡-详情抽屉-深色.png" width="640" alt="助理详情抽屉">
+
+<strong>舰队雷达：Agent × 渠道矩阵，全舰队谁在线一眼看清。</strong>
+
+<img src="assets/舰队雷达-矩阵总览-深色.png" width="720" alt="舰队雷达矩阵总览">
+
 <strong>悬停在线徽标：看双通道 + 最后检测时间。</strong>
 
 <img src="assets/工作区-悬停在在线按钮-看到各个渠道状态.png" width="400" alt="悬停看各渠道状态">
@@ -131,11 +147,11 @@ IM 伴生在 dsh-im 之上加了一层以 Agent 为家的系统：
 
 <img src="assets/搬家面板-以家为核心-机器人可以自由搬到其他家庭.png" width="720" alt="串门搬家面板">
 
-<strong>设置页首屏：标题栏 + 工具栏 + 新建条 + 主体列表。</strong>
+<strong>浅色主题同样可用。</strong>
 
-<img src="docs/screenshots/first-view-2026-09-04.png" width="720" alt="设置页首屏全貌">
+<img src="assets/工作区-有助理-浅色.png" width="420" alt="浅色左栏同样有徽标和过滤">
 
-8 个功能模块：left-badges 左栏徽标 · left-filter 一键过滤 · session-header 工作区浮层 · detail-drawer 详情抽屉 · fleet-radar 舰队雷达 · adopt 一键领养/拖拽搬家 · presence 在场呼吸灯 · welcome-banner 拟人化迎宾。
+在线的 7 个功能模块：left-badges 左栏徽标 · left-filter 一键过滤 · session-header 工作区浮层 · detail-drawer 详情抽屉 · fleet-radar 舰队雷达 · adopt 串门搬家（拖拽换绑） · presence 在场呼吸灯。welcome-banner 拟人化迎宾暂不上线（已屏蔽，解开即恢复）。
 
 上游本体与接入教程：[dsh-im](https://github.com/FeatherHunter/dsh-im)
 
@@ -165,6 +181,13 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 <summary>刷新还是重启？</summary>
 
 优先热更新：重打 lib 后刷新页面或热重载即可；无必要绝不重启。重启仅在 host 装配结构动了且热重载吃不下时才用。
+
+</details>
+
+<details>
+<summary>浅色主题能用吗？</summary>
+
+能。徽标、过滤、面板都跟随主题，上面有一张浅色实拍。
 
 </details>
 
