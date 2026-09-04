@@ -144,16 +144,17 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       const row = (de.target as Element)?.closest?.('.' + ROW_CLASS) as HTMLElement | null
       if (!row || !de.dataTransfer) return
       hadDrag = true
-      dropped = false
-      pressDown = false
+      dropped = false; pressDown = false
       dragId = row.getAttribute('data-e2-bot')
       dragEl = row
       dragDesc = { botId: row.getAttribute('data-e2-bot'), channel: row.getAttribute('data-e2-channel') }
-      try { dragStartX = de.clientX } catch { dragStartX = null }
-      /* 原牌就地变影子（空白相纸）：不动布局、不藏源。 */
-      try { row.classList.add('e2-ph') } catch { /* 忽略 */ }
-      try { de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') })); de.dataTransfer.effectAllowed = 'move' } catch { /* 置数失败不阻断 */ }
-      diag(ctx, 'dragstart', String(dragId) + ' conn=' + (row.isConnected ? 1 : 0) + ' pd=' + (de.defaultPrevented ? 1 : 0))
+      try { dragStartX = de.clientX; row.classList.add('e2-ph') } catch { dragStartX = null }
+      try { de.dataTransfer.effectAllowed = 'move' } catch { /* 忽略 */ }
+      try { de.dataTransfer.setData('text/plain', String(dragId)) } catch { /* 忽略 */ }
+      try { de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') })) } catch { /* 置数失败不阻断 */ }
+      let nTypes = -1
+      try { nTypes = (de.dataTransfer.types || []).length } catch { /* 忽略 */ }
+      diag(ctx, 'dragstart', String(dragId) + ' conn=' + (row.isConnected ? 1 : 0) + ' pd=' + (de.defaultPrevented ? 1 : 0) + ' types=' + nTypes)
     } catch { /* 忽略 */ }
   }
   const onDragOver = (e: Event): void => {
