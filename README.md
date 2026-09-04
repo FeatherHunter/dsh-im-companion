@@ -14,7 +14,7 @@
 
 [![版本](https://img.shields.io/npm/v/dsh-im-companion?label=版本)](https://www.npmjs.com/package/dsh-im-companion) [![下载量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.npmjs.org%2Fdownloads%2Fpoint%2Flast-month%2Fdsh-im-companion&query=%24.downloads&label=下载量&suffix=/月&color=brightgreen)](https://www.npmjs.com/package/dsh-im-companion) [![最近更新](https://img.shields.io/github/last-commit/FeatherHunter/dsh-im-companion?label=最近更新&color=FE7D37)](https://github.com/FeatherHunter/dsh-im-companion/commits/master) [![许可证](https://img.shields.io/badge/许可证-BSD--3--Clause-lightgrey.svg)](LICENSE) [![伴生上游](https://img.shields.io/badge/伴生-dsh--im-3370ff)](https://github.com/FeatherHunter/dsh-im) [![期待你参与](https://img.shields.io/badge/期待你参与-brightgreen.svg)](https://github.com/FeatherHunter/dsh-im-companion/issues)
 
-<strong>有助理的工作区，一目了然。</strong>
+<strong>👇 有助理的工作区，一目了然。</strong>
 
 <img src="assets/工作区-有助理的工作区一目了然-深色.png" width="420" alt="左栏工作区：全部、有助理、无助理，在线绿灯">
 
@@ -89,11 +89,9 @@ dsh plugin --profile desktop remove dsh-im-companion
 ```
 
 <details>
-<summary>解耦承诺：不改 dsh-im 一行代码，卸载即净</summary>
+<summary>能干净卸载吗？</summary>
 
-- 零侵入：左栏徽标走 MutationObserver 叠加，设置面板走 slots 注入，host 只挂 /im-companion 通道。
-- 单份轮询：唯一数据源是 connection-stream（15s + 手动刷新广播），8 个功能模块只读快照。
-- 随装随走：remove 自动移除 bundle 条目与面板行为，不留定时器。
+能。伴生不改 dsh-im 本体；卸载后面板和徽标一起消失，不留东西。
 
 </details>
 
@@ -113,9 +111,9 @@ IM 伴生在 dsh-im 之上加了一层以 Agent 为家的系统：
 
 本体管接入，伴生管家人。
 
-<strong>点“有助理”，只看已安家的。</strong>
+<strong>👇 点“有助理”，只看已安家的。</strong>
 
-<img src="assets/工作区-一键过滤-有助理-深色.png" width="420" alt="一键过滤只看有助理">
+<img src="assets/工作区-一键过滤-有助理-深色.png" width="340" alt="一键过滤只看有助理">
 
 </div>
 
@@ -123,33 +121,40 @@ IM 伴生在 dsh-im 之上加了一层以 Agent 为家的系统：
 
 <div align="center">
 
-<strong>进设置 → IM机器人辅助：助理、渠道、在线状态一屏看尽。</strong>
+<strong>👇 进设置 → IM机器人辅助：助理、渠道、在线状态一屏看尽。</strong>
 
 <img src="assets/设置-以Agent为核心-聚合视图-深色.png" width="720" alt="设置页助理聚合视图">
 
-<strong>点“添加接入”：选家后扫码即绑定。</strong>
+<strong>👇 点“添加接入”：选家后扫码即绑定。</strong>
 
 <img src="assets/设置-添加接入-二维码弹窗-深色.png" width="640" alt="添加接入二维码弹窗">
 
-<strong>点开助理卡：模式、状态、各渠道增强开关一目了然。</strong>
+<strong>👇 点开助理卡：模式、状态、各渠道增强开关一目了然。</strong>
 
 <img src="assets/助理卡-详情抽屉-深色.png" width="640" alt="助理详情抽屉">
 
-<strong>舰队雷达：Agent × 渠道矩阵，全舰队谁在线一眼看清。</strong>
+<strong>👇 舰队雷达：Agent × 渠道矩阵，全舰队谁在线一眼看清。</strong>
 
 <img src="assets/舰队雷达-矩阵总览-深色.png" width="720" alt="舰队雷达矩阵总览">
 
-<strong>悬停在线徽标：看双通道 + 最后检测时间。</strong>
+<div align="center">
+<table>
+<tr>
+<td align="center" width="50%">
+<img src="assets/工作区-悬停在在线按钮-看到各个渠道状态.png" width="330" alt="悬停看各渠道状态">
+<br><sub>👇 悬停看双通道 + 最后检测时间</sub>
+</td>
+<td align="center" width="50%">
+<img src="assets/工作区-有助理-浅色.png" width="330" alt="浅色左栏同样有徽标和过滤">
+<br><sub>👇 浅色主题同样可用</sub>
+</td>
+</tr>
+</table>
+</div>
 
-<img src="assets/工作区-悬停在在线按钮-看到各个渠道状态.png" width="400" alt="悬停看各渠道状态">
-
-<strong>串门搬家：把照片拖到另一家，二次确认。绿灯在岗，黄灯打盹，灰灯睡着。</strong>
+<strong>👇 串门搬家：把照片拖到另一家，二次确认。绿灯在岗，黄灯打盹，灰灯睡着。</strong>
 
 <img src="assets/搬家面板-以家为核心-机器人可以自由搬到其他家庭.png" width="720" alt="串门搬家面板">
-
-<strong>浅色主题同样可用。</strong>
-
-<img src="assets/工作区-有助理-浅色.png" width="420" alt="浅色左栏同样有徽标和过滤">
 
 在线的 7 个功能模块：left-badges 左栏徽标 · left-filter 一键过滤 · session-header 工作区浮层 · detail-drawer 详情抽屉 · fleet-radar 舰队雷达 · adopt 串门搬家（拖拽换绑） · presence 在场呼吸灯。welcome-banner 拟人化迎宾暂不上线（已屏蔽，解开即恢复）。
 
@@ -195,24 +200,11 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 <div align="center">
 
-契约是唯一的交互面，词汇表是唯一的命名依据。
+在线的 7 个模块：左栏徽标 · 一键过滤 · 工作区浮层 · 详情抽屉 · 舰队雷达 · 串门搬家 · 在场呼吸灯。
 
-[docs/features-contract.md](docs/features-contract.md) · [CONTEXT.md](CONTEXT.md)
+代码组织方式写给开发者看：[docs/features-contract.md](docs/features-contract.md) · [CONTEXT.md](CONTEXT.md)
 
 </div>
-
-```text
-src/
-  client/            # 共享层（只加导出，不改既有行为）
-    theme.ts dom.ts icons.ts
-    ui/              # button/field/segmented/menu/avatar/list/empty/toast/modal
-    data/connection-stream.ts   # 唯一轮询源（15s + 手动刷新）
-    data/bindings.ts            # workspace 与 Bot 绑定 + 健康聚合
-  features/          # 8 个功能各一张票、自包含目录
-    left-badges/ left-filter/ session-header/ detail-drawer/
-    fleet-radar/ adopt/ presence/ welcome-banner/
-  host/rpc.ts        # 只追加 case：im-companion.<feature>.<action>
-```
 
 <h2 align="center"><sub>DEVELOPMENT</sub><br>开发</h2>
 
