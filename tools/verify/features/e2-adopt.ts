@@ -134,6 +134,7 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('outline-offset:4px'), '落点描边');
   assert.ok(String(styles.CSS).includes('#d9cfbd'), '暖纸底');
   assert.ok(!String(styles.CSS).includes('fit-content'), '内容定宽下线');
+  assert.ok(String(styles.CSS).includes('.e2-sec-new{cursor:pointer;display:grid'), '巷子口卡片流（门牌描述通栏，照片多列）');
   assert.ok(!String(styles.CSS).includes('prefers-color-scheme'), '深浅跟宿主牌子，不问系统');
   assert.ok(String(styles.CSS).includes('body[data-ds-dark-theme]'), '深色挂钩宿主');
   assert.ok(String(styles.CSS).includes('Microsoft YaHei'), '中文字体备胎');
