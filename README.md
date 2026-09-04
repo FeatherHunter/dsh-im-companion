@@ -5,10 +5,10 @@
 
 **中文** · [English](docs/README.en.md)
 
-**给每个助理一个家，剩下的交给辅助。**  
-让 [dsh-im](https://github.com/FeatherHunter/dsh-im) 的机器人在 DSH 里化作以 Agent 为单位、看得见、搬得动的助理舰队。
+**机器人接进来了，接下来呢？**  
+[dsh-im](https://github.com/FeatherHunter/dsh-im) 把各渠道机器人接进 DSH，IM 辅助把它们变成听你调度的助理舰队：谁在线一眼看清，换家拖一下就行。
 
-你的 star 是我夜空中最亮的星。
+你的 ⭐是我夜空中最亮的星。
 
 *Give every agent a home — IM Companion handles the rest.*
 
@@ -26,7 +26,7 @@
 
 <div align="center">
 
-前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/FeatherHunter/dsh-im)（IM 机器人本体，辅助只做收纳、不含连接能力）。
+前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/FeatherHunter/dsh-im)（IM 机器人本体）。本体负责把机器人接进来，辅助负责把它们管起来。
 
 </div>
 
@@ -50,7 +50,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://regis
 
 <div align="center">
 
-装完**刷新页面（Ctrl+F5）或热重载插件**即生效，**重启是最后手段**：仅 host 装配结构动了且热重载吃不下时才完全退出重开。零配置。
+装完按 **Ctrl+F5 刷新页面**即生效；如果没出现，完全退出 DSH 重开一次就行。
 
 </div>
 
@@ -87,13 +87,6 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 dsh plugin --profile desktop update dsh-im-companion
 dsh plugin --profile desktop remove dsh-im-companion
 ```
-
-<details>
-<summary>能干净卸载吗？</summary>
-
-能。辅助不改 dsh-im 本体；卸载后面板和徽标一起消失，不留东西。
-
-</details>
 
 <h2 align="center"><sub>WHY</sub><br>为什么要做 IM 辅助</h2>
 
