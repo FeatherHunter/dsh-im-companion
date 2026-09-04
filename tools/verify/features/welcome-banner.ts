@@ -664,4 +664,45 @@ test("切换工作区清扫孤儿卡", async () => {
   stop();
 });
 
+test("同拍重放不重绘（防15s闪刷）", async () => {
+  const W6 = "D:\\agents\\diliu";
+  const META6 = { names: { [W6]: "老六" }, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
+  const snap6 = { channel: "feishu", botId: "b6", workspace: W6, connected: true, healthStatus: "healthy", healthKind: "online", botName: "", avatarUrl: "", healthSummary: "", lastCheckedAt: 1000, stale: false };
+  const inserted: any[] = [];
+  const heroStub: any = {
+    textContent: "探索未至之境 预览版 选择工作区 diliu",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "diliu" } : null,
+    getBoundingClientRect: () => ({ width: 600, height: 200 }),
+    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: () => {} },
+  };
+  (globalThis as any).document = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+  };
+  let subFn: any = null;
+  const snap = { bots: [snap6], failed: [], updatedAt: 12, catalogs: {} };
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      subFn = fn;
+      fn(snap);
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => META6 },
+    get: () => undefined,
+    slots: {},
+  };
+  const stop = overlay.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 60));
+  assert.ok(inserted.length >= 1, "应已绘制");
+  const settled = inserted.length;
+  subFn({ bots: [snap6], failed: [], updatedAt: 13, catalogs: {} });
+  await new Promise((r) => setTimeout(r, 40));
+  assert.equal(inserted.length, settled, "相同快照重放必须零重绘（否则每轮询闪刷一次）");
+  stop();
+});
+
 rmSync(tmp, { recursive: true, force: true });

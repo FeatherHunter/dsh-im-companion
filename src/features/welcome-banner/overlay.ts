@@ -193,7 +193,9 @@ export function mountBanner(fctx: FeatureCtx): () => void {
           if (activeGen !== gen) return;
           st.bots = (s && Array.isArray(s.bots) ? s.bots : []) as BotSnap[];
           st.catalogs = (s && s.catalogs) || {};
-          st.routesOk = false;
+          /* 路由 stale-while-revalidate：不断电复用上轮已知数，等新数到了再换。
+           * 若每拍都先置 routesOk=false，总数会在 null↔N 之间来回翻，sig 每 15s 翻两次、
+           * 入场动画跟着重播——就是“不点也会全面刷新”的根因。首挂载仍从 false 起步，保守一次。 */
           try {
             const stamp = s && typeof s.updatedAt === "number" ? s.updatedAt : 0;
             if (stamp > 0) {
