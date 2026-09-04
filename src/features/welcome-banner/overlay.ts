@@ -121,6 +121,12 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown, lang: Ho
     return;
   }
   const emptyMeta = { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
+  try {
+    const names = ((st.metaDoc ?? emptyMeta).names ?? {}) as Record<string, unknown>;
+    const n = typeof names === "object" ? Object.keys(names).length : -1;
+    const hit = !!(names[path] ?? names[basenameOf(path)]);
+    infoOnce("namehit:" + path, "工作区 \"" + path + "\" 名表" + (hit ? "命中" : "未命中") + "（名表共 " + n + " 条；0 条=读到空表，>0 未命中=键对不上）。");
+  } catch { /* ignore */ }
   const model = path ? buildBannerModel(st.bots, st.metaDoc ?? emptyMeta, path, st.catalogs ?? {}) : null;
   if (!model) {
     infoOnce("unbound:" + label, "工作区 \"" + label + "\" 未绑定 Agent，零 UI（纯净原生空态）。");
