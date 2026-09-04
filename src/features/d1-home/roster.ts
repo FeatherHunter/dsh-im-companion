@@ -68,8 +68,8 @@ function paint(ctx: FeatureCtx): void {
     }
     const canWrite = !ctx.rpc ? '连接服务不可用，稍后再试' : (!metaReady ? '身份配置不可用，写入口已禁用' : null)
     const head = h('div', { className: 'd1-head' },
-      h('div', { className: 'd1-title' }, '我这一屋 · 花名册'),
-      h('div', { className: 'd1-sub' }, '只看管谁归谁；开除不在这里，走原有位置')) as HTMLElement
+      h('div', { className: 'd1-title' }, '各家机器人'),
+      h('div', { className: 'd1-sub' }, '谁归谁都在这；换家点右边按钮，删除请去原来的地方')) as HTMLElement
     const body: HTMLElement[] = []
     if (canWrite) body.push(h('div', { className: 'd1-warn' }, canWrite) as HTMLElement)
     if (isEmptyRoster(lastBots)) {

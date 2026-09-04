@@ -62,7 +62,7 @@ function openPeek(ctx: FeatureCtx): void {
       try { document.removeEventListener('keydown', onKey, true) } catch { /* 忽略 */ }
     }
     const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') close() }
-    panel.appendChild(h('div', { className: 'd1-peek-t' }, '各家花名册（只读看一眼）') as unknown as Node)
+    panel.appendChild(h('div', { className: 'd1-peek-t' }, '各家机器人（只读）') as unknown as Node)
     if (isEmptyRoster(lastBots)) {
       panel.appendChild(h('div', { className: 'd1-empty' },
         h('div', { className: 'd1-empty-t' }, '名下还没有机器人'),
@@ -80,7 +80,7 @@ function openPeek(ctx: FeatureCtx): void {
           ...lines) as unknown as Node)
       }
     }
-    panel.appendChild(h('div', { className: 'd1-peek-go' }, '动手换家去：设置 → IM机器人辅助 → 花名册') as unknown as Node)
+    panel.appendChild(h('div', { className: 'd1-peek-go' }, '动手换家去：设置 → IM机器人辅助 → 各家机器人') as unknown as Node)
     const x = h('button', { className: 'd1-x', type: 'button', 'aria-label': '关闭', onClick: close }, '×') as HTMLElement
     panel.appendChild(x)
     const ov = h('div', { className: 'd1-overlay' }, panel) as HTMLElement
@@ -110,8 +110,8 @@ function ensureEntry(ctx: FeatureCtx, g: number): void {
     if (header.querySelector('.' + ENTRY_CLASS)) return
     const btn = h('button', {
       className: ENTRY_CLASS,
-      title: '在家管：看看各家花名册（只读），动手去设置页',
-      'aria-label': '在家管：查看各家花名册',
+      title: '在家管：看看各家机器人（只读），动手去设置页',
+      'aria-label': '在家管：查看各家机器人',
       onClick: () => { if (alive(g)) openPeek(ctx) },
       html: '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11l8-7 8 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg>',
     }) as HTMLElement
