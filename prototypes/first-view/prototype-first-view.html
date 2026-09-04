@@ -1,0 +1,232 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE for #25 (首屏 Apple 风精修多变体). Do NOT ship to main. -->
+<!-- Plan: Three variants of 首屏 first-view, switchable via ?variant=A|B|C, throwaway prototypes/first-view/prototype-first-view.html. Branch: UI (what-should-this-look-like). -->
+<!-- Design Q: 在 #28 锁死项下首屏该长啥样？Q2标题/路径减法、Q3悬停统一+详情降噪、X头像可辨识度三轴取舍。 -->
+<!-- Locked (#23 verdict + #28): 只动视觉文案不动行为；右边接入/详情/更多悬停统一（B）；全绿不动；接入=接新渠道/详情=抽屉/雷达=舰队入口/加号=新建说清即可。 -->
+<!-- Open for winner verdict: 标题四信息全留/双行/折叠；路径省略/双行/隐藏到详情；X头像双字母/在线环/维持；详情ghost/文字链/弱按钮。 -->
+<!-- Run: python -m http.server 8788 后访问 /prototypes/first-view/prototype-first-view.html?variant=A (A|B|C, &theme=light|dark) -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[PROTOTYPE #25] 首屏三变体 A/B/C</title>
+<style>
+  :root { color-scheme: dark; --bg:#101014; --panel:#17171c; --panel2:#1d1d23; --ink:#f2f2f5; --mut:#9a9aa5; --faint:#6d6d78; --line:rgba(255,255,255,.09); --acc:#b48cf2; --peach:#f5b38e; --peach-ink:#5b2f16; --ok:#3ddc84; --chip:rgba(255,255,255,.07); }
+  [data-theme="light"] { color-scheme: light; --bg:#f4f4f6; --panel:#ffffff; --panel2:#f1f1f4; --ink:#1c1c1e; --mut:#6e6e75; --faint:#a5a5ad; --line:rgba(0,0,0,.08); --acc:#7c3aed; --peach:#e8935a; --peach-ink:#fff; --ok:#1f9d55; --chip:rgba(0,0,0,.05); }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,"SF Pro","PingFang SC","Noto Sans SC",Segoe UI,Roboto,sans-serif; }
+  .proto-banner { background:#2a2100; color:#ffce6b; border-bottom:2px dashed #d29922; padding:8px 16px; font-size:12px; }
+  [data-theme="light"] .proto-banner { background:#fff7e6; color:#7a4b00; }
+  .wrap { max-width:860px; margin:0 auto; padding:16px 16px 150px; }
+  .q { color:var(--mut); font-size:13px; line-height:1.7; }
+  .hd-title { font-size:30px; font-weight:700; margin:14px 0 2px; color:var(--acc); }
+  .hd-meta { font-size:13px; color:var(--mut); margin:0 0 12px; }
+  .hd-meta.two { display:flex; flex-direction:column; gap:0; }
+  .hd-meta.hide { display:none; }
+  .av.m0 { background:linear-gradient(135deg,#b76e79,#8e5a6e); } .av.m1 { background:linear-gradient(135deg,#7d9b8a,#4f7a6a); }
+  .av.m2 { background:linear-gradient(135deg,#6f86b8,#4a5f8f); } .av.m3 { background:linear-gradient(135deg,#c2a878,#8f7448); }
+  .toolbar { display:flex; gap:10px; align-items:center; margin-bottom:14px; }
+  .search { flex:1; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:9px 12px; color:var(--faint); }
+  .seg { display:flex; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:3px; gap:3px; }
+  .seg b { padding:6px 12px; border-radius:9px; font-size:13px; } .seg b.on { background:var(--panel2); }
+  .seg i { font-style:normal; padding:6px 12px; font-size:13px; color:var(--mut); }
+  .iconbtn { width:38px; height:38px; border-radius:12px; border:1px solid var(--line); background:var(--panel); display:grid; place-items:center; color:var(--acc); font-size:17px; }
+  .plus { position:fixed; top:14px; right:16px; }
+  .list { background:var(--panel); border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+  .row { display:flex; gap:12px; align-items:center; padding:12px 14px; border-bottom:1px solid var(--line); position:relative; }
+  .row:last-child { border-bottom:0; }
+  .av { width:44px; height:44px; border-radius:50%; display:grid; place-items:center; color:#fff; font-weight:800; font-size:19px; flex:none; }
+  .av.d { background:linear-gradient(135deg,#2ea89a,#3a7bd5); } .av.s { background:linear-gradient(135deg,#8a4de8,#5b2ee5); }
+  .av.x1 { background:linear-gradient(135deg,#f4528b,#a04de8); } .av.x2 { background:linear-gradient(135deg,#f5852a,#f52a2a); } .av.x3 { background:linear-gradient(135deg,#a04de8,#5b2ee5); }
+  .av.me { background:linear-gradient(135deg,#3a3a40,#101014); border:1px solid var(--line); }
+  .av.ring { box-shadow:0 0 0 2px var(--bg), 0 0 0 3.5px var(--ok); }
+  .av.thin { box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35); font-size:15px; }
+  .main { min-width:0; flex:1; } .name { font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chips { display:flex; gap:6px; margin-top:3px; } .chip { font-size:11px; color:var(--mut); background:var(--chip); border-radius:7px; padding:2px 8px; white-space:nowrap; }
+  .dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:5px; }
+  .ws { font-size:11px; color:var(--faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:3px; }
+  .ws.two { white-space:normal; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .ws.hidden { color:var(--faint); } .ws.hidden b { color:var(--mut); font-weight:400; }
+  .actions { display:flex; gap:8px; align-items:center; flex:none; }
+  .st { font-size:12px; color:var(--mut); display:flex; align-items:center; gap:6px; }
+  .st .dot { width:8px; height:8px; margin:0; box-shadow:0 0 6px var(--ok); }
+  .btn { font-size:13px; border-radius:10px; padding:7px 13px; border:1px solid transparent; cursor:pointer; white-space:nowrap; }
+  .btn.join { background:rgba(180,140,242,.16); color:var(--acc); }
+  .btn.detail-peach { background:var(--peach); color:var(--peach-ink); font-weight:700; }
+  .btn.detail-ghost { background:transparent; border-color:var(--line); color:var(--mut); }
+  .btn.detail-text { background:transparent; color:var(--acc); padding:7px 4px; }
+  .btn.detail-soft { background:rgba(180,140,242,.12); color:var(--acc); }
+  .more { width:32px; height:32px; border-radius:50%; border:1px dashed var(--faint); background:transparent; color:var(--faint); cursor:pointer; }
+  /* B悬停统一：平时只留状态，整行hover/focus-within/触屏.tap 才出按钮组 */
+  .grp .btn.join, .grp .btn[class*="detail"], .grp .more { opacity:0; pointer-events:none; transform:translateX(4px); transition:opacity .15s; }
+  .grp:hover .btn, .grp:focus-within .btn, .grp.tap .btn, .grp:hover .more, .grp:focus-within .more, .grp.tap .more { opacity:1; pointer-events:auto; transform:none; }
+  .sec { font-size:12px; color:var(--mut); padding:10px 14px 6px; background:var(--panel2); border-bottom:1px solid var(--line); }
+  .bar { position:fixed; left:0; right:0; bottom:0; background:var(--panel); border-top:1px solid var(--line); padding:10px 14px; display:flex; gap:8px; row-gap:6px; align-items:center; justify-content:center; font-size:12px; color:var(--mut); flex-wrap:wrap; }
+  .bar button, .bar a { font:inherit; font-size:12px; padding:6px 12px; border-radius:9px; border:1px solid var(--line); background:var(--panel2); color:var(--ink); cursor:pointer; text-decoration:none; }
+  .bar button.on { border-color:var(--acc); color:var(--acc); font-weight:700; }
+  .states { margin-top:16px; display:grid; gap:10px; } .state { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; color:var(--mut); font-size:13px; text-align:center; }
+  .note { font-size:12px; color:var(--faint); margin-top:14px; line-height:1.8; }
+  .statepanel { margin-top:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:10px 14px; font-size:12px; color:var(--mut); line-height:1.8; }
+  .statepanel b { color:var(--ink); } .statepanel code { color:var(--acc); }
+  .bar .arrow { font-weight:800; padding:6px 14px; }
+  :focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
+  .star { text-decoration:none; color:var(--acc); font-size:16px; border-style:dashed; }
+  .promo { margin-top:10px; background:var(--panel); border:1px dashed var(--acc); border-radius:12px; padding:10px 14px; }
+  .promo h4 { margin:0 0 4px; font-size:12px; color:var(--mut); font-weight:600; }
+  .promo a { display:flex; gap:8px; align-items:center; padding:8px 2px; color:var(--ink); text-decoration:none; font-size:13px; border-top:1px solid var(--line); }
+  .promo a b { font-weight:600; } .promo a span { color:var(--mut); font-size:12px; flex:1; } .promo a i { color:var(--acc); font-style:normal; }
+</style>
+</head>
+<body>
+<div class="proto-banner">THROWAWAY 原型（#25，不进 main）：<b id="vname"></b> · 浅/深切换右下 · 触屏点行模拟 hover（点一下出行内按钮，再点收回）· 真 hover 直接把鼠标放行上</div>
+<div class="wrap">
+  <div class="hd-title" id="hdtitle">助理</div>
+  <div class="hd-meta" id="meta"></div>
+  <div class="toolbar"><div class="search" id="search" role="search">⌕&nbsp; <span id="searchT">搜索</span></div><div class="seg" id="seg" role="tablist"><b class="on" id="segA">按助理 (12)</b><i id="segC">按渠道 (2)</i></div><div class="iconbtn" id="radar" role="button" tabindex="0">⛵</div><div class="iconbtn" id="refresh" role="button" tabindex="0">↻</div><a class="iconbtn star" id="star" target="_blank" rel="noopener" href="https://github.com/FeatherHunter/dsh-im-companion">★</a></div>
+  <div class="iconbtn plus" id="plus" role="button" tabindex="0">＋</div>
+  <div class="list" id="list"></div>
+  <div class="states">
+    <div class="state" role="status" id="s1">加载中…</div>
+    <div class="state" role="status"><span id="s2"></span><br><span style="font-size:12px" id="s2b"></span></div>
+    <div class="state" role="alert"><span id="s3a"></span><br><span style="font-size:12px" id="s3b"></span><br><button class="btn detail-ghost" id="retry" style="margin-top:8px;opacity:1;pointer-events:auto">重试</button></div>
+  </div>
+  <div class="promo" id="promoCard" style="display:none"><h4 id="promoT">相关项目</h4><div id="promoList"></div></div>
+  <div class="statepanel" id="statepanel" aria-live="polite"></div>
+  <div class="note" id="verdict-note"></div>
+</div>
+<div class="bar" role="toolbar" aria-label="原型变体切换器（抛弃式，不随实现发布）">
+  <button class="arrow" id="prev" aria-label="上一个变体">←</button>
+  <span id="curlabel"></span>
+  <button class="arrow" id="next" aria-label="下一个变体">→</button>
+  <span>|</span> 变体：<a href="?variant=A">A 极简</a><a href="?variant=B">B 双行</a><a href="?variant=C">C 设置风</a><a href="?variant=D">D 拼装</a>
+  <span>|</span> 主题：<button id="tL">浅色</button><button id="tD">深色</button>
+  <span>|</span> 语言：<button id="gCn">中文</button><button id="gEn">EN</button>
+  <span>|</span> 推广：<button id="p0">无</button><button id="p1">星标</button><button id="p2">星标+关联</button>
+</div>
+<script>
+const ORDER = ['A','B','C','D'];
+const q = new URLSearchParams(location.search);
+const V_raw = ((q.get('variant') || 'A').toUpperCase());
+let theme = q.get('theme') || 'dark';
+let lang = (q.get('lang') || 'cn').toLowerCase() === 'en' ? 'en' : 'cn';
+const CHN = { '飞书':'Feishu', '微信':'WeChat', 'QQ':'QQ' };
+const STR = {
+cn: { title:'助理', sub:'ASSISTANTS', byA:'按助理 (12)', byC:'按渠道 (2)', segAria:'分组方式', search:'搜索', searchAria:'搜索助理', radar:'舰队视图事件入口', refresh:'刷新列表', plus:'新建助理', online:'在线', join:'接入', joinTitle:'接入新渠道', detail:'详情', detailTitle:'打开助理详情抽屉', more:'更多操作：重命名 / 更换工作区 / 移除渠道机器人', wsPre:'工作区·', fullPath:'完整路径：', sec:'在线 · 7 个助理（示意 12 中 7）', cnt:'12 个助理·2 个渠道·11 个机器人·更新于 11:26:13', cntB:'12 个助理 · 2 个渠道 · 11 个机器人<br><span style="font-size:12px">更新于 11:26:13（悬停见秒级时间）</span>', cntC:'12 个助理 · 更新于 11:26:13', bound:n=>'已绑定工作区·悬停见路径（'+n+'）', tapTip:n=>n+'（整行悬停出按钮；触屏点一下行）', s1:'加载中…正在获取助理列表，请稍候。', s2:'没有找到匹配的助理', s2b:'试试换个关键词，或清空搜索看看全部', s3a:'刚才没连上，助理列表没拿到', s3b:'检查网络后点重试', retry:'重试', dSegTitle:'更新于 11:26:13（标题计数行已收起：助理/渠道数看分段）' },
+en: { title:'Assistants', sub:'助理', byA:'By Assistants (12)', byC:'By Channels (2)', segAria:'Group by', search:'Search', searchAria:'Search assistants', radar:'Fleet view event entry', refresh:'Refresh list', plus:'New assistant', online:'Online', join:'Connect', joinTitle:'Connect a new channel', detail:'Details', detailTitle:'Open assistant details', more:'More actions: Rename / Change workspace / Remove channel bots', wsPre:'Workspace: ', fullPath:'Full path: ', sec:'Online · 7 of 12 assistants (showing 7)', cnt:'12 assistants · 2 channels · 11 bots · updated 11:26:13', cntB:'12 assistants · 2 channels · 11 bots<br><span style="font-size:12px">updated 11:26:13 (hover for exact time)</span>', cntC:'12 assistants · updated 11:26:13', bound:n=>'Workspace linked · hover for path ('+n+')', tapTip:n=>n+' (hover row for actions; tap row on touch)', s1:'Loading assistants… please wait.', s2:'No matching assistants', s2b:'Try another keyword, or clear search to see all', s3a:'Connection failed, list not loaded', s3b:'Check network, then retry', retry:'Retry', dSegTitle:'Updated 11:26:13 (title counts folded into seg labels)' },
+};
+const S = STR[lang];
+let promo = (q.get('promo') || '0'); if (!['0','1','2'].includes(promo)) promo = '0';
+const P = +promo;
+const PROMO_STR = {
+cn: { star:'给本项目点 Star（跳 GitHub 仓库）', promoT:'相关项目', deckD:'Agent skills 方法牌组', palD:'OpenCode 配色盘' },
+en: { star:'Star this project on GitHub', promoT:'Related projects', deckD:'Agent skills method deck', palD:'OpenCode color palettes' },
+};
+const PS = PROMO_STR[lang];
+const chipName = c => lang === 'en' ? (CHN[c] || c) : c;
+let V_now = ORDER.includes(V_raw) ? V_raw : 'A';
+const V = V_now;
+document.documentElement.dataset.theme = theme === 'light' ? 'light' : '';
+function qs(v) { return '?' + new URLSearchParams({ variant: v, theme, lang, promo }).toString(); }
+function go(d) { V_now = ORDER[(ORDER.indexOf(V_now) + d + ORDER.length) % ORDER.length]; location.search = qs(V_now); }
+document.getElementById('prev').onclick = () => go(-1);
+document.getElementById('next').onclick = () => go(1);
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest('input, textarea, [contenteditable]')) return;
+  if (e.key === 'ArrowLeft') go(-1); else if (e.key === 'ArrowRight') go(1);
+});
+const AGENTS = [
+  {n:'小帅 2', av:['av me','帅'], ch:['飞书','微信'], ws:'D:\\DeepSeekHarness\\agents\\xiaoshuai'},
+  {n:'Dsh-mattpocock-skills-deck', av:['av d','D'], ch:['飞书'], ws:'D:\\dsh-plugin\\dsh-mattpocock-skills-deck'},
+  {n:'Shujucangkuguanliyuan', av:['av s','S'], ch:['飞书'], ws:'D:\\DeepSeekHarness\\agents\\shujucang…'},
+  {n:'Xiaojiang', av:['av x1','X'], ch:['飞书'], ws:'D:\\DeepSeekHarness\\agents\\xiaojiang'},
+  {n:'Xiaoshan', av:['av x2','X'], ch:['飞书'], ws:'D:\\DeepSeekHarness\\agents\\xiaoshan'},
+  {n:'Xiaosun', av:['av x3','X'], ch:['飞书'], ws:'D:\\DeepSeekHarness\\agents\\xiaosun'},
+  {n:'Xiaowan', av:['av x1','X'], ch:['飞书'], ws:'D:\\DeepSeekHarness\\agents\\xiaowan'},
+];
+const CONF = {
+  A: { name:'A 极简收敛', m:S=>S.cnt, metaCls:'', wsCls:'', wsFull:v=>v,
+       av:(a)=> a.av[0] + (a.av[1]==='X' ? ' thin' : ''), avT:(a)=> a.av[1]==='X' ? a.n.slice(0,2) : a.av[1],
+       detail:'detail-ghost', detailT:'详情',
+       note:'A：标题单行弱化（信息全留但同行小字）；路径单行省略弱化+悬停见全；X头像取名字前两字母+细边区分；详情降为 ghost 幽灵按钮；右边组悬停统一。' },
+  B: { name:'B 分区双行', m:S=>S.cntB, metaCls:'two', wsCls:'two', wsFull:v=>v,
+       av:(a)=> a.av[0] + ' ring', avT:(a)=> a.av[1],
+       detail:'detail-text', detailT:'详情 ›',
+       note:'B：标题双行（更新时间次行弱化）；路径双行小字不断尾；头像加在线环+维持首字母；详情降为文字链；右边组悬停统一。' },
+  C: { name:'C 设置风', m:S=>S.cntC, metaCls:'', wsCls:'hidden', wsFull:(v,a)=> S.bound(a.n),
+       av:(a)=> a.av[0], avT:(a)=> a.av[1],
+       detail:'detail-soft', detailT:'详情',
+       note:'C：标题只留助理数+更新（渠道/机器人折叠进悬停）；路径隐藏到详情（行内仅“已绑定”）；头像维持首字母（靠名字区分）；详情为弱底按钮；右边组悬停统一。iOS 设置式分组头：全部在线。' },
+  D: { name:'D 用户拼装（待点头）', m:S=>'', metaCls:'hide', wsCls:'', wsFull:v=>v,
+       av:(a)=> 'av m' + ([...a.n].reduce((s,ch)=> s + ch.codePointAt(0), 0) % 4),
+       avT:(a)=> { const s = a.n.replace(/^xiao/i,''); return /^[A-Za-z]/.test(a.n) && /^xiao/i.test(a.n) ? s.slice(0,2).replace(/^./,c=>c.toUpperCase()) : a.av[1]; },
+       detail:'detail-ghost', detailT:'详情',
+       note:'D（按你的意见拼）：标题不独占行（计数看分段 12/2，更新时间悬停“按助理”可见）；路径=A单行省略；X头像去 Xiao 前缀取 Ji/Sh/Su/Wa＋莫兰迪柔色（默认头像配色问题：用户自设头像后此色仅兜底）；详情=ghost。A 的“前两字母”对 Xiao 系全得 Xi（见 A 截屏四行一样），故 D 改取特征音节。' },
+};
+const c = CONF[V] || CONF.A;
+document.getElementById('vname').textContent = c.name + '（锁定：悬停统一B / 全绿不动 / 只动视觉）';
+document.getElementById('meta').className = 'hd-meta ' + c.metaCls;
+document.getElementById('meta').innerHTML = c.m(S);
+document.getElementById('hdtitle').innerHTML = S.title + '<div style="font-size:13px;font-weight:400;color:var(--mut);letter-spacing:.14em">' + S.sub + '</div>';
+document.getElementById('searchT').textContent = S.search;
+document.getElementById('search').setAttribute('aria-label', S.searchAria);
+document.getElementById('seg').setAttribute('aria-label', S.segAria);
+document.getElementById('segA').textContent = S.byA;
+document.getElementById('segC').textContent = S.byC;
+[['radar',S.radar],['refresh',S.refresh],['plus',S.plus]].forEach(([id,t]) => { const el = document.getElementById(id); el.setAttribute('aria-label', t); el.setAttribute('title', t); });
+document.getElementById('s1').textContent = S.s1;
+document.getElementById('s2').textContent = S.s2;
+document.getElementById('s2b').textContent = S.s2b;
+document.getElementById('s3a').textContent = S.s3a;
+document.getElementById('s3b').textContent = S.s3b;
+document.getElementById('verdict-note').textContent = c.note + '待你拍板：标题/路径/X头像/详情各取哪家（可拼）。verdict=拍板定赢家，就是你点头。';
+const list = document.getElementById('list');
+if (V === 'C') { const s = document.createElement('div'); s.className = 'sec'; s.textContent = S.sec; list.appendChild(s); }
+if (V === 'D') { const segb = document.querySelector('.seg b'); segb.title = S.dSegTitle; }
+AGENTS.forEach(a => {
+  const row = document.createElement('div'); row.className = 'row grp'; row.tabIndex = 0;
+  row.title = S.tapTip(a.n);
+  const wsTitle = V === 'C' ? (S.fullPath + a.ws) : (S.wsPre + a.ws);
+  row.innerHTML =
+    '<div class="' + c.av(a) + '" title="' + a.n + '">' + c.avT(a) + '</div>' +
+    '<div class="main"><div class="name" title="' + a.n + '">' + a.n + '</div>' +
+    '<div class="chips">' + a.ch.map(x=>'<span class="chip"><span class="dot"></span>'+chipName(x)+'</span>').join('') + '</div>' +
+    '<div class="ws ' + c.wsCls + '" title="' + wsTitle + '">' + (V === 'C' ? S.bound(a.n) : (S.wsPre + a.ws)) + '</div></div>' +
+    '<div class="actions"><span class="st"><span class="dot"></span>' + S.online + '</span>' +
+    '<button class="btn join" title="' + S.joinTitle + '" aria-label="' + S.joinTitle + '">' + S.join + '</button>' +
+    '<button class="btn ' + c.detail + '" title="' + S.detailTitle + '" aria-label="' + S.detailTitle + '">' + S.detail + '</button>' +
+    '<button class="more" title="' + S.more + '" aria-label="' + S.more + '">···</button></div>';
+  row.addEventListener('click', (e) => { if (e.target.closest('button')) return; row.classList.toggle('tap'); });
+  list.appendChild(row);
+});
+document.querySelectorAll('.bar a').forEach(a => { if (a.getAttribute('href').includes('variant='+V)) { a.style.borderColor = 'var(--acc)'; a.style.color = 'var(--acc)'; a.style.fontWeight = '700'; } });
+const mark = () => { document.getElementById('tL').classList.toggle('on', theme==='light'); document.getElementById('tD').classList.toggle('on', theme!=='light'); };
+mark();
+function setTheme(t) { theme = t; document.documentElement.dataset.theme = t === 'light' ? 'light' : ''; history.replaceState(null, '', qs(V_now)); mark(); }
+function setLang(l) { location.search = '?' + new URLSearchParams({ variant: V_now, theme, lang: l, promo }).toString(); }
+function setPromo(p) { location.search = '?' + new URLSearchParams({ variant: V_now, theme, lang, promo: p }).toString(); }
+document.getElementById('p0').onclick = () => setPromo('0');
+document.getElementById('p1').onclick = () => setPromo('1');
+document.getElementById('p2').onclick = () => setPromo('2');
+const pmark = () => { ['0','1','2'].forEach(n => document.getElementById('p'+n).classList.toggle('on', promo===n)); }; pmark();
+const starEl = document.getElementById('star'); starEl.setAttribute('aria-label', PS.star); starEl.setAttribute('title', PS.star);
+if (P < 1) starEl.style.display = 'none';
+if (P >= 2) { const pc = document.getElementById('promoCard'); pc.style.display = ''; document.getElementById('promoT').textContent = PS.promoT;
+  document.getElementById('promoList').innerHTML =
+    '<a target="_blank" rel="noopener" href="https://github.com/FeatherHunter/dsh-mattpocock-skills-deck"><b>dsh-mattpocock-skills-deck</b><span>' + PS.deckD + '</span><i>›</i></a>' +
+    '<a target="_blank" rel="noopener" href="https://github.com/FeatherHunter/dsh-opencode-palette"><b>dsh-opencode-palette</b><span>' + PS.palD + '</span><i>›</i></a>'; }
+document.getElementById('gCn').onclick = () => setLang('cn');
+document.getElementById('gEn').onclick = () => setLang('en');
+const gmark = () => { document.getElementById('gCn').classList.toggle('on', lang==='cn'); document.getElementById('gEn').classList.toggle('on', lang!=='cn'); }; gmark();
+document.getElementById('tL').onclick = () => setTheme('light');
+document.getElementById('tD').onclick = () => setTheme('dark');
+document.querySelectorAll('.bar a').forEach(a => { const u = new URL(a.getAttribute('href'), location.href); u.searchParams.set('theme', theme); u.searchParams.set('lang', lang); u.searchParams.set('promo', promo); a.setAttribute('href', '?' + u.searchParams.toString()); });
+document.getElementById('curlabel').innerHTML = '当前：<code>' + V_now + '（' + c.name + '）</code> · 主题 <code>' + theme + '</code> · 语言 <code>' + lang + '</code> · 推广 <code>P' + promo + '</code>';
+document.getElementById('statepanel').innerHTML =
+  '<b>当前状态</b>：variant=<code>' + V_now + '</code> theme=<code>' + theme + '</code> lang=<code>' + lang + '</code>（演示DSH语言切换：本面文案整体替换，实现侧以i18n key给中英两套内容，不做切换器）<br>' +
+  '锁定项（三变体一致）：悬停统一B · 全绿在线不动 · 只动视觉文案不动行为<br>' +
+  '已定（D赢家）：标题不独占行 · 路径A单行省略 · X头像D去前缀Ji-Sh-Su-Wa+柔色（默认配色仅兜底，用户自设头像后即替换）· 详情ghost · 中文名助理 · 大标题中文大+英文小副标。<br>' +
+  '引流（新增议题，待拍板放哪+文案）：P0无（对照）· P1工具栏星标（跳 companion 仓库点 Star）· P2星标+底部关联卡（skills-deck / opencode-palette，新开页）。';
+const rt = document.getElementById('retry'); if (rt) { rt.textContent = S.retry; rt.onclick = () => { const t0 = S.retry; rt.textContent = '…'; setTimeout(() => { rt.textContent = t0; }, 600); }; }
+</script>
+</body>
+</html>
