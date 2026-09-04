@@ -120,8 +120,8 @@ test('manifest 注册：workspace-rail 槽位 + 进 FEATURES', () => {
 test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('.e2-'));
   assert.ok(!String(styles.CSS).includes('.af-'));
-  assert.ok(String(styles.CSS).includes('z-index:1400'), '面板压过宿主 chrome');
-  assert.ok(String(styles.CSS).includes('z-index:1600'), '确认框在最顶');
+  assert.ok(String(styles.CSS).includes('z-index:9000'), '面板压过宿主 chrome');
+  assert.ok(String(styles.CSS).includes('z-index:9300'), '确认框在最顶');
   assert.ok(String(styles.CSS).includes('.e2-tape{') && String(styles.CSS).includes('text-overflow:ellipsis'), '门牌不出框');
   assert.ok(String(styles.CSS).includes('grid-template-columns:repeat(auto-fit,minmax(215px,1fr))'), 'H 定稿网格');
   assert.ok(String(styles.CSS).includes('transform:rotate(-2deg)'), '胶带歪斜');
