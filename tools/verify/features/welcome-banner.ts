@@ -195,13 +195,15 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf("top: 50%") >= 0 && css.indexOf("translateY(-50%)") >= 0, "文案块必须在天空区垂直居中");
   assert.ok(css.indexOf("bottom: 7%") >= 0, "进门按钮必须沉底（标题居中、按钮靠下，好点）");
   assert.ok(css.indexOf("min(880px, 94vw)") >= 0, "面板要大：居中大面板，不挤原生空态");
-  assert.ok(css.indexOf("repeating-conic-gradient") >= 0, "太阳芒必须存在");
+  assert.equal(css.indexOf("repeating-conic-gradient"), -1, "旋转放射芒已砍：低级感来源，禁回潮");
+  assert.ok(css.indexOf(".wb-haze") >= 0, "天空光晕必须存在");
+  assert.ok(css.indexOf(".wb-cirrus") >= 0, "卷云丝必须存在");
   assert.ok(css.indexOf("feTurbulence") >= 0, "胶片噪点必须存在");
   assert.ok(css.indexOf("min-width: min(320px") >= 0, "按钮必须加宽不加高");
-  for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-rays", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-s1", ".wb-horizon", ".wb-grain", ".wb-vig", ".wb-title", ".wb-enter"]) {
+  for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-haze", ".wb-cirrus", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-s1", ".wb-horizon", ".wb-grain", ".wb-vig", ".wb-title", ".wb-enter"]) {
     assert.ok(css.indexOf(cls) >= 0, "P 天空样式缺失：" + cls);
   }
-  for (const dead of [".wb-x", ".wb-route", ".wb-guide", ".wb-avatar", ".wb-swaprow", ".wb-swap"]) {
+  for (const dead of [".wb-x", ".wb-route", ".wb-guide", ".wb-avatar", ".wb-swaprow", ".wb-swap", ".wb-rays"]) {
     assert.equal(css.indexOf(dead), -1, "旧 A 样式必须移除：" + dead);
   }
 });
@@ -285,7 +287,9 @@ test("渲染 P 弹窗（遮罩+面板+标题+进门）", () => {
   assert.ok(el.querySelector(".wb-sky"), "天空层必须存在");
   assert.ok(el.querySelector(".wb-sky-day"), "白天须用 day 天空");
   assert.ok(el.querySelector(".wb-sun"), "白天须有太阳");
-  assert.ok(el.querySelector(".wb-rays"), "白天须有太阳芒");
+  assert.equal(el.querySelector(".wb-rays"), null, "放射芒必须移除");
+  assert.ok(el.querySelector(".wb-haze"), "白天须有天空光晕");
+  assert.ok(el.querySelector(".wb-cirrus"), "白天须有卷云丝");
   assert.ok(el.querySelector(".wb-grain"), "噪点层必须存在");
   assert.ok(el.querySelector(".wb-vig"), "暗角层必须存在");
   assert.equal(el.querySelector(".wb-title").textContent, "家里亮堂，随时回来");

@@ -56,7 +56,8 @@ export function renderHome(input: {
   const sky = h("div", { className: "wb-sky " + copy.sky });
   if (copy.moon) sky.appendChild(h("div", { className: "wb-moon" }));
   else {
-    sky.appendChild(h("div", { className: "wb-rays" }));
+    sky.appendChild(h("div", { className: "wb-haze" }));
+    sky.appendChild(h("div", { className: "wb-cirrus" }));
     sky.appendChild(h("div", { className: "wb-sun" }));
   }
   if (copy.moon) appendStars(sky);

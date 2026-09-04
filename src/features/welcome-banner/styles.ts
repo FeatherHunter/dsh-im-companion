@@ -14,10 +14,11 @@ const SKY: string[] = [
 ".wb-sky-day { background: linear-gradient(#7db9f0 0%,#cfe8fa 70%,#eef7ee 100%); }",
 ".wb-sky-dusk { background: linear-gradient(#2b2a5e 0%,#b4528b 60%,#ff9d5c 100%); }",
 ".wb-sky-night { background: linear-gradient(#060913 0%,#101a33 70%,#1b2a4a 100%); }",
-".wb-sun { position: absolute; left: 50%; top: 110px; width: 140px; height: 140px; margin-left: -70px; border-radius: 50%; background: radial-gradient(circle at 50% 42%,#fff7cf 0%,#ffd21f 62%,#ffae00 100%); box-shadow: 0 0 60px 30px rgba(255,205,60,.55), 0 0 140px 60px rgba(255,170,40,.25); animation: wb-sunpulse 5s ease-in-out infinite; }",
-"@keyframes wb-sunpulse { 50% { box-shadow: 0 0 90px 40px rgba(255,205,60,.65), 0 0 180px 80px rgba(255,170,40,.3); } }",
-".wb-rays { position: absolute; left: 50%; top: 0; width: 360px; height: 360px; margin-left: -180px; border-radius: 50%; background: repeating-conic-gradient(rgba(255,220,120,.20) 0 7deg, transparent 7deg 22deg); -webkit-mask: radial-gradient(circle, transparent 0 96px, #000000 96px); mask: radial-gradient(circle, transparent 0 96px, #000000 96px); animation: wb-spin 60s linear infinite; pointer-events: none; }",
-"@keyframes wb-spin { to { transform: rotate(360deg); } }",
+".wb-sun { position: absolute; left: 50%; top: 110px; width: 140px; height: 140px; margin-left: -70px; border-radius: 50%; background: radial-gradient(circle at 50% 42%,#fff7cf 0%,#ffd21f 62%,#ffae00 100%); box-shadow: 0 0 50px 24px rgba(255,214,100,.55), 0 0 120px 60px rgba(255,190,90,.28), 0 0 260px 120px rgba(255,200,120,.14); animation: wb-sunpulse 6s ease-in-out infinite; }",
+"@keyframes wb-sunpulse { 50% { box-shadow: 0 0 70px 32px rgba(255,214,100,.62), 0 0 150px 70px rgba(255,190,90,.32), 0 0 300px 130px rgba(255,200,120,.16); } }",
+".wb-haze { position: absolute; left: -10%; right: -10%; top: -25%; height: 72%; background: radial-gradient(ellipse 50% 52% at 50% 46%, rgba(255,250,230,.55), rgba(255,250,230,0) 70%); filter: blur(10px); pointer-events: none; }",
+".wb-cirrus { position: absolute; left: -6%; right: -6%; top: 16%; height: 130px; background: linear-gradient(transparent 28%, rgba(255,255,255,.34) 41%, transparent 54%), linear-gradient(transparent 62%, rgba(255,255,255,.24) 71%, transparent 82%); filter: blur(6px); opacity: .8; pointer-events: none; animation: wb-sway 26s ease-in-out infinite; }",
+"@keyframes wb-sway { 0%, 100% { transform: translateX(-2%); } 50% { transform: translateX(2%); } }",
 ".wb-moon { position: absolute; left: 50%; top: 92px; width: 104px; height: 104px; margin-left: -52px; border-radius: 50%; background: radial-gradient(circle at 36% 30%, #faf6e6 0 16%, transparent 17%), radial-gradient(circle at 63% 57%, rgba(158,152,128,.55) 0 11%, transparent 12%), radial-gradient(circle at 44% 70%, rgba(158,152,128,.38) 0 7%, transparent 8%), radial-gradient(circle at 35% 35%, #f4f1de, #c9c5ae 72%); box-shadow: 0 0 60px 18px rgba(220,225,240,.30), 0 0 140px 50px rgba(180,190,220,.12); }",
 ".wb-cloud { position: absolute; background: #ffffff; opacity: .9; filter: blur(1.5px); border-radius: 999px; animation: wb-drift linear infinite; }",
 ".wb-cloud:before { content: \"\"; position: absolute; background: #ffffff; border-radius: 50%; }",
@@ -52,6 +53,6 @@ const SKY: string[] = [
 ".wb-offline { background: var(--af-danger); }",
 ".wb-unbound { background: var(--af-tertiary); }",
 "@keyframes wb-breathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--af-success) 50%, transparent); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }",
-"@media (prefers-reduced-motion: reduce) { .wb-sun { animation: none; } .wb-rays { animation: none; } .wb-cloud { animation: none; } .wb-star { animation: none; } .wb-title { opacity: 1; transform: none; animation: none; } .wb-sub { opacity: 1; transform: none; animation: none; } .wb-cta { opacity: 1; transform: none; animation: none; } }",
+"@media (prefers-reduced-motion: reduce) { .wb-sun { animation: none; } .wb-cirrus { animation: none; } .wb-cloud { animation: none; } .wb-star { animation: none; } .wb-title { opacity: 1; transform: none; animation: none; } .wb-sub { opacity: 1; transform: none; animation: none; } .wb-cta { opacity: 1; transform: none; animation: none; } }",
 ];
 export const CSS = WB_TOKENS + SKY.join("\n");
