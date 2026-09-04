@@ -1,4 +1,4 @@
-// #17 A线面板联动自验证：共享流订阅 + 失败未知 + 高亮定位（node --test，零第三方依赖）。
+// #17 A线面板联动自验证：共享流订阅 + 失败未知 tooltip（直跑：node tools/verify/features/a17-panel-linkage.ts；零第三方依赖）。
 // 做法：tsc 转译相关链到临时目录再断言（照抄 c1a-drawer.ts 模式）；DOM 用 dom-shim + 最小 window 事件发射器。
 import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -86,13 +86,19 @@ const fakeRpc: any = async (channel: string, endpoint: string) => {
   throw new Error('unknown endpoint');
 };
 
+const dropStream = () => {
+  try {
+    streamMod.getSharedStream(fakeRpc).dispose();
+  } catch { /* 无实例则跳过 */ }
+  streamMod.resetSharedStream();
+};
+
 test('共享流单例：同页两次获取为同一实例', () => {
   streamMod.resetSharedStream();
   const a = streamMod.getSharedStream(fakeRpc);
   const b = streamMod.getSharedStream(fakeRpc);
   assert.equal(a, b);
-  a.dispose();
-  streamMod.resetSharedStream();
+  dropStream();
 });
 
 test('订阅制：失败渠道保留 stale 并记 failed（丢快照判谎报）', async () => {
@@ -113,38 +119,23 @@ test('订阅制：失败渠道保留 stale 并记 failed（丢快照判谎报）
   const kept = pd.state.bots.find((b: any) => b.channel === 'weixin');
   assert.ok(kept && kept.stale === true);
   pd.dispose();
-  streamMod.resetSharedStream();
+  dropStream();
   weixinDown = false;
 });
 
-test('行标记 + 失败 tooltip + open-agent 高亮（面板打开时）', async () => {
+test('失败 tooltip 透出（轮询失败），健康渠道不带后缀', async () => {
   streamMod.resetSharedStream();
-  weixinDown = true;
+  weixinDown = false;
   const doc: any = createDocument();
-  const listeners = new Map<string, Set<Function>>();
-  const win: any = {
-    addEventListener: (t: string, fn: Function) => {
-      if (!listeners.has(t)) listeners.set(t, new Set());
-      listeners.get(t)!.add(fn);
-    },
-    removeEventListener: (t: string, fn: Function) => { listeners.get(t)?.delete(fn); },
-    dispatchEvent: (ev: any) => {
-      const set = listeners.get(ev.type);
-      if (set) for (const fn of [...set]) fn.call(win, ev);
-      return true;
-    },
-    CustomEvent: class { type: string; detail: unknown; constructor(t: string, o: any) { this.type = t; this.detail = o?.detail; } },
-  };
-  (globalThis as any).window = win;
   (globalThis as any).document = doc;
   const panelBody: any = req('./components/panel-body.js');
-  const bindings: any = req('./data/bindings.js');
   const pd = panelData.createPanelData(fakeRpc);
   pd.setRender(() => {});
   await pd.load();
+  weixinDown = true;
+  await pd.load(true);
   const bodyEl: any = doc.createElement('div');
   doc.body.appendChild(bodyEl);
-  bodyEl.isConnected = true;
   const titleMeta: any = doc.createElement('div');
   const segStub: any = { setLabel() {}, el: doc.createElement('div'), relayout() {} };
   const noopCb: any = {
@@ -155,31 +146,23 @@ test('行标记 + 失败 tooltip + open-agent 高亮（面板打开时）', asyn
     relayout() {}, rowCallbacks: () => noopCb, onRetry() {},
   });
   body.render();
-  const rows: any[] = [];
+  const statuses: any[] = [];
   const walk = (n: any) => {
     for (const c of n.childNodes ?? []) {
       if (c.nodeType === 1) {
         try {
-          if (c.getAttribute && c.getAttribute('data-agent-key')) rows.push(c);
+          if (c.classList && c.classList.contains('af-status')) statuses.push(c);
         } catch { /* 跳过 */ }
         walk(c);
       }
     }
   };
   walk(bodyEl);
-  assert.ok(rows.length >= 2, '应渲染出 Agent 行并打标 data-agent-key');
-  const w2row = rows.find((r) => r.getAttribute('data-workspace') === W2);
-  assert.ok(w2row, '应找到 xinghuo 行');
-  const st = w2row.querySelector('.af-status');
-  assert.ok(st && String(st.getAttribute('title') ?? '').includes('轮询失败'), '失败渠道 tooltip 透出（轮询失败）');
-  bodyEl.querySelectorAll = (sel: string) => (sel === '[data-agent-key]' ? rows : []);
-  const w1row = rows.find((r) => r.getAttribute('data-workspace') === W1);
-  assert.ok(w1row, '应找到 xiaoshuai 行');
-  win.dispatchEvent(new win.CustomEvent(bindings.OPEN_AGENT_EVENT, { detail: { workspace: W1, agent: 'xiaoshuai' } }));
-  assert.ok(String(w1row.style?.boxShadow ?? '').includes('ff') || String(w1row.style?.boxShadow ?? '').includes('0a84ff') || String(w1row.style?.boxShadow ?? '').length > 0, '高亮应写入 boxShadow');
-  body.dispose();
+  assert.ok(statuses.length >= 2, '应渲染出 Agent 状态行');
+  const failedOne = statuses.filter((s) => String(s.getAttribute('title') ?? '').includes('轮询失败'));
+  assert.equal(failedOne.length, 1, '仅失败渠道行带（轮询失败）后缀');
   pd.dispose();
-  streamMod.resetSharedStream();
+  dropStream();
   weixinDown = false;
   try { rmSync(tmp, { recursive: true, force: true }); } catch { /* 忽略 */ }
 });

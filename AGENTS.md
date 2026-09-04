@@ -25,7 +25,8 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 * Host: `lib/index.js`（空壳）
 * Client: `lib/client.js`（React IM机器人辅助，`slots.inject('settings.section', order 22)`）
 * 预览：`preview.html` (`python -m http.server 8788`)
-* 挂载：`desktop` profile（Junction + bundles），需完全退出 DSH Desktop 再重开 + Ctrl+F5
+* 挂载：`desktop` profile（Junction + bundles）
+* 热更新优先（用户裁定 2026-09-04：DSH 支持动态加载）——改完重打 `lib/` 后刷新页面（Ctrl+F5）或热重载插件验证即可；**无必要绝不让用户重启 DSH**（重启是最后手段，仅 host/loader/装配结构动了且热重载吃不下时才提）
 
 ## Labels required (GitHub)
 

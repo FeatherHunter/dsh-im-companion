@@ -108,11 +108,6 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   void data.load()
   ;(root as unknown as { __afDispose?: () => void }).__afDispose = () => {
     try {
-      bodyModule.dispose()
-    } catch {
-      /* 清理失败忽略 */
-    }
-    try {
       data.dispose()
     } catch {
       /* 清理失败忽略 */

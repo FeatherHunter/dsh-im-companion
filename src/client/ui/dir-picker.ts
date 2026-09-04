@@ -1,8 +1,11 @@
 /** 目录选择原语（新增共享原语，各 feature 复用）：原生系统对话框优先，否则 host 桥目录浏览。
- * 与 components/workspace-picker 同源语义，落共享层供 feature 经契约使用（feature 禁直引 A1 私有）。 */
+ * 与 components/workspace-picker 同源语义，落共享层供 feature 经契约使用（feature 禁直引 A1 私有）。
+ * 内置浏览全用 af-* 主题类（title/sub/dirbar/list/diritem/foot）：裸 h3/div/button 会吃到宿主样式
+ * （紫标题/原生按钮），在设置页里即截图中的混乱卡片。卡片加宽 + 遮罩置顶（见 theme 附则）。 */
 import { h } from '../dom'
+import { icon } from '../icons'
 import { makeButton } from './button'
-import { showModal } from './modal'
+import { showModal, type ModalHandle } from './modal'
 import type { RpcCall } from '../data/fleet-api'
 import { HOST_CHANNEL } from '../data/meta'
 
@@ -12,6 +15,20 @@ export interface DirPickerHandle {
 }
 
 const isAbs = (p: string): boolean => !!p && (p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p))
+
+/** 原生选择器归一：按优先级从候选服务取首个可用的 pickDirectory（官方直连/get 透传同口径，this 绑定保留）。 */
+export function nativePicker(...svcs: unknown[]): (() => Promise<unknown>) | undefined {
+  for (const svc of svcs) {
+    try {
+      const pick = (svc as { pickDirectory?: unknown } | null)?.pickDirectory
+      if (typeof pick === 'function') {
+        const bound = (pick as () => Promise<unknown>).bind(svc)
+        return () => Promise.resolve().then(() => bound())
+      }
+    } catch { /* 该候选不可用，看下一个 */ }
+  }
+  return undefined
+}
 
 export function openDirPicker(
   rpc: RpcCall | null, initial = '', native?: () => Promise<unknown>,
@@ -25,23 +42,12 @@ export function openDirPicker(
     void (async () => {
       try {
         const raw = await native()
-        if (raw === null) {
-          resolveFn(null)
-          return
-        }
-        const picked = normalizePick(raw)
-        if (picked) {
-          resolveFn(picked)
-          return
-        }
-      } catch {
-        /* 原生不可用（browse 能力/拒答等）→ 回退内置浏览 */
-      }
-      if (!rpc) {
+        resolveFn(raw === null ? null : normalizePick(raw))
+      } catch (e) {
+        /* 原生框自行承接交互：取消即抛错，一律按取消处理，不回退内置（免双框困惑）；真故障留 console 备查 */
+        try { console.warn('[dsh-im-companion] native directory picker dismissed:', e) } catch { /* ignore */ }
         resolveFn(null)
-        return
       }
-      openHostBrowser()
     })()
     return { promise, el: placeholder }
   }
@@ -54,44 +60,105 @@ export function openDirPicker(
 
   function openHostBrowser(): { el: HTMLElement } {
   const state = { path: '' }
-  const list = h('div', { style: { maxHeight: '280px', overflow: 'auto' } })
-  const bar = h('div', null)
-  const choose = makeButton({ kind: 'primary', label: '选择此目录', disabled: true, onClick: () => resolveFn(state.path) })
-  const cancel = makeButton({ kind: 'ghost', label: '取消', onClick: () => resolveFn(null) })
-  const modal = showModal([
-    h('h3', null, '选择目录'),
-    h('div', null, '为该 Agent 选一个文件夹'),
-    bar, list,
-    h('div', null, cancel, choose),
+  const list = h('div', { className: 'af-list', style: { maxHeight: '280px', overflow: 'auto' } })
+  const bar = h('div', { className: 'af-dirbar' }, h('span', null, '…'))
+  /* 直达行：家目录子树之外的任意文件夹靠粘贴绝对路径进入（复用 af-compose 输入行样式，不新增类） */
+  const goInput = h('input', {
+    type: 'text', placeholder: '粘贴绝对路径直达，如 D:\\agents\\xiaosun', 'aria-label': '粘贴绝对路径直达',
+    onKeyDown: (ev: Event) => { if ((ev as KeyboardEvent).key === 'Enter') void jump() },
+  })
+  const goBtn = makeButton({ label: '前往', title: '跳到输入的绝对路径', onClick: () => void jump() })
+  const goRow = h('div', { className: 'af-compose', style: { margin: '8px 0 0' } }, goInput, goBtn)
+  /* 盘符/根快捷入口：fs.roots 取不到则整行隐藏，不影响浏览 */
+  const chips = h('div', { style: { display: 'none', gap: '6px', flexWrap: 'wrap', margin: '8px 0 0' } })
+  /* 按钮只 resolve 不关窗 = 点取消没反应（选择亦然）：统一经 done 先关窗再回值 */
+  let modal: ModalHandle;
+  const done = (v: string | null): void => {
+    try { modal?.close() } catch { /* 关闭失败忽略 */ }
+    resolveFn(v)
+  }
+  const choose = makeButton({ kind: 'primary', label: '选择此目录', disabled: true, onClick: () => done(state.path) })
+  const cancel = makeButton({ kind: 'ghost', label: '取消', onClick: () => done(null) })
+  modal = showModal([
+    h('h3', { className: 'af-modal-title' }, '选择目录'),
+    h('div', { className: 'af-modal-sub' }, '为该 Agent 选一个文件夹'),
+    bar, goRow, chips, list,
+    h('div', { className: 'af-modal-foot' }, cancel, choose),
   ], { onClose: () => resolveFn(null) })
+  try {
+    /* 宽卡（长 Windows 路径不挤压）+ 置顶于 c1a 抽屉遮罩（1250 > 1200）；极简 DOM 环境缺 classList 则跳过 */
+    modal.el.classList.add('af-modal--wide')
+    modal.el.parentElement?.classList.add('af-overlay--top')
+  } catch {
+    /* 保持默认尺寸层叠 */
+  }
+  /** 直达：绝对路径直跳（非法输入就地提示，不抛不关窗）。 */
+  async function jump(): Promise<void> {
+    const target = goInput.value.trim()
+    if (!isAbs(target)) {
+      list.replaceChildren(h('div', { className: 'af-error' }, '请输入绝对路径（Windows 如 D:\\agents\\x，macOS/Linux 如 /home/x）'))
+      return
+    }
+    await navigate(target)
+  }
   async function navigate(path: string): Promise<void> {
     state.path = path
     choose.disabled = !path
-    bar.replaceChildren(h('span', { style: { wordBreak: 'break-all' } }, path || '…'))
-    list.replaceChildren(h('div', null, '正在读取目录…'))
+    bar.replaceChildren(h('span', null, '…'))
+    list.replaceChildren(h('div', { className: 'af-loading-row' }, h('span', { className: 'af-spin' }), '正在读取目录…'))
     try {
       const raw = await rpc!(HOST_CHANNEL, 'fs.list', { path }, AbortSignal.timeout(5000))
       const res = raw as { ok: boolean; value?: { path: string; parent: string | null; entries: { name: string; path: string }[] }; error?: { message?: string } }
       if (!res.ok || !res.value) throw new Error(res.error?.message ?? '目录读取失败')
       state.path = res.value.path
       choose.disabled = !state.path
+      /* 直达框不跟随回填：它是 transient 命令，当前路径由路径条展示；回填会覆盖用户正在输入的半截路径 */
+      const curPath = res.value.path
+      const curParent = res.value.parent
       bar.replaceChildren()
-      if (res.value.parent) {
-        const up = h('button', { type: 'button', onClick: () => void navigate(res.value!.parent as string) }, '…上级')
-        bar.appendChild(up)
+      if (curParent) {
+        bar.appendChild(h('button', {
+          className: 'af-btn ghost sm', type: 'button',
+          style: { padding: '0 6px', flex: 'none' }, title: curParent,
+          onClick: () => void navigate(curParent),
+        }, '…上级'))
       }
-      bar.appendChild(h('span', { style: { wordBreak: 'break-all' } }, res.value.path))
+      bar.appendChild(h('span', { title: curPath, style: { wordBreak: 'break-all' } }, curPath))
       const rows = res.value.entries.map((e) => {
-        const row = h('div', { role: 'button', title: e.path }, e.name)
-        row.onclick = () => void navigate(e.path)
+        const row = h('div', {
+          className: 'af-diritem', role: 'button', tabIndex: 0, title: e.path,
+          onClick: () => void navigate(e.path),
+          onKeyDown: (ev: Event) => {
+            const k = (ev as KeyboardEvent).key
+            if (k === 'Enter' || k === ' ') { ev.preventDefault(); void navigate(e.path) }
+          },
+        }, icon('folder', 16), h('span', null, e.name))
         return row
       })
-      if (!rows.length) list.replaceChildren(h('div', null, '（此目录下没有子文件夹）'))
+      if (!rows.length) list.replaceChildren(h('div', { className: 'af-loading-row' }, '（此目录下没有子文件夹）'))
       else list.replaceChildren(...rows)
     } catch (e) {
-      list.replaceChildren(h('div', null, '读取失败：' + String((e as Error)?.message ?? e)))
+      list.replaceChildren(h('div', { className: 'af-error' }, '读取失败：' + String((e as Error)?.message ?? e)))
     }
   }
+  /* 盘符入口与初始定位互不等待，任一失败不影响另一路 */
+  void (async () => {
+    try {
+      const rootRaw = await rpc!(HOST_CHANNEL, 'fs.roots', {}, AbortSignal.timeout(5000))
+      const rootRes = rootRaw as { ok: boolean; value?: { roots?: unknown } }
+      const roots = rootRes.ok && rootRes.value && Array.isArray(rootRes.value.roots)
+        ? (rootRes.value.roots as unknown[]).filter((x): x is string => typeof x === 'string' && !!x).slice(0, 26)
+        : []
+      if (!roots.length) return
+      chips.replaceChildren(...roots.map((rt) => h('button', {
+        className: 'af-btn ghost sm', type: 'button', title: rt,
+        onClick: () => void navigate(rt),
+      }, rt)))
+      chips.style.display = 'flex'
+    } catch {
+      /* 取不到盘符即无快捷入口，不影响浏览 */
+    }
+  })()
   void (async () => {
     if (isAbs(initial)) {
       await navigate(initial)

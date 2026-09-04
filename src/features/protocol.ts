@@ -27,6 +27,8 @@ export interface FeatureCtx {
   meta: MetaStore
   slots: SlotsService
   get(name: string): unknown
+  /** 原生目录选择（inject 声明 uiWorkspace 后由装配层注入；缺失时调用方回退内置浏览）。 */
+  pickDirectory?: () => Promise<unknown>
 }
 
 export interface FeatureSlot {

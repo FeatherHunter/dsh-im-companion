@@ -14,6 +14,17 @@ export type RpcResult =
 const ok = (value: unknown): RpcResult => ({ ok: true, value })
 const fail = (code: string, message: string): RpcResult => ({ ok: false, error: { code, message, details: {} } })
 
+/** 可达根目录：Windows 枚举现存盘符，POSIX 返回根（供 picker 一键直达任意位置）。 */
+async function listRoots(): Promise<string[]> {
+  if (process.platform !== 'win32') return ['/']
+  const found: string[] = []
+  for (let code = 65; code <= 90; code++) {
+    const root = String.fromCharCode(code) + ':\\'
+    try { await fs.access(root); found.push(root) } catch { /* 不存在的盘符跳过 */ }
+  }
+  return found.length ? found : [homedir()]
+}
+
 async function listDirectories(dir: string): Promise<{ name: string; path: string }[]> {
   const dirents = await fs.readdir(dir, { withFileTypes: true })
   const entries = dirents
@@ -112,6 +123,8 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: { dshHome?:
         }
         case 'fs.defaultRoot':
           return ok({ path: homedir() })
+        case 'fs.roots':
+          return ok({ roots: await listRoots() })
         case 'fs.list': {
           const dir = String(p.path ?? '')
           if (!dir || !path.isAbsolute(dir)) return fail('bad-request', '需要绝对路径')

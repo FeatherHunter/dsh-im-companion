@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>串门·搬家 — 深色四套配色对照（只换色·同版式）</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{background:#0e1014;color:#e8e8ea;font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;padding:28px 18px 80px;-webkit-font-smoothing:antialiased}
+.page{max-width:980px;margin:0 auto}
+.page>h1{font-size:20px;margin:0 0 4px}.page>.note{color:#9a9ca5;font-size:12.5px;margin:0 0 22px;max-width:78ch}
+.proof{margin:0 0 30px;border:1px solid rgba(255,255,255,.1);border-radius:14px;overflow:hidden;background:#12141a}
+.proof>header{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
+.proof>header b{font-size:14px}.proof>header code{font-size:11.5px;color:#9a9ca5;display:block;margin-top:2px;font-family:ui-monospace,monospace}
+/* —— 版式（四套共用，一字不差；只有颜色走 var） —— */
+.cockpit{background:var(--paper);color:var(--ink);padding:18px;border-top:1px solid var(--sec-border)}
+.cockpit h2{font-size:16px;margin:0 0 2px;padding-right:36px}
+.cockpit .sub{font-size:12px;color:var(--faint);margin:0 0 14px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.sec{background:var(--sec);border:1px solid var(--sec-border);border-radius:6px;padding:12px 12px 10px}
+.grid>.sec:nth-child(3n) .tape{transform:rotate(1.5deg)}.grid>.sec:nth-child(3n+1) .tape{transform:rotate(-3deg)}
+.tape{display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--tape);color:var(--tape-ink);padding:1px 12px;font-size:14px;font-weight:800;transform:rotate(-2deg);border-radius:2px;margin-bottom:2px}
+.row{background:var(--row);color:var(--row-ink,var(--ink));border-radius:4px;margin-top:10px;padding:8px 8px 10px}
+.top{display:flex;align-items:center;gap:8px}.dot{width:8px;height:8px;border-radius:50%;flex:none;background:#35b558;box-shadow:0 0 6px rgba(53,181,88,.7)}
+.who{font-size:14px}.cap{display:block;margin-top:6px;font-size:11px;font-style:italic;color:var(--row-faint,var(--faint))}
+.hint{font-size:12px;color:var(--row-faint,var(--faint));margin-top:8px}
+.alley{grid-column:1/-1;border:1.5px dashed var(--alley-border);background:var(--alley-bg)}
+.empty{background:var(--empty-bg)}
+/* —— 四套只写颜色 —— */
+[data-v=o]{--paper:#232839;--sec:linear-gradient(180deg,#7a6547,#57462f);--sec-border:rgba(220,186,105,.6);--row:#7d6850;--ink:#f4ede1;--faint:rgba(244,237,225,.62);--row-faint:rgba(244,237,225,.55);--tape:#e3b95e;--tape-ink:#201b14;--alley-bg:rgba(0,0,0,.28);--alley-border:rgba(244,237,225,.4);--empty-bg:rgba(0,0,0,.28)}
+[data-v=a]{--paper:#1a1d24;--sec:#22262f;--sec-border:rgba(255,255,255,.09);--row:#2d333f;--ink:#f2f3f5;--faint:#9c9ea6;--row-faint:#9c9ea6;--tape:#363c48;--tape-ink:#e9ebef;--alley-bg:rgba(255,255,255,.02);--alley-border:rgba(255,255,255,.22);--empty-bg:#1e222b}
+[data-v=b]{--paper:#11141b;--sec:#1e2432;--sec-border:rgba(238,196,110,.30);--row:#eadfc6;--row-ink:#2c2517;--row-faint:#6f6250;--ink:#f0e8d6;--faint:#9aa3b5;--tape:#dcc08a;--tape-ink:#241d10;--alley-bg:rgba(238,196,110,.05);--alley-border:rgba(220,192,138,.55);--empty-bg:#151923}
+[data-v=b] .empty .tape{background:#3a4152;color:#cfd6e4}
+[data-v=b] .alley .hint{color:#9aa3b5}[data-v=b] .empty .hint{color:#8b93a7}
+[data-v=c]{--paper:#1d2029;--sec:#4c4c54;--sec-border:rgba(255,255,255,.10);--row:#5f5f67;--ink:#f1eee7;--faint:#c0bcb2;--row-faint:#cfccc4;--tape:#c8b68d;--tape-ink:#262219;--alley-bg:rgba(0,0,0,.20);--alley-border:rgba(241,238,231,.35);--empty-bg:rgba(0,0,0,.22)}
+</style></head><body><div class="page">
+<h1>串门 · 搬家 — 深色配色四选一（版式完全相同，只换颜色）</h1>
+<p class="note">对照截图里的 9 家＋巷子口＋4 空家。虚实线、位置、字号、圆角全部没动。O=现状复刻，A=原生灰，B=墨夜暖芯（家里开灯：暗卡＋亮行），C=去脏微调。看完告诉我 O/A/B/C 即可。</p>
+<div id="root"></div></div>
+<script>
+var houses=[
+["Xinghuo",["星火"]],["Xiaoshuai",["小帅","小匠","微信机器人"]],["Xiaoshan",["小膳"]],["Dsh-mattpocock-s…",["小琢"]],
+["Xiaoyan",["小研"]],["Xiaowan",["小婉"]],["Xiaosun",["小孙"]],["Zhijianzhuli",["智剪助理"]],["Shujucangkuguanli…",["合库数据管理员"]]];
+var empties=["Dsh-im-companion",".db","Studynotes","Dsh-im"];
+var variants=[
+["o","O · 现状复刻","paper #232839 / 卡棕渐变 #7a6547→#57462f / 行 #7d6850 / 胶带 #e3b95e"],
+["a","A · DSH 原生跟随","paper #1a1d24 / 卡 #22262f / 行 #2d333f / 胶带灰 #363c48（黄全去掉）"],
+["b","B · 墨夜暖芯（推荐）","paper #11141b / 暗蓝卡 #1e2432 / 亮暖行 #eadfc6 深字 / 胶带沙 #dcc08a / 空家压黑"],
+["c","C · 去脏微调","paper #1d2029 / 卡纯灰 #4c4c54（去渐变）/ 行 #5f5f67 / 胶带 #c8b68d"]];
+var root=document.getElementById("root");
+variants.forEach(function(v){
+var sec=document.createElement("section");sec.className="proof";sec.setAttribute("data-v",v[0]);
+var hd=document.createElement("header");var b=document.createElement("b");b.textContent=v[1];var c=document.createElement("code");c.textContent=v[2];hd.appendChild(b);hd.appendChild(c);sec.appendChild(hd);
+var cp=document.createElement("div");cp.className="cockpit";cp.innerHTML="<h2>串门 · 搬家</h2><p class='sub'>把照片拖到另一家，搬家成功会二次确认。绿灯在岗，黄灯打盹，灰灯睡着了。</p>";
+var grid=document.createElement("div");grid.className="grid";
+houses.forEach(function(h){
+var d=document.createElement("div");d.className="sec";var t=document.createElement("span");t.className="tape";t.textContent=h[0];d.appendChild(t);
+h[1].forEach(function(n){var r=document.createElement("div");r.className="row";r.innerHTML="<div class='top'><span class='dot'></span><span class='who'></span></div><span class='cap'>飞书 · 永远在线，除了睡着的时候</span>";r.querySelector(".who").textContent=n;d.appendChild(r);});
+grid.appendChild(d);});
+var al=document.createElement("div");al.className="sec alley";al.innerHTML="<span class='tape'>巷子口</span><div class='hint'>串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。</div>";grid.appendChild(al);
+empties.forEach(function(e){var d=document.createElement("div");d.className="sec empty";d.innerHTML="<span class='tape'></span><div class='hint'>空无一人，拖个人来安家</div>";d.querySelector(".tape").textContent=e;grid.appendChild(d);});
+cp.appendChild(grid);sec.appendChild(cp);root.appendChild(sec);});
+</script></body></html>

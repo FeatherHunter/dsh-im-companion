@@ -1,7 +1,7 @@
 /** C1a 抽屉容器：事件开合 + 真系统写透 + stream 保活（P0-3）。
  * A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写；host 自持账本弃用不断路。 */
 import { mount } from '../../client/dom'
-import { openDirPicker } from '../../client/ui/dir-picker'
+import { nativePicker, openDirPicker } from '../../client/ui/dir-picker'
 import { showSheet } from '../../client/ui/sheet'
 import { toast } from '../../client/ui/toast'
 import { chooseBot, runTestSend } from '../../client/data/header-overlay'
@@ -208,15 +208,13 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       })()
     },
     onBrowseWorkspace: () => {
-      if (!fctx.rpc) {
+      /* 原生优先：inject 直连 → get 透传；都没有才内置浏览（原生不需 rpc，不断路前置）。 */
+      let svc: unknown; try { svc = typeof fctx.get === 'function' ? fctx.get('uiWorkspace') : undefined } catch { svc = undefined }
+      const native = nativePicker({ pickDirectory: fctx.pickDirectory }, svc)
+      if (!native && !fctx.rpc) {
         toast('连接服务不可用')
         return
       }
-      let svc: unknown; try { svc = typeof fctx.get === 'function' ? fctx.get('uiWorkspace') : undefined } catch { svc = undefined }
-      const anySvc: any = svc
-      const native = anySvc && typeof anySvc.pickDirectory === 'function'
-        ? () => Promise.resolve().then(() => anySvc.pickDirectory())
-        : undefined
       void (async () => {
         try {
           const picked = await openDirPicker(fctx.rpc, draftWs ?? model.workspace, native).promise

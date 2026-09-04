@@ -234,3 +234,37 @@ export function mergeStaleBots(prev: BotSnap[], fresh: BotSnap[], failed: readon
   ).map((b): BotSnap => ({ ...b, stale: true, healthKind: 'warn' }))
   return [...fresh, ...retained]
 }
+
+/** 接入 QR 倒计时纯逻辑（#29：只加导出，不改既有行为）。 */
+export const QR_FALLBACK_DURATION_MS = 5 * 60_000
+
+function toFiniteNumber(v: unknown): number {
+  if (typeof v === 'number') return v
+  if (typeof v === 'string' && v.trim() !== '') return Number(v.trim())
+  return NaN
+}
+
+/** 上游 expiresAt 归一为毫秒时间戳：秒级（<1e12）自动 ×1000；缺失/非法回退 now+5min。
+ * 已过去的值如实保留（调用方正确显示已失效），不静默续期。 */
+export function normalizeProvisionTiming(
+  prov: Pick<ProvisionState, 'expiresAt' | 'durationMs'> | null | undefined,
+  now: number = Date.now(),
+): { expiresAt: number; durationMs: number } {
+  let expiresAt = toFiniteNumber(prov?.expiresAt)
+  if (Number.isFinite(expiresAt) && expiresAt > 0 && expiresAt < 1e12) expiresAt *= 1000
+  if (!Number.isFinite(expiresAt) || expiresAt <= 0) expiresAt = now + QR_FALLBACK_DURATION_MS
+  let durationMs = toFiniteNumber(prov?.durationMs)
+  if (Number.isFinite(durationMs) && durationMs > 0 && durationMs < 1000 && expiresAt - now > durationMs * 10) {
+    durationMs *= 1000
+  }
+  if (!Number.isFinite(durationMs) || durationMs <= 0) durationMs = Math.max(1, expiresAt - now)
+  return { expiresAt, durationMs }
+}
+
+/** 倒计时展示：向上取整（ceil），到零才显示 0:00，避免 round 提前半秒跳已失效造成闪烁。 */
+export function fmtCountdown(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000))
+  const mm = Math.floor(s / 60)
+  const ss = String(s % 60).padStart(2, '0')
+  return mm + ':' + ss
+}

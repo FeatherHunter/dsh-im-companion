@@ -8,8 +8,8 @@ import { getSharedStream, resetSharedStream } from './data/connection-stream'
 import { createMetaStore, type MetaStore } from './data/meta'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
 
-/* 注：workspaces 经 ctx.get 惰性可选查找（无需声明）；声明会引入 provider 卸载连带，不声明更稳。 */
-export const inject = ['slots', 'connection']
+/* 注：workspaces 经 ctx.get 惰性可选查找（无需声明）；uiWorkspace 必须声明（官方 directory-picker-native 同款），否则宿主不注入原生目录服务。 */
+export const inject = ['slots', 'connection', 'uiWorkspace']
 
 export function apply(ctx: any): void {
   const PLUGIN_ID = 'dsh-im-companion'
@@ -34,6 +34,10 @@ export function apply(ctx: any): void {
       return metaCache
     },
     slots: ctx.slots as SlotsService,
+    /* 原生目录直连（与 directory-picker-native 同款写法；缺失时各调用方回退内置浏览）。 */
+    ...(typeof (ctx as { uiWorkspace?: { pickDirectory?: unknown } })?.uiWorkspace?.pickDirectory === 'function'
+      ? { pickDirectory: () => (ctx as { uiWorkspace: { pickDirectory: () => Promise<unknown> } }).uiWorkspace.pickDirectory() }
+      : {}),
     /* 宿主服务透传（B3 取 workspaces；c1a/e2 取 uiWorkspace 时同口径）：取不到按缺失处理。 */
     get: (name: string) => {
       try {

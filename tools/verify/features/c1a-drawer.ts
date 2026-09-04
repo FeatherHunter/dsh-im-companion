@@ -399,8 +399,29 @@ test('dir-picker：列出子目录并可取消', async () => {
   const btns = el.querySelectorAll('.af-btn');
   const cancel = btns.find((b: any) => b.textContent === '取消');
   assert.ok(cancel);
+  const goBtn = btns.find((b: any) => b.textContent === '前往');
+  assert.ok(goBtn);
+  goBtn.dispatchEvent({ type: 'click' });
+  await new Promise((r) => setTimeout(r, 10));
+  assert.ok(texts(el).join('|').includes('绝对路径'));
   cancel.dispatchEvent({ type: 'click' });
   assert.equal(await promise, null);
+  assert.equal(doc.body.contains(el), false);
+});
+
+test('dir-picker：原生优先（成功/取消/抛错都不再回退内置）', async () => {
+  const calls: string[] = [];
+  const fakeRpc = async (_ch: string, ep: string) => {
+    calls.push(ep);
+    return { ok: true, value: { path: '/x', parent: '/', entries: [] } };
+  };
+  const p1 = picker.openDirPicker(fakeRpc, '', async () => 'D:\\picked');
+  assert.equal(await p1.promise, 'D:\\picked');
+  const p2 = picker.openDirPicker(fakeRpc, '', async () => null);
+  assert.equal(await p2.promise, null);
+  const p3 = picker.openDirPicker(fakeRpc, '', async () => { throw new Error('dismissed'); });
+  assert.equal(await p3.promise, null);
+  assert.ok(!calls.includes('fs.list'));
 });
 
 test('data：性格预填一致回填、分歧置空', () => {

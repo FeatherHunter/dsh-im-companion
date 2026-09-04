@@ -17,9 +17,16 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
     resolveFn = resolve
   })
 
-  /* ① 原生系统目录对话框（DSH uiWorkspace 服务，若存在；失败/取消则回退 ②） */
+  /* ① 原生系统目录对话框（官方直连优先：inject 声明后 ctx 直挂 uiWorkspace；其次 get 透传） */
   let nativeFn: (() => Promise<unknown>) | undefined
   try {
+    const direct = (ctx as { uiWorkspace?: { pickDirectory?: () => Promise<unknown> } } | null)?.uiWorkspace
+    if (direct && typeof direct.pickDirectory === 'function') {
+      const pick = direct.pickDirectory.bind(direct)
+      nativeFn = () => pick()
+    }
+  } catch { /* 直连缺失走 get 路径 */ }
+  if (!nativeFn) try {
     const ui = typeof (ctx as { get?: (n: string) => unknown } | null)?.get === 'function'
       ? (ctx as { get: (n: string) => unknown }).get('uiWorkspace')
       : undefined
@@ -37,23 +44,12 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
     void (async () => {
       try {
         const raw = await nativeFn!()
-        if (raw === null) {
-          resolveFn(null)
-          return
-        }
-        const picked = normalizePick(raw)
-        if (picked) {
-          resolveFn(picked)
-          return
-        }
-      } catch {
-        /* 原生不可用（browse 能力/拒答等）→ 回退内置浏览 */
-      }
-      if (!rpc) {
+        resolveFn(raw === null ? null : normalizePick(raw))
+      } catch (e) {
+        /* 原生框自行承接交互：取消即抛错，一律按取消处理，不回退内置（免双框困惑）；真故障留 console 备查 */
+        try { console.warn('[dsh-im-companion] native directory picker dismissed:', e) } catch { /* ignore */ }
         resolveFn(null)
-        return
       }
-      openHostBrowser()
     })()
     return { promise, el: placeholder }
   }
@@ -73,10 +69,16 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
   const bar = h('div', { className: 'af-dirbar' })
   const title = h('h3', { className: 'af-modal-title' }, '选择工作区')
   const sub = h('div', { className: 'af-modal-sub' }, '选择该 Agent 的文件夹（作为它的「家」）')
-  const choose = makeButton({ kind: 'primary', label: '选择此目录', disabled: true, onClick: () => resolveFn(state.path) })
-  const cancel = makeButton({ kind: 'ghost', label: '取消', onClick: () => resolveFn(null) })
+  /* 按钮只 resolve 不关窗 = 点取消没反应（dir-picker 同款 bug，同治） */
+  let modal: ModalHandle;
+  const done = (v: string | null): void => {
+    try { modal?.close() } catch { /* 关闭失败忽略 */ }
+    resolveFn(v)
+  }
+  const choose = makeButton({ kind: 'primary', label: '选择此目录', disabled: true, onClick: () => done(state.path) })
+  const cancel = makeButton({ kind: 'ghost', label: '取消', onClick: () => done(null) })
   const foot = h('div', { className: 'af-modal-foot' }, cancel, choose)
-  const modal: ModalHandle = showModal([
+  modal = showModal([
     title, sub, bar, list, foot,
     h('div', { className: 'af-modal-sub', style: { margin: '10px 0 0' } }, '提示：也可拖入任意目录；仅展示文件夹。'),
   ], { onClose: () => resolveFn(null) })
