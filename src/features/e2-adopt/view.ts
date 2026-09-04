@@ -147,14 +147,13 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       dropped = false
       pressDown = false
       dragId = row.getAttribute('data-e2-bot')
-      diag(ctx, 'dragstart', String(dragId))
       dragEl = row
       dragDesc = { botId: row.getAttribute('data-e2-bot'), channel: row.getAttribute('data-e2-channel') }
       try { dragStartX = de.clientX } catch { dragStartX = null }
-      /* 原牌就地变影子（空白相纸）：不动布局、不藏源——display:none 会让 Chrome 直接取消本次拖拽，时好时坏的根因。 */
+      /* 原牌就地变影子（空白相纸）：不动布局、不藏源。 */
       try { row.classList.add('e2-ph') } catch { /* 忽略 */ }
-      de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') }))
-      de.dataTransfer.effectAllowed = 'move'
+      try { de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') })); de.dataTransfer.effectAllowed = 'move' } catch { /* 置数失败不阻断 */ }
+      diag(ctx, 'dragstart', String(dragId) + ' conn=' + (row.isConnected ? 1 : 0) + ' pd=' + (de.defaultPrevented ? 1 : 0))
     } catch { /* 忽略 */ }
   }
   const onDragOver = (e: Event): void => {
