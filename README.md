@@ -50,7 +50,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://regis
 
 <div align="center">
 
-装完按 **Ctrl+F5 刷新页面**即生效；如果没出现，完全退出 DSH 重开一次就行。
+装完刷新页面即生效。若面板没有出现，请完全退出 DSH 后重新打开。
 
 </div>
 
