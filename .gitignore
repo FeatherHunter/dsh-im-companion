@@ -3,3 +3,4 @@ lib/
 *.tsbuildinfo
 *.tgz
 %TEMP%/
+.scratch/
