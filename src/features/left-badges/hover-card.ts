@@ -269,9 +269,9 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
   const onWin = (t: string, fn: (ev: unknown) => void): void => {
     try {
       if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return
-      window.addEventListener(t, fn as (ev: UIEvent) => void)
+      window.addEventListener(t, fn as (ev: Event) => void)
       stops.push(() => {
-        try { window.removeEventListener(t, fn as (ev: UIEvent) => void) } catch { /* 忽略 */ }
+        try { window.removeEventListener(t, fn as (ev: Event) => void) } catch { /* 忽略 */ }
       })
     } catch { /* 忽略 */ }
   }

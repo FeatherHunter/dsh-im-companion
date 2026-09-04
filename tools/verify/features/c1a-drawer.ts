@@ -1,6 +1,6 @@
 // C1a 详情抽屉自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
 // 做法：tsc 转译相关链到临时目录再断言（照抄 left-badges.ts 模式）。B 变体 verdict（#9）：摘要直改 + 折叠详情 + 即时写（无保存按钮）。
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -50,7 +50,13 @@ try {
   console.error('TRANPILE-FAIL ' + String((e as any).stdout ?? '') + String((e as any).stderr ?? (e as Error).message));
   process.exit(1);
 }
-const req = createRequire(join(tmp, 'run.cjs'));
+/* 地基修复（同 left-badges.ts）：tmp 无 node_modules 上溯链，junction 指回仓库。 */
+try {
+  symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction');
+} catch {
+  /* 已存在则跳过 */
+}
+const req = createRequire(join(tmp, 'run.cjs')); 
 const storeMod: any = req('./host/meta-store.js');
 const config: any = req('./client/data/config.js');
 const clientMeta: any = req('./client/data/meta.js');
@@ -199,7 +205,8 @@ test('manifest：c1a 注册进 FEATURES，样式命名空间干净', () => {
   assert.equal(typeof found.installStyles, 'function');
   assert.ok(Array.isArray(found.slots));
   assert.match(styles.CSS, /.c1a-/);
-  assert.doesNotMatch(styles.CSS, /.af-/);
+  /* 地基修正：c1a 复用共享按钮原语（makeButton → .af-btn），作用域内覆写 .af-btn 合法；禁的是其他 .af-* 串色。 */
+  assert.doesNotMatch(styles.CSS, /\.af-(?!btn\b)/);
   assert.doesNotMatch(styles.CSS, /dsw-alias-bg-subtle/);
   assert.equal(typeof sheet.showSheet, 'function');
 });

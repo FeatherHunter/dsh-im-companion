@@ -1,7 +1,7 @@
 // B1 结论回归（F0 每功能自验证）：left-badges 特性纯数据层 + 视图断言（node --test，零第三方依赖）。
 // 做法：用仓库自带 tsc 把特性链转译到临时目录，再断言转译产物。
 // 覆盖结论：单份 stream（stale 保留/时间冻结/ok:false 不保留/订阅广播）、徽标四态、行装饰、样式命名空间。
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -33,7 +33,13 @@ try {
   console.error('TRANPILE-FAIL ' + String((e as any).stdout ?? '') + String((e as any).stderr ?? (e as Error).message));
   process.exit(1);
 }
-const req = createRequire(join(tmp, 'run.cjs'));
+/* 地基修复：tmp 无 node_modules 上溯链，转译产物里的 react 等第三方 require 会挂；junction 指回仓库（随末尾 rmSync 清理，目标不受影响）。 */
+try {
+  symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction');
+} catch {
+  /* 已存在则跳过 */
+}
+const req = createRequire(join(tmp, 'run.cjs')); 
 const streamMod: any = req('./client/data/connection-stream.js');
 const bindings: any = req('./client/data/bindings.js');
 const view: any = req('./features/left-badges/view.js');

@@ -1,6 +1,6 @@
 // B2 自验证（F0 每功能自验证）：left-filter 纯逻辑 + 叠加视图断言（node --test，零第三方依赖）。
 // 做法：tsc 转译特性链到临时目录，再断言转译产物；DOM 用最小桩（行/组容器/条带）。
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -35,6 +35,12 @@ try {
 } catch (e) {
   console.error('TRANSPILE-FAIL ' + String((e as any).stdout ?? '') + String((e as any).stderr ?? (e as Error).message));
   process.exit(1);
+}
+/* 地基修复（同 left-badges.ts）：tmp 无 node_modules 上溯链，junction 指回仓库。 */
+try {
+  symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction');
+} catch {
+  /* 已存在则跳过 */
 }
 const req = createRequire(join(tmp, 'run.cjs'));
 const model: any = req('./features/left-filter/model.js');

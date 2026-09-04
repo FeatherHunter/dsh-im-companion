@@ -138,10 +138,12 @@ function paint(bots: BotSnap[], gen: number): void {
       return tag === 'body' || tag === 'html' ? null : el
     } catch { return null }
   }
-  /* 条带锚点：隐藏根的父级（列表），搜索态取结果行的父级（结果列表）。 */
+  /* 条带锚点：隐藏根的父级（列表），搜索态取结果行的父级（结果列表）。
+   * 单组树兜底：隐藏根即列表容器本身（上无父级），条带改锚容器顶部，否则单工作区用户永无条带与空提示。 */
   const firstRoots = groups.length > 0 ? allRoots[0] : []
-  const validContainer = okParent(firstRoots.length > 0 ? firstRoots[0].parentElement : null)
+  let validContainer = okParent(firstRoots.length > 0 ? firstRoots[0].parentElement : null)
     ?? (results.length > 0 ? okParent(results[0].parentElement) : null)
+  if (!validContainer && firstRoots.length > 0) validContainer = okParent(firstRoots[0])
   const header = validContainer ? resolveHeader(validContainer) : null
   const sig = currentFilter + '|' + counts.all + '/' + counts.bound + '/' + counts.unbound + '|' + visKeys.join(',') + '|' + hiddenSections.length + '/' + hiddenResults.length + '|h:' + (header ? '1' : '0')
   if (sig === lastSig && validContainer === lastContainer) return

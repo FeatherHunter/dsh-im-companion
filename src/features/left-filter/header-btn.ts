@@ -12,7 +12,8 @@ export function nextFilter(f: FilterId): FilterId {
 }
 
 export function headerTip(filter: FilterId, counts: GroupCount): string {
-  return '绑定筛选：' + FILTER_LABEL[filter] + ' ' + counts[filter] + '（全部 ' + counts.all + ' · 已绑定 ' + counts.bound + ' · 未绑定 ' + counts.unbound + '），点击切换'
+  /* 地基补漏（a36e661 改名续尾）：三数口径统一走 FILTER_LABEL，不再硬编码已绑定/未绑定。 */
+  return '绑定筛选：' + FILTER_LABEL[filter] + ' ' + counts[filter] + '（' + FILTER_LABEL.all + ' ' + counts.all + ' · ' + FILTER_LABEL.bound + ' ' + counts.bound + ' · ' + FILTER_LABEL.unbound + ' ' + counts.unbound + '），点击切换'
 }
 
 /** 头栏定位：从容器逐级上行（最多 5 层，真机列表与头栏之间隔着多层容器），

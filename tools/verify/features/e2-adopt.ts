@@ -1,6 +1,6 @@
 // E2 自验证（F0 每功能自验证）：拖拽领养纯逻辑 + 面板视图分支（node --test，零第三方依赖）。
 // 只测外部行为：给定绑定关系 + 动作 → 断言用户可见结论，不断言内部形状。
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -45,6 +45,12 @@ try {
 } catch (e) {
   console.error('TRANSPILE-FAIL ' + String((e as any).stdout ?? '') + String((e as any).stderr ?? (e as Error).message));
   process.exit(1);
+}
+/* 地基修复（同 left-badges.ts）：tmp 无 node_modules 上溯链，junction 指回仓库。 */
+try {
+  symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction');
+} catch {
+  /* 已存在则跳过 */
 }
 const req = createRequire(join(tmp, 'run.cjs'));
 const model: any = req('./features/e2-adopt/model.js');
