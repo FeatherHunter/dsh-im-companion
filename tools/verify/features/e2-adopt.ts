@@ -147,6 +147,8 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('radial-gradient(circle at 8%'), '巷子口路灯光池');
   assert.ok(String(styles.CSS).includes('inset 0 1px 0'), '家里开灯（内嵌灯照）');
   assert.ok(String(styles.CSS).includes('radial-gradient(140% 42%'), '面板天光/夜光');
+  assert.ok(String(styles.CSS).includes('#f7eed6'), '白天有朝阳（天光做实）');
+  assert.ok(String(styles.CSS).includes('inset 0 1px 0 rgba(255,255,255'), '白天有人家见光（与黑夜开灯镜像）');
   assert.ok(String(styles.CSS).split('\n').every((ln: string) => ((ln.match(/\{/g) || []).length === (ln.match(/\}/g) || []).length)), '每行花括号配平（失衡会吞掉后面的规则）');
 });
 

@@ -1,16 +1,16 @@
 /** e2-adopt 样式（命名空间 e2-*；不占用 .af-* 私有约定）。
- * 纸面双主题（方案三）：浅色=冻结暖纸；深色=宿主 token 派生（color-mix，关系锁定：卡恒比纸亮，字跟宿主走）。空家有关灯（e2-sec-empty）。 */
+ * 白天黑夜（方案三）：浅色=白天（天光+见光的家）；深色=黑夜（宿主 token 派生，卡恒比纸亮，家里开灯，空家压黑）。 */
 export const CSS = [
   '.e2-entry{width:26px;height:26px;border-radius:50%;border:1px solid rgba(127,127,127,.5);background:transparent;color:inherit;display:inline-grid;place-items:center;padding:0;margin-left:6px;cursor:pointer;vertical-align:middle}',
   '.e2-entry:hover{border-color:#0a84ff;color:#0a84ff}',
   '.e2-overlay{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:20px}',
-  '.e2-cockpit{--e2-paper:#d9cfbd;--e2-card:#fffdf8;--e2-ink:#3d3225;--e2-faint:rgba(90,70,40,.55);--e2-line:rgba(90,70,40,.16);position:relative;width:min(920px,94vw);max-height:86vh;overflow:auto;background:var(--e2-paper);background-image:linear-gradient(180deg, rgba(255,246,225,.55), rgba(255,246,225,0) 32%);color:var(--e2-ink);border-radius:16px;padding:18px 18px 20px;box-shadow:0 24px 64px rgba(0,0,0,.35)}',
+  '.e2-cockpit{--e2-paper:#d9cfbd;--e2-card:#fffdf8;--e2-ink:#3d3225;--e2-faint:rgba(90,70,40,.55);--e2-line:rgba(90,70,40,.16);position:relative;width:min(920px,94vw);max-height:86vh;overflow:auto;background:var(--e2-paper);background-image:linear-gradient(180deg, #f7eed6 0%, rgba(247,238,214,0) 34%),radial-gradient(90% 26% at 22% 0%, rgba(255,251,236,.85), transparent 60%);color:var(--e2-ink);border-radius:16px;padding:18px 18px 20px;box-shadow:0 24px 64px rgba(0,0,0,.35)}',
   'body[data-ds-dark-theme] .e2-cockpit{--e2-paper:color-mix(in srgb, var(--dsw-alias-bg-base, #201b14) 94%, #c8a75a 6%);--e2-card:color-mix(in srgb, var(--e2-paper) 86%, #fff8ea 14%);--e2-ink:var(--dsw-alias-label-primary, #f4ede1);--e2-faint:var(--dsw-alias-label-secondary, rgba(244,237,225,.68));--e2-line:color-mix(in srgb, var(--e2-paper) 70%, #c8a75a 30%);border:1px solid var(--e2-line);box-shadow:0 24px 80px rgba(0,0,0,.6);background-image:radial-gradient(140% 42% at 50% 0%, rgba(255,200,120,.08), transparent 60%)}',
   '.e2-x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:1px solid var(--e2-line);background:transparent;color:inherit;font-size:15px;line-height:1;cursor:pointer;opacity:.7}',
   '.e2-panel-title{font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px;padding-right:36px;color:var(--e2-ink,#3d3225)}',
   '.e2-panel-sub{font-size:12px;color:var(--e2-faint);margin:0 0 14px;line-height:1.6}',
   '.e2-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(215px,1fr))}',
-  '.e2-sec{background:rgba(255,253,247,.6);background-image:radial-gradient(120% 55% at 50% 0%, rgba(255,240,210,.45), transparent 65%);border-radius:6px;padding:14px 14px 12px;box-shadow:0 4px 16px rgba(90,70,40,.12);color:var(--e2-ink)}',
+  '.e2-sec{background:rgba(255,253,247,.6);background-image:radial-gradient(120% 55% at 50% 0%, rgba(255,240,210,.45), transparent 65%);border-radius:6px;padding:14px 14px 12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.75), 0 4px 16px rgba(90,70,40,.12);color:var(--e2-ink)}',
   '.e2-sec-unbound{border:1.5px dashed var(--e2-faint);box-shadow:none;background:transparent;grid-column:1/-1;min-height:0}',
   '.e2-sec-new{cursor:pointer;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));background:linear-gradient(180deg, rgba(93,74,44,.07), rgba(93,74,44,.02))}',
   '.e2-sec-new .e2-sec-name,.e2-sec-new .e2-plus-hint{grid-column:1/-1;margin:0 2px}.e2-sec-new .e2-row{margin-top:0}',
