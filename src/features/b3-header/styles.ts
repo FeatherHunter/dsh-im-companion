@@ -28,7 +28,8 @@ export const CSS = `
 .b3-header-chst.offline { background: color-mix(in srgb, var(--af-primary) 35%, transparent); }
 .b3-header-btn { flex: 1; font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--af-hairline-strong); background: var(--af-bg); color: var(--af-primary); cursor: pointer; }
 .b3-header-btn:hover { border-color: var(--af-accent); color: var(--af-accent); }
-.b3-header-btn.primary { background: var(--af-accent); border-color: var(--af-accent); color: #fff; }
+/* 白字按钮底色用实色：宿主 brand 别名在真机可为白色致白底白字，见 #26（c1a 同款追改） */
+.b3-header-btn.primary { background: #0a84ff; border-color: #0a84ff; color: #fff; }
 .b3-header-btn.primary:hover { color: #fff; opacity: .88; }
 .b3-header-btn:disabled { opacity: .6; cursor: default; }
 .b3-header-result { margin-top: 8px; font-size: 12px; color: var(--af-secondary); word-break: break-all; }

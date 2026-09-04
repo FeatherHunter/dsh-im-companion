@@ -4,7 +4,7 @@ import * as React from 'react'
 import { installStyles } from './theme'
 import { FleetPanel } from './components/panel'
 import { extractRpc } from './data/rpc'
-import { createConnectionStream } from './data/connection-stream'
+import { getSharedStream, resetSharedStream } from './data/connection-stream'
 import { createMetaStore, type MetaStore } from './data/meta'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
 
@@ -18,7 +18,7 @@ export function apply(ctx: any): void {
 
   /* F0 特性装配：FEATURES 列表循环挂载（index 只改此列表）；单份 stream 供所有特性订阅 */
   const rpc = extractRpc(ctx)
-  const stream = createConnectionStream(rpc)
+  const stream = getSharedStream(rpc)
   let metaCache: MetaStore | null = null
   void createMetaStore(rpc).then((m) => {
     metaCache = m
@@ -96,6 +96,11 @@ export function apply(ctx: any): void {
     }
     try {
       stream.dispose()
+    } catch {
+      /* 清理失败忽略 */
+    }
+    try {
+      resetSharedStream()
     } catch {
       /* 清理失败忽略 */
     }

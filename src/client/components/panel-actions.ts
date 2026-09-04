@@ -65,15 +65,29 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
   }
 
   async function pickWorkspace(view: AgentView): Promise<void> {
-    const picker = openWorkspacePicker(deps.ctx, deps.rpc)
-    const ws = await picker.promise
-    if (!ws) return
-    for (const b of view.bots) {
-      await deps.rpc!('/' + b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }, AbortSignal.timeout(8000))
-        .catch((e: unknown) => toast('渠道 ' + channelLabel(b.channel) + ' 绑定失败：' + String((e as Error)?.message ?? e)))
+    try {
+      let picker: ReturnType<typeof openWorkspacePicker>
+      try {
+        picker = openWorkspacePicker(deps.ctx, deps.rpc)
+      } catch (e) {
+        toast('目录选择器打开失败：' + String((e as Error)?.message ?? e))
+        return
+      }
+      const ws = await picker.promise
+      if (!ws) return
+      if (!deps.rpc) {
+        toast('连接服务不可用，无法绑定工作区')
+        return
+      }
+      for (const b of view.bots) {
+        await deps.rpc('/' + b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }, AbortSignal.timeout(8000))
+          .catch((e: unknown) => toast('渠道 ' + channelLabel(b.channel) + ' 绑定失败：' + String((e as Error)?.message ?? e)))
+      }
+      await deps.refresh()
+      toast('工作区已更新', 'check')
+    } catch (e) {
+      toast('选择工作区失败：' + String((e as Error)?.message ?? e))
     }
-    await deps.refresh()
-    toast('工作区已更新', 'check')
   }
 
   async function removeBot(view: AgentView, channel: string, botId: string): Promise<void> {

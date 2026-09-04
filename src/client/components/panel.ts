@@ -104,14 +104,19 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   data.setRender(() => bodyModule.render())
   plusBtn.onclick = () => compose.setVisible(true)
 
-  /* ---------- 生命周期 ---------- */
-  let pollTimer: ReturnType<typeof setInterval> | undefined
-  if (typeof setInterval !== 'undefined') {
-    pollTimer = setInterval(() => void data.load(true), 15000)
-  }
+  /* ---------- 生命周期（#17：轮询归共享 stream，面板只订阅 + dispose 退订） ---------- */
   void data.load()
   ;(root as unknown as { __afDispose?: () => void }).__afDispose = () => {
-    if (pollTimer) clearInterval(pollTimer)
+    try {
+      bodyModule.dispose()
+    } catch {
+      /* 清理失败忽略 */
+    }
+    try {
+      data.dispose()
+    } catch {
+      /* 清理失败忽略 */
+    }
     try {
       stopFirstView()
     } catch {

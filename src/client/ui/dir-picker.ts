@@ -14,20 +14,45 @@ export interface DirPickerHandle {
 const isAbs = (p: string): boolean => !!p && (p.startsWith('/') || /^[A-Za-z]:[\\/]/.test(p))
 
 export function openDirPicker(
-  rpc: RpcCall | null, initial = '', native?: () => Promise<string | null>,
+  rpc: RpcCall | null, initial = '', native?: () => Promise<unknown>,
 ): DirPickerHandle {
   let resolveFn: (v: string | null) => void = () => undefined
   const promise = new Promise<string | null>((resolve) => {
     resolveFn = resolve
   })
   if (native) {
-    void native().then((p) => resolveFn(p ?? null), () => resolveFn(null))
-    return { promise, el: h('div', null, '正在打开系统目录选择器…') }
+    const placeholder = h('div', null, '正在打开系统目录选择器…')
+    void (async () => {
+      try {
+        const raw = await native()
+        if (raw === null) {
+          resolveFn(null)
+          return
+        }
+        const picked = normalizePick(raw)
+        if (picked) {
+          resolveFn(picked)
+          return
+        }
+      } catch {
+        /* 原生不可用（browse 能力/拒答等）→ 回退内置浏览 */
+      }
+      if (!rpc) {
+        resolveFn(null)
+        return
+      }
+      openHostBrowser()
+    })()
+    return { promise, el: placeholder }
   }
   if (!rpc) {
     resolveFn(null)
     return { promise, el: h('div') }
   }
+  const hostModal = openHostBrowser()
+  return { promise, el: hostModal.el }
+
+  function openHostBrowser(): { el: HTMLElement } {
   const state = { path: '' }
   const list = h('div', { style: { maxHeight: '280px', overflow: 'auto' } })
   const bar = h('div', null)
@@ -80,5 +105,20 @@ export function openDirPicker(
       await navigate('')
     }
   })()
-  return { promise, el: modal.el }
+    return modal
+  }
+
+  function normalizePick(raw: unknown): string | null {
+    if (typeof raw === 'string') {
+      const s = raw.trim()
+      return s ? s : null
+    }
+    if (raw && typeof raw === 'object') {
+      const rec = raw as Record<string, unknown>
+      for (const k of ['path', 'value', 'dir']) {
+        if (typeof rec[k] === 'string' && (rec[k] as string).trim()) return (rec[k] as string).trim()
+      }
+    }
+    return null
+  }
 }

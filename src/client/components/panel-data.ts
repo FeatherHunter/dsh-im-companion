@@ -1,6 +1,9 @@
 /** FleetPanel 数据层：面板状态容器 + 渠道/元数据加载。
- * 首次加载与 15s 轮询共用 load()；静默轮询不闪骨架屏。渲染回调由编排器注入（setRender），数据层不感知视图。 */
-import { fetchBots, type BotSnap, type RpcCall } from '../data/fleet-api'
+ * #17 迁单份 connection-stream：静默轮询改订阅，失败渠道按 stale 未知展示（stream 内已 mergeStaleBots）；
+ * 本层只读快照（bots/failed/updatedAt），不再直调 fetchBots；interval 归 stream 所有，面板只管订阅与 dispose。 */
+import type { BotSnap } from '../data/fleet-api'
+import type { RpcCall } from '../data/fleet-api'
+import { getSharedStream } from '../data/connection-stream'
 import { EMPTY_META, createMetaStore, type AgentMetaDoc, type MetaStore } from '../data/meta'
 import type { ViewMode } from '../data/model'
 
@@ -8,6 +11,8 @@ export interface PanelState {
   mode: ViewMode
   query: string
   bots: BotSnap[]
+  /** 本轮轮询失败的渠道（tooltip 透出“（轮询失败）”，body 层消费）。 */
+  failed: string[]
   meta: AgentMetaDoc
   loading: boolean
   error: string
@@ -20,6 +25,7 @@ export interface PanelDataHandle {
   load(silent?: boolean): Promise<void>
   loadMeta(): Promise<void>
   setRender(fn: () => void): void
+  dispose(): void
 }
 
 export function createPanelData(rpc: RpcCall | null): PanelDataHandle {
@@ -27,6 +33,7 @@ export function createPanelData(rpc: RpcCall | null): PanelDataHandle {
     mode: 'agent',
     query: '',
     bots: [],
+    failed: [],
     meta: EMPTY_META,
     loading: true,
     error: '',
@@ -34,6 +41,34 @@ export function createPanelData(rpc: RpcCall | null): PanelDataHandle {
   }
   let store: MetaStore | null = null
   let render: () => void = () => {}
+  let unsub: (() => void) | null = null
+  let disposed = false
+
+  function paint(): void {
+    if (disposed) return
+    try {
+      render()
+    } catch {
+      /* 渲染失败下轮再试 */
+    }
+  }
+
+  try {
+    const stream = getSharedStream(rpc)
+    unsub = stream.subscribe((snap) => {
+      if (disposed) return
+      state.bots = snap.bots
+      state.failed = snap.failed ?? []
+      if (snap.updatedAt > 0) {
+        state.loading = false
+        state.error = ''
+        state.updatedAt = fmtTime(snap.updatedAt)
+      }
+      paint()
+    })
+  } catch {
+    unsub = null
+  }
 
   async function loadMeta(): Promise<void> {
     if (!store) return
@@ -45,33 +80,25 @@ export function createPanelData(rpc: RpcCall | null): PanelDataHandle {
   }
 
   async function load(silent = false): Promise<void> {
-    if (silent) {
-      // 静默轮询：不闪骨架屏，仅刷新数据（状态实时性）
-      try {
-        const result = await fetchBots(rpc as RpcCall)
-        state.bots = result.bots
-        state.error = ''
-        state.updatedAt = nowText()
-        render()
-      } catch {
-        /* 静默失败保留旧数据 */
-      }
+    if (!rpc) {
+      state.loading = false
+      state.error = '连接不可用'
+      paint()
       return
     }
-    state.loading = true
-    state.error = ''
-    render()
+    if (!silent) {
+      state.loading = state.bots.length === 0
+      state.error = ''
+      paint()
+    }
     if (!store) store = await createMetaStore(rpc)
     await loadMeta()
     try {
-      const result = await fetchBots(rpc as RpcCall)
-      state.bots = result.bots
-      state.updatedAt = nowText()
-    } catch (e) {
-      state.error = '加载失败：' + String((e as Error)?.message ?? e)
+      await getSharedStream(rpc).refresh()
+    } catch {
+      /* 刷新失败保留旧快照（stale 由 stream 标未知） */
     }
-    state.loading = false
-    render()
+    paint()
   }
 
   return {
@@ -82,12 +109,21 @@ export function createPanelData(rpc: RpcCall | null): PanelDataHandle {
     setRender: (fn) => {
       render = fn
     },
+    dispose: () => {
+      disposed = true
+      try {
+        unsub?.()
+      } catch {
+        /* 清理失败忽略 */
+      }
+      unsub = null
+    },
   }
 }
 
-function nowText(): string {
+function fmtTime(ms: number): string {
   try {
-    return new Date().toLocaleTimeString('zh-CN', { hour12: false })
+    return new Date(ms).toLocaleTimeString('zh-CN', { hour12: false })
   } catch {
     return ''
   }

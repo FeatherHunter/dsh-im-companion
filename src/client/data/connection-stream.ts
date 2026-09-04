@@ -20,6 +20,19 @@ export interface ConnectionStream {
   dispose(): void
 }
 
+/** 进程内共享单例（#17 A线收尾：面板与特性共用同一轮询，网络只打一份）。
+ * Added-only：新增导出，既有 createConnectionStream 行为零改；index 装配层负责 dispose 后 reset。 */
+let sharedStream: ConnectionStream | null = null
+
+export function getSharedStream(rpc: RpcCall | null, now: () => number = Date.now): ConnectionStream {
+  if (!sharedStream) sharedStream = createConnectionStream(rpc)
+  return sharedStream
+}
+
+export function resetSharedStream(): void {
+  sharedStream = null
+}
+
 export function createConnectionStream(rpc: RpcCall | null, now: () => number = Date.now): ConnectionStream {
   let bots: BotSnap[] = []
   let failed: string[] = []

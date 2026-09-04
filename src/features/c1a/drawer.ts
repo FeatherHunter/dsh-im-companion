@@ -212,10 +212,10 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         toast('连接服务不可用')
         return
       }
-      const svc: unknown = typeof fctx.get === 'function' ? fctx.get('uiWorkspace') : undefined
+      let svc: unknown; try { svc = typeof fctx.get === 'function' ? fctx.get('uiWorkspace') : undefined } catch { svc = undefined }
       const anySvc: any = svc
       const native = anySvc && typeof anySvc.pickDirectory === 'function'
-        ? () => Promise.resolve(anySvc.pickDirectory()).then((p: unknown) => (typeof p === 'string' ? p : null))
+        ? () => Promise.resolve().then(() => anySvc.pickDirectory())
         : undefined
       void (async () => {
         try {

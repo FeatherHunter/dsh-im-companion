@@ -17,17 +17,45 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
     resolveFn = resolve
   })
 
-  /* ① 原生系统目录对话框（DSH uiWorkspace 服务，若存在） */
-  const ui = typeof (ctx as { get?: (n: string) => unknown } | null)?.get === 'function'
-    ? (ctx as { get: (n: string) => unknown }).get('uiWorkspace')
-    : undefined
-  const native = ui as { pickDirectory?: () => Promise<string | null> } | undefined
-  if (native && typeof native.pickDirectory === 'function') {
-    void native.pickDirectory().then((p) => resolveFn(p ?? null), () => resolveFn(null))
-    return {
-      promise,
-      el: h('div', { className: 'af-empty' }, h('span', null, '正在打开系统目录选择器…')),
+  /* ① 原生系统目录对话框（DSH uiWorkspace 服务，若存在；失败/取消则回退 ②） */
+  let nativeFn: (() => Promise<unknown>) | undefined
+  try {
+    const ui = typeof (ctx as { get?: (n: string) => unknown } | null)?.get === 'function'
+      ? (ctx as { get: (n: string) => unknown }).get('uiWorkspace')
+      : undefined
+    const native = ui as { pickDirectory?: () => Promise<unknown> } | undefined
+    if (native && typeof native.pickDirectory === 'function') {
+      const pick = native.pickDirectory.bind(native)
+      nativeFn = () => pick()
     }
+  } catch {
+    nativeFn = undefined
+  }
+
+  if (nativeFn) {
+    const placeholder = h('div', { className: 'af-empty' }, h('span', null, '正在打开系统目录选择器…'))
+    void (async () => {
+      try {
+        const raw = await nativeFn!()
+        if (raw === null) {
+          resolveFn(null)
+          return
+        }
+        const picked = normalizePick(raw)
+        if (picked) {
+          resolveFn(picked)
+          return
+        }
+      } catch {
+        /* 原生不可用（browse 能力/拒答等）→ 回退内置浏览 */
+      }
+      if (!rpc) {
+        resolveFn(null)
+        return
+      }
+      openHostBrowser()
+    })()
+    return { promise, el: placeholder }
   }
 
   /* ② host 桥目录浏览器 */
@@ -35,6 +63,10 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
     resolveFn(null)
     return { promise, el: h('div', { className: 'af-empty' }) }
   }
+  const hostModal = openHostBrowser()
+  return { promise, el: hostModal.el }
+
+  function openHostBrowser(): ModalHandle {
 
   const state = { path: '', loading: true, error: '' }
   const list = h('div', { className: 'af-list', style: { maxHeight: '280px', overflow: 'auto' } })
@@ -113,5 +145,20 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
     }
   })()
 
-  return { promise, el: modal.el }
+    return modal
+  }
+
+  function normalizePick(raw: unknown): string | null {
+    if (typeof raw === 'string') {
+      const s = raw.trim()
+      return s ? s : null
+    }
+    if (raw && typeof raw === 'object') {
+      const rec = raw as Record<string, unknown>
+      for (const k of ['path', 'value', 'dir']) {
+        if (typeof rec[k] === 'string' && (rec[k] as string).trim()) return (rec[k] as string).trim()
+      }
+    }
+    return null
+  }
 }
