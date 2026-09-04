@@ -194,7 +194,7 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf(".wb-backdrop") >= 0, "遮罩必须存在");
   assert.ok(css.indexOf("top: 50%") >= 0 && css.indexOf("translateY(-50%)") >= 0, "文案块必须在天空区垂直居中");
   assert.ok(css.indexOf("bottom: 7%") >= 0, "进门按钮必须沉底（标题居中、按钮靠下，好点）");
-  assert.ok(css.indexOf("min(1040px, 96vw)") >= 0, "面板要大：居中大面板，不挤原生空态");
+  assert.ok(css.indexOf("min(960px, 94vw)") >= 0, "面板大而有度：1040 过大回调一档");
   assert.equal(css.indexOf("repeating-conic-gradient"), -1, "旋转放射芒已砍：低级感来源，禁回潮");
   assert.ok(css.indexOf(".wb-haze") >= 0, "天空光晕必须存在");
   assert.ok(css.indexOf(".wb-cirrus") >= 0, "卷云丝必须存在");
