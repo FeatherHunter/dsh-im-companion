@@ -46,6 +46,7 @@ const view: any = req('./features/left-badges/view.js');
 const styles: any = req('./features/left-badges/styles.js');
 const registry: any = req('./features/index.js');
 const hover: any = req('./features/left-badges/hover-card.js');
+const fleetApi: any = req('./client/data/fleet-api.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over = {}) => ({
@@ -291,6 +292,99 @@ test('hover-card：卡片数据（未绑定null/渠道行/时间）', () => {
   assert.equal(hover.breathPhase('feishu').delay, p1.delay, '同渠道节奏稳定');
   assert.match(p1.delay, /^-\d+\.\d+s$/);
   assert.match(p1.duration, /^\d+\.\d+s$/);
+});
+
+test('fleet-api：botDisplayLabel（有名优先/超长截断/占位不空）', () => {
+  assert.equal(fleetApi.botDisplayLabel({ botName: '客服小美', botId: 'abc123' }), '客服小美');
+  assert.equal(fleetApi.botDisplayLabel({ botName: '  ', botId: 'feishu-xyz9876' }), '…9876');
+  assert.equal(fleetApi.botDisplayLabel({ botName: '', botId: '' }), '未命名');
+  assert.ok(fleetApi.botDisplayLabel({ botName: '0123456789abcdef', botId: 'x' }).endsWith('…'));
+});
+
+test('hover-card：每行带 Bot 标识（同渠道可辨别/占位）', () => {
+  const d = hover.buildCardData(W1, [
+    snap({ botId: 'f1', botName: '客服小美', lastCheckedAt: 5000 }),
+    snap({ botId: 'f2', botName: '夜班小美', lastCheckedAt: 5000 }),
+    snap({ channel: 'qq', botId: 'qq123456', botName: '', lastCheckedAt: 5000 }),
+  ]);
+  assert.equal(d.channels.length, 3);
+  assert.equal(d.channels[0].label, '客服小美');
+  assert.equal(d.channels[1].label, '夜班小美');
+  assert.notEqual(d.channels[0].label, d.channels[1].label, '同渠道多 Bot 必须可辨别');
+  assert.equal(d.channels[2].label, '…3456', '无名 Bot 用 botId 后四位占位');
+  const noname = hover.buildCardData(W1, [snap({ botId: '', botName: '', lastCheckedAt: 5000 })]);
+  assert.equal(noname.channels[0].label, '未命名');
+  assert.ok(noname.channels.every((c: any) => typeof c.label === 'string' && c.label.length > 0), '不留纯图标行');
+});
+
+test('hover-card：同渠道组内槽位均分（#33v2，构造错开不靠运气）', () => {
+  const d = hover.buildCardData(W1, [
+    snap({ botId: 'f1', botName: '小帅', lastCheckedAt: 5000 }),
+    snap({ botId: 'f2', botName: '小赡', lastCheckedAt: 5000 }),
+    snap({ botId: 'f3', botName: '小匠', lastCheckedAt: 5000 }),
+  ]);
+  assert.equal(d.channels.map((c) => c.bot).join(','), 'f1,f2,f3', '行带 Bot 身份');
+  const seen = {};
+  const phases = d.channels.map((c) => {
+    const i = seen[c.channel] || 0;
+    seen[c.channel] = i + 1;
+    return hover.breathPhase(c.channel, c.label + '\0' + (c.bot || ''), (i * 997) % 1600);
+  });
+  const delays = phases.map((p) => p.delay);
+  assert.equal(new Set(delays).size, 3, '组内三行 delay 必错开：' + delays.join(','));
+  const ms = delays.map((s) => Math.round(parseFloat(s) * 1000));
+  let gap = 1600;
+  for (let a = 0; a < ms.length; a++) for (let b = a + 1; b < ms.length; b++) {
+    const g = Math.abs(ms[a] - ms[b]);
+    gap = Math.min(gap, g, 1600 - g);
+  }
+  assert.ok(gap >= 300, '两两最小间隔eat 0.3s，实测 ' + (gap / 1000) + 's');
+  assert.equal(hover.breathPhase('feishu').delay, hover.breathPhase('feishu').delay, '无种子走旧口径且稳定');
+  assert.equal(hover.breathPhase('feishu', 'x', 0).delay, hover.breathPhase('feishu').delay, '组内首个=旧口径');
+  assert.equal(hover.breathPhase('feishu', 'x', 0).delay, hover.breathPhase('feishu', 'x', 0).delay, '重渲染不跳变');
+});
+
+test('hover-card：悬浮卡三飞书绿点 animationDelay 端到端错开（#33）', async () => {
+  const bots = [
+    snap({ botId: 'f1', botName: '小帅', lastCheckedAt: 5000 }),
+    snap({ botId: 'f2', botName: '小赡', lastCheckedAt: 5000 }),
+    snap({ botId: 'f3', botName: '小匠', lastCheckedAt: 5000 }),
+  ];
+  const row = stubEl('div');
+  const body = stubEl('body');
+  const listeners = {};
+  const docStub = {
+    createElement: (t) => stubEl(t),
+    body,
+    documentElement: stubEl('html'),
+    addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); },
+    removeEventListener: () => {},
+  };
+  const winStub = { innerWidth: 1024, innerHeight: 768, addEventListener: () => {}, removeEventListener: () => {} };
+  globalThis.document = docStub;
+  globalThis.window = winStub;
+  try {
+    const data = hover.buildCardData(W1, bots);
+    const dispose = hover.mountHoverCard({ matchRow: (n) => (n === row ? row : null), resolve: () => data }, 0);
+    try {
+      for (const fn of listeners.mouseover || []) fn({ target: row });
+      await new Promise((r) => setTimeout(r, 20));
+      const card = body.children.find((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card'));
+      assert.ok(card, '悬浮卡已挂载');
+      const rows = card.children.filter((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card-row'));
+      assert.equal(rows.length, 3);
+      const delays = rows.map((r) => {
+        const dot = r.children.find((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card-dot'));
+        return dot.style.animationDelay;
+      });
+      assert.equal(new Set(delays).size, 3, '三行绿点 delay 端到端错开：' + delays.join(','));
+    } finally {
+      dispose();
+    }
+  } finally {
+    delete globalThis.document;
+    delete globalThis.window;
+  }
 });
 
 
