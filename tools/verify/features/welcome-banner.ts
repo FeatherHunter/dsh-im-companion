@@ -194,7 +194,7 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf(".wb-backdrop") >= 0, "遮罩必须存在");
   assert.ok(css.indexOf("top: 50%") >= 0 && css.indexOf("translateY(-50%)") >= 0, "文案块必须在天空区垂直居中");
   assert.ok(css.indexOf("bottom: 7%") >= 0, "进门按钮必须沉底（标题居中、按钮靠下，好点）");
-  assert.ok(css.indexOf("min(880px, 94vw)") >= 0, "面板要大：居中大面板，不挤原生空态");
+  assert.ok(css.indexOf("min(1040px, 96vw)") >= 0, "面板要大：居中大面板，不挤原生空态");
   assert.equal(css.indexOf("repeating-conic-gradient"), -1, "旋转放射芒已砍：低级感来源，禁回潮");
   assert.ok(css.indexOf(".wb-haze") >= 0, "天空光晕必须存在");
   assert.ok(css.indexOf(".wb-cirrus") >= 0, "卷云丝必须存在");
@@ -282,8 +282,7 @@ test("渲染 P 弹窗（遮罩+面板+标题+进门）", () => {
   assert.ok(String(el.className).split(" ").includes("wb-modal"), "根节点即 wb-modal 顶层弹窗");
   assert.ok(el.querySelector(".wb-backdrop"), "遮罩必须存在");
   assert.ok(el.querySelector(".wb-banner"), "居中面板必须存在");
-  for (const fn of (el.querySelector(".wb-backdrop")._listeners.click ?? [])) fn();
-  assert.ok(calls.includes("enter"), "点 backdrop 与点回家同出口");
+  assert.deepEqual(el.querySelector(".wb-backdrop")._listeners.click ?? [], [], "点区域外必须不消失（backdrop 零监听）");
   assert.ok(el.querySelector(".wb-sky"), "天空层必须存在");
   assert.ok(el.querySelector(".wb-sky-day"), "白天须用 day 天空");
   assert.ok(el.querySelector(".wb-sun"), "白天须有太阳");

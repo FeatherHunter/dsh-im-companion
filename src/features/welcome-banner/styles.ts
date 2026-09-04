@@ -6,8 +6,8 @@ import { TOKEN_BLOCK } from "../../client/theme";
 export const WB_TOKENS = ".wb-banner{" + TOKEN_BLOCK + "}";
 const SKY: string[] = [
 ".wb-modal { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }",
-".wb-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); cursor: pointer; }",
-".wb-banner { position: relative; width: min(880px, 94vw); height: min(84vh, 760px); min-height: 520px; box-sizing: border-box; margin: 0; padding: 0; overflow: hidden; border-radius: 24px; background: var(--af-bg); color: var(--af-primary); box-shadow: 0 24px 80px rgba(0, 0, 0, .45); font-size: 14px; line-height: 1.6; }",
+".wb-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); }", 
+".wb-banner { position: relative; width: min(1040px, 96vw); height: min(90vh, 860px); min-height: 560px; box-sizing: border-box; margin: 0; padding: 0; overflow: hidden; border-radius: 24px; background: var(--af-bg); color: var(--af-primary); box-shadow: 0 24px 80px rgba(0, 0, 0, .45); font-size: 14px; line-height: 1.6; }",
 ".wb-sky { position: relative; width: 100%; height: 100%; overflow: hidden; }",
 ".wb-sky-wee { background: linear-gradient(#070b1e 0%,#131a3d 52%,#3c2c50 78%,#a05a44 100%); }",
 ".wb-sky-dawn { background: linear-gradient(#3a4a7a 0%,#e8909c 60%,#ffd9a0 100%); }",

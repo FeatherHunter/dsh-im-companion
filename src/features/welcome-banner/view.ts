@@ -5,7 +5,7 @@
  * 门控证据（一手 bundle）：hero 空态 = div[data-phase="hero"]（data 属性非哈希类名；
  * hero ⟺ blank 会话）；标题“探索未至之境”/Into the Unknown + 徽标“预览版”/Preview 三信号确认。
  * 呈现（用户 verdict）：不占据对话框版面——hero 只做门控，卡片挂到 body 顶层居中弹窗；
- * 点 backdrop 与点“回家”是同一出口（进门，内存+持久双记），无 X、无换一句、无死按钮。
+ * 唯一出口是“回家”按钮（进门，内存+持久双记）：点区域外不消失，无 X、无换一句、无死按钮。
  * 门控：非 hero/信号不全/工作区 label 匹配不出或歧义/未绑定 → 一律不渲染（宁缺勿错）；
  * 未绑定零 UI（纯净原生空态），不画指引卡。 */
 import { h } from "../../client/dom";
@@ -51,7 +51,7 @@ export function renderHome(input: {
 }): HTMLElement {
   const { copy, status, stateLabel, subSuffix, callbacks } = input;
   const root = h("div", { className: "wb-modal", dataset: { wb: copy.seg } });
-  root.appendChild(h("div", { className: "wb-backdrop", onclick: () => callbacks.onEnter() }));
+  root.appendChild(h("div", { className: "wb-backdrop" }));
   const card = h("section", { className: "wb-banner" });
   const sky = h("div", { className: "wb-sky " + copy.sky });
   if (copy.moon) sky.appendChild(h("div", { className: "wb-moon" }));
