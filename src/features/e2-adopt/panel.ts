@@ -97,17 +97,18 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
         const plate = homePlate(g.workspace, meta)
         grid.appendChild(homeCard(plate, g.workspace, g.bots, false, {}, ''))
       }
-      const have = new Set(groups.map((g) => g.workspace))
-      for (const w of homeList(bots || [], listHomes(ctx))) {
-        if (have.has(w)) continue
-        grid.appendChild(homeCard(homePlate(w, meta), w, [], false, {}, '空无一人，拖张照片进来'))
-      }
+      /* 巷子口是分界线：有人之家在上，无人之家在下。 */
       grid.appendChild(homeCard(
         { name: '巷子口', sub: '', initial: '', color: 0 }, null, [...resting, ...unbound], true,
         { 'data-e2-plaza': '1', class: 'e2-sec e2-sec-unbound e2-sec-new' },
         '串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。',
         (b) => staged.has(b.botId) ? '歇脚中 · 出来自' + shortName(staged.get(b.botId) ?? '') : '新来的 · 等安家',
       ))
+      const have = new Set(groups.map((g) => g.workspace))
+      for (const w of homeList(bots || [], listHomes(ctx))) {
+        if (have.has(w)) continue
+        grid.appendChild(homeCard(homePlate(w, meta), w, [], false, {}, '空无一人，拖张照片进来'))
+      }
     } catch { /* 渲染失败保持旧面板（fail-closed） */ }
   }
 
