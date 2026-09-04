@@ -112,4 +112,23 @@ test("样式命名空间与关键规则（新增类 only，既有零改动）", 
   assert.equal(css.indexOf("#000"), -1, "样式禁硬编码 #000（走别名）");
 });
 
+test("#27 三态说人话（旧 Agent 名词禁回潮）", () => {
+  const zh = copy.firstViewCopy("zh").states;
+  assert.ok(zh.loading.indexOf("助理") >= 0);
+  assert.equal(zh.emptySearchTitle, "没有找到匹配的助理");
+  assert.ok(zh.emptySearchSub.indexOf("关键词") >= 0);
+  assert.equal(zh.emptyNoneTitle, "还没有助理");
+  assert.ok(zh.emptyNoneSub.indexOf("工具栏") >= 0, "＋ 已搬工具栏，文案不得再写右上角");
+  assert.ok(zh.errorMsg.indexOf("重试") >= 0);
+  assert.equal(zh.retry, "重试");
+  for (const v of [zh.loading, zh.emptySearchTitle, zh.emptyNoneTitle]) {
+    assert.equal(v.indexOf("Agent"), -1, "中文三态禁旧名词：" + v);
+  }
+  const en = copy.firstViewCopy("en").states;
+  assert.equal(en.emptySearchTitle, "No matching assistants");
+  assert.equal(en.emptyNoneTitle, "No assistants yet");
+  assert.equal(en.retry, "Retry");
+  assert.ok(en.emptyNoneSub.indexOf("toolbar") >= 0);
+});
+
 rmSync(tmp, { recursive: true, force: true });

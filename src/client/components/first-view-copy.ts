@@ -45,6 +45,18 @@ export interface FirstViewCopy {
   promoDeckDesc: string
   promoPal: string
   promoPalDesc: string
+  states: FirstViewStates
+}
+
+/** #27 三态文案（来源 #25 原型 STR；空-零数据按赢家口径新写，＋ 已搬工具栏）。 */
+export interface FirstViewStates {
+  loading: string
+  emptySearchTitle: string
+  emptySearchSub: string
+  emptyNoneTitle: string
+  emptyNoneSub: string
+  errorMsg: string
+  retry: string
 }
 
 const ZH: FirstViewCopy = {
@@ -73,6 +85,15 @@ const ZH: FirstViewCopy = {
   promoDeckDesc: 'Mattpocock SKILLS 在DSH中增强插件。开发伴侣☕️。',
   promoPal: 'dsh-opencode-palette',
   promoPalDesc: 'OpenCode 配色盘',
+  states: {
+    loading: '加载中…正在获取助理列表，请稍候。',
+    emptySearchTitle: '没有找到匹配的助理',
+    emptySearchSub: '试试换个关键词，或清空搜索看看全部',
+    emptyNoneTitle: '还没有助理',
+    emptyNoneSub: '点击工具栏 ＋ 新建，或接入聊天渠道',
+    errorMsg: '刚才没连上，助理列表没拿到。检查网络后点重试。',
+    retry: '重试',
+  },
 }
 
 const EN: FirstViewCopy = {
@@ -101,6 +122,15 @@ const EN: FirstViewCopy = {
   promoDeckDesc: 'Agent skills method deck',
   promoPal: 'dsh-opencode-palette',
   promoPalDesc: 'OpenCode color palettes',
+  states: {
+    loading: 'Loading assistants… please wait.',
+    emptySearchTitle: 'No matching assistants',
+    emptySearchSub: 'Try another keyword, or clear search to see all',
+    emptyNoneTitle: 'No assistants yet',
+    emptyNoneSub: 'Click + in the toolbar, or connect a channel',
+    errorMsg: 'Connection failed, list not loaded. Check network, then retry.',
+    retry: 'Retry',
+  },
 }
 
 export function firstViewCopy(lang?: FirstViewLang): FirstViewCopy {

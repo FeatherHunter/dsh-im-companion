@@ -48,15 +48,17 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBody {
     return model.agents.map((v) => makeAgentRow(v, deps.rowCallbacks(), 'agent'))
   }
 
+  /* #27 三态说人话（结构不动，只换文案；错误保留 raw 诊断串供排查）。 */
   function render(): void {
     const s = deps.state
+    const st = firstViewCopy().states
     if (s.loading) {
-      mount(deps.bodyEl, makeGroupedList(...makeSkeletonRows(3), makeLoadingRow()))
+      mount(deps.bodyEl, makeGroupedList(...makeSkeletonRows(3), makeLoadingRow(st.loading)))
       deps.relayout()
       return
     }
     if (s.error) {
-      mount(deps.bodyEl, makeErrorRow(s.error, deps.onRetry))
+      mount(deps.bodyEl, makeErrorRow(st.errorMsg + (s.error ? '（' + s.error + '）' : ''), deps.onRetry, st.retry))
       deps.relayout()
       return
     }
@@ -65,8 +67,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBody {
     const rows = rowsFor(model)
     if (!rows.length) {
       mount(deps.bodyEl, s.query
-        ? makeEmpty({ iconName: 'search', title: '没有找到匹配的 Agent', sub: '试试其他关键词' })
-        : makeEmpty({ iconName: 'person', title: '还没有 Agent', sub: '点击右上角 + 新建，或接入聊天渠道' }))
+        ? makeEmpty({ iconName: 'search', title: st.emptySearchTitle, sub: st.emptySearchSub })
+        : makeEmpty({ iconName: 'person', title: st.emptyNoneTitle, sub: st.emptyNoneSub }))
       deps.relayout()
       return
     }

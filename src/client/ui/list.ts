@@ -28,11 +28,12 @@ export function makeLoadingRow(text = '正在加载…'): HTMLDivElement {
   return h('div', { className: 'af-loading-row' }, h('span', { className: 'af-spin' }), text)
 }
 
-export function makeErrorRow(message: string, onRetry?: () => void): HTMLDivElement {
+/* #27 追加：retryLabel 可选（默认重试），旧调用零影响。 */
+export function makeErrorRow(message: string, onRetry?: () => void, retryLabel = '重试'): HTMLDivElement {
   const retry = h('button', {
     className: 'af-btn ghost sm retry',
     type: 'button',
     onClick: onRetry,
-  }, icon('refresh', 14), '重试')
+  }, icon('refresh', 14), retryLabel)
   return h('div', { className: 'af-error' }, h('span', null, message), onRetry ? retry : null)
 }
