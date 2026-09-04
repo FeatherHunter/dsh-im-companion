@@ -2,11 +2,12 @@
  * 平时仅圆点零打扰；点击展开详情（Agent 健康 + 绑定渠道 + 发测试消息）。
  * 防御式：任何异常只隐藏自己，绝不影响原生 Header；订阅 stream 纯渲染，卸载即退订。
  * 发测试消息：优先已保存目标；无目标时用已聊会话做草稿测试（不存任何东西），
- * 多个会话先选再发，成功同时派发 SEND_TEST_EVENT；未绑定只给静态指引，无死按钮。 */
+ * 多个会话先选再发，成功同时派发 SEND_TEST_EVENT；未绑定只给静态指引，无死按钮。
+ * 归属：b3-header 特性自有面板（#18 收编自共享层，原样迁移，行为零改）。 */
 import * as React from 'react'
-import { channelGlyphSvg } from '../icons'
-import type { BotSnap, RpcCall } from '../data/fleet-api'
-import type { StreamSnapshot } from '../data/connection-stream'
+import { channelGlyphSvg } from '../../client/icons'
+import type { BotSnap, RpcCall } from '../../client/data/fleet-api'
+import type { StreamSnapshot } from '../../client/data/connection-stream'
 import {
   SEND_TEST_EVENT,
   headerOverlayFor,
@@ -17,7 +18,7 @@ import {
   type DeliverySuggestion,
   type DotKind,
   type OverlayChannel,
-} from '../data/header-overlay'
+} from '../../client/data/header-overlay'
 
 export interface B3HeaderDeps {
   sessionId: string

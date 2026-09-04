@@ -3,11 +3,9 @@
 import * as React from 'react'
 import { installStyles } from './theme'
 import { FleetPanel } from './components/panel'
-import { B3HeaderAction } from './components/b3-header'
 import { extractRpc } from './data/rpc'
-import { createConnectionStream, type StreamSnapshot } from './data/connection-stream'
+import { createConnectionStream } from './data/connection-stream'
 import { createMetaStore, type MetaStore } from './data/meta'
-import { resolveWorkspacePath, type WorkspaceItem } from './data/header-overlay'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
 
 /* 注：workspaces 经 ctx.get 惰性可选查找（无需声明）；声明会引入 provider 卸载连带，不声明更稳。 */
@@ -36,7 +34,15 @@ export function apply(ctx: any): void {
       return metaCache
     },
     slots: ctx.slots as SlotsService,
-    get: () => undefined,
+    /* 宿主服务透传（B3 取 workspaces；c1a/e2 取 uiWorkspace 时同口径）：取不到按缺失处理。 */
+    get: (name: string) => {
+      try {
+        const get = (ctx as { get?: (n: string) => unknown } | null)?.get
+        return typeof get === 'function' ? get(name) : undefined
+      } catch {
+        return undefined
+      }
+    },
   }
   const stopFeatures: (() => void)[] = []
   for (const f of FEATURES) {
@@ -95,54 +101,7 @@ export function apply(ctx: any): void {
     }
     disposeStyles()
   }, 'dsh-im-companion: styles+features')
-  /* B3 Header 浮层（C 变体）：conversation.session.header.utilities 呼吸点；取不到工作区服务就隐藏，不影响原生 Header */
-  const getB3WorkspacePath = (sessionId: string): string | undefined => {
-    try {
-      const svc = (ctx as { get?: (name: string) => unknown } | null)?.get?.('workspaces') as {
-        list?: { getSnapshot?: () => { items?: WorkspaceItem[] } }
-      } | null
-      const items = svc?.list?.getSnapshot?.()?.items
-      if (!Array.isArray(items)) return undefined
-      return resolveWorkspacePath(sessionId, items)
-    } catch {
-      return undefined
-    }
-  }
-  const loadB3CustomNames = async (): Promise<Record<string, string>> => {
-    try {
-      const doc = await featureCtx.meta.loadMeta()
-      return doc?.names ?? {}
-    } catch {
-      return {}
-    }
-  }
-  const subscribeB3 = (fn: (snap: StreamSnapshot) => void): (() => void) => {
-    try {
-      return stream.subscribe(fn)
-    } catch {
-      return () => {}
-    }
-  }
-  const createB3Rpc = (): import('./data/fleet-api').RpcCall | null => {
-    try {
-      return extractRpc(ctx)
-    } catch {
-      return null
-    }
-  }
-  try {
-    ctx.slots.inject('conversation.session.header.utilities', () =>
-      ctx.slots.register({
-        name: 'conversation.session.header.utilities',
-        id: PLUGIN_ID + ':b3-header',
-        order: 30,
-        inject: () => ({}),
-      }, (props: { sessionId?: string }) =>
-        B3HeaderAction({ sessionId: props?.sessionId ?? '', getWorkspacePath: getB3WorkspacePath, subscribe: subscribeB3, createRpc: createB3Rpc, loadCustomNames: loadB3CustomNames })),
-    )
-  } catch {
-    /* 老宿主无该槽位就跳过（设置面板不受影响） */
-  }
+  /* B3 Header 浮层已收编为特性（src/features/b3-header，#18）：此处只保留设置面板装配。 */
   ctx.slots.inject('settings.section', () =>
     ctx.slots.register({
       name: 'settings.section',
