@@ -298,7 +298,7 @@ test("渲染 P 弹窗（遮罩+面板+标题+进门）", () => {
   assert.ok(el.querySelector(".wb-vig"), "暗角层必须存在");
   assert.equal(el.querySelector(".wb-title").textContent, "家里亮堂，随时回来");
   const sub = el.querySelector(".wb-sub").textContent;
-  assert.ok(sub.indexOf("在线") >= 0 && sub.indexOf("小帅2守着今天") >= 0, "副标题=真实健康+文案后缀（改名联动）：" + sub);
+  assert.ok(sub.indexOf("在线") >= 0 && sub.indexOf("我守着今天") >= 0, "副标题=真实健康+文案后缀：" + sub);
   const btns = el.querySelectorAll("button").map((b: any) => b.textContent);
   assert.ok(btns.some((t: string) => t.indexOf("回家") >= 0 && t.indexOf("门开着") >= 0), "进门按钮主副文案齐全：" + btns.join("|"));
   assert.equal(el.querySelector(".wb-swaprow"), null, "换一句控件必须移除");
@@ -735,6 +735,25 @@ test("中文新版三处（门口迎+进门办事）", () => {
   assert.equal(data.copyFor("dawn", 1).bs, "我在呢");
   assert.equal(data.copyFor("dawn", 2).s, "飞书在线 · 就等你了");
   assert.equal(data.copyFor("dawn", 2).b, "回家");
+});
+
+test("门口迎定稿全量（13处改后锁定）", () => {
+  assert.equal(data.copyFor("wee", 0).s, "飞书在线 · 夜还深，我没睡");
+  assert.equal(data.copyFor("wee", 1).t, "天还黑着，我陪你到天亮");
+  assert.equal(data.copyFor("wee", 1).s, "飞书在线 · 你熬夜，我值班");
+  assert.equal(data.copyFor("wee", 2).s, "飞书在线 · 热茶给你倒好了");
+  assert.equal(data.copyFor("dawn", 0).t, "清晨了，我先醒了");
+  assert.equal(data.copyFor("dawn", 0).s, "飞书在线 · 先喝口热的再说");
+  assert.equal(data.copyFor("day", 0).s, "飞书在线 · 我守着今天");
+  assert.equal(data.copyFor("day", 1).s, "飞书在线 · 喝口水，歇口气");
+  assert.equal(data.copyFor("day", 1).bs, "不着急");
+  assert.equal(data.copyFor("day", 2).s, "飞书在线 · 外面吵，我这儿静");
+  assert.equal(data.copyFor("dusk", 2).t, "忙完了？先回家");
+  assert.equal(data.copyFor("night", 0).s, "飞书在线 · 今晚我守着");
+  assert.equal(data.copyFor("night", 0).bs, "还早呢");
+  assert.equal(data.copyFor("night", 1).t, "夜深了，早点回来");
+  assert.equal(data.copyFor("wee", 0, "en").s, "Online · Deep night. I'm awake");
+  assert.equal(data.copyFor("day", 2, "en").s, "Online · Quiet in here");
 });
 
 test("homeLangOf 跟随 DSH 系统语言", () => {
