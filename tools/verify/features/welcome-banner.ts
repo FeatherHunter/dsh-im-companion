@@ -214,8 +214,7 @@ test("manifest 与注册表收录", () => {
   const f = manifest.feature;
   assert.equal(f.id, "welcome-banner");
   assert.ok(typeof f.order === "number");
-  assert.ok(Array.isArray(f.slots) && f.slots.length === 1);
-  assert.equal(typeof f.slots[0].mount, "function");
+  assert.ok(Array.isArray(f.slots) && f.slots.length === 0, "PARKED：暂屏蔽挂载，恢复时解开 manifest 注释并改回本断言");
   assert.equal(typeof f.installStyles, "function");
   // 注册表：index.ts 在并行 session 手中变红（hover-card 上游破环），本文件不断言其转译，
   // 只做静态收录检查（import 行 + 数组项），全量类型检查归 npm run check。
