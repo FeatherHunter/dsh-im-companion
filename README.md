@@ -5,8 +5,8 @@
 
 **中文** · [English](docs/README.en.md)
 
-**机器人接进来了，接下来呢？**  
-[dsh-im](https://github.com/FeatherHunter/dsh-im) 把各渠道机器人接进 DSH，IM 辅助把它们变成听你调度的助理舰队：谁在线一眼看清，换家拖一下就行。
+**机器人再多，找谁都是一眼的事。**  
+一个工作区就是一个家，家下面挂几个机器人干活，随调随走。
 
 你的 ⭐是我夜空中最亮的星。
 
@@ -133,7 +133,7 @@ IM 辅助就是干这个的——把机器人按助理收好：
 <tr>
 <td align="center" valign="top" width="50%">
 <strong>👇 悬停看双通道 + 最后检测时间</strong>
-<br><img src="assets/工作区-悬停在在线按钮-看到各个渠道状态.png" width="330" alt="悬停看各渠道状态">
+<br><img src="assets/工作区-Header浮层-当前助理状态-呼吸感.png" width="330" alt="悬停卡与在线徽标同框">
 </td>
 <td align="center" valign="top" width="50%">
 <strong>👇 浅色主题同样可用</strong>
