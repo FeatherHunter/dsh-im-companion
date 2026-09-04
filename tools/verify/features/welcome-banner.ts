@@ -192,6 +192,8 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf("min-height:") >= 0, "HOME 气场：横幅必须有最小高度占领对话区");
   assert.ok(css.indexOf("width: 100%") >= 0 && css.indexOf("align-self: stretch") >= 0, "卡片必须占满父容器宽度（flex 父容器下防塌成细条，真机竖条回归）");
   assert.ok(css.indexOf("top: 50%") >= 0 && css.indexOf("translateY(-50%)") >= 0, "文案块必须在天空区垂直居中");
+  assert.ok(css.indexOf("bottom: 7%") >= 0, "进门按钮必须沉底（标题居中、按钮靠下，好点）");
+  assert.ok(css.indexOf("min(78vh, 740px)") >= 0, "卡片必须给原生空态留位置（探索未至之境保持可见）");
   for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-horizon", ".wb-title", ".wb-enter"]) {
     assert.ok(css.indexOf(cls) >= 0, "P 天空样式缺失：" + cls);
   }

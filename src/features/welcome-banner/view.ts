@@ -64,11 +64,11 @@ export function renderHome(input: {
       h("span", { className: dotClass(status) }),
       stateLabel + " · " + subSuffix,
     ),
-    h("div", { className: "wb-cta" },
-      h("button", { className: "wb-enter", onclick: () => callbacks.onEnter() },
-        copy.b,
-        h("small", { className: "wb-enter-sub" }, copy.bs),
-      ),
+  ));
+  sky.appendChild(h("div", { className: "wb-cta" },
+    h("button", { className: "wb-enter", onclick: () => callbacks.onEnter() },
+      copy.b,
+      h("small", { className: "wb-enter-sub" }, copy.bs),
     ),
   ));
   card.appendChild(sky);
