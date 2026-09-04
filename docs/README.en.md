@@ -39,4 +39,4 @@ Refresh the page (Ctrl+F5) or hot-reload the plugin. Restart is the last resort.
 
 Upstream: [dsh-im](https://github.com/FeatherHunter/dsh-im). Issues: [here](https://github.com/FeatherHunter/dsh-im-companion/issues).
 
-BSD-3-Clause FeatherHunter
+MIT © FeatherHunter
