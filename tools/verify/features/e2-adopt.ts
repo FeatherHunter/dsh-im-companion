@@ -152,7 +152,8 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('rgba(6,8,16'), '黑夜有夜空');
   assert.ok(String(styles.CSS).includes('linear-gradient(180deg, #7a6547'), '黑夜房间蜜黄（拒绝土黄）');
   assert.ok(String(styles.CSS).includes('.e2-row{background:#7d6850'), '黑夜人坐灯下（扁平暖人）');
-  assert.ok(String(styles.CSS).includes('255,203,138'), '灯光蜜色（去浊）');
+  assert.ok(String(styles.CSS).includes('255,210,145'), '灯光再亮一档（去浊）');
+  assert.ok(String(styles.CSS).includes('.e2-tape{background:#e3b95e'), '胶带亮金（深色专属，浅色冻结）');
   assert.ok(String(styles.CSS).includes('.e2-row::before{display:none}'), '黑夜纸光线退役');
   assert.ok(String(styles.CSS).includes('255,251,238'), '巷子口白天铺暖地');
   assert.ok(String(styles.CSS).includes('at 50% 45%'), '巷子口黑夜整体提亮（不如家里亮，但亮）');
