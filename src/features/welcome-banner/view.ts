@@ -26,12 +26,12 @@ function dotClass(status: string): string {
 }
 
 function appendStars(sky: HTMLElement): void {
-  for (let k = 0; k < 20; k++) {
+  for (let k = 0; k < 26; k++) {
     const sx = (k * 37) % 100;
-    const sy = (k * 53) % 70;
+    const sy = (k * 53) % 72;
     sky.appendChild(h("span", {
-      className: "wb-star",
-      style: "left:" + sx + "%;top:" + sy + "%;animation-delay:" + ((k % 7) * 0.4) + "s",
+      className: "wb-star wb-s" + ((k % 3) + 1),
+      style: "left:" + sx + "%;top:" + sy + "%;animation-delay:" + ((k % 9) * 0.35) + "s",
     }));
   }
 }
@@ -55,10 +55,15 @@ export function renderHome(input: {
   const card = h("section", { className: "wb-banner" });
   const sky = h("div", { className: "wb-sky " + copy.sky });
   if (copy.moon) sky.appendChild(h("div", { className: "wb-moon" }));
-  else sky.appendChild(h("div", { className: "wb-sun" }));
+  else {
+    sky.appendChild(h("div", { className: "wb-rays" }));
+    sky.appendChild(h("div", { className: "wb-sun" }));
+  }
   if (copy.moon) appendStars(sky);
   else appendClouds(sky);
   if (copy.horizon) sky.appendChild(h("div", { className: "wb-horizon" }));
+  sky.appendChild(h("div", { className: "wb-grain" }));
+  sky.appendChild(h("div", { className: "wb-vig" }));
   sky.appendChild(h("div", { className: "wb-copy" },
     h("div", { className: "wb-title" }, copy.t),
     h("div", { className: "wb-sub" },
