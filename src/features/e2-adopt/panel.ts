@@ -107,7 +107,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       const have = new Set(groups.map((g) => g.workspace))
       for (const w of homeList(bots || [], listHomes(ctx))) {
         if (have.has(w)) continue
-        grid.appendChild(homeCard(homePlate(w, meta), w, [], false, { class: 'e2-sec e2-sec-empty' }, '空无一人，拖张照片来安家'))
+        grid.appendChild(homeCard(homePlate(w, meta), w, [], false, { class: 'e2-sec e2-sec-empty' }, '空无一人，拖个机器人来安家'))
       }
     } catch { /* 渲染失败保持旧面板（fail-closed） */ }
   }
