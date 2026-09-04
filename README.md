@@ -16,7 +16,7 @@
 
 <strong>👇 有助理的工作区，一目了然。</strong>
 
-<img src="assets/工作区-有助理的工作区一目了然-深色.png" width="420" alt="左栏工作区：全部、有助理、无助理，在线绿灯">
+<img src="assets/工作区-有助理的工作区一目了然-深色.png" width="300" alt="左栏工作区：全部、有助理、无助理，在线绿灯">
 
 **装它，1 分钟（先装 dsh-im，再装伴生）。**
 
@@ -141,12 +141,12 @@ IM 伴生在 dsh-im 之上加了一层以 Agent 为家的系统：
 <table>
 <tr>
 <td align="center" width="50%">
-<img src="assets/工作区-悬停在在线按钮-看到各个渠道状态.png" width="330" alt="悬停看各渠道状态">
-<br><sub>👇 悬停看双通道 + 最后检测时间</sub>
+<sub>👇 悬停看双通道 + 最后检测时间</sub>
+<br><img src="assets/工作区-悬停在在线按钮-看到各个渠道状态.png" width="330" alt="悬停看各渠道状态">
 </td>
 <td align="center" width="50%">
-<img src="assets/工作区-有助理-浅色.png" width="330" alt="浅色左栏同样有徽标和过滤">
-<br><sub>👇 浅色主题同样可用</sub>
+<sub>👇 浅色主题同样可用</sub>
+<br><img src="assets/工作区-有助理-浅色.png" width="330" alt="浅色左栏同样有徽标和过滤">
 </td>
 </tr>
 </table>
