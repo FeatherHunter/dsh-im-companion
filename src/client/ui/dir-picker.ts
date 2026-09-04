@@ -44,9 +44,18 @@ export function openDirPicker(
         const raw = await native()
         resolveFn(raw === null ? null : normalizePick(raw))
       } catch (e) {
-        /* 原生框自行承接交互：取消即抛错，一律按取消处理，不回退内置（免双框困惑）；真故障留 console 备查 */
-        try { console.warn('[dsh-im-companion] native directory picker dismissed:', e) } catch { /* ignore */ }
-        resolveFn(null)
+        /* 取消类抛错（宿主取消即抛）：静默收场。真故障才回退内置，保证点击永远有可见反应。 */
+        const msg = String((e as Error)?.message ?? e)
+        if (/cancel|dismiss|abort|close/i.test(msg)) {
+          resolveFn(null)
+          return
+        }
+        try { console.warn('[dsh-im-companion] native picker failed, falling back:', e) } catch { /* ignore */ }
+        if (!rpc) {
+          resolveFn(null)
+          return
+        }
+        openHostBrowser()
       }
     })()
     return { promise, el: placeholder }
@@ -60,7 +69,8 @@ export function openDirPicker(
 
   function openHostBrowser(): { el: HTMLElement } {
   const state = { path: '' }
-  const list = h('div', { className: 'af-list', style: { maxHeight: '280px', overflow: 'auto' } })
+  /* 列表弹性高度：卡片定高后由它吸收内容多少，弹窗不再上下抖动 */
+  const list = h('div', { className: 'af-list', style: { flex: '1 1 auto', minHeight: '0', overflow: 'auto' } })
   const bar = h('div', { className: 'af-dirbar' }, h('span', null, '…'))
   /* 直达行：家目录子树之外的任意文件夹靠粘贴绝对路径进入（复用 af-compose 输入行样式，不新增类） */
   const goInput = h('input', {
@@ -83,12 +93,18 @@ export function openDirPicker(
     h('h3', { className: 'af-modal-title' }, '选择目录'),
     h('div', { className: 'af-modal-sub' }, '为该 Agent 选一个文件夹'),
     bar, goRow, chips, list,
-    h('div', { className: 'af-modal-foot' }, cancel, choose),
+    h('div', { className: 'af-modal-foot', style: { flex: 'none' } }, cancel, choose),
   ], { onClose: () => resolveFn(null) })
   try {
     /* 宽卡（长 Windows 路径不挤压）+ 置顶于 c1a 抽屉遮罩（1250 > 1200）；极简 DOM 环境缺 classList 则跳过 */
     modal.el.classList.add('af-modal--wide')
     modal.el.parentElement?.classList.add('af-overlay--top')
+    /* 固定弹窗几何：卡片定高纵向排布，矮屏 overlay 滚动兜底（overlay 已 overflow:auto） */
+    modal.el.style.height = 'min(560px, calc(100vh - 96px))'
+    modal.el.style.minHeight = '280px'
+    modal.el.style.display = 'flex'
+    modal.el.style.flexDirection = 'column'
+    modal.el.style.overflow = 'hidden'
   } catch {
     /* 保持默认尺寸层叠 */
   }

@@ -144,7 +144,7 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(!String(styles.CSS).includes('prefers-color-scheme'), '深浅跟宿主牌子，不问系统');
   assert.ok(String(styles.CSS).includes('body[data-ds-dark-theme]'), '深色挂钩宿主');
   assert.ok(String(styles.CSS).includes('Microsoft YaHei'), '中文字体备胎');
-  assert.ok(String(styles.CSS).includes('color-mix(in srgb, var(--dsw-alias-bg-base'), '深色纸底跟宿主走（方案三）');
+  assert.ok(String(styles.CSS).includes('--e2-paper:#11141b'), '深色纸底墨夜暖芯（B 方案定稿）');
   assert.ok(String(styles.CSS).includes('.e2-sec-empty'), '空家有关灯样式');
   assert.ok(String(styles.CSS).includes('radial-gradient(100% 90% at 50% 0%'), '照片卡顶部晕带');
   assert.ok(String(styles.CSS).includes('.e2-row::before'), '纸面高光线');
@@ -156,10 +156,10 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('#f7eed6'), '白天有朝阳（天光做实）');
   assert.ok(String(styles.CSS).includes('inset 0 1px 0 rgba(255,255,255'), '白天有人家见光（与黑夜开灯镜像）');
   assert.ok(String(styles.CSS).includes('rgba(6,8,16'), '黑夜有夜空');
-  assert.ok(String(styles.CSS).includes('linear-gradient(180deg, #7a6547'), '黑夜房间蜜黄（拒绝土黄）');
-  assert.ok(String(styles.CSS).includes('.e2-row{background:#7d6850'), '黑夜人坐灯下（扁平暖人）');
-  assert.ok(String(styles.CSS).includes('255,210,145'), '灯光再亮一档（去浊）');
-  assert.ok(String(styles.CSS).includes('.e2-tape{background:#e3b95e'), '胶带亮金（深色专属，浅色冻结）');
+  assert.ok(String(styles.CSS).includes('.e2-sec{background:#1e2432'), '黑夜房间暗蓝（B 方案定稿）');
+  assert.ok(String(styles.CSS).includes('.e2-row{background:#eadfc6'), '黑夜人坐灯下（亮暖行深字，B 方案定稿）');
+  assert.ok(String(styles.CSS).includes('238,196,110'), '灯光沙色（B 方案定稿，去浊）');
+  assert.ok(String(styles.CSS).includes('.e2-tape{background:#dcc08a'), '胶带沙色（B 方案定稿，深色专属，浅色冻结）');
   assert.ok(String(styles.CSS).includes('.e2-row::before{display:none}'), '黑夜纸光线退役');
   assert.ok(String(styles.CSS).includes('255,251,238'), '巷子口白天铺暖地');
   assert.ok(String(styles.CSS).includes('at 50% 45%'), '巷子口黑夜整体提亮（不如家里亮，但亮）');

@@ -46,9 +46,18 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
         const raw = await nativeFn!()
         resolveFn(raw === null ? null : normalizePick(raw))
       } catch (e) {
-        /* 原生框自行承接交互：取消即抛错，一律按取消处理，不回退内置（免双框困惑）；真故障留 console 备查 */
-        try { console.warn('[dsh-im-companion] native directory picker dismissed:', e) } catch { /* ignore */ }
-        resolveFn(null)
+        /* 取消类抛错：静默收场。真故障才回退内置，保证点击永远有可见反应。 */
+        const msg = String((e as Error)?.message ?? e)
+        if (/cancel|dismiss|abort|close/i.test(msg)) {
+          resolveFn(null)
+          return
+        }
+        try { console.warn('[dsh-im-companion] native picker failed, falling back:', e) } catch { /* ignore */ }
+        if (!rpc) {
+          resolveFn(null)
+          return
+        }
+        openHostBrowser()
       }
     })()
     return { promise, el: placeholder }
@@ -65,7 +74,8 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
   function openHostBrowser(): ModalHandle {
 
   const state = { path: '', loading: true, error: '' }
-  const list = h('div', { className: 'af-list', style: { maxHeight: '280px', overflow: 'auto' } })
+  /* 列表弹性高度：卡片定高后由它吸收内容多少，弹窗不再上下抖动（dir-picker 同款） */
+  const list = h('div', { className: 'af-list', style: { flex: '1 1 auto', minHeight: '0', overflow: 'auto' } })
   const bar = h('div', { className: 'af-dirbar' })
   const title = h('h3', { className: 'af-modal-title' }, '选择工作区')
   const sub = h('div', { className: 'af-modal-sub' }, '选择该 Agent 的文件夹（作为它的「家」）')
@@ -77,11 +87,21 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
   }
   const choose = makeButton({ kind: 'primary', label: '选择此目录', disabled: true, onClick: () => done(state.path) })
   const cancel = makeButton({ kind: 'ghost', label: '取消', onClick: () => done(null) })
-  const foot = h('div', { className: 'af-modal-foot' }, cancel, choose)
+  const foot = h('div', { className: 'af-modal-foot', style: { flex: 'none' } }, cancel, choose)
   modal = showModal([
     title, sub, bar, list, foot,
     h('div', { className: 'af-modal-sub', style: { margin: '10px 0 0' } }, '提示：也可拖入任意目录；仅展示文件夹。'),
   ], { onClose: () => resolveFn(null) })
+  try {
+    /* 固定弹窗几何：卡片定高纵向排布（dir-picker 同款，治上下抖动） */
+    modal.el.style.height = 'min(560px, calc(100vh - 96px))'
+    modal.el.style.minHeight = '280px'
+    modal.el.style.display = 'flex'
+    modal.el.style.flexDirection = 'column'
+    modal.el.style.overflow = 'hidden'
+  } catch {
+    /* 保持默认尺寸层叠 */
+  }
 
   async function navigate(path: string): Promise<void> {
     state.path = path
