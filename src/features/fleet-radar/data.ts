@@ -1,9 +1,9 @@
-/** C1b 矩阵数据层（DOM-free，可 node 直测）：Agent × 9 渠道稠密表（verdict #10 = A 变体）。
+/** FleetRadar 矩阵数据层（DOM-free，可 node 直测）：Agent × 9 渠道稠密表（verdict #10 = A 变体）。
  * 行：buildModel 的 Agent 视图按（健康 在线>待确认>离线、未绑定沉底、组内按名）重排；
  * 列：CHANNEL_ORDER 固定 9 序；格：渠道 bot（健康 + 行级绑定），无 bot = 未接入。
  * 绑定取行级（workspace 是否为空）：真模型按工作区分组，归属某工作区即已绑定；
  * 未绑定 bot 自成一行（key 前缀 unbound:），本地空 Agent 无渠道。
- * 钻取 key 与 C1a 同源（buildDrawerModel 按同一 key 回查），点格即开抽屉。 */
+ * 钻取 key 与 DetailDrawer 同源（buildDrawerModel 按同一 key 回查），点格即开抽屉。 */
 import { CHANNEL_ORDER, HEALTH_LABELS, OPEN_DRAWER_EVENT, channelLabel, type HealthKind } from '../../client/data/config'
 import { buildModel, type AgentView } from '../../client/data/model'
 import type { AgentMetaDoc } from '../../client/data/meta'
@@ -111,7 +111,8 @@ export function footSomeLine(names: string[], lang: Lang): string {
 }
 
 /** LOGO 底色（纯数据，可测）：dsh-im 设置页同款——品牌色圆角底 + 白 glyph；
- * 飞书/企微 glyph 自带多色，只配白底衬；其余单色 glyph（currentColor）坐品牌底变白。 */
+ * 飞书/企微 glyph 自带多色，只配白底衬；其余 7 单色 glyph 经 view/styles 洗白
+ * （共享 icons 仍是品牌 fill 以保详情抽屉透明底可读，上游 currentColor 口径由本特性 CSS 落地）。 */
 export const LOGO_TILE_BG: Record<string, string> = {
   feishu: '#ffffff', weixin: '#07c160', qq: '#12b7f5', slack: '#4a154b', telegram: '#2aabee',
   discord: '#5865f2', whatsapp: '#25d366', dingtalk: '#0091ff', wecom: '#ffffff',
@@ -172,7 +173,7 @@ export function buildMatrix(bots: BotSnap[], meta: AgentMetaDoc, lang: Lang = 'z
   }
 }
 
-/** 钻取事件载荷（view 层按此派发，C1a 抽屉是真消费者）。 */
+/** 钻取事件载荷（view 层按此派发，DetailDrawer 抽屉是真消费者）。 */
 export function drillEventFor(key: string): { name: string; detail: { key: string } } {
   return { name: OPEN_DRAWER_EVENT, detail: { key } }
 }

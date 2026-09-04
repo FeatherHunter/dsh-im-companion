@@ -1,4 +1,4 @@
-/** B3 Header 浮层纯数据层（C 变体 verdict #8）。
+/** SessionHeader Header 浮层纯数据层（C 变体 verdict #8）。
  * 时机三态：未就绪（服务缺失/首轮快照前）→ hidden（不渲染）；已知无绑定 → unbound（灰色提示）；
  * 已绑定 → full（呼吸点 + 详情）。健康语义复用 B1（任一在线即在线，失败按未知）。
  * 发测试消息只走 dsh-im 已保存目标（PROACTIVE_DELIVERY 契约）：无目标不谎报发送。 */
@@ -101,6 +101,15 @@ export function channelsOf(bound: BotSnap[]): OverlayChannel[] {
     const kind: HealthKind = kinds.includes('online') ? 'online' : kinds.includes('warn') ? 'warn' : 'offline'
     return { channel, label: channelLabel(channel), statusText: HEALTH_LABELS[kind], color: channelColor(channel), kind }
   })
+}
+
+/** 同渠道 Bot 全量（#32 发测试消息第二步选择用）：同工作区 + 该渠道，不过滤在线；展示与预检由调用方定。 */
+export function botsInChannel(
+  bots: BotSnap[],
+  workspacePath: string,
+  channel: string,
+): BotSnap[] {
+  return (bots ?? []).filter((b) => b && b.workspace === workspacePath && b.channel === channel)
 }
 
 /** 首选 Bot：优先在线绑定，否则首个绑定；无绑定为 null（调用方走 unbound）。

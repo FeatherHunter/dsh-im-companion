@@ -18,14 +18,14 @@ export const HEALTH_LABELS: Record<HealthKind, string> = {
   online: '在线', warn: '待确认', offline: '离线',
 }
 
-/** C1a 抽屉打开事件名：detail = { key }（key = AgentView.key；A1 行派发，C1a 特性监听，见 OPEN_AGENT_EVENT 先例）。 */
+/** DetailDrawer 抽屉打开事件名：detail = { key }（key = AgentView.key；A1 行派发，DetailDrawer 特性监听，见 OPEN_AGENT_EVENT 先例）。 */
 export const OPEN_DRAWER_EVENT = 'dsh-im-companion:open-drawer'
 
 export interface OpenDrawerDetail {
   key: string
 }
 
-/** 舰队视图切换事件名：detail = { view }（A1 船按钮/矩阵返回按钮派发，装配层监听做显隐切换；C1a 抽屉同款事件制）。 */
+/** 舰队视图切换事件名：detail = { view }（A1 船按钮/矩阵返回按钮派发，装配层监听做显隐切换；DetailDrawer 抽屉同款事件制）。 */
 export const FLEET_VIEW_EVENT = 'dsh-im-companion:fleet-view'
 
 export interface FleetViewDetail {

@@ -1,5 +1,5 @@
 // #17 A线面板联动自验证：共享流订阅 + 失败未知 tooltip（直跑：node tools/verify/features/a17-panel-linkage.ts；零第三方依赖）。
-// 做法：tsc 转译相关链到临时目录再断言（照抄 c1a-drawer.ts 模式）；DOM 用 dom-shim + 最小 window 事件发射器。
+// 做法：tsc 转译相关链到临时目录再断言（照抄 detail-drawer.ts 模式）；DOM 用 dom-shim + 最小 window 事件发射器。
 import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

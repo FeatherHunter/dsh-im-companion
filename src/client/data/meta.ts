@@ -17,7 +17,7 @@ export interface AgentMetaDoc {
   names: Record<string, string>
   avatars: Record<string, string>
   locals: LocalAgent[]
-  /** C1a 身份配置（与 host/meta-store.ts 同形；旧快照缺字段时读方 ?? {} 兜底）。 */
+  /** DetailDrawer 身份配置（与 host/meta-store.ts 同形；旧快照缺字段时读方 ?? {} 兜底）。 */
   presets: Record<string, string>
   ctxEnhance: Record<string, CtxEnhance>
   /** E4 P 进门记忆（工作区全路径 → true）：旧快照缺字段时读方 ?? {} 兜底（optional，零破坏）。 */

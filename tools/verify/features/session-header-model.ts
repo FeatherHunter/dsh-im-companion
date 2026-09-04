@@ -1,4 +1,4 @@
-// B3 verdict 回归：Header 浮层纯数据层断言（node --test，零第三方依赖）。
+// SessionHeader verdict 回归：Header 浮层纯数据层断言（node --test，零第三方依赖）。
 // 做法：与 B1 badge-model 同范式——用仓库自带 tsc 把 src/client/data 纯模块转译到临时目录，再断言转译产物。
 // 覆盖 verdict（#8，C 变体）：时机三态（hidden/unbound/full）、可达性复用 B1（任一在线即在线）、
 // 发测试消息只走已保存目标（无目标不谎报发送）、信封解包与错误码透传。
@@ -14,7 +14,7 @@ const REPO = process.cwd();
 const SRC = join(REPO, 'src', 'client', 'data');
 const FILES = ['config.ts', 'fleet-api.ts', 'bindings.ts', 'header-overlay.ts', 'model.ts', 'meta.ts'];
 
-const stage = mkdtempSync(join(tmpdir(), 'b3-src-'));
+const stage = mkdtempSync(join(tmpdir(), 'session-header-src-'));
 for (const f of ['icons.ts']) {
   writeFileSync(join(stage, f), readFileSync(join(REPO, 'src', 'client', f), 'utf8'));
 }
@@ -25,7 +25,7 @@ for (const f of FILES) {
     String(name).endsWith('.js') ? m : './' + name + '.js' + q);
   writeFileSync(join(stage, f), fixed);
 }
-const tmp = mkdtempSync(join(tmpdir(), 'b3-header-'));
+const tmp = mkdtempSync(join(tmpdir(), 'session-header-'));
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
@@ -41,7 +41,7 @@ try {
   process.exit(1);
 }
 const mod = (f: string) => import(pathToFileURL(join(tmp, f)).href);
-const { headerOverlayFor, resolveWorkspacePath, chooseBot, buildTestText, listTargets, sendTestMessage, runTestSend, sendToSuggestion, listSuggestions, testDraftTarget, suggestionLabel, channelsOf, SEND_TEST_EVENT } = await mod('header-overlay.js');
+const { headerOverlayFor, resolveWorkspacePath, chooseBot, botsInChannel, buildTestText, listTargets, sendTestMessage, runTestSend, sendToSuggestion, listSuggestions, testDraftTarget, suggestionLabel, channelsOf, SEND_TEST_EVENT } = await mod('header-overlay.js');
 const { mergeStaleBots } = await mod('fleet-api.js');
 const { buildModel } = await mod('model.js');
 const { channelGlyphSvg } = await mod('icons.js');
@@ -296,6 +296,22 @@ test('chooseBot 传渠道：只在该渠道内选', () => {
   assert.equal(chooseBot(bots, W1, 'feishu')?.botId, 'f1');
   assert.equal(chooseBot(bots, W1, 'nope'), null);
   assert.equal(chooseBot(bots, W1)?.botId, 'f1'); // 不传渠道保持原行为
+});
+
+test('botsInChannel：同渠道全量（#32 第二步选择），按工作区隔离', () => {
+  const bots = [
+    snap({ botId: 'f1', channel: 'feishu', botName: '小帅' }),
+    snap({ botId: 'f2', channel: 'feishu', botName: '小腾' }),
+    snap({ botId: 'f3', channel: 'feishu', botName: '小匠' }),
+    snap({ botId: 'w1', channel: 'weixin', botName: '微信机器人' }),
+    snap({ botId: 'x1', channel: 'feishu', workspace: 'D:\\agents\\other', botName: '别家' }),
+  ];
+  const feishu = botsInChannel(bots, W1, 'feishu');
+  assert.equal(feishu.length, 3); // 三个飞书全量，不代选
+  assert.deepEqual(feishu.map((b) => b.botId), ['f1', 'f2', 'f3']);
+  assert.equal(botsInChannel(bots, W1, 'weixin').length, 1);
+  assert.deepEqual(botsInChannel(bots, W1, 'nope'), []);
+  assert.deepEqual(botsInChannel([], W1, 'feishu'), []);
 });
 
 test('多渠道发送：显式 Bot 决定走谁的目标', async () => {

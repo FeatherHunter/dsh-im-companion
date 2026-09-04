@@ -1,5 +1,5 @@
-// C1b 矩阵总览自验证（F0 每功能自验证）：纯数据层 + 注册/样式断言（node --test，零第三方依赖）。
-// 做法：tsc 转译相关链到临时目录再断言（照抄 c1a-drawer.ts 模式）；view/styles 只转译不断言运行时。
+// FleetRadar 矩阵总览自验证（F0 每功能自验证）：纯数据层 + 注册/样式断言（node --test，零第三方依赖）。
+// 做法：tsc 转译相关链到临时目录再断言（照抄 detail-drawer.ts 模式）；view/styles 只转译不断言运行时。
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -9,7 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const REPO = process.cwd();
-const FEAT = join(REPO, 'src', 'features', 'c1b-matrix');
+const FEAT = join(REPO, 'src', 'features', 'fleet-radar');
 const ENTRIES = [
   join(REPO, 'src', 'client', 'data', 'config.ts'),
   join(REPO, 'src', 'client', 'icons.ts'),
@@ -22,7 +22,7 @@ const ENTRIES = [
   join(FEAT, 'manifest.ts'),
 ];
 
-const tmp = mkdtempSync(join(tmpdir(), 'c1b-matrix-'));
+const tmp = mkdtempSync(join(tmpdir(), 'fleet-radar-'));
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
@@ -39,7 +39,7 @@ try {
 // view.ts 含 react 运行时（宿主 bundle 侧供给），tmp 目录解析不到——运行时只 require 纯数据链；
 // manifest/view/styles 靠 tsc 转译 + 源码断言覆盖。
 const req = createRequire(join(tmp, 'run.cjs'));
-const data: any = req('./features/c1b-matrix/data.js');
+const data: any = req('./features/fleet-radar/data.js');
 const config: any = req('./client/data/config.js');
 const iconsMod: any = req('./client/icons.js');
 const manifestSrc = readFileSync(join(FEAT, 'manifest.ts'), 'utf8');
@@ -93,7 +93,7 @@ test('空态：0 行 + 计数归零；全空列仅在有行时计算', () => {
   assert.ok(!m2.emptyColumns.includes('feishu'));
 });
 
-test('钻取载荷：事件名即 C1a 抽屉订阅的 OPEN_DRAWER_EVENT', () => {
+test('钻取载荷：事件名即 DetailDrawer 抽屉订阅的 OPEN_DRAWER_EVENT', () => {
   const e = data.drillEventFor('D:/ws/a');
   assert.equal(e.name, config.OPEN_DRAWER_EVENT);
   assert.deepEqual(e.detail, { key: 'D:/ws/a' });
@@ -143,40 +143,53 @@ test('LOGO：9 渠道全覆盖 + 未知回退（dsh-im 同款 glyph）', () => {
 
 test('大弹窗装配：矩阵自管模态 + 装配层零感知 + A1 船按钮间距（源码断言）', () => {
   const viewSrc = readFileSync(join(FEAT, 'view.ts'), 'utf8');
-  assert.match(viewSrc, /showSheet\(\{ overlayClass: 'c1bm-overlay', panelClass: 'c1bm-modal'/);
+  assert.match(viewSrc, /showSheet\(\{ overlayClass: 'fleet-radar-overlay', panelClass: 'fleet-radar-modal'/);
   assert.match(viewSrc, /FLEET_VIEW_EVENT/);
   assert.match(viewSrc, /mountRadarView/);
   assert.match(viewSrc, /openRadar/);
   assert.match(viewSrc, /docLang/);
   assert.match(viewSrc, /MutationObserver/);
   assert.match(viewSrc, /channelGlyphSvg/);
-  assert.match(viewSrc, /c1bm-logo/);
+  assert.match(viewSrc, /fleet-radar-logo/);
   assert.doesNotMatch(viewSrc, /onLang/);
-  assert.doesNotMatch(viewSrc, /c1bm-lang/);
+  assert.doesNotMatch(viewSrc, /fleet-radar-lang/);
   assert.doesNotMatch(viewSrc, /slots\.inject/);
   assert.doesNotMatch(viewSrc, /from 'react'/);
   assert.match(manifestSrc, /mountRadar/);
   const indexSrc = readFileSync(join(REPO, 'src', 'client', 'index.ts'), 'utf8');
   assert.doesNotMatch(indexSrc, /MatrixSection/);
-  assert.doesNotMatch(indexSrc, /c1b-matrix/);
+  assert.doesNotMatch(indexSrc, /fleet-radar/);
   const panelSrc = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
   assert.match(panelSrc, /iconName: 'ship'/);
   assert.match(panelSrc, /emitFleetView\('radar'\)/);
   assert.match(panelSrc, /gap: '12px'/);
-  assert.doesNotMatch(panelSrc, /c1b-matrix/);
-  assert.match(stylesSrc, /\.c1bm-modal/);
+  assert.doesNotMatch(panelSrc, /fleet-radar/);
+  assert.match(stylesSrc, /\.fleet-radar-modal/);
+});
+
+test('LOGO 洗白：单色 7 渠道白 glyph + feishu/wecom 豁免（BUG #30 根因锁）', () => {
+  const viewSrc = readFileSync(join(FEAT, 'view.ts'), 'utf8');
+  assert.match(viewSrc, /dataset: \{ ch: channel \}/);
+  assert.match(stylesSrc, /\.fleet-radar-logo:not\(\[data-ch="feishu"\]\)/);
+  assert.match(stylesSrc, /fill: #fff/);
+  for (const id of ['weixin', 'qq', 'slack', 'telegram', 'discord', 'whatsapp', 'dingtalk']) {
+    assert.match(data.LOGO_TILE_BG[id], /^#/);
+    assert.notEqual(data.LOGO_TILE_BG[id].toLowerCase(), '#ffffff');
+  }
+  assert.equal(data.LOGO_TILE_BG.feishu, '#ffffff');
+  assert.equal(data.LOGO_TILE_BG.wecom, '#ffffff');
 });
 
 test('注册：id/槽位目标 + 样式命名空间（转译已过，此处源码断言）', () => {
-  assert.match(manifestSrc, /id: 'c1b-matrix'/);
+  assert.match(manifestSrc, /id: 'fleet-radar'/);
   assert.match(manifestSrc, /name: '舰队雷达'/);
   assert.match(manifestSrc, /target: 'settings.section'/);
-  assert.match(manifestSrc, /installFeatureStyles\('c1b-matrix'/);
-  assert.match(stylesSrc, /\.c1bm-table/);
-  assert.match(stylesSrc, /\.c1bm-cell/);
-  assert.match(stylesSrc, /\.c1bm-logo/);
-  assert.match(stylesSrc, /\.c1bm-modal/);
-  assert.doesNotMatch(stylesSrc, /\.c1bm-lang/);
+  assert.match(manifestSrc, /installFeatureStyles\('fleet-radar'/);
+  assert.match(stylesSrc, /\.fleet-radar-table/);
+  assert.match(stylesSrc, /\.fleet-radar-cell/);
+  assert.match(stylesSrc, /\.fleet-radar-logo/);
+  assert.match(stylesSrc, /\.fleet-radar-modal/);
+  assert.doesNotMatch(stylesSrc, /\.fleet-radar-lang/);
   assert.doesNotMatch(stylesSrc, /\.af-[a-z]/);
   assert.doesNotMatch(stylesSrc, /\.sp\b/);
 });

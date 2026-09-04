@@ -30,9 +30,13 @@ body{background:#0e1014;color:#e8e8ea;font:14px/1.6 -apple-system,BlinkMacSystem
 [data-v=b]{--paper:#11141b;--sec:#1e2432;--sec-border:rgba(238,196,110,.30);--row:#eadfc6;--row-ink:#2c2517;--row-faint:#6f6250;--ink:#f0e8d6;--faint:#9aa3b5;--tape:#dcc08a;--tape-ink:#241d10;--alley-bg:rgba(238,196,110,.05);--alley-border:rgba(220,192,138,.55);--empty-bg:#151923}
 [data-v=b] .empty .tape{background:#3a4152;color:#cfd6e4}
 [data-v=b] .alley .hint{color:#9aa3b5}[data-v=b] .empty .hint{color:#8b93a7}
+[data-v=bp]{--paper:#11141b;--sec:#1e2432;--sec-border:rgba(238,196,110,.30);--row:#eadfc6;--row-ink:#2c2517;--row-faint:#453b2c;--ink:#f0e8d6;--faint:#9aa3b5;--tape:#dcc08a;--tape-ink:#241d10;--alley-bg:rgba(238,196,110,.05);--alley-border:rgba(220,192,138,.55);--empty-bg:#151923}
+[data-v=bp] .empty .tape{background:#3a4152;color:#cfd6e4}
+[data-v=bp] .alley .hint{color:#9aa3b5}[data-v=bp] .empty .hint{color:#8b93a7}
+[data-v=bp] .cap{font-style:normal;font-size:12px}
 [data-v=c]{--paper:#1d2029;--sec:#4c4c54;--sec-border:rgba(255,255,255,.10);--row:#5f5f67;--ink:#f1eee7;--faint:#c0bcb2;--row-faint:#cfccc4;--tape:#c8b68d;--tape-ink:#262219;--alley-bg:rgba(0,0,0,.20);--alley-border:rgba(241,238,231,.35);--empty-bg:rgba(0,0,0,.22)}
 </style></head><body><div class="page">
-<h1>串门 · 搬家 — 深色配色四选一（版式完全相同，只换颜色）</h1>
+<h1>串门 · 搬家 — 深色配色对照（B+ 为本次修后效果）</h1>
 <p class="note">对照截图里的 9 家＋巷子口＋4 空家。虚实线、位置、字号、圆角全部没动。O=现状复刻，A=原生灰，B=墨夜暖芯（家里开灯：暗卡＋亮行），C=去脏微调。看完告诉我 O/A/B/C 即可。</p>
 <div id="root"></div></div>
 <script>
@@ -44,7 +48,8 @@ var variants=[
 ["o","O · 现状复刻","paper #232839 / 卡棕渐变 #7a6547→#57462f / 行 #7d6850 / 胶带 #e3b95e"],
 ["a","A · DSH 原生跟随","paper #1a1d24 / 卡 #22262f / 行 #2d333f / 胶带灰 #363c48（黄全去掉）"],
 ["b","B · 墨夜暖芯（推荐）","paper #11141b / 暗蓝卡 #1e2432 / 亮暖行 #eadfc6 深字 / 胶带沙 #dcc08a / 空家压黑"],
-["c","C · 去脏微调","paper #1d2029 / 卡纯灰 #4c4c54（去渐变）/ 行 #5f5f67 / 胶带 #c8b68d"]];
+["c","C · 去脏微调","paper #1d2029 / 卡纯灰 #4c4c54（去渐变）/ 行 #5f5f67 / 胶带 #c8b68d"],
+["bp","B+ · 小字修复后（本次已落地）","行底不变 / 小字 #453b2c 12px正体（原 #6f6250 11px斜体）"]];
 var root=document.getElementById("root");
 variants.forEach(function(v){
 var sec=document.createElement("section");sec.className="proof";sec.setAttribute("data-v",v[0]);
@@ -53,7 +58,7 @@ var cp=document.createElement("div");cp.className="cockpit";cp.innerHTML="<h2>�
 var grid=document.createElement("div");grid.className="grid";
 houses.forEach(function(h){
 var d=document.createElement("div");d.className="sec";var t=document.createElement("span");t.className="tape";t.textContent=h[0];d.appendChild(t);
-h[1].forEach(function(n){var r=document.createElement("div");r.className="row";r.innerHTML="<div class='top'><span class='dot'></span><span class='who'></span></div><span class='cap'>飞书 · 永远在线，除了睡着的时候</span>";r.querySelector(".who").textContent=n;d.appendChild(r);});
+h[1].forEach(function(n){var r=document.createElement("div");r.className="row";r.innerHTML="<div class='top'><span class='dot'></span><span class='who'></span></div><span class='cap'>飞书 · 永远在线</span>";r.querySelector(".who").textContent=n;d.appendChild(r);});
 grid.appendChild(d);});
 var al=document.createElement("div");al.className="sec alley";al.innerHTML="<span class='tape'>巷子口</span><div class='hint'>串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。</div>";grid.appendChild(al);
 empties.forEach(function(e){var d=document.createElement("div");d.className="sec empty";d.innerHTML="<span class='tape'></span><div class='hint'>空无一人，拖个人来安家</div>";d.querySelector(".tape").textContent=e;grid.appendChild(d);});

@@ -73,14 +73,16 @@ export function openDirPicker(
   const list = h('div', { className: 'af-list', style: { flex: '1 1 auto', minHeight: '0', overflow: 'auto' } })
   const bar = h('div', { className: 'af-dirbar' }, h('span', null, '…'))
   /* 直达行：家目录子树之外的任意文件夹靠粘贴绝对路径进入（复用 af-compose 输入行样式，不新增类） */
+  /* 输入框去框化：行面即框体，input 透明只留字（治盒中盒）；前往降 ghost，全窗只留一个主按钮 */
   const goInput = h('input', {
     type: 'text', placeholder: '粘贴绝对路径直达，如 D:\\agents\\xiaosun', 'aria-label': '粘贴绝对路径直达',
+    style: { background: 'transparent', borderColor: 'transparent' },
     onKeyDown: (ev: Event) => { if ((ev as KeyboardEvent).key === 'Enter') void jump() },
   })
-  const goBtn = makeButton({ label: '前往', title: '跳到输入的绝对路径', onClick: () => void jump() })
+  const goBtn = makeButton({ kind: 'ghost', label: '前往', title: '跳到输入的绝对路径', onClick: () => void jump() })
   const goRow = h('div', { className: 'af-compose', style: { margin: '8px 0 0' } }, goInput, goBtn)
-  /* 盘符/根快捷入口：fs.roots 取不到则整行隐藏，不影响浏览 */
-  const chips = h('div', { style: { display: 'none', gap: '6px', flexWrap: 'wrap', margin: '8px 0 0' } })
+  /* 盘符入口：实心按钮（ghost 在深色下像裸文本）；预留 30px 高，加载前后 chrome 零位移 */
+  const chips = h('div', { style: { display: 'none', gap: '6px', flexWrap: 'wrap', margin: '8px 0 0', minHeight: '30px' } })
   /* 按钮只 resolve 不关窗 = 点取消没反应（选择亦然）：统一经 done 先关窗再回值 */
   let modal: ModalHandle;
   const done = (v: string | null): void => {
@@ -90,13 +92,14 @@ export function openDirPicker(
   const choose = makeButton({ kind: 'primary', label: '选择此目录', disabled: true, onClick: () => done(state.path) })
   const cancel = makeButton({ kind: 'ghost', label: '取消', onClick: () => done(null) })
   modal = showModal([
-    h('h3', { className: 'af-modal-title' }, '选择目录'),
-    h('div', { className: 'af-modal-sub' }, '为该 Agent 选一个文件夹'),
+    /* 标题锁色：af-modal-title 不设 color，宿主 h3 紫字会漏进来，内联盖掉 */
+    h('h3', { className: 'af-modal-title', style: { color: 'var(--af-primary)' } }, '选择目录'),
+    h('div', { className: 'af-modal-sub', style: { color: 'var(--af-secondary)' } }, '为该 Agent 选一个文件夹'),
     bar, goRow, chips, list,
     h('div', { className: 'af-modal-foot', style: { flex: 'none' } }, cancel, choose),
   ], { onClose: () => resolveFn(null) })
   try {
-    /* 宽卡（长 Windows 路径不挤压）+ 置顶于 c1a 抽屉遮罩（1250 > 1200）；极简 DOM 环境缺 classList 则跳过 */
+    /* 宽卡（长 Windows 路径不挤压）+ 置顶于 DetailDrawer 抽屉遮罩（1250 > 1200）；极简 DOM 环境缺 classList 则跳过 */
     modal.el.classList.add('af-modal--wide')
     modal.el.parentElement?.classList.add('af-overlay--top')
     /* 固定弹窗几何：卡片定高纵向排布，矮屏 overlay 滚动兜底（overlay 已 overflow:auto） */
@@ -148,7 +151,8 @@ export function openDirPicker(
             const k = (ev as KeyboardEvent).key
             if (k === 'Enter' || k === ' ') { ev.preventDefault(); void navigate(e.path) }
           },
-        }, icon('folder', 16), h('span', null, e.name))
+        }, icon('folder', 16), h('span', null, e.name),
+          h('span', { style: { marginLeft: 'auto', color: 'var(--af-tertiary)' } }, '›'))
         return row
       })
       if (!rows.length) list.replaceChildren(h('div', { className: 'af-loading-row' }, '（此目录下没有子文件夹）'))
@@ -167,7 +171,7 @@ export function openDirPicker(
         : []
       if (!roots.length) return
       chips.replaceChildren(...roots.map((rt) => h('button', {
-        className: 'af-btn ghost sm', type: 'button', title: rt,
+        className: 'af-btn sm', type: 'button', title: rt,
         onClick: () => void navigate(rt),
       }, rt)))
       chips.style.display = 'flex'

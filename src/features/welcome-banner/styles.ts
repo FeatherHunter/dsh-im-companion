@@ -1,6 +1,6 @@
 /** welcome-banner 样式出口（wb- 命名空间，installFeatureStyles 挂载）。
  * 注意：横幅渲染在对话树（.af-root 之外），--af-* 在此无定义，必须在 .wb-banner 根上
- * 重声明 TOKEN_BLOCK（B3 弹窗同款做法），否则全部 var(--af-*) 声明会被浏览器丢弃。
+ * 重声明 TOKEN_BLOCK（SessionHeader 弹窗同款做法），否则全部 var(--af-*) 声明会被浏览器丢弃。
  * 天空渐变是装饰性天相（固定色），文字/按钮走 --af-* 主题别名，深色自动跟随。 */
 import { TOKEN_BLOCK } from "../../client/theme";
 export const WB_TOKENS = ".wb-banner{" + TOKEN_BLOCK + "}";

@@ -1,4 +1,4 @@
-/** C1a 抽屉容器：事件开合 + 真系统写透 + stream 保活（P0-3）。
+/** DetailDrawer 抽屉容器：事件开合 + 真系统写透 + stream 保活（P0-3）。
  * A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写；host 自持账本弃用不断路。 */
 import { mount } from '../../client/dom'
 import { nativePicker, openDirPicker } from '../../client/ui/dir-picker'
@@ -69,8 +69,8 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   }
   try {
     sheet = showSheet({
-      overlayClass: 'c1a-overlay',
-      panelClass: 'c1a-sheet',
+      overlayClass: 'detail-drawer-overlay',
+      panelClass: 'detail-drawer-sheet',
       label: 'Agent 详情抽屉',
       onClose: () => {
         closed = true
@@ -136,7 +136,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     if (settled && sig && sig === lastSig) return
     settled = true
     clearGiveUp()
-    const bd = sheet.panel.querySelector('.c1a-dbody') as HTMLElement | null
+    const bd = sheet.panel.querySelector('.detail-drawer-dbody') as HTMLElement | null
     const st = bd ? bd.scrollTop : 0
     const sl = bd ? bd.scrollLeft : 0
     try {
@@ -144,7 +144,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     } catch {
       /* keep old frame */
     }
-    const nb = sheet.panel.querySelector('.c1a-dbody') as HTMLElement | null
+    const nb = sheet.panel.querySelector('.detail-drawer-dbody') as HTMLElement | null
     if (nb) { nb.scrollTop = st; nb.scrollLeft = sl }
     lastSig = sig
   }

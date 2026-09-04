@@ -77,8 +77,9 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
   /* 列表弹性高度：卡片定高后由它吸收内容多少，弹窗不再上下抖动（dir-picker 同款） */
   const list = h('div', { className: 'af-list', style: { flex: '1 1 auto', minHeight: '0', overflow: 'auto' } })
   const bar = h('div', { className: 'af-dirbar' })
-  const title = h('h3', { className: 'af-modal-title' }, '选择工作区')
-  const sub = h('div', { className: 'af-modal-sub' }, '选择该 Agent 的文件夹（作为它的「家」）')
+  /* 标题锁色：宿主 h3 紫字会漏进来，内联盖掉（dir-picker 同款） */
+  const title = h('h3', { className: 'af-modal-title', style: { color: 'var(--af-primary)' } }, '选择工作区')
+  const sub = h('div', { className: 'af-modal-sub', style: { color: 'var(--af-secondary)' } }, '选择该 Agent 的文件夹（作为它的「家」）')
   /* 按钮只 resolve 不关窗 = 点取消没反应（dir-picker 同款 bug，同治） */
   let modal: ModalHandle;
   const done = (v: string | null): void => {
@@ -118,7 +119,8 @@ export function openWorkspacePicker(ctx: unknown, rpc: RpcCall | null): PickerHa
       bar.replaceChildren()
       appendBreadcrumb(bar, res.value.path, res.value.parent)
       const rows = res.value.entries.map((e) => {
-        const row = h('div', { className: 'af-diritem' }, icon('folder', 16), e.name)
+        const row = h('div', { className: 'af-diritem' }, icon('folder', 16), e.name,
+          h('span', { style: { marginLeft: 'auto', color: 'var(--af-tertiary)' } }, '›'))
         row.onclick = () => void navigate(e.path)
         return row
       })

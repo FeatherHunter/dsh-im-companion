@@ -17,7 +17,7 @@ export interface AgentMetaDoc {
   names: Record<string, string>
   avatars: Record<string, string>
   locals: LocalAgent[]
-  /** C1a 身份配置（companion 自持；dsh-im 侧能力 research 并行）：预设单选/custom:名前缀，上下文开关+三档。 */
+  /** DetailDrawer 身份配置（companion 自持；dsh-im 侧能力 research 并行）：预设单选/custom:名前缀，上下文开关+三档。 */
   presets: Record<string, string>
   ctxEnhance: Record<string, CtxEnhance>
   /** E4 P 进门记忆（工作区全路径 → true；旧 meta.json 缺字段时读方兜底 {}）。 */

@@ -1,4 +1,4 @@
-/** e2-adopt 视图：左栏头按钮 → 中央驾驶舱（纯拖拽 + 巷子口歇脚）。自有 DOM（e2-*）；无自有轮询；写走渠道 RPC + 写后立刷。 */
+/** adopt 视图：左栏头按钮 → 中央驾驶舱（纯拖拽 + 巷子口歇脚）。自有 DOM（adopt-*）；无自有轮询；写走渠道 RPC + 写后立刷。 */
 import { h } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
@@ -9,8 +9,8 @@ import { actDrop, dismissUndo } from './acts'
 import { listHomes, openBoard, type BoardHandle } from './panel'
 import { CSS } from './styles'
 
-const COCKPIT_CLASS = 'e2-cockpit', MIME = 'application/x-e2-adopt-bot', ENTRY_CLASS = 'e2-entry'
-const SEC_CLASS = 'e2-sec', ROW_CLASS = 'e2-row', OK_CLASS = 'e2-drop-ok', WARN_CLASS = 'e2-drop-warn'
+const COCKPIT_CLASS = 'adopt-cockpit', MIME = 'application/x-adopt-bot', ENTRY_CLASS = 'adopt-entry'
+const SEC_CLASS = 'adopt-sec', ROW_CLASS = 'adopt-row', OK_CLASS = 'adopt-drop-ok', WARN_CLASS = 'adopt-drop-warn'
 const GROUP_SEL = 'div[role="treeitem"][aria-expanded]'
 
 let entryBtn: HTMLElement | null = null
@@ -36,12 +36,12 @@ let staged = new Map<string, string>()
 const claim = (): number => {
   try {
     const w = window as unknown as Record<string, number>
-    w.__e2Gen = (w.__e2Gen || 0) + 1
-    return w.__e2Gen
+    w.__adoptGen = (w.__adoptGen || 0) + 1
+    return w.__adoptGen
   } catch { return 1 }
 }
 const alive = (g: number): boolean => {
-  try { return (window as unknown as Record<string, number>).__e2Gen === g } catch { return true }
+  try { return (window as unknown as Record<string, number>).__adoptGen === g } catch { return true }
 }
 
 function resolveHeader(container: Element): Element | null {
@@ -83,7 +83,7 @@ function hasMime(e: DragEvent): boolean {
 
 function openPanel(ctx: FeatureCtx): void {
   try {
-    try { installFeatureStyles('e2-adopt', CSS) } catch { /* 忽略 */ }
+    try { installFeatureStyles('adopt', CSS) } catch { /* 忽略 */ }
     try { board?.close() } catch { /* 忽略 */ }
     board = null
     board = openBoard(ctx, lastMeta)
@@ -119,7 +119,7 @@ function ensureEntry(ctx: FeatureCtx, g: number): void {
   } catch { /* 找不到头栏就不放入口（fail-closed） */ }
 }
 
-export function mountE2Adopt(ctx: FeatureCtx): () => void {
+export function mountAdopt(ctx: FeatureCtx): () => void {
   const g = claim()
   hadDrag = false; dropped = false; pressDown = false; pressSkip = 0; lastSig = ''
   dragId = null; dragEl = null; dragDesc = null; dragStartX = null; staged.clear()
@@ -148,15 +148,15 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       if (!row || !de.dataTransfer) return
       hadDrag = true
       dropped = false; pressDown = false
-      dragId = row.getAttribute('data-e2-bot')
+      dragId = row.getAttribute('data-adopt-bot')
       dragEl = row
-      dragDesc = { botId: row.getAttribute('data-e2-bot'), channel: row.getAttribute('data-e2-channel') }
+      dragDesc = { botId: row.getAttribute('data-adopt-bot'), channel: row.getAttribute('data-adopt-channel') }
       try { dragStartX = de.clientX } catch { dragStartX = null }
       /* 出生后置：分发内只采样不动源节点（mock 第69行同款）；回调重验仍在飞才变影子。 */
-      try { const src = row, id = dragId; setTimeout(() => { try { if (dragId === id && id !== null) src.classList.add('e2-ph') } catch { /* 忽略 */ } }, 0) } catch { /* 忽略 */ }
+      try { const src = row, id = dragId; setTimeout(() => { try { if (dragId === id && id !== null) src.classList.add('adopt-ph') } catch { /* 忽略 */ } }, 0) } catch { /* 忽略 */ }
       try { de.dataTransfer.effectAllowed = 'move' } catch { /* 忽略 */ }
       try { de.dataTransfer.setData('text/plain', String(dragId)) } catch { /* 忽略 */ }
-      try { de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-e2-channel') })) } catch { /* 置数失败不阻断 */ }
+      try { de.dataTransfer.setData(MIME, JSON.stringify({ botId: dragId, channel: row.getAttribute('data-adopt-channel') })) } catch { /* 置数失败不阻断 */ }
     } catch { /* 忽略 */ }
   }
   const onDragOver = (e: Event): void => {
@@ -168,8 +168,8 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
       const sec = (de.target as Element)?.closest?.('.' + SEC_CLASS) as Element | null
       clearAfford()
       if (!sec) { de.dataTransfer.dropEffect = 'none'; return }
-      const ws = sec.getAttribute('data-e2-ws')
-      if (!ws && !sec.hasAttribute('data-e2-plaza')) {
+      const ws = sec.getAttribute('data-adopt-ws')
+      if (!ws && !sec.hasAttribute('data-adopt-plaza')) {
         de.dataTransfer.dropEffect = 'none'
         return
       }
@@ -180,7 +180,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
     } catch { /* 忽略 */ }
   }
   function clearGhost(): void {
-    try { dragEl?.classList.remove('e2-ph') } catch { /* 忽略 */ }
+    try { dragEl?.classList.remove('adopt-ph') } catch { /* 忽略 */ }
     try { (dragEl as HTMLElement).style.removeProperty('transform') } catch { /* 忽略 */ }
     dragEl = null
   }
@@ -209,7 +209,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
         botId: desc.botId, channel: desc.channel, workspace: live?.workspace ?? '',
         botName: live?.botName ?? '', stale: live?.stale ?? false, healthKind: live?.healthKind ?? '', connected: live?.connected ?? false,
       }
-      if (sec && sec.hasAttribute('data-e2-plaza')) {
+      if (sec && sec.hasAttribute('data-adopt-plaza')) {
         /* 巷子口歇脚：只记小本本不写服务器；拖进一家才走正常换绑，关面板即送回。 */
         if (!live) { toast('没找着这张照片'); return }
         if (!live.workspace) { toast('它已经在巷子口歇着了'); return }
@@ -218,7 +218,7 @@ export function mountE2Adopt(ctx: FeatureCtx): () => void {
         if (alive(g)) paint()
         return
       }
-      const to = sec?.getAttribute('data-e2-ws')
+      const to = sec?.getAttribute('data-adopt-ws')
       try { if (to && to === live?.workspace && desc.botId) staged.delete(desc.botId) } catch { /* 忽略 */ }
       if (!to) {
         toast('空白处不可放，请拖到分组上')

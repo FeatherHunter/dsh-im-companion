@@ -189,7 +189,7 @@ export async function fetchBots(rpc: RpcCall): Promise<{ bots: BotSnap[]; failed
 
 /** B1 verdict 延续（connection-stream 落地前各调用方复用）：传输失败的渠道保留上一轮快照
  * 并标 stale（时间冻结、按未知展示），而不是丢弃谎报离线；ok:false 是权威空，不保留。 */
-/** 会话路由行（E4 welcome-banner 共用；c1a 自持版本不动）：读自有通道 routes.list，
+/** 会话路由行（E4 welcome-banner 共用；DetailDrawer 自持版本不动）：读自有通道 routes.list，
  * 任何失败静默 []（调用方渲染“暂无路由”静态态）；session 已由 host 侧脱敏，只做展示。 */
 export interface RouteRow {
   chat: string;
@@ -267,4 +267,12 @@ export function fmtCountdown(ms: number): string {
   const mm = Math.floor(s / 60)
   const ss = String(s % 60).padStart(2, '0')
   return mm + ':' + ss
+}
+
+/** Bot 展示名（#31：只加导出，不改既有行为；left-badges 悬浮卡复用）。botName 优先（超长截断），否则 botId 后四位占位，绝不返回空串。 */
+export function botDisplayLabel(b: Pick<BotSnap, 'botName' | 'botId'>): string {
+  const n = (b?.botName ?? '').trim()
+  if (n) return n.length > 12 ? n.slice(0, 12) + '\u2026' : n
+  const id = (b?.botId ?? '').trim()
+  return id ? '\u2026' + id.slice(-4) : '\u672a\u547d\u540d'
 }

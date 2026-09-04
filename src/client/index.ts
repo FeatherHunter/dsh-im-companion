@@ -38,7 +38,7 @@ export function apply(ctx: any): void {
     ...(typeof (ctx as { uiWorkspace?: { pickDirectory?: unknown } })?.uiWorkspace?.pickDirectory === 'function'
       ? { pickDirectory: () => (ctx as { uiWorkspace: { pickDirectory: () => Promise<unknown> } }).uiWorkspace.pickDirectory() }
       : {}),
-    /* 宿主服务透传（B3 取 workspaces；c1a/e2 取 uiWorkspace 时同口径）：取不到按缺失处理。 */
+    /* 宿主服务透传（SessionHeader 取 workspaces；DetailDrawer/Adopt 取 uiWorkspace 时同口径）：取不到按缺失处理。 */
     get: (name: string) => {
       try {
         const get = (ctx as { get?: (n: string) => unknown } | null)?.get
@@ -110,7 +110,7 @@ export function apply(ctx: any): void {
     }
     disposeStyles()
   }, 'dsh-im-companion: styles+features')
-  /* B3 Header 浮层已收编为特性（src/features/b3-header，#18）：此处只保留设置面板装配。 */
+  /* SessionHeader Header 浮层已收编为特性（src/features/session-header，#18）：此处只保留设置面板装配。 */
   ctx.slots.inject('settings.section', () =>
     ctx.slots.register({
       name: 'settings.section',

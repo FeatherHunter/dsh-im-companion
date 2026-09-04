@@ -1,4 +1,4 @@
-/** C1a 抽屉数据层（DOM-free，可 node 直测）：A' 方案——读上游真值，写上游真接口。
+/** DetailDrawer 抽屉数据层（DOM-free，可 node 直测）：A' 方案——读上游真值，写上游真接口。
  * 第一性：dsh-im 是唯一真源，companion 不自持第二账本（host meta presets/ctx 端点保留不断路，抽屉不再用）。
  * 读：connection.status 经 BotSnap.agentPreset/contextEnhancement + catalogs 回流（fleet-api 提取）。
  * 写：bot.preset.set {botId, agentPreset}；bot.context-enhancement.set {botId, config 全量4键，读-改-写}。

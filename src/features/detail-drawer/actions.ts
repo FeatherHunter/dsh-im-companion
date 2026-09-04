@@ -1,4 +1,4 @@
-/** C1a 写透层（drawer 瘦身拆出）：逐渠道写上游真接口＋部分失败透出＋写后刷新；deps 注入可单测。 */
+/** DetailDrawer 写透层（drawer 瘦身拆出）：逐渠道写上游真接口＋部分失败透出＋写后刷新；deps 注入可单测。 */
 import type { FeatureCtx } from '../protocol'
 import { unwrapRpc, type DrawerBot, type DrawerModel } from './data'
 

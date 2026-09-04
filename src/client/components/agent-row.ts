@@ -135,7 +135,7 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
   return row
 }
 
-/** C1a 抽屉打开意图（§10 例外：A1 行唯一新增触碰点；C1a 特性监听，无反向依赖）。 */
+/** DetailDrawer 抽屉打开意图（§10 例外：A1 行唯一新增触碰点；DetailDrawer 特性监听，无反向依赖）。 */
 function emitOpenDrawer(key: string): void {
   try {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return

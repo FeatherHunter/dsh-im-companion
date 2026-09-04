@@ -15,7 +15,7 @@ export interface SlotRegistration {
 
 export interface SlotsService {
   inject(name: string, fn: () => unknown): unknown
-  /** 按名注册槽位组件（宿主提供；老宿主缺失时特性降级隐藏）。B3 首用（#18）。 */
+  /** 按名注册槽位组件（宿主提供；老宿主缺失时特性降级隐藏）。SessionHeader 首用（#18）。 */
   register?(opts: SlotRegistration, comp: unknown): unknown
 }
 

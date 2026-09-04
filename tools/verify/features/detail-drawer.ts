@@ -1,4 +1,4 @@
-// C1a 详情抽屉自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
+// DetailDrawer 详情抽屉自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
 // 做法：tsc 转译相关链到临时目录再断言（照抄 left-badges.ts 模式）。B 变体 verdict（#9）：摘要直改 + 折叠详情 + 即时写（无保存按钮）。
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,7 +14,7 @@ const HOST = join(REPO, 'src', 'host');
 const ROUTES = join(HOST, 'routes.ts');
 const DATA = join(REPO, 'src', 'client', 'data');
 const UI = join(REPO, 'src', 'client', 'ui');
-const FEAT = join(REPO, 'src', 'features', 'c1a');
+const FEAT = join(REPO, 'src', 'features', 'detail-drawer');
 const ENTRIES = [
   join(HOST, 'meta-store.ts'),
   join(HOST, 'rpc.ts'),
@@ -36,7 +36,7 @@ const ENTRIES = [
   join(REPO, 'src', 'features', 'index.ts'),
 ];
 
-const tmp = mkdtempSync(join(tmpdir(), 'c1a-drawer-'));
+const tmp = mkdtempSync(join(tmpdir(), 'detail-drawer-'));
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
@@ -60,12 +60,12 @@ const req = createRequire(join(tmp, 'run.cjs'));
 const storeMod: any = req('./host/meta-store.js');
 const config: any = req('./client/data/config.js');
 const clientMeta: any = req('./client/data/meta.js');
-const data: any = req('./features/c1a/data.js');
-const actions: any = req('./features/c1a/actions.js');
+const data: any = req('./features/detail-drawer/data.js');
+const actions: any = req('./features/detail-drawer/actions.js');
 const picker: any = req('./client/ui/dir-picker.js');
 const fleetApi: any = req('./client/data/fleet-api.js');
 const modelMod: any = req('./client/data/model.js');
-const styles: any = req('./features/c1a/styles.js');
+const styles: any = req('./features/detail-drawer/styles.js');
 const registry: any = req('./features/index.js');
 
 const doc: any = createDocument();
@@ -75,8 +75,8 @@ const doc: any = createDocument();
   dispatchEvent: () => true,
 };
 (globalThis as any).document = (globalThis as any).document ?? doc;
-const view: any = req('./features/c1a/view.js');
-const drawerMod: any = req('./features/c1a/drawer.js');
+const view: any = req('./features/detail-drawer/view.js');
+const drawerMod: any = req('./features/detail-drawer/drawer.js');
 const sheet: any = req('./client/ui/sheet.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
@@ -91,7 +91,7 @@ const metaDoc = (over = {}) => ({ names: {}, avatars: {}, locals: [], presets: {
 
 // ---- host 持久化：预设/上下文校验 + 落盘 ----
 test('host：非法预设/强度静默忽略，合法落盘且重载仍在', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'c1a-meta-'));
+  const dir = mkdtempSync(join(tmpdir(), 'detail-drawer-meta-'));
   try {
     const f = join(dir, 'meta.json');
     const s = new storeMod.AgentMetaStore(f);
@@ -199,13 +199,13 @@ test('client meta：Rpc/Local 双实现走通 preset/ctx', async () => {
 });
 
 // ---- 注册/样式/sheet ----
-test('manifest：c1a 注册进 FEATURES，样式命名空间干净', () => {
-  const found = registry.FEATURES.find((f: any) => f.id === 'c1a');
-  assert.ok(found, 'FEATURES 缺 c1a');
+test('manifest：detail-drawer 注册进 FEATURES，样式命名空间干净', () => {
+  const found = registry.FEATURES.find((f: any) => f.id === 'detail-drawer');
+  assert.ok(found, 'FEATURES 缺 detail-drawer');
   assert.equal(typeof found.installStyles, 'function');
   assert.ok(Array.isArray(found.slots));
-  assert.match(styles.CSS, /.c1a-/);
-  /* 地基修正：c1a 复用共享按钮原语（makeButton → .af-btn），作用域内覆写 .af-btn 合法；禁的是其他 .af-* 串色。 */
+  assert.match(styles.CSS, /.detail-drawer-/);
+  /* 地基修正：detail-drawer 复用共享按钮原语（makeButton → .af-btn），作用域内覆写 .af-btn 合法；禁的是其他 .af-* 串色。 */
   assert.doesNotMatch(styles.CSS, /\.af-(?!btn\b)/);
   assert.doesNotMatch(styles.CSS, /dsw-alias-bg-subtle/);
   assert.equal(typeof sheet.showSheet, 'function');
@@ -248,9 +248,9 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
   for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '性格', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
-  assert.ok(findByClass(root, 'c1a-summary').length >= 1);
+  assert.ok(findByClass(root, 'detail-drawer-summary').length >= 1);
   assert.ok(all.includes('暂无已绑定会话映射'));
-  const pills = findByClass(root, 'c1a-sw');
+  const pills = findByClass(root, 'detail-drawer-sw');
   assert.equal(pills.length, 2);
   const states = pills.map((p: any) => p.getAttribute('aria-checked')).sort();
   assert.deepEqual(states, ['false', 'true']);
@@ -275,8 +275,8 @@ test('view：路由行渲染全显映射 + 幽灵告警 + 复制按钮', () => {
   assert.ok(all.includes('session-aaa11111-2222'));
   assert.ok(all.includes('旧映射'));
   assert.ok(all.includes('复制'));
-  assert.equal(findByClass(root, 'c1a-route').length, 2);
-  assert.equal(findByClass(root, 'c1a-ghost').length, 1);
+  assert.equal(findByClass(root, 'detail-drawer-route').length, 2);
+  assert.equal(findByClass(root, 'detail-drawer-ghost').length, 1);
 });
 
 test('view：多渠道不一致渲染占位且可继续操作', () => {
@@ -312,7 +312,7 @@ test('view：弹窗内无省略号——引导语全文换行展示', () => {
   const all = texts(root).join('|');
   assert.ok(all.includes(longGuide), '引导语被截断');
   assert.ok(!all.includes('…'), '弹窗内仍有省略号');
-  assert.equal(findByClass(root, 'c1a-note').length, 1);
+  assert.equal(findByClass(root, 'detail-drawer-note').length, 1);
 });
 
 test('paint：同构快照指纹稳定，真变才变（15s 轮询不抖动）', () => {
@@ -396,6 +396,7 @@ test('dir-picker：列出子目录并可取消', async () => {
   const all = texts(el).join('|');
   assert.ok(all.includes('选择目录'));
   assert.ok(all.includes('/root'));
+  assert.ok(all.includes('›'));
   assert.match((el as any).style?.height ?? '', /min\(/
   );
   const listBox = el.querySelectorAll('.af-list')[0] as any;

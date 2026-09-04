@@ -1,4 +1,4 @@
-/** e2-adopt 写管道：绑定写透 + 确认弹窗 + 撤销窗（纯行为，无布局）。 */
+/** adopt 写管道：绑定写透 + 确认弹窗 + 撤销窗（纯行为，无布局）。 */
 import { h } from '../../client/dom'
 import { toast } from '../../client/ui/toast'
 import { channelLabel } from '../../client/data/config'
@@ -45,7 +45,7 @@ export function showUndo(ctx: FeatureCtx, channel: string, botId: string, from: 
         })()
       },
     }, '撤销')
-    undoEl = h('div', { className: 'e2-undo', role: 'status' }, msg, btn) as HTMLElement
+    undoEl = h('div', { className: 'adopt-undo', role: 'status' }, msg, btn) as HTMLElement
     document.body.appendChild(undoEl)
     undoTimer = setTimeout(() => { dismissUndo(); toast('撤销超时，绑定已生效') }, UNDO_WINDOW_MS)
   } catch { /* 提示失败不阻断已落地绑定 */ }
@@ -77,7 +77,7 @@ function healthText(bot: MoveBot): string {
 export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string, meta: AgentMetaDoc | null): void {
   try {
     dismissUndo()
-    const box = h('div', { className: 'e2-confirmbox', role: 'dialog', 'aria-modal': 'true' }) as HTMLElement
+    const box = h('div', { className: 'adopt-confirmbox', role: 'dialog', 'aria-modal': 'true' }) as HTMLElement
     let closed = false
     const close = (): void => {
       if (closed) return
@@ -96,17 +96,17 @@ export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string,
         }
       })()
     }
-    const btns = h('div', { className: 'e2-confirm-btns' },
+    const btns = h('div', { className: 'adopt-confirm-btns' },
       h('button', { onClick: close }, '留在这里'),
       h('button', { onClick: go }, '确认换绑'))
     const fromPlate = homePlate(from, meta)
     const toPlate = homePlate(to, meta)
-    const title = h('div', { className: 'e2-who' }, dispName(bot) + ' · ' + channelLabel(bot.channel) + ' · ' + healthText(bot))
-    box.appendChild(h('div', { className: 'e2-confirm' }, title,
+    const title = h('div', { className: 'adopt-who' }, dispName(bot) + ' · ' + channelLabel(bot.channel) + ' · ' + healthText(bot))
+    box.appendChild(h('div', { className: 'adopt-confirm' }, title,
       h('div', {}, '从「' + fromPlate.name + '」') as unknown as Node,
-      h('span', { className: 'e2-cap' }, from) as unknown as Node,
+      h('span', { className: 'adopt-cap' }, from) as unknown as Node,
       h('div', {}, '到「' + toPlate.name + '」') as unknown as Node,
-      h('span', { className: 'e2-cap' }, to) as unknown as Node, btns) as unknown as Node)
+      h('span', { className: 'adopt-cap' }, to) as unknown as Node, btns) as unknown as Node)
     box.addEventListener('mousedown', (e: Event) => { if (e.target === box) close() })
     document.addEventListener('keydown', onKey, true)
     document.body.appendChild(box)

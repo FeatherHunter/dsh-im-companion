@@ -1,4 +1,4 @@
-// E2 自验证（F0 每功能自验证）：拖拽领养纯逻辑 + 面板视图分支（node --test，零第三方依赖）。
+// Adopt 自验证（F0 每功能自验证）：拖拽领养纯逻辑 + 面板视图分支（node --test，零第三方依赖）。
 // 只测外部行为：给定绑定关系 + 动作 → 断言用户可见结论，不断言内部形状。
 import { mkdtempSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,7 +9,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 const REPO = process.cwd();
-const FEAT = join(REPO, 'src', 'features', 'e2-adopt');
+const FEAT = join(REPO, 'src', 'features', 'adopt');
 const CLIENT = join(REPO, 'src', 'client');
 const ENTRIES = [
   join(FEAT, 'model.ts'),
@@ -32,7 +32,7 @@ const ENTRIES = [
   join(CLIENT, 'ui', 'toast.ts'),
 ];
 
-const tmp = mkdtempSync(join(tmpdir(), 'e2-adopt-'));
+const tmp = mkdtempSync(join(tmpdir(), 'adopt-'));
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
@@ -53,10 +53,10 @@ try {
   /* 已存在则跳过 */
 }
 const req = createRequire(join(tmp, 'run.cjs'));
-const model: any = req('./features/e2-adopt/model.js');
-const view: any = req('./features/e2-adopt/view.js');
-const styles: any = req('./features/e2-adopt/styles.js');
-const manifest: any = req('./features/e2-adopt/manifest.js').feature;
+const model: any = req('./features/adopt/model.js');
+const view: any = req('./features/adopt/view.js');
+const styles: any = req('./features/adopt/styles.js');
+const manifest: any = req('./features/adopt/manifest.js').feature;
 const registry: any = req('./features/index.js');
 
 const W_A = 'D:\\agents\\xiaoshuai';
@@ -123,31 +123,38 @@ test('门牌：设置中文名优先，头像字与色板稳定', () => {
   assert.equal(q.sub, '');
 });
 
-test('manifest 注册：workspace-rail 槽位 + 进 FEATURES', () => {
-  assert.equal(manifest.id, 'e2-adopt');
-  assert.deepEqual(manifest.slots.map((s: any) => s.target), ['workspace-rail']);
-  assert.ok(registry.FEATURES.some((f: any) => f.id === 'e2-adopt'));
+test('签名池：绿灯个性签名稳定认领，条条够短不断行', () => {
+  assert.ok(model.SLOGANS.length >= 30, '池子有料（撞衫靠池深）');
+  assert.ok(model.SLOGANS.every((s: string) => s.length <= 6), '单条够短（一行装得下）');
+  assert.equal(model.sloganFor('q1'), model.sloganFor('q1'), '同一人永远同一签');
+  assert.ok(model.SLOGANS.includes(model.sloganFor('any-id')), '落在池内');
 });
 
-test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
-  assert.ok(String(styles.CSS).includes('.e2-'));
+test('manifest 注册：workspace-rail 槽位 + 进 FEATURES', () => {
+  assert.equal(manifest.id, 'adopt');
+  assert.deepEqual(manifest.slots.map((s: any) => s.target), ['workspace-rail']);
+  assert.ok(registry.FEATURES.some((f: any) => f.id === 'adopt'));
+});
+
+test('样式命名空间 adopt- 且不占用 .af- 私有约定', () => {
+  assert.ok(String(styles.CSS).includes('.adopt-'));
   assert.ok(!String(styles.CSS).includes('.af-'));
   assert.ok(String(styles.CSS).includes('z-index:9000'), '面板压过宿主 chrome');
   assert.ok(String(styles.CSS).includes('z-index:9300'), '确认框在最顶');
-  assert.ok(String(styles.CSS).includes('.e2-tape{') && String(styles.CSS).includes('text-overflow:ellipsis'), '门牌不出框');
+  assert.ok(String(styles.CSS).includes('.adopt-tape{') && String(styles.CSS).includes('text-overflow:ellipsis'), '门牌不出框');
   assert.ok(String(styles.CSS).includes('grid-template-columns:repeat(auto-fit,minmax(215px,1fr))'), 'H 定稿网格');
   assert.ok(String(styles.CSS).includes('transform:rotate(-2deg)'), '胶带歪斜');
   assert.ok(String(styles.CSS).includes('outline-offset:4px'), '落点描边');
   assert.ok(String(styles.CSS).includes('#d9cfbd'), '暖纸底');
   assert.ok(!String(styles.CSS).includes('fit-content'), '内容定宽下线');
-  assert.ok(String(styles.CSS).includes('.e2-sec-new{cursor:pointer;display:grid'), '巷子口卡片流（门牌描述通栏，照片多列）');
+  assert.ok(String(styles.CSS).includes('.adopt-sec-new{cursor:pointer;display:grid'), '巷子口卡片流（门牌描述通栏，照片多列）');
   assert.ok(!String(styles.CSS).includes('prefers-color-scheme'), '深浅跟宿主牌子，不问系统');
   assert.ok(String(styles.CSS).includes('body[data-ds-dark-theme]'), '深色挂钩宿主');
   assert.ok(String(styles.CSS).includes('Microsoft YaHei'), '中文字体备胎');
-  assert.ok(String(styles.CSS).includes('--e2-paper:#11141b'), '深色纸底墨夜暖芯（B 方案定稿）');
-  assert.ok(String(styles.CSS).includes('.e2-sec-empty'), '空家有关灯样式');
+  assert.ok(String(styles.CSS).includes('--adopt-paper:#11141b'), '深色纸底墨夜暖芯（B 方案定稿）');
+  assert.ok(String(styles.CSS).includes('.adopt-sec-empty'), '空家有关灯样式');
   assert.ok(String(styles.CSS).includes('radial-gradient(100% 90% at 50% 0%'), '照片卡顶部晕带');
-  assert.ok(String(styles.CSS).includes('.e2-row::before'), '纸面高光线');
+  assert.ok(String(styles.CSS).includes('.adopt-row::before'), '纸面高光线');
   assert.ok(String(styles.CSS).includes('nth-child(3n)'), '胶带角度不全一个样');
   assert.ok(!String(styles.CSS).includes('repeating-linear-gradient'), '墙走了（巷子只留地面+灯）');
   assert.ok(String(styles.CSS).includes('radial-gradient(circle at 8%'), '巷子口路灯光池');
@@ -156,27 +163,30 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(String(styles.CSS).includes('#f7eed6'), '白天有朝阳（天光做实）');
   assert.ok(String(styles.CSS).includes('inset 0 1px 0 rgba(255,255,255'), '白天有人家见光（与黑夜开灯镜像）');
   assert.ok(String(styles.CSS).includes('rgba(6,8,16'), '黑夜有夜空');
-  assert.ok(String(styles.CSS).includes('.e2-sec{background:#1e2432'), '黑夜房间暗蓝（B 方案定稿）');
-  assert.ok(String(styles.CSS).includes('.e2-row{background:#eadfc6'), '黑夜人坐灯下（亮暖行深字，B 方案定稿）');
+  assert.ok(String(styles.CSS).includes('.adopt-sec{background:#1e2432'), '黑夜房间暗蓝（B 方案定稿）');
+  assert.ok(String(styles.CSS).includes('.adopt-row{background:#eadfc6'), '黑夜人坐灯下（亮暖行深字，B 方案定稿）');
   assert.ok(String(styles.CSS).includes('238,196,110'), '灯光沙色（B 方案定稿，去浊）');
-  assert.ok(String(styles.CSS).includes('.e2-tape{background:#dcc08a'), '胶带沙色（B 方案定稿，深色专属，浅色冻结）');
-  assert.ok(String(styles.CSS).includes('.e2-row::before{display:none}'), '黑夜纸光线退役');
+  assert.ok(String(styles.CSS).includes('.adopt-tape{background:#dcc08a'), '胶带沙色（B 方案定稿，深色专属，浅色冻结）');
+  assert.ok(!String(styles.CSS).includes('italic'), '小字禁斜体（中文小号合成斜体糊，累眼）');
+  assert.ok(String(styles.CSS).includes('.adopt-cap{display:block;margin-top:6px;font-size:12px;color:#5d4f3a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'), '小字单行不换行（长文案截断不断行）');
+  assert.ok(String(styles.CSS).includes('body[data-ds-dark-theme] .adopt-cap{color:#453b2c}'), '黑夜小字深棕（对比度锁）');
+  assert.ok(String(styles.CSS).includes('.adopt-row::before{display:none}'), '黑夜纸光线退役');
   assert.ok(String(styles.CSS).includes('255,251,238'), '巷子口白天铺暖地');
   assert.ok(String(styles.CSS).includes('at 50% 45%'), '巷子口黑夜整体提亮（不如家里亮，但亮）');
   assert.ok(String(styles.CSS).split('\n').every((ln: string) => ((ln.match(/\{/g) || []).length === (ln.match(/\}/g) || []).length)), '每行花括号配平（失衡会吞掉后面的规则）');
 });
 
 test('视图暴露挂载入口', () => {
-  assert.equal(typeof view.mountE2Adopt, 'function');
+  assert.equal(typeof view.mountAdopt, 'function');
 });
 
-/* ---- E2 面板视图分支：最小 DOM 桩（只断言外部行为）---- */
-const MIME = 'application/x-e2-adopt-bot';
+/* ---- Adopt 面板视图分支：最小 DOM 桩（只断言外部行为）---- */
+const MIME = 'application/x-adopt-bot';
 const GROUP_SEL = 'div[role="treeitem"][aria-expanded]';
-const e2Nodes: any[] = [];
-let e2Groups: any[] = [];
+const adoptNodes: any[] = [];
+let adoptGroups: any[] = [];
 const docListeners: Record<string, any[]> = {};
-const e2StubNode: any = (tag: string) => {
+const adoptStubNode: any = (tag: string) => {
   const n: any = {
     nodeType: 1, tagName: String(tag).toUpperCase(), children: [] as any[],
     parentNode: null as any, parentElement: null as any,
@@ -203,7 +213,7 @@ const e2StubNode: any = (tag: string) => {
     },
     replaceChildren() { for (const c of [...n.children]) n.removeChild(c); },
     cloneNode(deep: boolean) {
-      const c: any = e2StubNode(n.tagName.toLowerCase());
+      const c: any = adoptStubNode(n.tagName.toLowerCase());
       c.attrs = { ...n.attrs };
       c._cls = new Set(n._cls);
       c._text = n._text;
@@ -240,36 +250,36 @@ const e2StubNode: any = (tag: string) => {
     removeEventListener(t: string, fn: any) { n.listeners[t] = (n.listeners[t] ?? []).filter((f: any) => f !== fn); },
   };
   Object.defineProperty(n, 'className', { get: () => n.attrs.class ?? '', set: (v: string) => { n.attrs.class = String(v); n._cls = new Set(String(v).split(' ').filter(Boolean)); } });
-  e2Nodes.push(n);
+  adoptNodes.push(n);
   return n;
 };
-const e2Doc: any = {
-  createElement: (t: string) => e2StubNode(t),
-  createElementNS: (_ns: string, t: string) => e2StubNode(t),
+const adoptDoc: any = {
+  createElement: (t: string) => adoptStubNode(t),
+  createElementNS: (_ns: string, t: string) => adoptStubNode(t),
   createTextNode: (t: string) => ({ nodeType: 3, text: String(t), parentNode: null }),
   body: null as any,
   addEventListener(t: string, fn: any) { (docListeners[t] || (docListeners[t] = [])).push(fn); },
   removeEventListener(t: string, fn: any) { docListeners[t] = (docListeners[t] ?? []).filter((f: any) => f !== fn); },
   querySelectorAll(sel: string) {
-    if (sel === GROUP_SEL) return e2Groups;
+    if (sel === GROUP_SEL) return adoptGroups;
     const parts = sel.split(',').map((s: string) => s.trim()).filter(Boolean);
-    return e2Nodes.filter((x) => !x.parentNode && parts.some((p: string) => p.startsWith('.') && String(x.attrs?.class ?? '').split(' ').includes(p.slice(1))));
+    return adoptNodes.filter((x) => !x.parentNode && parts.some((p: string) => p.startsWith('.') && String(x.attrs?.class ?? '').split(' ').includes(p.slice(1))));
   },
 };
-e2Doc.body = e2StubNode('body');
-(globalThis as any).document = e2Doc;
+adoptDoc.body = adoptStubNode('body');
+(globalThis as any).document = adoptDoc;
 (globalThis as any).window = {};
 (globalThis as any).requestAnimationFrame = () => 0;
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-let e2Emit: ((snap: any) => void) | null = null;
-let e2RpcCalls: any[] = [];
-let e2RefreshCalls = 0;
-let e2WsItems: any[] = [];
-let e2Meta: any = { names: { xiaoshuai: '小帅2', ali: '阿梨' }, avatars: {} };
-let e2Unmount: (() => void) | null = null;
+let adoptEmit: ((snap: any) => void) | null = null;
+let adoptRpcCalls: any[] = [];
+let adoptRefreshCalls = 0;
+let adoptWsItems: any[] = [];
+let adoptMeta: any = { names: { xiaoshuai: '小帅2', ali: '阿梨' }, avatars: {} };
+let adoptUnmount: (() => void) | null = null;
 let nonce = 0;
-let e2Header: any = null;
+let adoptHeader: any = null;
 const stageBots = () => {
   nonce++;
   const list = bots.map((b) => ({ ...b }));
@@ -277,38 +287,38 @@ const stageBots = () => {
   return list;
 };
 const mountStage = (rpc: any) => {
-  try { e2Unmount?.(); } catch { /* ignore */ }
-  e2Nodes.length = 0;
-  e2Doc.body = e2StubNode('body');
+  try { adoptUnmount?.(); } catch { /* ignore */ }
+  adoptNodes.length = 0;
+  adoptDoc.body = adoptStubNode('body');
   for (const k of Object.keys(docListeners)) delete docListeners[k];
-  e2RpcCalls = [];
-  e2RefreshCalls = 0;
-  e2WsItems = [];
-  e2Groups = [];
-  const page = e2StubNode('div');
-  e2Header = e2StubNode('div');
-  e2Header.appendChild(e2StubNode('button'));
-  page.appendChild(e2Header);
-  const container = e2StubNode('div');
-  const section = e2StubNode('section');
+  adoptRpcCalls = [];
+  adoptRefreshCalls = 0;
+  adoptWsItems = [];
+  adoptGroups = [];
+  const page = adoptStubNode('div');
+  adoptHeader = adoptStubNode('div');
+  adoptHeader.appendChild(adoptStubNode('button'));
+  page.appendChild(adoptHeader);
+  const container = adoptStubNode('div');
+  const section = adoptStubNode('section');
   container.appendChild(section);
   page.appendChild(container);
-  const row = e2StubNode('div');
+  const row = adoptStubNode('div');
   row.setAttribute('role', 'treeitem');
   row.textContent = 'xiaoshuai';
   section.appendChild(row);
-  e2Groups.push(row);
+  adoptGroups.push(row);
   const ctx: any = {
     rpc,
-    subscribe: (fn: any) => { e2Emit = fn; return () => { e2Emit = null; }; },
-    refresh: async () => { e2RefreshCalls++; },
-    meta: { loadMeta: async () => e2Meta }, slots: {},
-    get: (name: string) => (name === 'workspaces' ? { list: { getSnapshot: () => ({ items: e2WsItems }) } } : undefined),
+    subscribe: (fn: any) => { adoptEmit = fn; return () => { adoptEmit = null; }; },
+    refresh: async () => { adoptRefreshCalls++; },
+    meta: { loadMeta: async () => adoptMeta }, slots: {},
+    get: (name: string) => (name === 'workspaces' ? { list: { getSnapshot: () => ({ items: adoptWsItems }) } } : undefined),
   };
-  e2Unmount = view.mountE2Adopt(ctx);
+  adoptUnmount = view.mountAdopt(ctx);
   return {};
 };
-const okRpc = async (ch: string, ep: string, payload: any) => { e2RpcCalls.push({ ch, ep, payload }); return {}; };
+const okRpc = async (ch: string, ep: string, payload: any) => { adoptRpcCalls.push({ ch, ep, payload }); return {}; };
 const lastDoc = (t: string) => (docListeners[t] ?? [])[(docListeners[t] ?? []).length - 1];
 const mkTransfer = (desc: any) => ({ types: [MIME], getData: () => JSON.stringify(desc), setData() {}, effectAllowed: '', dropEffect: '' });
 const fireDrop = (target: any, desc: any) => lastDoc('drop')({ target, preventDefault() {}, dataTransfer: mkTransfer(desc) });
@@ -328,26 +338,26 @@ const findTextBtn = (root: any, text: string): any => {
   walk(root);
   return hit;
 };
-const bodyText = () => e2Doc.body.textContent ?? '';
+const bodyText = () => adoptDoc.body.textContent ?? '';
 const openPanel = () => {
-  const btn = findClass(e2Header, 'e2-entry')[0];
+  const btn = findClass(adoptHeader, 'adopt-entry')[0];
   assert.ok(btn, '头栏应有串门入口按钮');
   btn.listeners.click[0]();
-  const overlay = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-overlay'));
+  const overlay = adoptDoc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-overlay'));
   assert.ok(overlay, '面板应打开');
   return overlay;
 };
 const panelSections = () => {
-  const overlay = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-overlay'));
-  return findClass(overlay, 'e2-sec');
+  const overlay = adoptDoc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-overlay'));
+  return findClass(overlay, 'adopt-sec');
 };
-const sectionRows = (sec: any) => findClass(sec, 'e2-row');
+const sectionRows = (sec: any) => findClass(sec, 'adopt-row');
 
 test('view：头栏安装串门入口，点击开面板（家 + 巷子口）', async () => {
   mountStage(okRpc);
-  e2Emit!({ bots: stageBots() });
+  adoptEmit!({ bots: stageBots() });
   await sleep(10);
-  const btn = findClass(e2Header, 'e2-entry')[0];
+  const btn = findClass(adoptHeader, 'adopt-entry')[0];
   assert.ok(String(btn.attrs?.title ?? '').includes('串门'));
   assert.ok(String(btn.innerHTML ?? '').includes('<svg'));
   openPanel();
@@ -356,150 +366,150 @@ test('view：头栏安装串门入口，点击开面板（家 + 巷子口）', a
   assert.equal(sectionRows(secs[0]).length, 1);
   assert.equal(sectionRows(secs[1]).length, 1);
   const plaza = secs[2];
-  assert.equal(plaza.getAttribute('data-e2-plaza'), '1');
+  assert.equal(plaza.getAttribute('data-adopt-plaza'), '1');
   assert.equal(sectionRows(plaza).length, 2);
   assert.ok(bodyText().includes('小帅2'), '门牌用设置里的中文名');
   assert.ok(!bodyText().includes('联系方式'), '计数按机器人，不按联系方式');
   assert.ok(!bodyText().includes('个机器人'), '计数文案下线');
-  assert.ok(bodyText().includes('永远在线，除了睡着的时候'), 'mock 小传');
-  const caps = findClass(e2Doc.body, 'e2-cap');
+  assert.ok(bodyText().includes(model.sloganFor('q1')), '绿灯挂个性签名（q1 认领制）');
+  const caps = findClass(adoptDoc.body, 'adopt-cap');
   assert.ok(caps.some((c: any) => String(c.textContent).includes('QQ')), '成员小传含渠道');
-  const tapes = findClass(e2Doc.body, 'e2-tape');
+  const tapes = findClass(adoptDoc.body, 'adopt-tape');
   assert.ok(tapes.some((t: any) => t.textContent === '小帅2'), '胶带门牌中文名');
-  const dots = findClass(e2Doc.body, 'e2-hdot');
-  assert.ok(dots.some((d: any) => String(d.attrs?.class ?? '').split(' ').includes('e2-h-online')), '在线成员亮绿灯');
+  const dots = findClass(adoptDoc.body, 'adopt-hdot');
+  assert.ok(dots.some((d: any) => String(d.attrs?.class ?? '').split(' ').includes('adopt-h-online')), '在线成员亮绿灯');
 });
 
 test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async () => {
   mountStage(okRpc);
-  e2Emit!({ bots: stageBots() });
+  adoptEmit!({ bots: stageBots() });
   openPanel();
   const secs = panelSections();
   const secB = secs[1];
-  const rowQ = sectionRows(secs[0]).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
+  const rowQ = sectionRows(secs[0]).find((r: any) => r.getAttribute('data-adopt-bot') === 'q1');
   assert.ok(rowQ, 'A 组应有 q1');
   fireDrop(secB, { botId: 'q1', channel: 'qq' });
   await sleep(20);
-  assert.equal(e2RpcCalls.length, 0);
+  assert.equal(adoptRpcCalls.length, 0);
   assert.ok(bodyText().includes('小帅 · QQ'), '弹窗标题有人名有渠道');
   assert.ok(bodyText().includes('小帅2'), '弹窗有原家门牌名');
   assert.ok(bodyText().includes('D:\\agents\\xiaoshuai'), '弹窗有原家路径');
-  findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
+  findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
   await sleep(20);
-  assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
-  const undo = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-undo'));
+  assert.deepEqual(adoptRpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
+  const undo = adoptDoc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-undo'));
   assert.ok(undo, '换绑应开撤销窗');
   findTextBtn(undo, '撤销').listeners.click[0]();
   await sleep(20);
-  assert.deepEqual(e2RpcCalls[1]?.payload, { botId: 'q1', workspace: W_A });
+  assert.deepEqual(adoptRpcCalls[1]?.payload, { botId: 'q1', workspace: W_A });
 });
 
 test('view：巷子口歇脚——有家暂存不写，关面板送回', async () => {
   mountStage(okRpc);
-  e2Emit!({ bots: stageBots() });
+  adoptEmit!({ bots: stageBots() });
   openPanel();
-  const plaza = panelSections().find((s: any) => s.getAttribute('data-e2-plaza') === '1');
+  const plaza = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
   assert.ok(plaza, '应有巷子口公共区');
-  assert.ok(findClass(e2Doc.body, 'e2-tape').some((t: any) => t.textContent === '巷子口'), '胶带门牌巷子口');
+  assert.ok(findClass(adoptDoc.body, 'adopt-tape').some((t: any) => t.textContent === '巷子口'), '胶带门牌巷子口');
   fireDrop(plaza, { botId: 'q1', channel: 'qq' });
   await sleep(10);
-  assert.equal(e2RpcCalls.length, 0, '歇脚不写服务器');
-  const plaza2 = panelSections().find((s: any) => s.getAttribute('data-e2-plaza') === '1');
-  const names = sectionRows(plaza2).map((r: any) => findClass(r, 'e2-who')[0]?.textContent);
+  assert.equal(adoptRpcCalls.length, 0, '歇脚不写服务器');
+  const plaza2 = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
+  const names = sectionRows(plaza2).map((r: any) => findClass(r, 'adopt-who')[0]?.textContent);
   assert.ok(names.includes('小帅'), '小帅去巷子口歇着');
   assert.ok(bodyText().includes('歇脚中'), '歇脚徽章');
   assert.ok(bodyText().includes('拖进一家才算搬完'), '歇脚提示');
-  const holders = panelSections().filter((s: any) => sectionRows(s).some((r: any) => r.getAttribute('data-e2-bot') === 'q1'));
+  const holders = panelSections().filter((s: any) => sectionRows(s).some((r: any) => r.getAttribute('data-adopt-bot') === 'q1'));
   assert.equal(holders.length, 1, '小帅只在 computed 一个区');
-  assert.equal(holders[0].getAttribute('data-e2-plaza'), '1', '且那个区就是巷子口');
-  const secB2 = panelSections().find((s: any) => s.getAttribute('data-e2-ws') === W_B);
+  assert.equal(holders[0].getAttribute('data-adopt-plaza'), '1', '且那个区就是巷子口');
+  const secB2 = panelSections().find((s: any) => s.getAttribute('data-adopt-ws') === W_B);
   fireDrop(secB2, { botId: 'q1', channel: 'qq' });
   await sleep(10);
-  assert.ok(findTextBtn(e2Doc.body, '确认换绑'), '歇脚后进他家要敲门');
-  findClass(e2Doc.body, 'e2-x')[0].listeners.click[0]();
+  assert.ok(findTextBtn(adoptDoc.body, '确认换绑'), '歇脚后进他家要敲门');
+  findClass(adoptDoc.body, 'adopt-x')[0].listeners.click[0]();
   await sleep(10);
   assert.ok(bodyText().includes('已送回原来的家'), '关面板点名送回');
-  assert.equal(e2RpcCalls.length, 0, '全程没写服务器');
+  assert.equal(adoptRpcCalls.length, 0, '全程没写服务器');
   openPanel();
-  assert.ok(sectionRows(panelSections()[0]).some((r: any) => r.getAttribute('data-e2-bot') === 'q1'), '重进面板小帅回 A 家');
+  assert.ok(sectionRows(panelSections()[0]).some((r: any) => r.getAttribute('data-adopt-bot') === 'q1'), '重进面板小帅回 A 家');
 });
 
 test('view：巷子口上悬停 → 允许放下（禁行标是 bug）', async () => {
   mountStage(okRpc);
-  e2Emit!({ bots: stageBots() });
+  adoptEmit!({ bots: stageBots() });
   openPanel();
-  const plaza = panelSections().find((s: any) => s.getAttribute('data-e2-plaza') === '1');
+  const plaza = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
   const dt: any = { types: [MIME], dropEffect: '' };
   for (const h of docListeners['dragover'] ?? []) h({ target: plaza, clientX: 100, preventDefault() {}, dataTransfer: dt });
   assert.equal(dt.dropEffect, 'move', '巷子口悬停必须 move，不能 none');
-  assert.ok(plaza.classList.contains('e2-drop-ok'), '巷子口悬停高亮');
+  assert.ok(plaza.classList.contains('adopt-drop-ok'), '巷子口悬停高亮');
 });
 
 test('view：全已分配 → 无未分配组；组内放下 → 不写', async () => {
   mountStage(okRpc);
-  e2Emit!({ bots: bots.map((b) => ({ ...b, workspace: b.workspace || W_A })) });
+  adoptEmit!({ bots: bots.map((b) => ({ ...b, workspace: b.workspace || W_A })) });
   openPanel();
   const secs = panelSections();
   assert.equal(secs.length, 3);
   const secA = secs[0];
-  const rowQ = sectionRows(secA).find((r: any) => r.getAttribute('data-e2-bot') === 'q1');
+  const rowQ = sectionRows(secA).find((r: any) => r.getAttribute('data-adopt-bot') === 'q1');
   fireDrop(secA, { botId: 'q1', channel: 'qq' });
   await sleep(10);
   void rowQ;
-  assert.equal(e2RpcCalls.length, 0);
+  assert.equal(adoptRpcCalls.length, 0);
 });
 
 test('view：无人之家上墙 + 拖入直接绑定', async () => {
   mountStage(okRpc);
-  e2WsItems = [{ workspaceId: 'e', path: 'D:\\agents\\empty' }];
-  e2Emit!({ bots: stageBots() });
+  adoptWsItems = [{ workspaceId: 'e', path: 'D:\\agents\\empty' }];
+  adoptEmit!({ bots: stageBots() });
   openPanel();
-  const empty = panelSections().find((s: any) => s.getAttribute('data-e2-ws') === 'D:\\agents\\empty');
+  const empty = panelSections().find((s: any) => s.getAttribute('data-adopt-ws') === 'D:\\agents\\empty');
   assert.ok(empty, '无人之家上墙');
-  assert.ok(String(empty.attrs?.class ?? '').split(' ').includes('e2-sec-empty'), '空家挂关灯 class');
-  const plaza0 = panelSections().find((s: any) => s.getAttribute('data-e2-plaza') === '1');
+  assert.ok(String(empty.attrs?.class ?? '').split(' ').includes('adopt-sec-empty'), '空家挂关灯 class');
+  const plaza0 = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
   assert.ok(panelSections().indexOf(plaza0) < panelSections().indexOf(empty), '巷子口是分界线（空家沉底）');
   assert.equal(sectionRows(empty).length, 0, '空家没照片');
   assert.ok(bodyText().includes('空无一人'), '空家提示');
   fireDrop(empty, { botId: 'f1', channel: 'feishu' });
   await sleep(20);
-  assert.deepEqual(e2RpcCalls[0]?.payload, { botId: 'f1', workspace: 'D:\\agents\\empty' });
+  assert.deepEqual(adoptRpcCalls[0]?.payload, { botId: 'f1', workspace: 'D:\\agents\\empty' });
   assert.ok(bodyText().includes('已绑定到'), '绑定落定提示');
 });
 
 test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静默回原位', async () => {
   mountStage(okRpc);
-  e2Emit!({ bots: stageBots() });
+  adoptEmit!({ bots: stageBots() });
   openPanel();
-  const overlay = e2Doc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-overlay'));
+  const overlay = adoptDoc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-overlay'));
   fireDrop(overlay, { botId: 'f1', channel: 'feishu' });
   await sleep(10);
-  assert.equal(e2RpcCalls.length, 0);
+  assert.equal(adoptRpcCalls.length, 0);
   assert.ok(bodyText().includes('空白处不可放'));
   const secs = panelSections();
   const rowF = sectionRows(secs[0])[0];
   lastDoc('dragstart')({ target: rowF, clientX: 500, dataTransfer: { setData() {}, effectAllowed: '' } });
-  assert.ok(!rowF.classList.contains('e2-ph'), '分发内不动源节点（出生后置）');
+  assert.ok(!rowF.classList.contains('adopt-ph'), '分发内不动源节点（出生后置）');
   await sleep(10);
-  assert.ok(rowF.classList.contains('e2-ph'), '分发后影子晚到');
-  for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 100, preventDefault() {}, dataTransfer: { types: ['application/x-e2-adopt-bot'] } });
-  assert.ok(String(findClass(e2Doc.body, 'e2-ph')[0]?.style?.transform ?? '').includes('-4deg'), '往左拖影子向左倒');
-  for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 900, preventDefault() {}, dataTransfer: { types: ['application/x-e2-adopt-bot'] } });
-  assert.ok(String(findClass(e2Doc.body, 'e2-ph')[0]?.style?.transform ?? '').includes('rotate(4deg)'), '往右拖影子向右倒');
+  assert.ok(rowF.classList.contains('adopt-ph'), '分发后影子晚到');
+  for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 100, preventDefault() {}, dataTransfer: { types: ['application/x-adopt-bot'] } });
+  assert.ok(String(findClass(adoptDoc.body, 'adopt-ph')[0]?.style?.transform ?? '').includes('-4deg'), '往左拖影子向左倒');
+  for (const h of docListeners['dragover'] ?? []) h({ target: rowF, clientX: 900, preventDefault() {}, dataTransfer: { types: ['application/x-adopt-bot'] } });
+  assert.ok(String(findClass(adoptDoc.body, 'adopt-ph')[0]?.style?.transform ?? '').includes('rotate(4deg)'), '往右拖影子向右倒');
   assert.equal(rowF.style.display ?? '', '', '原牌不藏源（display:none 会取消拖拽）');
-  assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '只留一块歪斜影子');
-  const ph = findClass(e2Doc.body, 'e2-ph')[0];
+  assert.equal(findClass(adoptDoc.body, 'adopt-ph').length, 1, '只留一块歪斜影子');
+  const ph = findClass(adoptDoc.body, 'adopt-ph')[0];
   assert.ok(String(ph.textContent).includes('小帅'), '影子名字不少');
-  assert.equal(findClass(ph, 'e2-hdot').length, 1, '影子健康灯不少');
-  e2Emit!({ bots: [...stageBots(), { channel: 'qq', botId: 'x1', workspace: '', botName: '', connected: false, healthKind: 'offline' }] });
+  assert.equal(findClass(ph, 'adopt-hdot').length, 1, '影子健康灯不少');
+  adoptEmit!({ bots: [...stageBots(), { channel: 'qq', botId: 'x1', workspace: '', botName: '', connected: false, healthKind: 'offline' }] });
   await sleep(10);
-  assert.equal(findClass(e2Doc.body, 'e2-ph').length, 1, '拖拽中快照不掀桌');
+  assert.equal(findClass(adoptDoc.body, 'adopt-ph').length, 1, '拖拽中快照不掀桌');
   assert.equal(sectionRows(panelSections()[0]).length, 1, '拖拽中 A 组不加塞，新机器人不插队');
   lastDoc('dragend')();
   await sleep(10);
   assert.equal(rowF.style.display ?? '', '', '取消后原牌回来');
-  assert.equal(findClass(e2Doc.body, 'e2-ph').length, 0, '影子清理');
-  assert.ok(!rowF.classList.contains('e2-dragging'), '放下/取消后 ghost 态清除');
+  assert.equal(findClass(adoptDoc.body, 'adopt-ph').length, 0, '影子清理');
+  assert.ok(!rowF.classList.contains('adopt-dragging'), '放下/取消后 ghost 态清除');
   assert.ok(!bodyText().includes('已取消拖拽'), '取消静默回原位（点一下不骂一句）');
   assert.equal(sectionRows(panelSections()[2]).length, 3, '松手后巷子口补刷冻结期的新机器人');
   assert.ok(bodyText().includes('x1'), '冻结期到的新机器人松手后出现');
@@ -508,15 +518,15 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静
 test('view：按住熔断重绘 + 内容不变跳过', async () => {
   mountStage(okRpc);
   const sent = stageBots();
-  e2Emit!({ bots: sent });
+  adoptEmit!({ bots: sent });
   openPanel();
   await sleep(10);
   const row0 = sectionRows(panelSections()[0])[0];
-  e2Emit!({ bots: sent.map((b) => ({ ...b })) });
+  adoptEmit!({ bots: sent.map((b) => ({ ...b })) });
   await sleep(10);
   assert.ok(sectionRows(panelSections()[0])[0] === row0, '空转快照不重建 DOM');
   lastDoc('pointerdown')({ target: row0 });
-  e2Emit!({ bots: [...sent.map((b) => ({ ...b })), { channel: 'qq', botId: 'x9', workspace: '', botName: '', connected: false, healthKind: 'offline' }] });
+  adoptEmit!({ bots: [...sent.map((b) => ({ ...b })), { channel: 'qq', botId: 'x9', workspace: '', botName: '', connected: false, healthKind: 'offline' }] });
   await sleep(10);
   assert.ok(sectionRows(panelSections()[0])[0] === row0, '按住时节点稳定（原生拖拽才有机会出生）');
   assert.ok(!bodyText().includes('x9'), '熔断期间不渲染');
@@ -531,17 +541,17 @@ test('view：撤销窗过期 → 落定提示且窗消失', async () => {
   (globalThis as any).setTimeout = ((cb: any, ms: number) => { timers.push({ cb, ms }); return 0; }) as any;
   try {
     mountStage(okRpc);
-    e2Emit!({ bots: stageBots() });
+    adoptEmit!({ bots: stageBots() });
     openPanel();
     const secs = panelSections();
     fireDrop(secs[1], { botId: 'q1', channel: 'qq' });
-    findTextBtn(e2Doc.body, '确认换绑').listeners.click[0]();
+    findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
     await new Promise((r) => realSetTimeout(r, 20));
     const t = timers.filter((x) => x.ms === 5000).pop();
     assert.ok(t, '应有 5s 过期定时器');
     t.cb();
     assert.ok(bodyText().includes('撤销超时，绑定已生效'));
-    assert.equal(e2Doc.body.children.filter((c: any) => String(c.attrs?.class ?? '').split(' ').includes('e2-undo')).length, 0);
+    assert.equal(adoptDoc.body.children.filter((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-undo')).length, 0);
   } finally {
     (globalThis as any).setTimeout = realSetTimeout;
   }

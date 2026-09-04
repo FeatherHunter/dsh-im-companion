@@ -1,4 +1,4 @@
-// B3 真机前渲染验证：对构建产物 lib/client.js 跑 Real-React，断言 Header 槽位三态。
+// SessionHeader 真机前渲染验证：对构建产物 lib/client.js 跑 Real-React，断言 Header 槽位三态。
 // settings.section 不碰（render-client.ts 覆盖）；本文件只覆盖新增的 header.utilities 注册。
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -87,9 +87,9 @@ const ctx = {
 (loaded!.exports as any).apply(ctx);
 
 const checks: [string, boolean][] = [];
-const header = regs.find((r) => String(r.opts?.id ?? '').includes('b3-header'));
+const header = regs.find((r) => String(r.opts?.id ?? '').includes('session-header'));
 checks.push(['header 槽位已注册', !!header]);
-checks.push(['样式含呼吸 keyframes（防回归）', code.includes('@keyframes b3-header-breathe') && code.includes('b3-header-dotbtn')]);
+checks.push(['样式含呼吸 keyframes（防回归）', code.includes('@keyframes session-header-breathe') && code.includes('session-header-dotbtn')]);
 checks.push(['header 槽名正确', header?.opts?.name === 'conversation.session.header.utilities']);
 checks.push(['settings 面板注册未受影响', regs.some((r) => r.opts?.name === 'settings.section')]);
 
@@ -111,7 +111,7 @@ async function renderSession(sessionId: string): Promise<{ text: string; btn: an
     }
     return null;
   };
-  const btn = findByClass(container, 'b3-header-dotbtn');
+  const btn = findByClass(container, 'session-header-dotbtn');
   root.unmount();
   return { text, btn };
 }
