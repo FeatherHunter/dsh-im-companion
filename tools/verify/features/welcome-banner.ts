@@ -200,7 +200,7 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf(".wb-cirrus") >= 0, "卷云丝必须存在");
   assert.ok(css.indexOf("feTurbulence") >= 0, "胶片噪点必须存在");
   assert.ok(css.indexOf("min-width: min(320px") >= 0, "按钮必须加宽不加高");
-  for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-haze", ".wb-cirrus", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-s1", ".wb-horizon", ".wb-grain", ".wb-vig", ".wb-title", ".wb-enter"]) {
+  for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-haze", ".wb-cirrus", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-s1", ".wb-horizon", ".wb-grain", ".wb-vig", ".wb-host", ".wb-host-avatar", ".wb-host-name", ".wb-title", ".wb-enter"]) {
     assert.ok(css.indexOf(cls) >= 0, "P 天空样式缺失：" + cls);
   }
   for (const dead of [".wb-x", ".wb-route", ".wb-guide", ".wb-avatar", ".wb-swaprow", ".wb-swap", ".wb-rays"]) {
@@ -274,11 +274,16 @@ const overlay: any = req("./features/welcome-banner/overlay.js");
 test("渲染 P 弹窗（遮罩+面板+标题+进门）", () => {
   const copy = data.copyFor("day", 0);
   const calls: string[] = [];
+  const bots2 = [snap({ agentPreset: "cs", contextEnhancement: { groupEnabled: true, directEnabled: false, fields: [], guidance: "" } })];
+  const META2 = { names: { [W1]: "小帅2" }, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: {} };
+  const model2 = data.buildBannerModel(bots2, META2, W1, CATALOGS);
   const el = view.renderHome({
-    copy, status: "online", stateLabel: "在线",
-    subSuffix: data.displaySub(copy.s, 2, "小帅"),
+    copy, model: model2,
+    subSuffix: data.displaySub(copy.s, 2, model2.name),
     callbacks: { onEnter: () => calls.push("enter") },
   });
+  assert.equal(el.querySelector(".wb-host-name").textContent, "小帅2", "主人行必须显示自取名（原名兜底）");
+  assert.ok(el.querySelector(".wb-host-avatar"), "主人头像必须存在");
   assert.ok(String(el.className).split(" ").includes("wb-modal"), "根节点即 wb-modal 顶层弹窗");
   assert.ok(el.querySelector(".wb-backdrop"), "遮罩必须存在");
   assert.ok(el.querySelector(".wb-banner"), "居中面板必须存在");
@@ -293,7 +298,7 @@ test("渲染 P 弹窗（遮罩+面板+标题+进门）", () => {
   assert.ok(el.querySelector(".wb-vig"), "暗角层必须存在");
   assert.equal(el.querySelector(".wb-title").textContent, "家里亮堂，随时回来");
   const sub = el.querySelector(".wb-sub").textContent;
-  assert.ok(sub.indexOf("在线") >= 0 && sub.indexOf("小帅守着今天") >= 0, "副标题=真实健康+文案后缀：" + sub);
+  assert.ok(sub.indexOf("在线") >= 0 && sub.indexOf("小帅2守着今天") >= 0, "副标题=真实健康+文案后缀（改名联动）：" + sub);
   const btns = el.querySelectorAll("button").map((b: any) => b.textContent);
   assert.ok(btns.some((t: string) => t.indexOf("回家") >= 0 && t.indexOf("门开着") >= 0), "进门按钮主副文案齐全：" + btns.join("|"));
   assert.equal(el.querySelector(".wb-swaprow"), null, "换一句控件必须移除");
@@ -336,8 +341,9 @@ test("未绑定工作区零绘制（纯净原生空态）", async () => {
 
 test("渲染类名全在 wb- 命名空间", () => {
   const wee = data.copyFor("wee", 2);
+  const weeModel = data.buildBannerModel([snap({})], META, W1, CATALOGS);
   const el = view.renderHome({
-    copy: wee, status: "online", stateLabel: "在线",
+    copy: wee, model: weeModel,
     subSuffix: data.displaySub(wee.s, null, "小帅"),
     callbacks: { onEnter: () => {} },
   });

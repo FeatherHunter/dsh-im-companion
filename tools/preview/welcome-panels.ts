@@ -41,7 +41,7 @@ const panels = segs.map((seg) => {
   return '<div class="pv-stage" id="pv-' + seg + '"><div class="wb-modal"><div class="wb-backdrop"></div>'
     + '<section class="wb-banner"><div class="wb-sky ' + c.sky + '">' + deco + horizon
     + '<div class="wb-grain"></div><div class="wb-vig"></div>'
-    + '<div class="wb-copy"><div class="wb-title">' + esc(c.t) + '</div>'
+    + '<div class="wb-copy"><div class="wb-host"><div class="wb-host-avatar">小</div><div class="wb-host-name">小帅</div><span class="wb-dot wb-online"></span></div><div class="wb-title">' + esc(c.t) + '</div>'
     + '<div class="wb-sub"><span class="wb-dot wb-online"></span>' + esc(sub) + '</div></div>'
     + '<div class="wb-cta"><button class="wb-enter">' + esc(c.b) + '<small class="wb-enter-sub">' + esc(c.bs) + '</small></button></div>'
     + '</div></section></div></div>';

@@ -126,7 +126,7 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
   let card: unknown = null;
   try {
     card = renderHome({
-      copy, status: model.status, stateLabel: model.stateLabel, subSuffix,
+      copy, model, subSuffix,
       callbacks: {
         onEnter: () => {
           try { DISMISSED.add(path); } catch { /* ignore */ }

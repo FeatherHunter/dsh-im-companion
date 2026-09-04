@@ -9,8 +9,7 @@
  * 门控：非 hero/信号不全/工作区 label 匹配不出或歧义/未绑定 → 一律不渲染（宁缺勿错）；
  * 未绑定零 UI（纯净原生空态），不画指引卡。 */
 import { h } from "../../client/dom";
-import type { HealthKind } from "../../client/data/config";
-import type { TimeCopy } from "./data";
+import type { BannerModel, TimeCopy } from "./data";
 
 export { PHASE_SELECTOR, heroConfirmed, heroWorkspaceLabel, isVisible } from "./anchor";
 
@@ -41,15 +40,17 @@ function appendClouds(sky: HTMLElement): void {
   sky.appendChild(h("div", { className: "wb-cloud wb-c2" }));
 }
 
-/** P 弹窗渲染：顶层遮罩 + 居中面板（全幅天空 + 大标题 + 真实健康副标题 + 进门按钮）。 */
+/** P 弹窗渲染：顶层遮罩 + 居中面板（主人行 + 大标题 + 真实健康副标题 + 进门按钮）。
+ * 主人行显示工作区名字：IM机器人辅助自取名优先，原目录名兜底（model.name 口径，与副标题改名一致）。 */
 export function renderHome(input: {
   copy: TimeCopy;
-  status: HealthKind;
-  stateLabel: string;
+  model: BannerModel;
   subSuffix: string;
   callbacks: HomeCallbacks;
 }): HTMLElement {
-  const { copy, status, stateLabel, subSuffix, callbacks } = input;
+  const { copy, model, subSuffix, callbacks } = input;
+  const status = model.status;
+  const stateLabel = model.stateLabel;
   const root = h("div", { className: "wb-modal", dataset: { wb: copy.seg } });
   root.appendChild(h("div", { className: "wb-backdrop" }));
   const card = h("section", { className: "wb-banner" });
@@ -65,7 +66,15 @@ export function renderHome(input: {
   if (copy.horizon) sky.appendChild(h("div", { className: "wb-horizon" }));
   sky.appendChild(h("div", { className: "wb-grain" }));
   sky.appendChild(h("div", { className: "wb-vig" }));
+  const avatarBody: (string | HTMLElement)[] = model.avatar
+    ? [h("img", { src: model.avatar, alt: model.name })]
+    : [model.initial];
   sky.appendChild(h("div", { className: "wb-copy" },
+    h("div", { className: "wb-host" },
+      h("div", { className: "wb-host-avatar" }, ...avatarBody),
+      h("div", { className: "wb-host-name" }, model.name),
+      h("span", { className: dotClass(status) }),
+    ),
     h("div", { className: "wb-title" }, copy.t),
     h("div", { className: "wb-sub" },
       h("span", { className: dotClass(status) }),
