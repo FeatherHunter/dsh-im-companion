@@ -4,10 +4,11 @@
  * 所有“不知道”都以 null/空表达，绝不谎报。
  * P 内容以原型 PH 数据为准：五段×三套 = 15 句 + 各段按钮文案。
  * 凌晨≠深夜：一个要陪伴（鱼肚白天相），一个要守候。 */
-import { channelLabel, HEALTH_LABELS, type HealthKind } from "../../client/data/config";
+import { channelLabel, type HealthKind } from "../../client/data/config";
 import { basenameOf, buildModel } from "../../client/data/model";
 import type { AgentMetaDoc } from "../../client/data/meta";
 import type { AgentPresetCatalog, BotSnap } from "../../client/data/fleet-api";
+import { PH_EN } from "./copy-en";
 
 export interface WsCandidate {
   path: string;
@@ -103,8 +104,8 @@ const PH: Record<TimeSeg, SegDef> = {
   ] },
   dawn: { tab: "清晨", sky: "wb-sky-dawn", moon: false, horizon: false, opts: [
     { t: "清晨了，家里先醒了", s: "飞书在线 · 先喝口热的再出门", b: "回家吃早饭", bs: "粥在锅里" },
-    { t: "早，新的一天从家开始", s: "飞书在线 · 今天也要加油", b: "回家", bs: "出门前看一眼" },
-    { t: "天亮了，我把门口扫好了", s: "飞书在线 · 1 个会话已就位", b: "回家", bs: "干净了" },
+    { t: "早，今天听你的", s: "飞书在线 · 今天的事，回来再说", b: "回家", bs: "我在呢" },
+    { t: "天亮了，我把门口扫好了", s: "飞书在线 · 就等你了", b: "回家", bs: "干净了" },
   ] },
   day: { tab: "白天", sky: "wb-sky-day", moon: false, horizon: false, opts: [
     { t: "家里亮堂，随时回来", s: "飞书在线 · 小帅守着今天", b: "回家", bs: "门开着" },
@@ -144,10 +145,18 @@ export function normalizeCopyIdx(idx: number): number {
   return ((n % 3) + 3) % 3;
 }
 
-/** 取某段某句：未知段回 night。 */
-export function copyFor(seg: TimeSeg, idx: number): TimeCopy {
-  const def = PH[seg] ?? PH.night;
-  const key = (PH[seg] ? seg : "night") as TimeSeg;
+export type HomeLang = "zh" | "en";
+/** DSH 系统语言跟随：lang 以 en 开头即英文，其余（含空）回中文。 */
+export function homeLangOf(lang: string | null | undefined): HomeLang {
+  const s = (lang ?? "").trim().toLowerCase();
+  return s === "en" || s.indexOf("en-") === 0 || s.indexOf("en_") === 0 ? "en" : "zh";
+}
+
+/** 取某段某句：未知段回 night；lang 选表。 */
+export function copyFor(seg: TimeSeg, idx: number, lang: HomeLang = "zh"): TimeCopy {
+  const table = lang === "en" ? PH_EN : PH;
+  const def = table[seg] ?? table.night;
+  const key = (table[seg] ? seg : "night") as TimeSeg;
   const i = normalizeCopyIdx(idx);
   const o = def.opts[i];
   return { seg: key, idx: i, tab: def.tab, sky: def.sky, moon: def.moon, horizon: def.horizon, t: o.t, s: o.s, b: o.b, bs: o.bs };
@@ -156,10 +165,19 @@ export function copyFor(seg: TimeSeg, idx: number): TimeCopy {
 /** 副标题后半句：去掉 mock 的“飞书在线 ·”前缀，由视图拼真实健康态。
  * 含“1 个会话”的两句用真实路由数填充；未加载（null）时去数字保守表述。
  * mock 名“小帅”换为真实 Agent 名。 */
-export function displaySub(rawSub: string, total: number | null, agentName?: string): string {
+export function displaySub(rawSub: string, total: number | null, agentName?: string, lang: HomeLang = "zh"): string {
   const raw = String(rawSub ?? "");
   const dot = raw.indexOf("·");
   let suffix = (dot >= 0 ? raw.slice(dot + 1) : raw).trim();
+  if (lang === "en") {
+    const e = suffix.match(/^1 sessions? (.+)$/);
+    if (e) {
+      if (total === null || total === undefined || !isFinite(total)) return "Sessions " + e[1];
+      const n = Math.max(0, Math.floor(total));
+      return (n === 1 ? "1 session " : n + " sessions ") + e[1];
+    }
+    return suffix;
+  }
   const name = (agentName ?? "").trim();
   if (name) suffix = suffix.split("小帅").join(name);
   const m = suffix.match(/^1 个会话(.+)$/);
@@ -278,8 +296,4 @@ export function buildBannerModel(
     presetText: presetTextOf(snaps, catalogs ?? {}),
     ctxText: ctxTextOf(snaps),
   };
-}
-
-export function stateLabelOf(status: HealthKind): string {
-  return HEALTH_LABELS[status] ?? status;
 }

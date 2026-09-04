@@ -10,8 +10,8 @@ import type { AgentMetaDoc } from "../../client/data/meta";
 import { basenameOf, viewName } from "../../client/data/model";
 import type { FeatureCtx } from "../protocol";
 import {
-  buildBannerModel, copyFor, displaySub, matchWorkspaceLabel, pruneWelcomed, segOfHour, summarizeRoutes, welcomedOf,
-  type RouteRef, type WsCandidate,
+  buildBannerModel, copyFor, displaySub, homeLangOf, matchWorkspaceLabel, pruneWelcomed, segOfHour, summarizeRoutes, welcomedOf,
+  type HomeLang, type RouteRef, type WsCandidate,
 } from "./data";
 import { eachHero, heroConfirmed, heroWorkspaceLabel, isVisible, phaseAttr, textOf } from "./anchor";
 import { renderHome } from "./view";
@@ -86,7 +86,17 @@ function topLayer(): unknown {
   } catch { return null; }
 }
 
-function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
+/** DSH 系统语言（documentElement.lang）：en 开头即英文，切语言宿主改该属性即重绘。 */
+function docLang(doc: unknown): HomeLang {
+  try {
+    const el = (doc as { documentElement?: { lang?: unknown; getAttribute?: (k: string) => unknown } } | null)?.documentElement;
+    const v = (el && typeof el.lang === "string" ? el.lang : undefined)
+      ?? (el && typeof el.getAttribute === "function" ? el.getAttribute("lang") : undefined);
+    return homeLangOf(typeof v === "string" ? v : null);
+  } catch { return "zh"; }
+}
+
+function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown, lang: HomeLang): void {
   const text = textOf(heroRoot);
   if (!heroConfirmed(phaseAttr(heroRoot), text)) return;
   const label = heroWorkspaceLabel(heroRoot);
@@ -120,9 +130,9 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
   const mine = st.routes.filter((r) => r && typeof r.chat === "string" && model.bots.some((b) => b.channel === r.channel && (!r.botId || b.botId === r.botId)));
   const total = st.routesOk ? summarizeRoutes(mine).total : null;
   const seg = segOfHour(new Date().getHours());
-  const copy = copyFor(seg, 0);
-  const subSuffix = displaySub(copy.s, total, model.name);
-  const showSig = model.key + "|" + model.name + "|" + seg + "|" + model.status + "|" + (total === null ? "x" : total);
+  const copy = copyFor(seg, 0, lang);
+  const subSuffix = displaySub(copy.s, total, model.name, lang);
+  const showSig = lang + "|" + model.key + "|" + model.name + "|" + seg + "|" + model.status + "|" + (total === null ? "x" : total);
   let card: unknown = null;
   try {
     card = renderHome({
@@ -145,7 +155,7 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
     removePainted(st, heroRoot);
     parent.appendChild(card);
     st.painted.set(heroRoot, { node: card, parent, sig: showSig, path });
-    infoOnce("painted:" + path, "P 弹窗已挂载到顶层（" + path + "，时段=" + seg + "）。");
+    infoOnce("painted:" + path, "P 弹窗已挂载到顶层（" + path + "，时段=" + seg + "，语言=" + lang + "）。");
   } catch { /* 宿主 DOM 变化即跳过本轮 */ }
 }
 
@@ -153,9 +163,10 @@ function scanAll(fctx: FeatureCtx, st: MountState, doc: unknown): void {
   try {
     if (activeGen !== st.gen) return;
     const live = new Set<unknown>();
+    const lang = docLang(doc);
     eachHero(doc, (root) => {
       live.add(root);
-      paintHero(fctx, st, root);
+      paintHero(fctx, st, root, lang);
     });
     for (const hero of [...st.painted.keys()]) {
       if (!live.has(hero)) removePainted(st, hero);
@@ -254,7 +265,7 @@ export function mountBanner(fctx: FeatureCtx): () => void {
       const target = (doc as { documentElement?: unknown }).documentElement ?? doc;
       if (MO && target) {
         const inst = new MO(() => { try { scheduleScan(fctx, st, doc); } catch { /* ignore */ } });
-        inst.observe(target as Node, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-phase", "style", "class"] });
+        inst.observe(target as Node, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-phase", "style", "class", "lang"] });
         obs = inst;
       }
     } catch { /* 无观察即靠订阅节拍重扫 */ }

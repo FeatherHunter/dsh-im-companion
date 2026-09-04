@@ -730,4 +730,49 @@ test("同拍重放不重绘（防15s闪刷）", async () => {
   stop();
 });
 
+test("中文新版三处（门口迎+进门办事）", () => {
+  assert.equal(data.copyFor("dawn", 1).t, "早，今天听你的");
+  assert.equal(data.copyFor("dawn", 1).bs, "我在呢");
+  assert.equal(data.copyFor("dawn", 2).s, "飞书在线 · 就等你了");
+  assert.equal(data.copyFor("dawn", 2).b, "回家");
+});
+
+test("homeLangOf 跟随 DSH 系统语言", () => {
+  assert.equal(data.homeLangOf("en-US"), "en");
+  assert.equal(data.homeLangOf("en"), "en");
+  assert.equal(data.homeLangOf("EN-gb"), "en");
+  assert.equal(data.homeLangOf("zh-CN"), "zh");
+  assert.equal(data.homeLangOf(""), "zh");
+  assert.equal(data.homeLangOf(null), "zh");
+  assert.equal(data.homeLangOf(undefined), "zh");
+  assert.equal(data.homeLangOf("fr"), "zh");
+});
+
+test("EN 十五句完整性（结构对齐中文）", () => {
+  for (const seg of data.TIME_SEGS) {
+    for (let i = 0; i < 3; i++) {
+      const c = data.copyFor(seg, i, "en");
+      assert.equal(c.seg, seg);
+      assert.equal(c.idx, i);
+      assert.ok(c.t.length > 0 && c.s.length > 0 && c.b.length > 0 && c.bs.length > 0);
+      assert.ok(c.s.indexOf("·") >= 0, seg + "#" + i + " EN副标题须带分隔符");
+      assert.ok(c.sky.indexOf("wb-sky-") === 0);
+    }
+  }
+  assert.equal(data.copyFor("day", 0, "en").bs, "Door's open");
+  assert.equal(data.copyFor("dawn", 0, "en").b, "Home for breakfast");
+  assert.equal(data.copyFor("dusk", 0, "en").b, "Home for dinner");
+  assert.equal(data.copyFor("nope", 0, "en").seg, "night");
+  assert.equal(data.copyFor("day", 0).bs, "门开着");
+});
+
+test("displaySub 英文计数模板", () => {
+  assert.equal(data.displaySub("Online · 1 session ready", 5, undefined, "en"), "5 sessions ready");
+  assert.equal(data.displaySub("Online · 1 session ready", 1, undefined, "en"), "1 session ready");
+  assert.equal(data.displaySub("Online · 1 session waiting", 0, undefined, "en"), "0 sessions waiting");
+  assert.equal(data.displaySub("Online · 1 session ready", null, undefined, "en"), "Sessions ready");
+  assert.equal(data.displaySub("Online · Waiting on you", 3, undefined, "en"), "Waiting on you");
+  assert.equal(data.displaySub("飞书在线 · 整个世界都睡了，除了我", 3, "小帅"), "整个世界都睡了，除了我");
+});
+
 rmSync(tmp, { recursive: true, force: true });
