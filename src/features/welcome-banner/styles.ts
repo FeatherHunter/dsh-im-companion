@@ -5,8 +5,10 @@
 import { TOKEN_BLOCK } from "../../client/theme";
 export const WB_TOKENS = ".wb-banner{" + TOKEN_BLOCK + "}";
 const SKY: string[] = [
-".wb-banner { position: relative; width: 100%; align-self: stretch; flex: 1 0 auto; flex-shrink: 0; box-sizing: border-box; min-height: min(78vh, 740px); margin: 0; padding: 0; overflow: hidden; display: flex; flex-direction: column; justify-content: stretch; border: 0; border-radius: 0; background: var(--af-bg); color: var(--af-primary); font-size: 14px; line-height: 1.6; }",
-".wb-sky { position: relative; width: 100%; flex: 1 0 auto; min-height: 420px; overflow: hidden; }",
+".wb-modal { position: fixed; inset: 0; z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; }",
+".wb-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, .45); cursor: pointer; }",
+".wb-banner { position: relative; width: min(560px, 94vw); height: min(68vh, 600px); min-height: 440px; box-sizing: border-box; margin: 0; padding: 0; overflow: hidden; border-radius: 20px; background: var(--af-bg); color: var(--af-primary); box-shadow: 0 24px 80px rgba(0, 0, 0, .45); font-size: 14px; line-height: 1.6; }",
+".wb-sky { position: relative; width: 100%; height: 100%; overflow: hidden; }",
 ".wb-sky-wee { background: linear-gradient(#070b1e 0%,#131a3d 52%,#3c2c50 78%,#a05a44 100%); }",
 ".wb-sky-dawn { background: linear-gradient(#3a4a7a 0%,#e8909c 60%,#ffd9a0 100%); }",
 ".wb-sky-day { background: linear-gradient(#7db9f0 0%,#cfe8fa 70%,#eef7ee 100%); }",

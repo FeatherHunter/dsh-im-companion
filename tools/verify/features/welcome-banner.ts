@@ -190,10 +190,11 @@ test("样式命名空间 wb-", () => {
   assert.ok(css.indexOf("--af-accent:") >= 0, "TOKEN_BLOCK 必须随横幅下发（对话树无 .af-root，缺此则全部 var(--af-*) 被丢弃）");
   assert.ok(css.indexOf(".wb-banner{") >= 0, "token 必须声明在 .wb-banner 根上");
   assert.ok(css.indexOf("min-height:") >= 0, "HOME 气场：横幅必须有最小高度占领对话区");
-  assert.ok(css.indexOf("width: 100%") >= 0 && css.indexOf("align-self: stretch") >= 0, "卡片必须占满父容器宽度（flex 父容器下防塌成细条，真机竖条回归）");
+  assert.ok(css.indexOf(".wb-modal") >= 0 && css.indexOf("position: fixed") >= 0, "必须顶层弹窗挂 body，不占据对话框版面");
+  assert.ok(css.indexOf(".wb-backdrop") >= 0, "遮罩必须存在");
   assert.ok(css.indexOf("top: 50%") >= 0 && css.indexOf("translateY(-50%)") >= 0, "文案块必须在天空区垂直居中");
   assert.ok(css.indexOf("bottom: 7%") >= 0, "进门按钮必须沉底（标题居中、按钮靠下，好点）");
-  assert.ok(css.indexOf("min(78vh, 740px)") >= 0, "卡片必须给原生空态留位置（探索未至之境保持可见）");
+  assert.ok(css.indexOf("min(560px, 94vw)") >= 0, "面板居中固定尺寸，不挤原生空态");
   for (const cls of [".wb-sky-wee", ".wb-sky-dawn", ".wb-sky-day", ".wb-sky-dusk", ".wb-sky-night", ".wb-sun", ".wb-moon", ".wb-cloud", ".wb-star", ".wb-horizon", ".wb-title", ".wb-enter"]) {
     assert.ok(css.indexOf(cls) >= 0, "P 天空样式缺失：" + cls);
   }
@@ -265,7 +266,7 @@ function stubEl(tag: string): any {
 const view: any = req("./features/welcome-banner/view.js");
 const overlay: any = req("./features/welcome-banner/overlay.js");
 
-test("渲染 P 主页（全幅天空+标题+进门）", () => {
+test("渲染 P 弹窗（遮罩+面板+标题+进门）", () => {
   const copy = data.copyFor("day", 0);
   const calls: string[] = [];
   const el = view.renderHome({
@@ -273,7 +274,11 @@ test("渲染 P 主页（全幅天空+标题+进门）", () => {
     subSuffix: data.displaySub(copy.s, 2, "小帅"),
     callbacks: { onEnter: () => calls.push("enter") },
   });
-  assert.ok(String(el.className).split(" ").includes("wb-banner"), "根节点即 wb-banner 卡片");
+  assert.ok(String(el.className).split(" ").includes("wb-modal"), "根节点即 wb-modal 顶层弹窗");
+  assert.ok(el.querySelector(".wb-backdrop"), "遮罩必须存在");
+  assert.ok(el.querySelector(".wb-banner"), "居中面板必须存在");
+  for (const fn of (el.querySelector(".wb-backdrop")._listeners.click ?? [])) fn();
+  assert.ok(calls.includes("enter"), "点 backdrop 与点回家同出口");
   assert.ok(el.querySelector(".wb-sky"), "天空层必须存在");
   assert.ok(el.querySelector(".wb-sky-day"), "白天须用 day 天空");
   assert.ok(el.querySelector(".wb-sun"), "白天须有太阳");
@@ -399,24 +404,21 @@ test("挂载永不抛错（ hostile 环境全静默）", () => {
   stop2();
 });
 
-test("DOM 叠加挂载：hero 下出现横幅、卸载即净", async () => {
+test("顶层弹窗挂载：hero 门控、body 挂载、卸载即净", async () => {
   const inserted: any[] = [];
   const removed: any[] = [];
-  const parentStub: any = {
-    insertBefore: (n: any) => { inserted.push(n); },
-    removeChild: (n: any) => { removed.push(n); },
-  };
   const heroStub: any = {
     textContent: "探索未至之境 预览版 选择工作区 xiaoshuai",
     closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
     querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "xiaoshuai" } : null,
     getBoundingClientRect: () => ({ width: 600, height: 200 }),
-    parentNode: parentStub,
+    parentNode: {},
   };
   (globalThis as any).document = {
     createElement: (t: string) => stubEl(t),
     createTextNode: (t: unknown) => stubText(t),
     querySelectorAll: (sel: string) => sel === '[data-phase="hero"]' ? [heroStub] : [],
+    body: { appendChild: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
   };
   const subFns: any[] = [];
   const fctx: any = {
@@ -435,7 +437,9 @@ test("DOM 叠加挂载：hero 下出现横幅、卸载即净", async () => {
   await new Promise((r) => setTimeout(r, 30));
   assert.ok(inserted.length >= 1, "至少绘制一次");
   const card = inserted[inserted.length - 1];
-  assert.ok(String(card.className).split(" ").includes("wb-banner"));
+  assert.ok(String(card.className).split(" ").includes("wb-modal"), "根节点即顶层弹窗");
+  assert.ok(card.querySelector(".wb-backdrop"), "遮罩必须挂载");
+  assert.ok(card.querySelector(".wb-banner"), "居中面板必须挂载");
   assert.ok(card.querySelector(".wb-sky"), "P 天空必须绘制");
   assert.ok(card.querySelector(".wb-title").textContent.length > 0, "标题必须有文案");
   const btns = card.querySelectorAll("button").map((n: any) => n.textContent);
@@ -544,12 +548,13 @@ test("进门持久化：点击回家即记 welcomed", async () => {
     closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
     querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "xiaoshuai" } : null,
     getBoundingClientRect: () => ({ width: 600, height: 200 }),
-    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
+    parentNode: {},
   };
   (globalThis as any).document = {
     createElement: (t: string) => stubEl(t),
     createTextNode: (t: unknown) => stubText(t),
     querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+    body: { appendChild: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
   };
   const fctx: any = {
     rpc: null,
@@ -586,12 +591,13 @@ test("删光重现：解绑清记忆，重绑再欢迎", async () => {
     closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
     querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "lingshi" } : null,
     getBoundingClientRect: () => ({ width: 600, height: 200 }),
-    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
+    parentNode: {},
   };
   (globalThis as any).document = {
     createElement: (t: string) => stubEl(t),
     createTextNode: (t: unknown) => stubText(t),
     querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+    body: { appendChild: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
   };
   let subFn: any = null;
   const fctx: any = {
@@ -634,12 +640,13 @@ test("切换工作区清扫孤儿卡", async () => {
     closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
     querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "diwu" } : null,
     getBoundingClientRect: () => ({ width: 600, height: 200 }),
-    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
+    parentNode: {},
   };
   const docStub: any = {
     createElement: (t: string) => stubEl(t),
     createTextNode: (t: unknown) => stubText(t),
     querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+    body: { appendChild: (n: any) => { inserted.push(n); }, removeChild: (n: any) => { removed.push(n); } },
   };
   (globalThis as any).document = docStub;
   let subFn: any = null;
@@ -676,12 +683,13 @@ test("同拍重放不重绘（防15s闪刷）", async () => {
     closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
     querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "diliu" } : null,
     getBoundingClientRect: () => ({ width: 600, height: 200 }),
-    parentNode: { insertBefore: (n: any) => { inserted.push(n); }, removeChild: () => {} },
+    parentNode: {},
   };
   (globalThis as any).document = {
     createElement: (t: string) => stubEl(t),
     createTextNode: (t: unknown) => stubText(t),
     querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+    body: { appendChild: (n: any) => { inserted.push(n); }, removeChild: () => {} },
   };
   let subFn: any = null;
   const snap = { bots: [snap6], failed: [], updatedAt: 12, catalogs: {} };

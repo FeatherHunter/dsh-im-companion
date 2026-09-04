@@ -1,4 +1,4 @@
-/** welcome-banner 挂载编排（DOM 叠加扫描 + 绘制调度）：与 view.ts 的纯渲染分离，
+/** welcome-banner 挂载编排（hero 门控扫描 + 顶层弹窗绘制调度）：与 view.ts 的纯渲染分离，
  * 纯粹为了 300 行红线；逻辑归属仍是 welcome-banner 自包含目录（单向依赖 view 的 render）。
  * P 时辰 v1：出现规则沿用 hero 门 + 可见性门；未绑定零 UI；中央“进门”仅收起卡片。
  * 进门记忆语义（用户 verdict）：key 永远是工作区全路径；点过“回家”后不再出现，
@@ -78,6 +78,14 @@ function saveWelcomed(fctx: FeatureCtx, path: string, seen: boolean): void {
   } catch { /* 持久化失败不影响展示（内存态照常） */ }
 }
 
+/** 顶层挂载位：hero 只做门控，弹窗一律挂 body，不占据对话框版面。 */
+function topLayer(): unknown {
+  try {
+    const d = typeof document !== "undefined" ? (document as unknown as { body?: unknown }) : null;
+    return d?.body ?? null;
+  } catch { return null; }
+}
+
 function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
   const text = textOf(heroRoot);
   if (!heroConfirmed(phaseAttr(heroRoot), text)) return;
@@ -130,17 +138,14 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown): void {
     });
   } catch { return; }
   try {
-    const root = heroRoot as { parentNode?: unknown } | null;
-    const parent = root?.parentNode as {
-      insertBefore?: (n: unknown, ref: unknown) => void;
-    } | null;
-    if (!parent || typeof parent.insertBefore !== "function") return;
+    const parent = topLayer() as { appendChild?: (n: unknown) => void } | null;
+    if (!parent || typeof parent.appendChild !== "function") return;
     const prev = st.painted.get(heroRoot);
-    if (prev && (prev.parent as unknown) === (parent as unknown) && prev.node && prev.sig === showSig) return;
+    if (prev && prev.node && prev.sig === showSig) return;
     removePainted(st, heroRoot);
-    parent.insertBefore(card, heroRoot);
+    parent.appendChild(card);
     st.painted.set(heroRoot, { node: card, parent, sig: showSig, path });
-    infoOnce("painted:" + path, "P 横幅已挂载到空态上方（" + path + "，时段=" + seg + "）。");
+    infoOnce("painted:" + path, "P 弹窗已挂载到顶层（" + path + "，时段=" + seg + "）。");
   } catch { /* 宿主 DOM 变化即跳过本轮 */ }
 }
 
@@ -174,7 +179,7 @@ function scheduleScan(fctx: FeatureCtx, st: MountState, doc: unknown): void {
   } catch { /* ignore */ }
 }
 
-/** 挂载横幅：零槽位 DOM 叠加。永不调用 slots API（无 SlotCore 抛错面）；
+/** 挂载横幅：hero 只做门控，弹窗一律挂 body 顶层（不占据对话框版面）。永不调用 slots API（无 SlotCore 抛错面）；
  * 无 document/MutationObserver 环境回 noop；所有异常内部消化，绝不向上传播。 */
 export function mountBanner(fctx: FeatureCtx): () => void {
   activeGen += 1;
