@@ -1,9 +1,4 @@
-/** welcome-banner 纯数据层（DOM-free，可 node 直测）：E4 欢迎横幅 P 时辰 v1。
- * 诚实约束：mock 只验设计；本层只消费现成事实——stream 健康快照、
- * meta 身份、routes.list 路由投影；无未读数、无时间、无昵称，
- * 所有“不知道”都以 null/空表达，绝不谎报。
- * P 内容以原型 PH 数据为准：五段×三套 = 15 句 + 各段按钮文案。
- * 凌晨≠深夜：一个要陪伴（鱼肚白天相），一个要守候。 */
+/** welcome-banner 纯数据层（DOM-free，可 node 直测）：只消费现成事实（stream 健康/meta 身份/路由投影），无未读数、无时间、无昵称，不知道即 null。P 内容以 PH 为准：五段×三套。 */
 import { channelLabel, type HealthKind } from "../../client/data/config";
 import { basenameOf, buildModel } from "../../client/data/model";
 import type { AgentMetaDoc } from "../../client/data/meta";
@@ -126,8 +121,7 @@ const PH: Record<TimeSeg, SegDef> = {
 
 export const TIME_SEGS: TimeSeg[] = ["wee", "dawn", "day", "dusk", "night"];
 
-/** 时段映射：凌晨 2-5 陪伴、清晨 5-9、白天 9-17、黄昏 17-20、其余为深夜守候；
- * 非法输入回 night（fail-safe 守候）。 */
+/** 时段映射：凌晨2-5陪伴/清晨5-9/白天9-17/黄昏17-20，其余深夜守候；非法回 night。 */
 export function segOfHour(h: number): TimeSeg {
   const hour = Math.floor(h);
   if (!(hour >= 0 && hour < 24)) return "night";
@@ -143,6 +137,13 @@ export function normalizeCopyIdx(idx: number): number {
   const n = Math.floor(idx);
   if (!isFinite(n)) return 0;
   return ((n % 3) + 3) % 3;
+}
+
+/** 每日一句：同段三句按日期轮换（零 UI）。月份日取模，非法回 0。 */
+export function dailyIdx(dayOfMonth: number): number {
+  const n = Math.floor(dayOfMonth);
+  if (!isFinite(n) || n < 1) return 0;
+  return n % 3;
 }
 
 export type HomeLang = "zh" | "en";
@@ -162,9 +163,7 @@ export function copyFor(seg: TimeSeg, idx: number, lang: HomeLang = "zh"): TimeC
   return { seg: key, idx: i, tab: def.tab, sky: def.sky, moon: def.moon, horizon: def.horizon, t: o.t, s: o.s, b: o.b, bs: o.bs };
 }
 
-/** 副标题后半句：去掉 mock 的“飞书在线 ·”前缀，由视图拼真实健康态。
- * 含“1 个会话”的两句用真实路由数填充；未加载（null）时去数字保守表述。
- * mock 名“小帅”换为真实 Agent 名。 */
+/** 副标题后半句：去 mock 前缀拼真实健康态；计数句填真实路由数（null 去数字）；小帅换真名。 */
 export function displaySub(rawSub: string, total: number | null, agentName?: string, lang: HomeLang = "zh"): string {
   const raw = String(rawSub ?? "");
   const dot = raw.indexOf("·");
@@ -199,8 +198,7 @@ export function welcomedOf(doc: AgentMetaDoc | null): Record<string, boolean> {
   return out;
 }
 
-/** 解绑清除：welcomed 里已无机器人（不在存活路径集）的记录即“无家可归”，予以清除。
- * 返回保留集与被清路径（调用方对被清路径逐个持久化 seen=false，重绑后 welcome 重现）。 */
+/** 解绑清除：welcomed 里无机器人的记录即清除；返回保留集与被清路径（调用方持久化 seen=false）。 */
 export function pruneWelcomed(
   welcomed: Record<string, boolean>,
   alivePaths: string[] | Set<string>,

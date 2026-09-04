@@ -10,7 +10,7 @@ import type { AgentMetaDoc } from "../../client/data/meta";
 import { basenameOf, viewName } from "../../client/data/model";
 import type { FeatureCtx } from "../protocol";
 import {
-  buildBannerModel, copyFor, displaySub, homeLangOf, matchWorkspaceLabel, pruneWelcomed, segOfHour, summarizeRoutes, welcomedOf,
+  buildBannerModel, copyFor, dailyIdx, displaySub, homeLangOf, matchWorkspaceLabel, pruneWelcomed, segOfHour, summarizeRoutes, welcomedOf,
   type HomeLang, type RouteRef, type WsCandidate,
 } from "./data";
 import { eachHero, heroConfirmed, heroWorkspaceLabel, isVisible, phaseAttr, textOf } from "./anchor";
@@ -129,10 +129,11 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown, lang: Ho
   }
   const mine = st.routes.filter((r) => r && typeof r.chat === "string" && model.bots.some((b) => b.channel === r.channel && (!r.botId || b.botId === r.botId)));
   const total = st.routesOk ? summarizeRoutes(mine).total : null;
-  const seg = segOfHour(new Date().getHours());
-  const copy = copyFor(seg, 0, lang);
+  const now = new Date();
+  const seg = segOfHour(now.getHours());
+  const copy = copyFor(seg, dailyIdx(now.getDate()), lang);
   const subSuffix = displaySub(copy.s, total, model.name, lang);
-  const showSig = lang + "|" + model.key + "|" + model.name + "|" + seg + "|" + model.status + "|" + (total === null ? "x" : total);
+  const showSig = lang + "|" + model.key + "|" + model.name + "|" + seg + "|" + copy.idx + "|" + model.status + "|" + (total === null ? "x" : total);
   let card: unknown = null;
   try {
     card = renderHome({

@@ -748,6 +748,19 @@ test("homeLangOf 跟随 DSH 系统语言", () => {
   assert.equal(data.homeLangOf("fr"), "zh");
 });
 
+test("dailyIdx 每日一句轮换（零UI，十五句全活）", () => {
+  assert.equal(data.dailyIdx(1), 1);
+  assert.equal(data.dailyIdx(2), 2);
+  assert.equal(data.dailyIdx(3), 0);
+  assert.equal(data.dailyIdx(30), 0);
+  assert.equal(data.dailyIdx(31), 1);
+  assert.equal(data.dailyIdx(0), 0);
+  assert.equal(data.dailyIdx(-5), 0);
+  assert.equal(data.dailyIdx(NaN), 0);
+  const seen = new Set([1, 2, 3].map((d) => data.dailyIdx(d)));
+  assert.deepEqual([...seen].sort(), [0, 1, 2]);
+});
+
 test("EN 十五句完整性（结构对齐中文）", () => {
   for (const seg of data.TIME_SEGS) {
     for (let i = 0; i < 3; i++) {
