@@ -58,10 +58,10 @@ test('model：行数口径计数 + 三态放行（stale 仍算绑定）', () => 
   assert.equal(model.passFilter(W1, 'all', bots), true);
   assert.equal(model.passFilter(W1, 'bound', [{ ...bots[0], stale: true, connected: false }]), true);
   assert.equal(model.segLabel('bound', 2), '有助理 2');
-  assert.equal(model.segLabel('unbound', 1), '待认领 1');
+  assert.equal(model.segLabel('unbound', 1), '无助理 1');
 });
 
-test('model：助理名牌（去重/渠道/待认领）', () => {
+test('model：助理名牌（去重/渠道/无助理）', () => {
   assert.deepEqual(model.assistantsOf(W1, bots), ['小帅']);
   assert.deepEqual(model.assistantsOf('D:\\agents\\dsh-im', bots), []);
   assert.match(model.rowTip(W1, bots), /助理：小帅/);
@@ -251,7 +251,7 @@ test('view：条带挂载 + 三段计数 + 整组藏显 + 卸载还原', () => {
   assert.ok(countSpan, '数字降级为独立 span');
   assert.equal(countSpan.textContent, '2');
   segButton(strip, 'bound').fire('click');
-  assert.equal((sec3 as any).style.display, 'none', '待认领组被藏');
+  assert.equal((sec3 as any).style.display, 'none', '无助理组被藏');
   assert.notEqual((sec1 as any).style.display, 'none');
   segButton(strip, 'unbound').fire('click');
   assert.equal((sec1 as any).style.display, 'none');
@@ -274,7 +274,7 @@ test('view：搜索态结果行按归属 AND 过滤 + 空提示', () => {
   assert.ok(strip, '搜索态条带仍有锚点');
   segButton(strip, 'bound').fire('click');
   assert.equal((r1 as any).style.display !== 'none', true, '有助理归属的结果保留');
-  assert.equal((r2 as any).style.display, 'none', '待认领归属的结果被藏');
+  assert.equal((r2 as any).style.display, 'none', '无助理归属的结果被藏');
   segButton(strip, 'unbound').fire('click');
   const hint = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-empty'));
   assert.ok(!hint, '搜索未筛空时无空提示');
@@ -324,7 +324,7 @@ test('header-btn：循环三态 + tooltip 三数 + 原生按钮不动', () => {
   const tip = headerBtn.headerTip('bound', { all: 30, bound: 6, unbound: 24 });
   assert.match(tip, /有助理 6/);
   assert.match(tip, /全部 30/);
-  assert.match(tip, /待认领 24/);
+  assert.match(tip, /无助理 24/);
 });
 
 test('view：头栏第 4 按钮挂载 + 点击循环 + 卸载摘除', () => {
@@ -349,9 +349,9 @@ test('view：头栏第 4 按钮挂载 + 点击循环 + 卸载摘除', () => {
   assert.ok(hb, '头栏出现第 4 个按钮');
   assert.equal(header.children.length, 3, '原生两个按钮不动，只追加');
   assert.match(String(hb.attrs.title ?? ''), /全部 2/);
-  assert.match(String(hb.attrs.title ?? ''), /待认领 1/);
+  assert.match(String(hb.attrs.title ?? ''), /无助理 1/);
   hb.fire('click');
-  assert.equal((sec3 as any).style.display, 'none', '点击循环到有助理，藏起待认领组');
+  assert.equal((sec3 as any).style.display, 'none', '点击循环到有助理，藏起无助理组');
   assert.match(String(hb.attrs.title ?? ''), /有助理/);
   assert.ok(String(hb.attrs.class ?? '').split(' ').includes('on'), '非全部态着色');
   dispose();

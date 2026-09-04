@@ -7,7 +7,7 @@ export type FilterId = 'all' | 'bound' | 'unbound'
 export const FILTERS: FilterId[] = ['all', 'bound', 'unbound']
 
 /** 用户语言（2026-09-04 裁定）：不说“绑定”（实现语言），说“助理”（用户语言）。 */
-export const FILTER_LABEL: Record<FilterId, string> = { all: '全部', bound: '有助理', unbound: '待认领' }
+export const FILTER_LABEL: Record<FilterId, string> = { all: '全部', bound: '有助理', unbound: '无助理' }
 
 export function normKey(s: string): string {
   return String(s ?? '').replace(/\\/g, '/').toLowerCase().trim()
@@ -74,7 +74,7 @@ export function channelName(ch: string): string {
   return CHANNEL_LABEL[String(ch ?? '').toLowerCase()] ?? String(ch ?? '')
 }
 
-/** 该工作区的助理名牌：去重 Bot 名（无名用路径 basename）；空数组 = 待认领。 */
+/** 该工作区的助理名牌：去重 Bot 名（无名用路径 basename）；空数组 = 无助理。 */
 export function assistantsOf(wsPath: string, bots: BotSnap[]): string[] {
   const out: string[] = []
   for (const b of bots) {
@@ -85,7 +85,7 @@ export function assistantsOf(wsPath: string, bots: BotSnap[]): string[] {
   return out
 }
 
-/** 行悬停名牌（只读 title 属性，不写节点）：有助理→名字+渠道，无→待认领。 */
+/** 行悬停名牌（只读 title 属性，不写节点）：有助理→名字+渠道，无→无助理。 */
 export function rowTip(wsPath: string, bots: BotSnap[]): string {
   const names = assistantsOf(wsPath, bots)
   if (!names.length) return '暂无助理认领'

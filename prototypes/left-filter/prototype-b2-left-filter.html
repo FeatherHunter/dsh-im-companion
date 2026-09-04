@@ -118,7 +118,7 @@
 /* 纯逻辑模块（可搬移部分）：无 DOM、无 document，(state, action) => state + 纯派生。页面只是调用它。 */
 /* 取证对应：count=分组行数；原生搜索匹配会话标题（session.search 语义简化）；绑定不是在线。 */
 var FILTERS = ["all", "bound", "unbound"];
-var FILTER_LABEL = { all: "全部", bound: "有助理", unbound: "待认领" }; /* 文案与实现同步（2026-09-04 用户语言裁定），其余散文保持冻结 */
+var FILTER_LABEL = { all: "全部", bound: "有助理", unbound: "无助理" }; /* 文案与实现同步（2026-09-04 用户语言裁定），其余散文保持冻结 */
 var BADGE_LABEL = { online: "在线", warn: "待确认", offline: "离线", unbound: "未绑定" };
 function isBound(path, bots) {
   for (var i = 0; i < bots.length; i++) if (bots[i].workspace === path) return true;
