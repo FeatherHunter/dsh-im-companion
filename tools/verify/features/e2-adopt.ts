@@ -138,6 +138,8 @@ test('样式命名空间 e2- 且不占用 .af- 私有约定', () => {
   assert.ok(!String(styles.CSS).includes('prefers-color-scheme'), '深浅跟宿主牌子，不问系统');
   assert.ok(String(styles.CSS).includes('body[data-ds-dark-theme]'), '深色挂钩宿主');
   assert.ok(String(styles.CSS).includes('Microsoft YaHei'), '中文字体备胎');
+  assert.ok(String(styles.CSS).includes('color-mix(in srgb, var(--dsw-alias-bg-base'), '深色纸底跟宿主走（方案三）');
+  assert.ok(String(styles.CSS).includes('.e2-sec-empty'), '空家有关灯样式');
   assert.ok(String(styles.CSS).split('\n').every((ln: string) => ((ln.match(/\{/g) || []).length === (ln.match(/\}/g) || []).length)), '每行花括号配平（失衡会吞掉后面的规则）');
 });
 
@@ -431,6 +433,9 @@ test('view：无人之家上墙 + 拖入直接绑定', async () => {
   openPanel();
   const empty = panelSections().find((s: any) => s.getAttribute('data-e2-ws') === 'D:\\agents\\empty');
   assert.ok(empty, '无人之家上墙');
+  assert.ok(String(empty.attrs?.class ?? '').split(' ').includes('e2-sec-empty'), '空家挂关灯 class');
+  const plaza0 = panelSections().find((s: any) => s.getAttribute('data-e2-plaza') === '1');
+  assert.ok(panelSections().indexOf(plaza0) < panelSections().indexOf(empty), '巷子口是分界线（空家沉底）');
   assert.equal(sectionRows(empty).length, 0, '空家没照片');
   assert.ok(bodyText().includes('空无一人'), '空家提示');
   fireDrop(empty, { botId: 'f1', channel: 'feishu' });

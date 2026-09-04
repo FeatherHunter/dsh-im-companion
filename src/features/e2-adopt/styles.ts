@@ -1,11 +1,11 @@
 /** e2-adopt 样式（命名空间 e2-*；不占用 .af-* 私有约定）。
- * 纸面双主题：浅色=暖纸，深色=夜墙（跟宿主 body[data-ds-dark-theme] 牌子切换，同一张纸的两种光）。 */
+ * 纸面双主题（方案三）：浅色=冻结暖纸；深色=宿主 token 派生（color-mix，关系锁定：卡恒比纸亮，字跟宿主走）。空家有关灯（e2-sec-empty）。 */
 export const CSS = [
   '.e2-entry{width:26px;height:26px;border-radius:50%;border:1px solid rgba(127,127,127,.5);background:transparent;color:inherit;display:inline-grid;place-items:center;padding:0;margin-left:6px;cursor:pointer;vertical-align:middle}',
   '.e2-entry:hover{border-color:#0a84ff;color:#0a84ff}',
   '.e2-overlay{position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:20px}',
   '.e2-cockpit{--e2-paper:#d9cfbd;--e2-card:#fffdf8;--e2-ink:#3d3225;--e2-faint:rgba(90,70,40,.55);--e2-line:rgba(90,70,40,.16);position:relative;width:min(920px,94vw);max-height:86vh;overflow:auto;background:var(--e2-paper);color:var(--e2-ink);border-radius:16px;padding:18px 18px 20px;box-shadow:0 24px 64px rgba(0,0,0,.35)}',
-  'body[data-ds-dark-theme] .e2-cockpit{--e2-paper:#201b14;--e2-card:rgba(255,250,240,.055);--e2-ink:#f4ede1;--e2-faint:rgba(244,237,225,.55);--e2-line:rgba(244,237,225,.14);border:1px solid rgba(255,255,255,.08);box-shadow:0 24px 80px rgba(0,0,0,.6)}',
+  'body[data-ds-dark-theme] .e2-cockpit{--e2-paper:color-mix(in srgb, var(--dsw-alias-bg-base, #201b14) 85%, #c8a75a 15%);--e2-card:color-mix(in srgb, var(--e2-paper) 88%, #fff8ea 12%);--e2-ink:var(--dsw-alias-label-primary, #f4ede1);--e2-faint:var(--dsw-alias-label-secondary, rgba(244,237,225,.68));--e2-line:color-mix(in srgb, var(--e2-paper) 70%, #c8a75a 30%);border:1px solid var(--e2-line);box-shadow:0 24px 80px rgba(0,0,0,.6)}',
   '.e2-x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:50%;border:1px solid var(--e2-line);background:transparent;color:inherit;font-size:15px;line-height:1;cursor:pointer;opacity:.7}',
   '.e2-panel-title{font-size:16px;font-weight:800;letter-spacing:.04em;margin:0 0 4px;padding-right:36px;color:var(--e2-ink,#3d3225)}',
   '.e2-panel-sub{font-size:12px;color:var(--e2-faint);margin:0 0 14px;line-height:1.6}',
@@ -16,7 +16,7 @@ export const CSS = [
   '.e2-sec-new .e2-sec-name,.e2-sec-new .e2-plus-hint{grid-column:1/-1;margin:0 2px}.e2-sec-new .e2-row{margin-top:0}',
   '.e2-sec-name{display:flex;align-items:center;gap:8px;margin:0 2px 10px}',
   '.e2-tape{display:inline-block;max-width:100%;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;overflow-wrap:anywhere;vertical-align:bottom;background:rgba(200,180,130,.5);padding:1px 12px;font-size:15px;font-weight:800;transform:rotate(-2deg)}',
-  'body[data-ds-dark-theme] .e2-tape{background:rgba(210,185,130,.30);color:#fff8ea}body[data-ds-dark-theme] .e2-sec{background:var(--e2-card);border-color:rgba(244,237,225,.10)}body[data-ds-dark-theme] .e2-row{border-color:rgba(244,237,225,.10)}body[data-ds-dark-theme] .e2-h-off{background:#6e6e73}body[data-ds-dark-theme] .e2-confirmbox{background:rgba(0,0,0,.55)}body[data-ds-dark-theme] .e2-badge{color:#e8c97a;background:rgba(232,201,122,.14)}',
+  'body[data-ds-dark-theme] .e2-tape{background:#c8a75a;color:#201b14}body[data-ds-dark-theme] .e2-sec{background:var(--e2-card);border:1px solid color-mix(in srgb, var(--e2-paper) 60%, #c8a75a 40%)}body[data-ds-dark-theme] .e2-sec-empty{border-color:color-mix(in srgb, var(--e2-paper) 85%, #c8a75a 15%)}body[data-ds-dark-theme] .e2-row{border-color:rgba(244,237,225,.10)}body[data-ds-dark-theme] .e2-h-off{background:#6e6e73}body[data-ds-dark-theme] .e2-confirmbox{background:rgba(0,0,0,.55)}body[data-ds-dark-theme] .e2-badge{color:#e8c97a;background:rgba(232,201,122,.14)}',
   '.e2-row{background:var(--e2-card);border-radius:4px;margin-top:10px;padding:8px 8px 10px;cursor:grab;box-shadow:0 3px 10px rgba(90,70,40,.14);transition:transform .12s ease,box-shadow .12s ease}',
   'body[data-ds-dark-theme] .e2-row{box-shadow:0 3px 10px rgba(0,0,0,.4)}',
   '.e2-row[draggable="false"]{opacity:.45;cursor:default}',
@@ -33,6 +33,7 @@ export const CSS = [
   '.e2-cap{display:block;margin-top:6px;font-size:11px;color:var(--e2-faint);font-style:italic}',
   '.e2-plus-hint{font-size:12px;color:var(--e2-faint);line-height:1.6}',
   '.e2-badge{display:inline-block;margin-top:6px;font-size:11px;font-weight:700;color:#7a5c2e;background:rgba(122,92,46,.12);border-radius:6px;padding:1px 8px}',
+  '.e2-sec-empty{background:transparent;border:1px solid var(--e2-line);box-shadow:none}.e2-sec-empty .e2-tape{opacity:.7}',
   '.e2-drop-ok{outline:2.5px solid #7a5c2e !important;outline-offset:4px}',
   '.e2-drop-warn{outline:2.5px solid #e6a700 !important;outline-offset:4px}',
   '.e2-undo{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:9150;display:flex;align-items:center;gap:10px;font-size:13px;padding:10px 14px;border-radius:12px;background:#1c1c1e;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.3)}',
