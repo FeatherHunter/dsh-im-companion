@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>串门·搬家 — 复古暖原型 A</title>
+<style>
+:root{
+--paper:#f6ecda;--paper2:#efe0c6;--ink:#4a3b28;--ink-soft:#7a6550;
+--card:#fffaf0;--card-edge:#e3d2b3;
+--tape:rgba(232,197,132,.72);--tape-ink:#6b4e2a;
+--photo-bg:#fffdf7;--accent:#b3541e;--accent2:#d98a2b;
+--green:#3fa34d;--yellow:#d9a62b;--gray:#a89d8d;
+--shadow:0 10px 24px rgba(120,85,40,.18);
+--kaiti:"Kaiti SC","STKaiti",KaiTi,serif;
+}
+body[data-theme="dark"]{
+--paper:#201b14;--paper2:#2a2318;--ink:#f0e2c8;--ink-soft:#c2ab8a;
+--card:#2e261b;--card-edge:#4a3d28;
+--tape:rgba(240,226,200,.88);--tape-ink:#3a2c18;
+--photo-bg:#f5ecd9;--accent:#f0b45a;--accent2:#ffdf9e;
+--shadow:0 12px 28px rgba(0,0,0,.5);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:Georgia,serif;background:var(--paper);color:var(--ink);min-height:100vh;position:relative;transition:background .35s ease,color .35s ease;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.06;mix-blend-mode:multiply;}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;}
+.glow{position:fixed;top:0;left:0;right:0;height:180px;z-index:0;pointer-events:none;}
+.wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto;padding:18px 18px 60px}
+.banner{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px dashed var(--accent2);background:var(--card);border-radius:12px;padding:10px 14px;margin-bottom:16px;box-shadow:var(--shadow)}
+.banner strong{font-family:var(--kaiti);letter-spacing:.06em}
+.tag{font-size:12px;border:1px solid var(--accent2);border-radius:999px;padding:2px 10px;color:var(--accent)}
+.spacer{flex:1}
+#themeBtn{cursor:pointer;border:1px solid var(--accent2);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font-size:14px;font-family:inherit}
+#themeBtn:hover{transform:translateY(-2px)}
+.panel{position:relative;background:var(--card);border:1px solid var(--card-edge);border-radius:16px;padding:22px 20px;box-shadow:var(--shadow)}
+.panel-head{display:flex;align-items:flex-start;gap:12px}
+.panel-head h1{font-family:var(--kaiti);font-size:30px;margin:0;letter-spacing:.12em}
+.panel-head p{margin:6px 0 0;color:var(--ink-soft);font-size:14px;line-height:1.7}
+.close{margin-left:auto;flex:none;width:36px;height:36px;border-radius:50%;border:1px solid var(--card-edge);background:var(--paper);color:var(--ink);font-size:20px;cursor:pointer}
+h2.sec{font-family:var(--kaiti);font-size:19px;margin:22px 2px 10px;letter-spacing:.1em}
+h2.sec small{font-size:12px;color:var(--ink-soft);margin-left:8px;letter-spacing:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px}
+.card{position:relative;background:var(--card);border:1px solid var(--card-edge);border-radius:6px 6px 12px 12px;padding:30px 12px 12px;box-shadow:var(--shadow);transition:transform .22s ease,box-shadow .22s ease}
+.card:hover{transform:translateY(-6px) !important;}
+.plate{position:absolute;top:-12px;left:50%;translate:-50% 0;font-family:var(--kaiti);font-size:15px;white-space:nowrap;background:var(--tape);color:var(--tape-ink);padding:5px 14px;min-width:120px;text-align:center;box-shadow:0 2px 6px rgba(90,60,20,.25);}
+.member{display:flex;align-items:center;gap:8px;margin:6px 0}
+.dot{width:12px;height:12px;border-radius:50%;flex:none}
+.dot.green{background:#3fa34d;animation:breathe 2.2s ease-in-out infinite}
+.dot.yellow{background:var(--yellow)}
+.dot.gray{background:var(--gray)}
+.bio{font-size:12.5px;line-height:1.7;color:var(--ink-soft);border-top:1px dashed var(--card-edge);padding-top:8px;margin:0}
+.photos{display:flex;gap:14px;flex-wrap:wrap}
+.photo{background:var(--photo-bg);border:1px solid #e8dcc4;border-radius:4px;padding:10px 10px 12px;width:168px;text-align:center;color:#4a3b28;transition:transform .22s ease;}
+.photo:hover{transform:rotate(0deg) scale(1.06) translateY(-4px) !important;}
+.photo .img{height:110px;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:40px;background:linear-gradient(160deg,#f3d9a8,#c98f3f);}
+.photo .nm{font-family:var(--kaiti);font-size:17px;margin:8px 0 6px}
+.badge{display:inline-block;font-size:11.5px;background:#fdf3dd;border:1px solid #e3c98f;color:#7a4d16;border-radius:999px;padding:2px 9px}
+.alley{border:1.5px dashed var(--accent2);border-radius:14px;padding:14px;}
+.alley p.desc{margin:0 0 12px;font-size:13.5px;line-height:1.8;color:var(--ink-soft)}
+.empty{border:1.5px dashed var(--card-edge);border-radius:12px;padding:34px 12px 22px;text-align:center;color:var(--ink-soft);position:relative;transition:transform .22s ease}
+.empty:hover{transform:translateY(-6px)}
+.modal-demo{margin-top:8px;background:var(--card);border:1px solid var(--card-edge);border-radius:14px;max-width:440px;padding:20px 18px;box-shadow:var(--shadow);position:relative;transition:transform .22s ease}
+.modal-demo:hover{transform:translateY(-4px)}
+.modal-demo h3{font-family:var(--kaiti);margin:4px 0 12px;font-size:20px}
+.route{border:1px solid var(--card-edge);border-radius:10px;padding:10px 12px;margin:8px 0}
+.route .lbl{font-size:12px;color:var(--ink-soft)}
+.route .home{font-size:16px;font-family:var(--kaiti)}
+.route code{font-size:11.5px;color:var(--ink-soft);font-family:Consolas,monospace;word-break:break-all}
+.arrow{text-align:center;color:var(--accent);font-size:18px}
+.btns{display:flex;gap:10px;margin-top:12px}
+.btns button{flex:1;border-radius:999px;padding:10px;font-size:14px;cursor:pointer;font-family:inherit}
+.ghost{background:transparent;border:1px solid var(--card-edge);color:var(--ink)}
+.solid{background:linear-gradient(180deg,var(--accent2),var(--accent));border:1px solid var(--accent);color:#fffaf0}
+.foot{margin-top:22px;font-size:12px;color:var(--ink-soft);text-align:center}
+body::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");}
+body::after{background:radial-gradient(ellipse at 50% 38%, transparent 55%, rgba(88,52,18,.18) 100%);}
+body[data-theme="dark"]::after{background:radial-gradient(ellipse at 50% 38%, transparent 52%, rgba(0,0,0,.55) 100%);}
+.glow{background:radial-gradient(ellipse 70% 90% at 50% -20%, rgba(255,196,110,.65), rgba(255,170,90,.18) 55%, transparent 75%);}
+body[data-theme="dark"] .glow{background:radial-gradient(ellipse 70% 90% at 50% -20%, rgba(255,190,110,.28), rgba(255,170,90,.08) 55%, transparent 75%);}
+.grid .card:nth-child(odd) .plate{transform:rotate(-2.6deg)}
+.grid .card:nth-child(even) .plate{transform:rotate(2.2deg)}
+.grid .card:nth-child(3n) .plate{transform:rotate(-1.2deg)}
+.photos .photo:nth-child(1){transform:rotate(-1.6deg)}
+.photos .photo:nth-child(2){transform:rotate(1.4deg)}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 3px rgba(63,163,77,.25),0 0 10px rgba(63,163,77,.7)}50%{box-shadow:0 0 0 6px rgba(63,163,77,.12),0 0 18px rgba(63,163,77,.95)}}
+</style>
+</head>
+<body data-theme="light">
+<div class="glow"></div>
+<div class="wrap">
+<div class="banner">
+<strong>THROWAWAY 原型 A·复古暖（双击即看）</strong>
+<span class="tag">单文件 · 零依赖 · 不存数据</span>
+<span class="spacer"></span>
+<button id="themeBtn" type="button">切换深色</button>
+</div>
+<section class="panel">
+<div class="panel-head">
+<div>
+<h1>串门·搬家</h1>
+<p>把照片拖到另一家，换绑要二次确认。绿灯在岗，黄灯打盹，灰灯睡着了。</p>
+</div>
+<button class="close" title="关闭">×</button>
+</div>
+<h2 class="sec">各家各户 <small>九扇门 · 先看灯再敲门</small></h2>
+<div class="grid">
+<div class="card"><div class="plate">Xinghuo</div><div class="member"><span class="dot green"></span><b>星火</b></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+<div class="card"><div class="plate">小帅2</div><div class="member"><span class="dot green"></span><b>小帅 + 微信机器人</b></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+<div class="card"><div class="plate">Xiaoshan</div><div class="member"><span class="dot green"></span><b>小膳</b></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+<div class="card"><div class="plate">Xiaojiang</div><div class="member"><span class="dot yellow"></span><b>小匠</b></div><p class="bio">飞书 · 打盹中，戳一戳就醒</p></div>
+<div class="card"><div class="plate">Dsh-mattpocock-sk…</div><div class="member"><span class="dot green"></span><b>小琢</b></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+<div class="card"><div class="plate">Xiaoyan</div><div class="member"><span class="dot green"></span><b>小研</b></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+<div class="card"><div class="plate">Xiaowan</div><div class="member"><span class="dot green"></span><b>小婉</b></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+<div class="card"><div class="plate">Xiaosun</div><div class="member"><span class="dot gray"></span><b>小孙</b></div><p class="bio">飞书 · 睡着了，明早再来敲门</p></div>
+<div class="card"><div class="plate">Zhijianzhuli</div><div class="member"><span class="dot green"></span><b>智剪助理</b></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+</div>
+<h2 class="sec">巷子口 <small>歇脚 · 等安家</small></h2>
+<div class="alley">
+<p class="desc">串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。</p>
+<div class="photos">
+<div class="photo"><div class="img">梨</div><div class="nm">阿梨</div><span class="badge">歇脚中 · 出来自Ali</span></div>
+<div class="photo"><div class="img">北</div><div class="nm">小北</div><span class="badge">新来的 · 等安家</span></div>
+</div>
+</div>
+<h2 class="sec">空房子 <small>等一张照片搬进来</small></h2>
+<div class="grid">
+<div class="empty"><div class="plate">Dsh-im-companion</div><div style="font-size:28px">房</div><div class="hint">空无一人，拖张照片进来</div></div>
+<div class="empty"><div class="plate">.db</div><div style="font-size:28px">房</div><div class="hint">空无一人，拖张照片进来</div></div>
+</div>
+<h2 class="sec">换绑弹窗示例 <small>二次确认才落槌</small></h2>
+<div class="modal-demo">
+<h3>小帅 · QQ · 在岗</h3>
+<div class="route"><div class="lbl">从「小帅2家」</div><div class="home">小帅2 家</div><code>D:\agents\xiaoshuai</code></div>
+<div class="arrow">↓</div>
+<div class="route"><div class="lbl">到「阿梨家」</div><div class="home">阿梨 家</div><code>D:\agents\ali</code></div>
+<div class="btns"><button class="ghost" type="button">留在这里</button><button class="solid" type="button">确认换绑</button></div>
+</div>
+<div class="foot">暖纸 · 胶带 · 拍立得 —— 关掉面板，各回各家。</div>
+</section>
+</div>
+<script>
+var btn = document.getElementById("themeBtn");
+btn.addEventListener("click", function(){
+var b = document.body;
+var dark = b.getAttribute("data-theme") !== "dark";
+b.setAttribute("data-theme", dark ? "dark" : "light");
+btn.textContent = dark ? "切换浅色" : "切换深色";
+});
+</script>
+</body>
+</html>

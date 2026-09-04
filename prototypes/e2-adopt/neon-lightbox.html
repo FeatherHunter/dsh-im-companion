@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>串门·搬家 — 暗夜灯箱原型 B</title>
+<style>
+  :root{
+    --gold:#e8c15a; --gold-hi:#ffe9a8; --gold-dim:#8a6d2b;
+    --ink:#f2e9d4; --muted:#a99f86;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body[data-theme="dark"]{
+    --bg0:#050505; --bg1:#0d0c09;
+    --card:#12100b; --card2:#171309;
+    --line:rgba(232,193,90,.38); --line-soft:rgba(232,193,90,.16);
+    --txt:var(--ink); --sub:var(--muted);
+    --champ:var(--gold);
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(232,193,90,.14), transparent 60%),
+      radial-gradient(900px 700px at 50% 110%, rgba(232,193,90,.07), transparent 60%),
+      radial-gradient(ellipse at center, #141109 0%, #080706 55%, #000 100%);
+    color:var(--txt);
+  }
+  body[data-theme="light"]{
+    --bg0:#faf6ec; --bg1:#f3ead3;
+    --card:#fffdf4; --card2:#fdf6e0;
+    --line:rgba(176,138,46,.55); --line-soft:rgba(176,138,46,.22);
+    --txt:#2b2413; --sub:#7a6f52;
+    --champ:#b08a2e;
+    background:
+      radial-gradient(1000px 500px at 50% -10%, rgba(176,138,46,.16), transparent 60%),
+      linear-gradient(#faf6ec,#f3ead3);
+    color:var(--txt);
+  }
+  body{font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;padding:0 0 60px}
+  .banner{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    padding:10px 18px;font-size:13px;letter-spacing:.08em;
+    border-bottom:1px solid var(--line-soft);
+    background:rgba(232,193,90,.07);
+  }
+  body[data-theme="light"] .banner{background:rgba(176,138,46,.08)}
+  .banner b{letter-spacing:.14em}
+  .theme-btn{
+    cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--txt);
+    border-radius:999px;padding:6px 14px;font-size:13px;
+  }
+  .theme-btn:hover{box-shadow:0 0 12px rgba(232,193,90,.45)}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 20px}
+  .panel{
+    position:relative;border:1px solid var(--line);border-radius:16px;
+    background:linear-gradient(180deg, var(--card2), var(--card));
+    box-shadow:0 0 0 1px rgba(0,0,0,.6), 0 0 32px rgba(232,193,90,.12), inset 0 0 60px rgba(0,0,0,.45);
+    padding:22px 22px 18px;
+  }
+  body[data-theme="light"] .panel{box-shadow:0 8px 30px rgba(176,138,46,.15)}
+  .panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .panel h1{margin:0;font-size:24px;letter-spacing:.2em}
+  .panel p.desc{margin:8px 0 0;color:var(--sub);font-size:14px}
+  .close{
+    cursor:pointer;flex:none;width:32px;height:32px;border-radius:50%;
+    border:1px solid var(--line);background:transparent;color:var(--txt);font-size:18px;line-height:1;
+  }
+  .close:hover{box-shadow:0 0 12px rgba(232,193,90,.6)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-top:18px}
+  .card{
+    border:1px solid var(--line-soft);border-radius:12px;padding:12px 12px 10px;
+    background:linear-gradient(180deg, rgba(255,233,168,.06), rgba(0,0,0,.18));
+    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+  }
+  body[data-theme="light"] .card{background:#fffdf4}
+  .card:hover{transform:translateY(-6px);border-color:var(--line);box-shadow:0 10px 28px rgba(0,0,0,.45),0 0 18px rgba(232,193,90,.35)}
+  .door{
+    font-family:"JetBrains Mono","SF Mono",Consolas,monospace;
+    text-transform:uppercase;letter-spacing:.08em;font-size:14px;font-weight:700;
+    background:linear-gradient(180deg,var(--gold-hi),var(--gold) 55%,var(--gold-dim));
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 0 8px rgba(232,193,90,.55));
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  body[data-theme="light"] .door{filter:none}
+  .meta{display:flex;align-items:center;gap:8px;margin:8px 0 6px;font-size:14px}
+  .dot{width:10px;height:10px;border-radius:50%;flex:none;background:#555}
+  .dot.green{background:#2bff88;box-shadow:0 0 6px #2bff88,0 0 14px #2bff88,0 0 26px rgba(43,255,136,.8)}
+  .dot.yellow{background:#ffcf3f;box-shadow:0 0 6px rgba(255,207,63,.9),0 0 14px rgba(255,207,63,.5)}
+  .dot.gray{background:#6b6b6b;box-shadow:none}
+  .member{font-weight:600}
+  .tag{font-size:12px;color:var(--sub);border:1px solid var(--line-soft);border-radius:999px;padding:1px 8px}
+  .bio{margin:0;font-size:12.5px;color:var(--sub);line-height:1.6}
+  .alley{margin-top:18px;border:1px dashed var(--line);border-radius:12px;padding:14px}
+  .alley h2{margin:0;font-size:15px;letter-spacing:.3em}
+  .alley p{margin:8px 0 12px;font-size:13px;color:var(--sub)}
+  .photos{display:flex;gap:12px;flex-wrap:wrap}
+  .photo{
+    width:150px;border-radius:10px;border:1px solid var(--line-soft);overflow:hidden;cursor:grab;
+    background:
+      linear-gradient(180deg, rgba(255,240,190,.14), transparent 40%),
+      linear-gradient(180deg,#2a2414,#0e0c07);
+    box-shadow:inset 0 0 18px rgba(255,233,168,.18), 0 0 14px rgba(232,193,90,.15);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  body[data-theme="light"] .photo{background:linear-gradient(180deg,#fff8df,#f3e6bd)}
+  .photo:hover{transform:translateY(-6px);box-shadow:inset 0 0 22px rgba(255,233,168,.32),0 0 22px rgba(232,193,90,.5)}
+  .face{height:96px;display:flex;align-items:center;justify-content:center;font-size:44px}
+  .pname{padding:8px 10px 10px;font-size:14px}
+  .badge{display:inline-block;margin-top:6px;font-size:11.5px;color:#0a0a0a;background:linear-gradient(180deg,#ffe9a8,#e8c15a);border-radius:999px;padding:2px 8px}
+  body[data-theme="light"] .badge{color:#3a2f10}
+  .empty{
+    border:1.5px dashed var(--champ);border-radius:12px;padding:14px;min-height:118px;
+    background:repeating-linear-gradient(45deg, rgba(232,193,90,.05) 0 10px, transparent 10px 20px), rgba(0,0,0,.35);
+    transition:transform .18s ease, box-shadow .18s ease;
+  }
+  body[data-theme="light"] .empty{background:#faf3dc}
+  .empty:hover{transform:translateY(-6px);box-shadow:0 0 18px rgba(232,193,90,.35)}
+  .empty .door{opacity:.9}
+  .empty p{color:var(--sub);font-size:13px;margin:10px 0 0}
+  .modal{margin-top:18px;border:1px solid var(--line);border-radius:14px;padding:18px;background:linear-gradient(180deg,var(--card2),var(--card));box-shadow:0 0 28px rgba(232,193,90,.18)}
+  .modal h3{margin:0;font-size:17px;letter-spacing:.06em}
+  .route{display:flex;gap:10px;align-items:stretch;margin:14px 0}
+  .route .box{flex:1;border:1px solid var(--line-soft);border-radius:10px;padding:10px 12px;font-size:14px}
+  .route .arrow{align-self:center;color:var(--champ)}
+  .path{display:block;margin-top:4px;font-size:11.5px;color:var(--sub);font-family:"JetBrains Mono","SF Mono",Consolas,monospace}
+  .btns{display:flex;gap:10px;justify-content:flex-end}
+  .btn{cursor:pointer;border-radius:10px;padding:9px 18px;font-size:14px;border:1px solid var(--line)}
+  .btn.ghost{background:transparent;color:var(--txt)}
+  .btn.gold{background:linear-gradient(180deg,#ffe9a8,#d9a93b);border-color:#8a6d2b;color:#1a1405;font-weight:700}
+  .btn:hover{filter:brightness(1.08)}
+  .foot{margin-top:14px;font-size:12px;color:var(--sub)}
+</style>
+</head>
+<body data-theme="dark">
+  <div class="banner"><b>THROWAWAY 原型 B·暗夜灯箱（双击即看）</b><button class="theme-btn" id="themeBtn" type="button">浅 / 深主题切换</button></div>
+  <div class="wrap">
+    <section class="panel" id="panel">
+      <div class="panel-head">
+        <div>
+          <h1>串门·搬家</h1>
+          <p class="desc">把照片拖到另一家，换绑要二次确认。绿灯在岗，黄灯打盹，灰灯睡着了。</p>
+        </div>
+        <button class="close" id="closeBtn" type="button" aria-label="关闭">×</button>
+      </div>
+
+      <div class="grid">
+        <div class="card"><div class="door">XINGHUO</div><div class="meta"><span class="dot green"></span><span class="member">星火</span><span class="tag">在岗</span></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+        <div class="card"><div class="door">小帅2</div><div class="meta"><span class="dot green"></span><span class="member">小帅+微信机器人</span><span class="tag">在岗</span></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+        <div class="card"><div class="door">XIAOSHAN</div><div class="meta"><span class="dot green"></span><span class="member">小膳</span><span class="tag">在岗</span></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+        <div class="card"><div class="door">XIAOJIANG</div><div class="meta"><span class="dot yellow"></span><span class="member">小匠</span><span class="tag">打盹</span></div><p class="bio">飞书 · 打盹中，轻点声，除了睡着的时候</p></div>
+        <div class="card"><div class="door">DSH-MATTPOCOCK-SK…</div><div class="meta"><span class="dot green"></span><span class="member">小琢</span><span class="tag">在岗</span></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+        <div class="card"><div class="door">XIAOYAN</div><div class="meta"><span class="dot green"></span><span class="member">小研</span><span class="tag">在岗</span></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+        <div class="card"><div class="door">XIAOWAN</div><div class="meta"><span class="dot green"></span><span class="member">小婉</span><span class="tag">在岗</span></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+        <div class="card"><div class="door">XIAOSUN</div><div class="meta"><span class="dot gray"></span><span class="member">小孙</span><span class="tag">睡着</span></div><p class="bio">飞书 · 睡着了，别叫醒</p></div>
+        <div class="card"><div class="door">ZHIJIANZHULI</div><div class="meta"><span class="dot green"></span><span class="member">智剪助理</span><span class="tag">在岗</span></div><p class="bio">飞书 · 永远在线，除了睡着的时候</p></div>
+      </div>
+
+      <div class="alley">
+        <h2>巷子口</h2>
+        <p>串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。</p>
+        <div class="photos">
+          <div class="photo" draggable="true"><div class="face">🍑</div><div class="pname">阿梨<br /><span class="badge">歇脚中 · 出自Ali</span></div></div>
+          <div class="photo" draggable="true"><div class="face">🧭</div><div class="pname">小北<br /><span class="badge">新来的 · 等安家</span></div></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div class="empty"><div class="door">DSH-IM-COMPANION</div><p>空无一人，拖张照片进来</p></div>
+        <div class="empty"><div class="door">.DB</div><p>空无一人，拖张照片进来</p></div>
+      </div>
+
+      <div class="modal">
+        <h3>小帅 · QQ · 在岗</h3>
+        <div class="route">
+          <div class="box">从「小帅2家」<span class="path">D:\agents\xiaoshuai</span></div>
+          <div class="arrow">→</div>
+          <div class="box">到「阿梨家」<span class="path">D:\agents\ali</span></div>
+        </div>
+        <div class="btns"><button class="btn ghost" type="button">留在这里</button><button class="btn gold" type="button">确认换绑</button></div>
+      </div>
+
+      <div class="foot">throwaway 原型 · 单文件零依赖 · 不读写任何存储，双击即看</div>
+    </section>
+  </div>
+<script>
+(function(){
+  var btn = document.getElementById('themeBtn');
+  btn.addEventListener('click', function(){
+    var b = document.body;
+    b.dataset.theme = (b.getAttribute('data-theme') === 'dark') ? 'light' : 'dark';
+  });
+  document.getElementById('closeBtn').addEventListener('click', function(){
+    document.getElementById('panel').style.display = 'none';
+  });
+})();
+</script>
+</body>
+</html>

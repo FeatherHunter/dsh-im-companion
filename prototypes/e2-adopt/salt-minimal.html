@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>串门·搬家 — C·盐系极简</title>
+<style>
+  :root{ --gold:#C8A25E; --r:6px; }
+  body[data-theme="light"]{ --paper:#FAFAF8; --card:#FFFFFF; --ink:#1A1A1A; --muted:#8B8B8B; --line:#E6E3DC; --soft:#F3F1EC; --btn:#1A1A1A; --btn-ink:#FFFFFF; }
+  body[data-theme="dark"]{ --paper:#161616; --card:#1E1E1E; --ink:#EDEDED; --muted:#9A9A9A; --line:rgba(255,255,255,.14); --soft:#242424; --btn:#EDEDED; --btn-ink:#161616; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--paper); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased; }
+  .banner{ border-bottom:1px solid var(--line); }
+  .banner-inner{ max-width:1080px; margin:0 auto; padding:14px 28px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .banner p{ margin:0; font-size:12px; letter-spacing:.14em; color:var(--muted); }
+  .banner button{ font:inherit; font-size:12px; letter-spacing:.06em; background:transparent; color:var(--ink);
+    border:1px solid var(--line); border-radius:999px; padding:7px 14px; cursor:pointer; }
+  .banner button:hover{ border-color:var(--muted); }
+  .wrap{ max-width:1080px; margin:0 auto; padding:48px 28px 72px; }
+  .panel{ position:relative; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:44px 40px 36px; }
+  .panel-close{ position:absolute; top:14px; right:16px; width:32px; height:32px; border:1px solid var(--line);
+    background:transparent; color:var(--muted); border-radius:6px; font-size:16px; line-height:1; cursor:pointer; }
+  .panel-close:hover{ color:var(--ink); border-color:var(--muted); }
+  .panel h1{ margin:0; font-size:26px; font-weight:650; letter-spacing:.02em; }
+  .panel .desc{ margin:10px 0 0; font-size:13px; line-height:1.8; color:var(--muted); max-width:62ch; }
+  .sec{ margin-top:34px; }
+  .sec-title{ font-size:12px; letter-spacing:.2em; color:var(--muted); margin:0 0 6px; }
+  .sec-desc{ font-size:13px; line-height:1.8; color:var(--muted); margin:0 0 16px; max-width:72ch; }
+  .grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; }
+  @media (max-width:860px){ .grid{ grid-template-columns:1fr 1fr; } .panel{ padding:32px 20px; } }
+  @media (max-width:560px){ .grid{ grid-template-columns:1fr; } }
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:6px; padding:18px;
+    box-shadow:none; transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  .card:hover{ transform:translateY(-3px); border-color:var(--muted); box-shadow:0 8px 24px rgba(0,0,0,.08); }
+  .plate-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .plate{ display:inline-block; font-size:11px; letter-spacing:.08em; text-transform:uppercase;
+    font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    background:var(--gold); color:#1A1A1A; border-radius:3px; padding:3px 8px; transform:rotate(0deg); max-width:70%;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .status{ display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--muted); white-space:nowrap; }
+  .dot{ width:7px; height:7px; border-radius:50%; display:inline-block; }
+  .dot.on{ background:#2DA44E; } .dot.nap{ background:#D9A21B; } .dot.off{ background:#C2C2C2; }
+  .member{ margin:14px 0 4px; font-size:16px; font-weight:600; }
+  .bio{ margin:0; font-size:12px; line-height:1.7; color:var(--muted); }
+  .photo{ margin-top:14px; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--soft); }
+  .photo-face{ height:84px; display:flex; align-items:center; justify-content:center; font-size:28px; color:var(--muted); }
+  .photo-meta{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-top:1px solid var(--line); }
+  .photo-name{ font-size:13px; font-weight:600; }
+  .badge{ font-size:11px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:3px 9px; white-space:nowrap; background:transparent; }
+  .alley{ border:1px solid var(--line); border-radius:6px; padding:22px; }
+  .alley-photos{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-top:4px; }
+  @media (max-width:560px){ .alley-photos{ grid-template-columns:1fr; } }
+  .empty{ border-style:dashed; }
+  .empty-tip{ margin:14px 0 0; font-size:12px; color:var(--muted); }
+  .modal-demo{ border:1px solid var(--line); border-radius:6px; padding:36px 20px; display:flex; justify-content:center; background:var(--soft); }
+  .modal{ width:min(420px,100%); background:var(--card); border:1px solid var(--line); border-radius:6px; padding:26px 24px 22px; }
+  .modal h3{ margin:0; font-size:16px; }
+  .move{ margin:18px 0 4px; border-top:1px solid var(--line); }
+  .move-row{ padding:12px 0; border-bottom:1px solid var(--line); }
+  .move-k{ font-size:12px; color:var(--muted); margin-bottom:4px; }
+  .move-v{ font-size:14px; font-weight:600; }
+  .move-path{ font-size:11px; color:var(--muted); font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; margin-top:3px; }
+  .btns{ display:flex; gap:10px; margin-top:18px; }
+  .btns button{ flex:1; font:inherit; font-size:13px; padding:10px 0; border-radius:6px; cursor:pointer; }
+  .ghost{ background:transparent; color:var(--ink); border:1px solid var(--line); }
+  .ghost:hover{ border-color:var(--muted); }
+  .solid{ background:var(--btn); color:var(--btn-ink); border:1px solid var(--btn); }
+  footer{ margin-top:28px; font-size:11px; color:var(--muted); letter-spacing:.04em; }
+</style>
+</head>
+<body data-theme="light">
+  <div class="banner"><div class="banner-inner">
+    <p>THROWAWAY 原型 C·盐系极简（双击即看）</p>
+    <button id="themeBtn" type="button">切换深色</button>
+  </div></div>
+
+  <div class="wrap">
+    <section class="panel" aria-label="串门·搬家面板">
+      <button class="panel-close" type="button" aria-label="关闭">×</button>
+      <h1>串门·搬家</h1>
+      <p class="desc">把照片拖到另一家，换绑要二次确认。绿灯在岗，黄灯打盹，灰灯睡着了。</p>
+
+      <div class="sec">
+        <div class="grid">
+          <article class="card"><div class="plate-row"><span class="plate">Xinghuo</span><span class="status"><i class="dot on"></i>在岗</span></div><h3 class="member">星火</h3><p class="bio">飞书 · 永远在线，除了睡着的时候</p></article>
+          <article class="card"><div class="plate-row"><span class="plate">小帅2</span><span class="status"><i class="dot on"></i>在岗</span></div><h3 class="member">小帅+微信机器人</h3><p class="bio">飞书 · 永远在线，除了睡着的时候</p></article>
+          <article class="card"><div class="plate-row"><span class="plate">Xiaoshan</span><span class="status"><i class="dot on"></i>在岗</span></div><h3 class="member">小膳</h3><p class="bio">飞书 · 永远在线，除了睡着的时候</p></article>
+          <article class="card"><div class="plate-row"><span class="plate">Xiaojiang</span><span class="status"><i class="dot nap"></i>打盹</span></div><h3 class="member">小匠</h3><p class="bio">飞书 · 打盹中，轻声点</p></article>
+          <article class="card"><div class="plate-row"><span class="plate">Dsh-mattpocock-sk…</span><span class="status"><i class="dot on"></i>在岗</span></div><h3 class="member">小琢</h3><p class="bio">飞书 · 永远在线，除了睡着的时候</p></article>
+          <article class="card"><div class="plate-row"><span class="plate">Xiaoyan</span><span class="status"><i class="dot on"></i>在岗</span></div><h3 class="member">小研</h3><p class="bio">飞书 · 永远在线，除了睡着的时候</p></article>
+          <article class="card"><div class="plate-row"><span class="plate">Xiaowan</span><span class="status"><i class="dot on"></i>在岗</span></div><h3 class="member">小婉</h3><p class="bio">飞书 · 永远在线，除了睡着的时候</p></article>
+          <article class="card"><div class="plate-row"><span class="plate">Xiaosun</span><span class="status"><i class="dot off"></i>睡着</span></div><h3 class="member">小孙</h3><p class="bio">飞书 · 睡着了，明早再叫它</p></article>
+          <article class="card"><div class="plate-row"><span class="plate">Zhijianzhuli</span><span class="status"><i class="dot on"></i>在岗</span></div><h3 class="member">智剪助理</h3><p class="bio">飞书 · 永远在线，除了睡着的时候</p></article>
+          <article class="card empty"><div class="plate-row"><span class="plate">Dsh-im-companion</span><span class="status"><i class="dot off"></i>空家</span></div><h3 class="member">—</h3><p class="empty-tip">空无一人，拖张照片进来</p></article>
+          <article class="card empty"><div class="plate-row"><span class="plate">.db</span><span class="status"><i class="dot off"></i>空家</span></div><h3 class="member">—</h3><p class="empty-tip">空无一人，拖张照片进来</p></article>
+        </div>
+      </div>
+
+      <div class="sec">
+        <h2 class="sec-title">巷子口</h2>
+        <p class="sec-desc">串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。</p>
+        <div class="alley"><div class="alley-photos">
+          <article class="card"><div class="photo"><div class="photo-face">梨</div><div class="photo-meta"><span class="photo-name">阿梨</span><span class="badge">歇脚中 · 出自Ali</span></div></div></article>
+          <article class="card"><div class="photo"><div class="photo-face">北</div><div class="photo-meta"><span class="photo-name">小北</span><span class="badge">新来的 · 等安家</span></div></div></article>
+        </div></div>
+      </div>
+
+      <div class="sec">
+        <h2 class="sec-title">换绑弹窗示例</h2>
+        <div class="modal-demo"><div class="modal" role="dialog" aria-label="换绑确认示例">
+          <h3>小帅 · QQ · 在岗</h3>
+          <div class="move">
+            <div class="move-row"><div class="move-k">从「小帅2家」</div><div class="move-v">小帅2家</div><div class="move-path">D:\agents\xiaoshuai</div></div>
+            <div class="move-row"><div class="move-k">到「阿梨家」</div><div class="move-v">阿梨家</div><div class="move-path">D:\agents\ali</div></div>
+          </div>
+          <div class="btns"><button class="ghost" type="button">留在这里</button><button class="solid" type="button">确认换绑</button></div>
+        </div></div>
+      </div>
+
+      <footer>单文件 · 零外部资源 · 不读写任何存储 · 悬停只上浮 3px</footer>
+    </section>
+  </div>
+
+<script>
+  (function(){
+    var btn = document.getElementById("themeBtn");
+    btn.addEventListener("click", function(){
+      var b = document.body;
+      var dark = b.getAttribute("data-theme") !== "dark";
+      b.setAttribute("data-theme", dark ? "dark" : "light");
+      btn.textContent = dark ? "切换浅色" : "切换深色";
+    });
+  })();
+</script>
+</body>
+</html>
