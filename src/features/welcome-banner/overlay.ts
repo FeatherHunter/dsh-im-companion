@@ -1,10 +1,6 @@
-/** welcome-banner 挂载编排（hero 门控扫描 + 顶层弹窗绘制调度）：与 view.ts 的纯渲染分离，
- * 纯粹为了 300 行红线；逻辑归属仍是 welcome-banner 自包含目录（单向依赖 view 的 render）。
- * P 时辰 v1：出现规则沿用 hero 门 + 可见性门；未绑定零 UI；中央“进门”仅收起卡片。
- * 进门记忆语义（用户 verdict）：key 永远是工作区全路径；点过“回家”后不再出现，
- * 内存 + meta.welcomed 持久化双写；直到该工作区机器人被删光才双清，重绑后重现。
- * 已绘卡按 hero 节点键控：每轮扫描清扫 hero 已消失的卡（切工作区宿主复用父容器只换子节点，
- * 旧卡会成孤儿留在原地——不扫就会“切换工作区也不消失”）。 */
+/** welcome-banner 挂载编排：hero 门控 + 顶层弹窗（与 view 纯渲染分离，为 300 行红线）。
+ * 门控 hero 门+可见性门，未绑定零 UI，进门（key=工作区全路径）后内存+持久双记、删光双清；
+ * 已绘卡按 hero 节点键控，每轮清扫 hero 已消失的卡；名表每拍重读（改名即时生效）。 */
 import { fetchRouteRows, type BotSnap } from "../../client/data/fleet-api";
 import type { AgentMetaDoc } from "../../client/data/meta";
 import { basenameOf, viewName } from "../../client/data/model";
@@ -37,11 +33,8 @@ interface MountState {
   metaDoc: AgentMetaDoc | null;
   routes: RouteRef[];
   routesOk: boolean;
-  /** 进门记忆本代镜像（meta.welcomed 播种；内存先行，持久化随后）。 */
   welcomed: Record<string, boolean>;
-  /** meta 就绪门：首绘必须等进门记忆播种完成，否则已欢迎过的家会闪现一次。 */
   metaReady: boolean;
-  /** 已绘卡（key = hero 节点）：切工作区/删会话导致 hero 消失时按 key 清扫，不用 label 猜。 */
   painted: Map<unknown, { node: unknown; parent: unknown; sig: string; path: string }>;
   timer: unknown;
 }
@@ -216,6 +209,17 @@ export function mountBanner(fctx: FeatureCtx): () => void {
           if (activeGen !== gen) return;
           st.bots = (s && Array.isArray(s.bots) ? s.bots : []) as BotSnap[];
           st.catalogs = (s && s.catalogs) || {};
+          try {
+            void fctx.meta.loadMeta().then((m) => {
+              if (activeGen !== gen) return;
+              st.metaDoc = m;
+              try {
+                const fresh = welcomedOf(m);
+                for (const p of Object.keys(fresh)) if (fresh[p] === true && !st.welcomed[p]) { st.welcomed[p] = true; DISMISSED.add(p); }
+              } catch { /* ignore */ }
+              scanAll(fctx, st, doc);
+            }).catch(() => undefined);
+          } catch { /* ignore */ }
           /* 路由 stale-while-revalidate：不断电复用上轮已知数，等新数到了再换。
            * 若每拍都先置 routesOk=false，总数会在 null↔N 之间来回翻，sig 每 15s 翻两次、
            * 入场动画跟着重播——就是“不点也会全面刷新”的根因。首挂载仍从 false 起步，保守一次。 */

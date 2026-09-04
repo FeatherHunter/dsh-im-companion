@@ -52,6 +52,7 @@ const data: any = req("./features/welcome-banner/data.js");
 const styles: any = req("./features/welcome-banner/styles.js");
 const manifest: any = req("./features/welcome-banner/manifest.js");
 const fleetApi: any = req("./client/data/fleet-api.js");
+const sharedModel: any = req("./client/data/model.js");
 
 const W1 = "D:\\agents\\xiaoshuai";
 const snap = (over: Record<string, unknown> = {}) => ({
@@ -767,6 +768,20 @@ test("homeLangOf 跟随 DSH 系统语言", () => {
   assert.equal(data.homeLangOf("fr"), "zh");
 });
 
+test("viewName 路径归一化兜底（大小写/斜杠/末尾斜杠）", () => {
+  const doc = { names: { "d:/agents/xiaoshuai": "小帅2" }, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
+  assert.equal(sharedModel.viewName("xiaoshuai", doc, "fb", "D:\\AGENTS\\XIAOSHUAI"), "小帅2");
+  assert.equal(sharedModel.viewName("xiaoshuai", doc, "fb", "D:/agents/xiaoshuai/"), "小帅2");
+  assert.equal(sharedModel.viewName("other", doc, "fb", "D:/OTHER"), "Other");
+  const doc2 = { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} };
+  assert.equal(sharedModel.viewName("xiaoshuai", doc2, "fb", "D:\\agents\\xiaoshuai"), "Xiaoshuai");
+  const botsN = [snap({ workspace: "D:\\AGENTS\\XIAOSHUAI" })];
+  const doc3 = { names: { "d:/agents/xiaoshuai": "小帅2" }, avatars: { "d:/agents/xiaoshuai": "data:image/png,xx" }, locals: [], presets: {}, ctxEnhance: {} };
+  const mN = data.buildBannerModel(botsN, doc3, "D:\\AGENTS\\XIAOSHUAI", {});
+  assert.equal(mN.name, "小帅2");
+  assert.equal(mN.avatar, "data:image/png,xx");
+});
+
 test("dailyIdx 每日一句轮换（零UI，十五句全活）", () => {
   assert.equal(data.dailyIdx(1), 1);
   assert.equal(data.dailyIdx(2), 2);
@@ -805,6 +820,50 @@ test("displaySub 英文计数模板", () => {
   assert.equal(data.displaySub("Online · 1 session ready", null, undefined, "en"), "Sessions ready");
   assert.equal(data.displaySub("Online · Waiting on you", 3, undefined, "en"), "Waiting on you");
   assert.equal(data.displaySub("飞书在线 · 整个世界都睡了，除了我", 3, "小帅"), "整个世界都睡了，除了我");
+});
+
+test("改名即时生效：名表后到，弹窗自动纠名", async () => {
+  const W7 = "D:\\agents\\diqi";
+  const EMPTY7 = { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: {} };
+  const NAMED7 = { names: { [W7]: "小七" }, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: {} };
+  const snap7 = { channel: "feishu", botId: "b7", workspace: W7, connected: true, healthStatus: "healthy", healthKind: "online", botName: "", avatarUrl: "", healthSummary: "", lastCheckedAt: 1000, stale: false };
+  const inserted: any[] = [];
+  const heroStub: any = {
+    textContent: "探索未至之境 预览版 选择工作区 diqi",
+    closest: (sel: string) => sel === "[data-phase]" ? { getAttribute: () => "hero" } : null,
+    querySelector: (sel: string) => sel.indexOf("选择工作区") >= 0 ? { textContent: "diqi" } : null,
+    getBoundingClientRect: () => ({ width: 600, height: 200 }),
+    parentNode: {},
+  };
+  (globalThis as any).document = {
+    createElement: (t: string) => stubEl(t),
+    createTextNode: (t: unknown) => stubText(t),
+    querySelectorAll: (sel: string) => sel.indexOf("data-phase") >= 0 ? [heroStub] : [],
+    body: { appendChild: (n: any) => { inserted.push(n); }, removeChild: () => {} },
+  };
+  let calls = 0;
+  let subFn: any = null;
+  const fctx: any = {
+    rpc: null,
+    subscribe: (fn: any) => {
+      subFn = fn;
+      fn({ bots: [snap7], failed: [], updatedAt: 20, catalogs: {} });
+      return () => undefined;
+    },
+    refresh: async () => undefined,
+    meta: { loadMeta: async () => (++calls <= 2 ? EMPTY7 : NAMED7) },
+    get: () => undefined,
+    slots: {},
+  };
+  const stop = overlay.mountBanner(fctx);
+  await new Promise((r) => setTimeout(r, 40));
+  assert.ok(inserted.length >= 1, "应已绘制");
+  const hostName = () => inserted[inserted.length - 1].querySelector(".wb-host-name").textContent;
+  assert.equal(hostName(), "Diqi", "名表未到先显示目录名");
+  subFn({ bots: [snap7], failed: [], updatedAt: 21, catalogs: {} });
+  await new Promise((r) => setTimeout(r, 40));
+  assert.equal(hostName(), "小七", "名表到达后自动纠为自取名，无需重进");
+  stop();
 });
 
 rmSync(tmp, { recursive: true, force: true });

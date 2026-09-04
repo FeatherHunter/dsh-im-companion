@@ -78,17 +78,30 @@ function mergeStatus(kinds: HealthKind[]): HealthKind {
 }
 
 /* 家的身份键 = 工作区全路径；同名目录不再串名。读兼容旧 basename 键（先写的新键优先）。 */
+/* 路径归一化兜底：Windows 下大小写/斜杠/末尾斜杠写法不一（设置页与通道上报可能不一致），
+ * 精确命中失败后再按归一化全路径找一遍——只增加命中，不改变已有顺序，不做跨目录后缀匹配。 */
+function normWs(p: string): string {
+  return String(p ?? '').replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase()
+}
+function lookupRecord(rec: Record<string, string> | undefined, path: string): string | null {
+  if (!rec || typeof rec !== 'object') return null
+  const target = normWs(path)
+  if (!target) return null
+  for (const k of Object.keys(rec)) {
+    if (k && normWs(k) === target && rec[k]) return rec[k]
+  }
+  return null
+}
 export function viewName(base: string, meta: AgentMetaDoc, fallback: string, path = ''): string {
   if (!base && !path) return fallback
   if (path && meta.names[path]) return meta.names[path]
   if (base && meta.names[base]) return meta.names[base]
-  return fallbackName(base || path)
+  return lookupRecord(meta.names, path) ?? fallbackName(base || path)
 }
-
 function avatarOf(path: string, base: string, meta: AgentMetaDoc): string | null {
   if (path && meta.avatars[path]) return meta.avatars[path]
   if (base && meta.avatars[base]) return meta.avatars[base]
-  return null
+  return lookupRecord(meta.avatars, path)
 }
 
 function matchQuery(view: AgentView, query: string): boolean {
