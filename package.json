@@ -1,7 +1,7 @@
 {
   "name": "dsh-im-companion",
   "version": "0.1.0",
-  "description": "dsh-im 辅助插件（IM Companion）：以 Agent 为单位，把飞书/微信/QQ 机器人收进 DSH 工作区，左栏绿灯、一键过滤、舰队总览、拖拽搬家，卸载即净。",
+  "description": "dsh-im-companion：以助理和家的概念增强 dsh-im——哪个工作区有助理在管、在不在线尽收眼底，搬家拖一下就行。",
   "private": false,
   "type": "module",
   "main": "./lib/index.js",
