@@ -26,7 +26,7 @@
 
 <div align="center">
 
-前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/FeatherHunter/dsh-im)（IM 机器人本体）。本体负责把机器人接进来，辅助负责把它们管起来。
+前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/FeatherHunter/dsh-im)（IM 机器人本体）。
 
 </div>
 
@@ -92,15 +92,11 @@ dsh plugin --profile desktop remove dsh-im-companion
 
 <div align="center">
 
-dsh-im 接入很方便，扫码就行。可机器人一多，问题就来了：哪个已安家、哪个还空着、谁在线谁离线，旧的入口列表回答不了。
+机器人一多，哪个已安家、谁在线，旧列表回答不了。
 
-IM 辅助就是干这个的——把机器人按助理收好：
+IM 辅助把机器人按助理收好：左栏一眼看清，舰队拖一下就搬。
 
-**左栏一眼看清**——在线亮绿灯，离线灰着，谁在谁不在，开屏即知。
-
-**舰队拖一下就搬**——抽屉看家底，雷达看全局，串门拖一下换房。
-
-本体管接入，辅助管安家。它不代替 dsh-im，配着用。
+本体管接入，辅助管安家。
 
 <strong>👇 点“有助理”，只看已安家的。</strong>
 
@@ -147,10 +143,6 @@ IM 辅助就是干这个的——把机器人按助理收好：
 
 <img src="assets/搬家面板-以家为核心-机器人可以自由搬到其他家庭.png" width="720" alt="串门搬家面板">
 
-在线的 7 个功能模块：left-badges 左栏徽标 · left-filter 一键过滤 · session-header 工作区浮层 · detail-drawer 详情抽屉 · fleet-radar 舰队雷达 · adopt 串门搬家（拖拽换绑） · presence 在场呼吸灯。welcome-banner 拟人化迎宾暂不上线（已屏蔽，解开即恢复）。
-
-上游本体与接入教程：[dsh-im](https://github.com/FeatherHunter/dsh-im)
-
 </div>
 
 <h2 align="center"><sub>FAQ</sub><br>常见问题</h2>
@@ -158,7 +150,7 @@ IM 辅助就是干这个的——把机器人按助理收好：
 <details open>
 <summary>更新之后还是旧版本？</summary>
 
-这是桌面端 pnpm 供应链策略（minimumReleaseAge）导致的：刚发布的版本几小时内 update 会静默跳过。请 Ctrl+F5 刷新；还没更新就显式指定官方源装一次：
+这是桌面端的应用市场缓存策略导致的：刚发布的版本几小时内更新会静默跳过。等几小时再更新；等不及就显式指定官方源装一次：
 
 ```bash
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
@@ -173,20 +165,6 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 </details>
 
-<details>
-<summary>刷新还是重启？</summary>
-
-优先热更新：重打 lib 后刷新页面或热重载即可；无必要绝不重启。重启仅在 host 装配结构动了且热重载吃不下时才用。
-
-</details>
-
-<details>
-<summary>浅色主题能用吗？</summary>
-
-能。徽标、过滤、面板都跟随主题，上面有一张浅色实拍。
-
-</details>
-
 <h2 align="center"><sub>ARCHITECTURE</sub><br>架构</h2>
 
 <div align="center">
@@ -197,36 +175,23 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 </div>
 
-<h2 align="center"><sub>DEVELOPMENT</sub><br>开发</h2>
-
-改代码只改 src/features 下自己功能的目录；lib 是构建产物，别手改。单文件不超 300 行。
-
-```bash
-npm run build        # host(tsc) + client(tsdown) 到 lib/
-npm run typecheck
-npm run verify       # 渲染 + 功能断言 + 连接二维码
-npm run guard        # 300 行红线
-npm run check        # 上面全跑（提审前必绿）
-python -m http.server 8788  # 预览 preview.html
-```
-
-完整契约见 [docs/features-contract.md](docs/features-contract.md)。发布流程见 [scripts/wizard-release.sh](scripts/wizard-release.sh)（只扫码向导）。
-
 <h2 align="center"><sub>MORE</sub><br>作者的其他作品</h2>
 
 <div align="center">
 
-**[dsh-im](https://github.com/FeatherHunter/dsh-im)** —— IM 机器人本体：9 渠道扫码接入，先装它
+**[dsh-opencode-palette](https://github.com/FeatherHunter/dsh-opencode-palette)** —— 34 款 opencode 经典配色，一键换装
 
 **[dsh-mattpocock-skills-deck](https://github.com/FeatherHunter/dsh-mattpocock-skills-deck)** —— Matt Pocock 技能面板：25 个工程与效率技能即装即用
 
-**[dsh-better-sidebar](https://github.com/FeatherHunter/dsh-better-sidebar)** —— 窄屏更好用：并排看列表与详情
+**[dsh-chinese-skill-patch](https://github.com/FeatherHunter/dsh-chinese-skill-patch)** —— 中文技能名直达，不必改英文名
+
+**[dsh-prompt](https://github.com/FeatherHunter/dsh-prompt)** —— Prompt 工具箱：24 条深度模板随手点
 
 ---
 
 有问题？[提交 ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues)，认领前先读 docs/agents 标签纪律。
 
-个人作品，与 dsh-im 同一作者。MIT © FeatherHunter
+MIT © FeatherHunter
 
 </div>
 
