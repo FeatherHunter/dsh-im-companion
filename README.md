@@ -92,11 +92,9 @@ dsh plugin --profile desktop remove dsh-im-companion
 
 <div align="center">
 
-机器人一多，哪个已安家、谁在线，旧列表回答不了。
+dsh-im 掌管接入，dsh-im-companion 以助理和家的概念增强能力。
 
-IM 辅助把机器人按助理收好：左栏一眼看清，舰队拖一下就搬。
-
-本体管接入，辅助管安家。
+**家**：哪个工作区有助理在管、在不在线，尽收眼底；搬家拖一下就行。
 
 <strong>👇 点“有助理”，只看已安家的。</strong>
 
