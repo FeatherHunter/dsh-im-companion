@@ -148,28 +148,21 @@ dsh-im owns connecting; dsh-im-companion adds capabilities through the concepts 
 </table>
 </div>
 
-<div align="center">
-<table>
-<tr>
-<td align="center" valign="top" width="50%">
-<strong>👇 Click the robot-face icon in the toolbar to open the move-house cockpit</strong>
-<br><img src="../assets/串门-入口-左栏图标.png" width="330" alt="Move-house entry icon in the rail toolbar">
-</td>
-<td align="center" valign="top" width="50%">
-<strong>👇 Confirm before release; staying put is one click away</strong>
-<br><img src="../assets/串门-二次确认.png" width="300" alt="Move confirm dialog">
-</td>
-</tr>
-</table>
-</div>
+<strong>👇 Click the robot-face icon in the toolbar to open the moving panel</strong>
 
-<strong>👇 Drag the photo over another home and the target lights up</strong>
-
-<img src="../assets/串门-拖拽中-目标家高亮.png" width="640" alt="Target home highlighted mid-drag">
+<img src="../assets/串门-入口-左栏图标.png" width="380" alt="Move-house entry icon in the rail toolbar">
 
 <strong>👇 Move house: drag the photo to another home, confirm twice. Green on duty, yellow napping, grey asleep.</strong>
 
 <img src="../assets/搬家面板-以家为核心-机器人可以自由搬到其他家庭.png" width="720" alt="Move-house board">
+
+<strong>👇 Drag the card over another home and the target lights up</strong>
+
+<img src="../assets/串门-拖拽中-目标家高亮.png" width="640" alt="Target home highlighted mid-drag">
+
+<strong>👇 Confirm before moving</strong>
+
+<img src="../assets/串门-二次确认.png" width="330" alt="Move confirm dialog">
 
 </div>
 

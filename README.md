@@ -148,28 +148,21 @@ dsh-im 掌管接入，dsh-im-companion 以助理和家的概念增强能力。
 </table>
 </div>
 
-<div align="center">
-<table>
-<tr>
-<td align="center" valign="top" width="50%">
-<strong>👇 点工具栏机器人脸图标，进串门驾驶舱</strong>
-<br><img src="assets/串门-入口-左栏图标.png" width="330" alt="左栏工具栏串门入口图标">
-</td>
-<td align="center" valign="top" width="50%">
-<strong>👇 松手前二次确认，点错可留在这里</strong>
-<br><img src="assets/串门-二次确认.png" width="300" alt="搬家二次确认框">
-</td>
-</tr>
-</table>
-</div>
+<strong>👇 点工具栏机器人脸图标，进搬家面板</strong>
 
-<strong>👇 照片拖到另一家上空，目标家高亮</strong>
-
-<img src="assets/串门-拖拽中-目标家高亮.png" width="640" alt="拖拽中目标家高亮">
+<img src="assets/串门-入口-左栏图标.png" width="380" alt="左栏工具栏串门入口图标">
 
 <strong>👇 串门搬家：把照片拖到另一家，二次确认。绿灯在岗，黄灯打盹，灰灯睡着。</strong>
 
 <img src="assets/搬家面板-以家为核心-机器人可以自由搬到其他家庭.png" width="720" alt="串门搬家面板">
+
+<strong>👇 卡片拖到另一家上空，目标家高亮</strong>
+
+<img src="assets/串门-拖拽中-目标家高亮.png" width="640" alt="拖拽中目标家高亮">
+
+<strong>👇 搬家前二次确认</strong>
+
+<img src="assets/串门-二次确认.png" width="330" alt="搬家二次确认框">
 
 </div>
 
