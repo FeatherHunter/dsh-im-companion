@@ -224,7 +224,7 @@ export function mountAdopt(ctx: FeatureCtx): () => void {
         toast('空白处不可放，请拖到分组上')
         return
       }
-      actDrop(ctx, bot, { kind: 'workspace', workspace: to }, lastMeta)
+      actDrop(ctx, bot, { kind: 'workspace', workspace: to }, lastMeta, { onCommitted: (id) => { try { staged.delete(id) } catch { /* 忽略 */ } if (alive(g)) paint() } })
     } catch { /* 忽略 */ }
   };
   const onDragEnd = (): void => {

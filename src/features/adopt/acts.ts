@@ -74,7 +74,12 @@ function healthText(bot: MoveBot): string {
   return '睡着了'
 }
 
-export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string, meta: AgentMetaDoc | null): void {
+/** 写落定钩子：成功后通知调用方（如清理歇脚暂存）；失败不调用。 */
+export interface DropHooks {
+  onCommitted?: (botId: string) => void
+}
+
+export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string, meta: AgentMetaDoc | null, hooks?: DropHooks): void {
   try {
     dismissUndo()
     const box = h('div', { className: 'adopt-confirmbox', role: 'dialog', 'aria-modal': 'true' }) as HTMLElement
@@ -90,6 +95,7 @@ export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string,
       close()
       void (async () => {
         if (await setWorkspace(ctx, bot.channel, bot.botId, to, '换绑')) {
+          try { hooks?.onCommitted?.(bot.botId) } catch { /* 通知失败不阻断已落地绑定 */ }
           const back = undoTarget(from)
           if (back) showUndo(ctx, bot.channel, bot.botId, back, '已换绑到' + shortName(to))
           else toast('已换绑到' + shortName(to), 'check')
@@ -113,18 +119,19 @@ export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string,
   } catch { /* 弹层失败则不动（fail-closed） */ }
 }
 
-export function actDrop(ctx: FeatureCtx, bot: MoveBot, target: { kind: 'workspace'; workspace: string } | { kind: 'empty' }, meta: AgentMetaDoc | null): void {
+export function actDrop(ctx: FeatureCtx, bot: MoveBot, target: { kind: 'workspace'; workspace: string } | { kind: 'empty' }, meta: AgentMetaDoc | null, hooks?: DropHooks): void {
   const v = resolveDrop(bot, target)
   if (v.kind === 'bind') {
     void (async () => {
       if (await setWorkspace(ctx, bot.channel, bot.botId, v.to, '绑定')) {
+        try { hooks?.onCommitted?.(bot.botId) } catch { /* 通知失败不阻断已落地绑定 */ }
         const back = undoTarget('')
         if (back) showUndo(ctx, bot.channel, bot.botId, back, '已绑定到' + shortName(v.to))
         else toast('已绑定到' + shortName(v.to), 'check')
       }
     })()
   } else if (v.kind === 'confirm-move') {
-    askMove(ctx, bot, v.from, v.to, meta)
+    askMove(ctx, bot, v.from, v.to, meta, hooks)
   } else if (v.kind === 'noop') {
     toast('它已经在这里了')
   } else {

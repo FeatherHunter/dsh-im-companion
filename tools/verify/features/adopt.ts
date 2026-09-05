@@ -535,6 +535,50 @@ test('view：按住熔断重绘 + 内容不变跳过', async () => {
   assert.ok(bodyText().includes('x9'), '松手后补刷');
 });
 
+test('view：巷子口→他家确认换绑成功——刷新后即时归位（#39）', async () => {
+  mountStage(okRpc);
+  adoptEmit!({ bots: stageBots() });
+  openPanel();
+  const plaza = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
+  fireDrop(plaza, { botId: 'q1', channel: 'qq' });
+  await sleep(10);
+  assert.equal(adoptRpcCalls.length, 0, '歇脚不写服务器');
+  const secB = panelSections().find((s: any) => s.getAttribute('data-adopt-ws') === W_B);
+  fireDrop(secB, { botId: 'q1', channel: 'qq' });
+  await sleep(10);
+  findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
+  await sleep(20);
+  assert.deepEqual(adoptRpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
+  adoptEmit!({ bots: stageBots().map((b) => (b.botId === 'q1' ? { ...b, workspace: W_B } : b)) });
+  await sleep(10);
+  const secB2 = panelSections().find((s: any) => s.getAttribute('data-adopt-ws') === W_B);
+  assert.ok(sectionRows(secB2).some((r: any) => r.getAttribute('data-adopt-bot') === 'q1'), '换绑成功后 q1 即时出现在 B 家');
+  const plaza2 = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
+  assert.ok(!sectionRows(plaza2).some((r: any) => r.getAttribute('data-adopt-bot') === 'q1'), '巷子口不再留 q1');
+});
+
+test('view：巷子口→他家换绑失败——暂存保留仍在巷子口（#39）', async () => {
+  const failRpc = async (ch: string, ep: string, payload: any) => { adoptRpcCalls.push({ ch, ep, payload }); throw new Error('nope'); };
+  mountStage(failRpc);
+  adoptEmit!({ bots: stageBots() });
+  openPanel();
+  const plaza = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
+  fireDrop(plaza, { botId: 'q1', channel: 'qq' });
+  await sleep(10);
+  const secB = panelSections().find((s: any) => s.getAttribute('data-adopt-ws') === W_B);
+  fireDrop(secB, { botId: 'q1', channel: 'qq' });
+  await sleep(10);
+  findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
+  await sleep(20);
+  assert.equal(adoptRpcCalls.length, 1, '写过一次且失败');
+  assert.ok(bodyText().includes('换绑失败'), '失败有错误提示');
+  assert.ok(!adoptDoc.body.children.some((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-undo')), '失败不开撤销窗');
+  adoptEmit!({ bots: stageBots() });
+  await sleep(10);
+  const plaza2 = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
+  assert.ok(sectionRows(plaza2).some((r: any) => r.getAttribute('data-adopt-bot') === 'q1'), '失败后 q1 仍在巷子口歇脚');
+});
+
 test('view：撤销窗过期 → 落定提示且窗消失', async () => {
   const realSetTimeout = globalThis.setTimeout;
   const timers: any[] = [];
