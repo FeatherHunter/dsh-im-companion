@@ -87,13 +87,6 @@ dsh plugin --profile desktop update dsh-im-companion
 dsh plugin --profile desktop remove dsh-im-companion
 ```
 
-<div align="center">
-
-<strong>👇 照着装，能装上：市场里显示已安装。</strong>
-
-<img src="assets/安装验证-市场已安装.png" width="360" alt="插件市场已安装列表">
-
-</div>
 
 <h2 align="center"><sub>WHY</sub><br>为什么要做 IM 辅助</h2>
 

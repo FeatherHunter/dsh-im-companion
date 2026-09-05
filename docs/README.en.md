@@ -87,13 +87,6 @@ dsh plugin --profile desktop update dsh-im-companion
 dsh plugin --profile desktop remove dsh-im-companion
 ```
 
-<div align="center">
-
-<strong>👇 Follow the steps and it installs: the market shows it installed.</strong>
-
-<img src="../assets/安装验证-市场已安装.png" width="360" alt="Market installed list">
-
-</div>
 
 <h2 align="center"><sub>WHY</sub><br>Why an IM companion</h2>
 
