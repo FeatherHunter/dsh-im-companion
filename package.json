@@ -1,6 +1,6 @@
 {
   "name": "dsh-im-companion",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "dsh-im-companion：以助理和家的概念增强 dsh-im——哪个工作区有助理在管、在不在线尽收眼底，搬家拖一下就行。",
   "private": false,
   "type": "module",

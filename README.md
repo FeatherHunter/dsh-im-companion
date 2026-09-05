@@ -43,8 +43,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     或者
 dsh plugin --profile web add dsh-im-companion
 
-# 锁定版本更稳（当前 0.1.0）
-dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://registry.npmjs.org
+# 锁定版本更稳（当前 0.1.1）
+dsh plugin --profile desktop add dsh-im-companion@0.1.1 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -73,7 +73,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://regis
 下面以 desktop 为例，web 用户请把 --profile desktop 换成 --profile web：
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.1.1 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
