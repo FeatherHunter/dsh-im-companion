@@ -14,8 +14,19 @@ export function apply(ctx: any, config: any = {}) {
   void store.load()
 
   const CHANNEL = '/im-companion'
-  const dispose = ctx.connection.rpc.handle(CHANNEL, createAgentFleetHandler(store))
-  ctx.effect(() => () => dispose(), 'dsh-im-companion: rpc channel cleanup')
+  try {
+    const dispose = ctx.connection.rpc.handle(CHANNEL, createAgentFleetHandler(store))
+    ctx.effect(() => () => dispose(), 'dsh-im-companion: rpc channel cleanup')
+  } catch (error: any) {
+    // 路由注册表是宿主共享单例；重装配（live patch reload / 回滚重放）时
+    // "/im-companion" 可能已被上一个实例注册。此时退让：让已注册实例继续
+    // 服务，本实例只挂元数据，不再注册。未注册路由时不挂 cleanup。
+    if (String(error?.message ?? error).includes('duplicate prefix route')) {
+      logger.warn?.('[agent-fleet] rpc channel ' + CHANNEL + ' already registered by another instance; yielding')
+      return
+    }
+    throw error
+  }
 
   try {
     ctx.provide?.('agentFleet', { version: '0.0.2', meta: store })
