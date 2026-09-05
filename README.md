@@ -158,23 +158,6 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 </details>
 
-<details>
-<summary>不装 dsh-im，辅助能用吗？</summary>
-
-不能。连接扫码凭据全在本体；辅助只做收纳总览。先装本体，再装辅助，且进同一个 profile。
-
-</details>
-
-<h2 align="center"><sub>ARCHITECTURE</sub><br>架构</h2>
-
-<div align="center">
-
-在线的 7 个模块：左栏徽标 · 一键过滤 · 工作区浮层 · 详情抽屉 · 舰队雷达 · 串门搬家 · 在场呼吸灯。
-
-代码组织方式写给开发者看：[docs/features-contract.md](docs/features-contract.md) · [CONTEXT.md](CONTEXT.md)
-
-</div>
-
 <h2 align="center"><sub>MORE</sub><br>作者的其他作品</h2>
 
 <div align="center">
