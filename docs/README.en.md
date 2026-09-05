@@ -87,6 +87,14 @@ dsh plugin --profile desktop update dsh-im-companion
 dsh plugin --profile desktop remove dsh-im-companion
 ```
 
+<div align="center">
+
+<strong>👇 Follow the steps and it installs: the market shows it installed.</strong>
+
+<img src="../assets/安装验证-市场已安装.png" width="360" alt="Market installed list">
+
+</div>
+
 <h2 align="center"><sub>WHY</sub><br>Why an IM companion</h2>
 
 <div align="center">
@@ -108,6 +116,10 @@ dsh-im owns connecting; dsh-im-companion adds capabilities through the concepts 
 <strong>👇 Settings → IM companion: assistants, channels and online states on one screen.</strong>
 
 <img src="../assets/设置-以Agent为核心-聚合视图-深色.png" width="720" alt="Settings assistant aggregation view">
+
+<strong>👇 Switch to channels: same-channel assistants line up.</strong>
+
+<img src="../assets/设置-按渠道视图-深色.png" width="640" alt="Settings channel view">
 
 <strong>👇 Click “add connection”: pick a home, scan, bound.</strong>
 
@@ -135,6 +147,25 @@ dsh-im owns connecting; dsh-im-companion adds capabilities through the concepts 
 </tr>
 </table>
 </div>
+
+<div align="center">
+<table>
+<tr>
+<td align="center" valign="top" width="50%">
+<strong>👇 Click the robot-face icon in the toolbar to open the move-house cockpit</strong>
+<br><img src="../assets/串门-入口-左栏图标.png" width="330" alt="Move-house entry icon in the rail toolbar">
+</td>
+<td align="center" valign="top" width="50%">
+<strong>👇 Confirm before release; staying put is one click away</strong>
+<br><img src="../assets/串门-二次确认.png" width="300" alt="Move confirm dialog">
+</td>
+</tr>
+</table>
+</div>
+
+<strong>👇 Drag the photo over another home and the target lights up</strong>
+
+<img src="../assets/串门-拖拽中-目标家高亮.png" width="640" alt="Target home highlighted mid-drag">
 
 <strong>👇 Move house: drag the photo to another home, confirm twice. Green on duty, yellow napping, grey asleep.</strong>
 
