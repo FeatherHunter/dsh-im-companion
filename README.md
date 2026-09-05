@@ -11,7 +11,7 @@
 
 *Give every agent a home — IM Companion handles the rest.*
 
-[![版本](https://img.shields.io/npm/v/dsh-im-companion?label=版本)](https://www.npmjs.com/package/dsh-im-companion) [![下载量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.npmjs.org%2Fdownloads%2Fpoint%2Flast-month%2Fdsh-im-companion&query=%24.downloads&label=下载量&suffix=/月&color=brightgreen)](https://www.npmjs.com/package/dsh-im-companion) [![最近更新](https://img.shields.io/github/last-commit/FeatherHunter/dsh-im-companion?label=最近更新&color=FE7D37)](https://github.com/FeatherHunter/dsh-im-companion/commits/master) [![许可证](https://img.shields.io/badge/许可证-MIT-lightgrey.svg)](LICENSE) [![上游本体](https://img.shields.io/badge/上游-dsh--im-3370ff)](https://github.com/FeatherHunter/dsh-im) [![期待你参与](https://img.shields.io/badge/期待你参与-brightgreen.svg)](https://github.com/FeatherHunter/dsh-im-companion/issues)
+[![版本](https://img.shields.io/npm/v/dsh-im-companion?label=版本)](https://www.npmjs.com/package/dsh-im-companion) [![下载量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.npmjs.org%2Fdownloads%2Fpoint%2Flast-month%2Fdsh-im-companion&query=%24.downloads&label=下载量&suffix=/月&color=brightgreen)](https://www.npmjs.com/package/dsh-im-companion) [![最近更新](https://img.shields.io/github/last-commit/FeatherHunter/dsh-im-companion?label=最近更新&color=FE7D37)](https://github.com/xmanrui/dsh-im-companion/commits/master) [![许可证](https://img.shields.io/badge/许可证-MIT-lightgrey.svg)](LICENSE) [![上游本体](https://img.shields.io/badge/上游-dsh--im-3370ff)](https://github.com/xmanrui/dsh-im) [![期待你参与](https://img.shields.io/badge/期待你参与-brightgreen.svg)](https://github.com/xmanrui/dsh-im-companion/issues)
 
 <strong>👇 有助理的工作区，一目了然。</strong>
 
@@ -25,7 +25,7 @@
 
 <div align="center">
 
-前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/FeatherHunter/dsh-im)（IM 机器人本体）。
+前置要求：[DSH](https://www.npmjs.com/package/@deepseek-ai/dsh)（DeepSeek Harness）+ [dsh-im](https://github.com/xmanrui/dsh-im)（IM 机器人本体）。
 
 </div>
 
@@ -60,7 +60,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.1.0 --registry https://regis
 
 ```text
 请帮我安装 DeepSeek Harness 插件 dsh-im-companion（IM 辅助）。
-先读仓库 README：https://github.com/FeatherHunter/dsh-im-companion
+先读仓库 README：https://github.com/xmanrui/dsh-im-companion
 先确认我实际使用的 DSH 入口对应哪个 profile（桌面应用走 desktop，自启 web 服务走 web），
 先确认 dsh-im 本体已装进同一个 profile（没装先装），再把辅助装进正确的 profile。
 ```
@@ -169,7 +169,7 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 ---
 
-有问题？[提交 ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues)，认领前先读 docs/agents 标签纪律。
+有问题？[提交 ISSUE](https://github.com/xmanrui/dsh-im-companion/issues)，认领前先读 docs/agents 标签纪律。
 
 MIT © FeatherHunter
 
@@ -183,7 +183,7 @@ MIT © FeatherHunter
 
 首个公开版（v0.1.0）尚无外部贡献名单，虚位以待——第一个提 Issue 的朋友，你的名字会写在这里。
 
-也感谢上游 [dsh-im](https://github.com/FeatherHunter/dsh-im)：没有本体，就没有辅助。
+也感谢上游 [dsh-im](https://github.com/xmanrui/dsh-im)：没有本体，就没有辅助。
 
 </div>
 
@@ -193,7 +193,7 @@ MIT © FeatherHunter
 
 Bug 与需求请直接提 ISSUE，更高效可追溯。
 
-[提交 ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues) · [上游 dsh-im](https://github.com/FeatherHunter/dsh-im)
+[提交 ISSUE](https://github.com/xmanrui/dsh-im-companion/issues) · [上游 dsh-im](https://github.com/xmanrui/dsh-im)
 
 <sub>话题群二维码待补——有群后这里放永久有效二维码。</sub>
 

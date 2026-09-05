@@ -6,7 +6,7 @@
 **English** · [中文](../README.md)
 
 **Give every agent a home — IM Companion handles the rest.**  
-A companion for [dsh-im](https://github.com/FeatherHunter/dsh-im): group Feishu/WeChat/QQ bots by Agent, with left badges, one-click filter, fleet overview and drag-to-move. Clean uninstall.
+A companion for [dsh-im](https://github.com/xmanrui/dsh-im): group Feishu/WeChat/QQ bots by Agent, with left badges, one-click filter, fleet overview and drag-to-move. Clean uninstall.
 
 Your star means a lot.
 
@@ -14,7 +14,7 @@ Your star means a lot.
 
 ## Install
 
-Prerequisites: [DSH](https://www.npmjs.com/package/@deepseek-ai/dsh) + [dsh-im](https://github.com/FeatherHunter/dsh-im) in the same profile.
+Prerequisites: [DSH](https://www.npmjs.com/package/@deepseek-ai/dsh) + [dsh-im](https://github.com/xmanrui/dsh-im) in the same profile.
 
 Replace `--profile desktop` with `--profile web` if you run self-hosted web.
 
@@ -37,6 +37,6 @@ Refresh the page (Ctrl+F5) or hot-reload the plugin. Restart is the last resort.
 - presence: breathing lights
 - welcome-banner: friendly home banner
 
-Upstream: [dsh-im](https://github.com/FeatherHunter/dsh-im). Issues: [here](https://github.com/FeatherHunter/dsh-im-companion/issues).
+Upstream: [dsh-im](https://github.com/xmanrui/dsh-im). Issues: [here](https://github.com/xmanrui/dsh-im-companion/issues).
 
 MIT © FeatherHunter
