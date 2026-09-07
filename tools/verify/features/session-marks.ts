@@ -51,13 +51,19 @@ function locate(base: string, name: string): string {
 }
 
 // ---- stub DOM ----
+class FakeSvg {
+  parentElement: FakeEl;
+  constructor(parent: FakeEl) { this.parentElement = parent; }
+}
 class FakeEl {
   attrs = new Map<string, string>();
   text = '';
   dot: string | null;
   expanded: boolean;
-  constructor(text: string, dot: string | null, expanded: boolean) {
+  iconHost: FakeEl | null; // svg 的 parentElement（真实 DOM 中是独立元素，角标挂这里）
+  constructor(text: string, dot: string | null, expanded: boolean, withSvg = false) {
     this.text = text; this.dot = dot; this.expanded = expanded;
+    this.iconHost = withSvg ? new FakeEl('', null, false) : null;
   }
   get textContent(): string { return this.text; }
   get attributes(): unknown[] { return []; }
@@ -70,6 +76,7 @@ class FakeEl {
   hasAttribute(k: string): boolean { return this.attrs.has(k); }
   removeAttribute(k: string): void { this.attrs.delete(k); }
   querySelector(_s: string): any {
+    if (_s === 'svg') return this.iconHost ? { parentElement: this.iconHost } : null;
     if (this.dot === null) return null;
     const st = this.dot;
     return { getAttribute: (_k: string) => st };
@@ -91,8 +98,8 @@ const req = createRequire(join(tmp, 'run.cjs'));
 const sess: any = req(locate(tmp, 'sessions.js'));
 const act: any = req(locate(tmp, 'activity.js'));
 
-function group(pre: string | null): FakeEl {
-  const g = new FakeEl('ws', null, true);
+function group(pre: string | null, withSvg = true): FakeEl {
+  const g = new FakeEl('ws', null, true, withSvg);
   if (pre) g.setAttribute('data-dp-act', pre);
   return g;
 }
@@ -104,6 +111,7 @@ function top1(name: string, kind: string, title: string, open: boolean): unknown
   return { name, mtime: 100, open, kind, approval: false, title };
 }
 function actOf(el: FakeEl, k: string): string | null { return el.getAttribute(k); }
+function groupDot(g: FakeEl): string | null { return g.iconHost ? g.iconHost.getAttribute('data-dp-act') : null; }
 
 test('蓝不变量：原生 ongoing 行蓝 ⇒ 组蓝', () => {
   const g = group(null);
@@ -164,6 +172,34 @@ test('诊断保留：nosig 组 + 全无色会话 ⇒ nosig 不动', () => {
   registry = [g, r];
   sess.markSessions([g as any], [st('k7', 'sink', [])]);
   assert.equal(actOf(g, 'data-dp-act'), 'nosig');
+});
+
+test('角标不变量：组蓝/黄/红 ⇒ 图标角标同色（角标=组条终态，防 paint 残留孤儿点）', () => {
+  const g1 = group(null); const r1 = row('x1', 'ongoing');
+  registry = [g1, r1];
+  sess.markSessions([g1 as any], [st('g1', 'calm', [])]);
+  assert.equal(groupDot(g1), 'exec');
+
+  const g2 = group(null); const r2 = row('x2', 'warning');
+  registry = [g2, r2];
+  sess.markSessions([g2 as any], [st('g2', 'calm', [])]);
+  assert.equal(groupDot(g2), 'seen');
+
+  const g3 = group(null); const r3 = row('Task Epsilon', 'done');
+  registry = [g3, r3];
+  sess.markSessions([g3 as any], [st('g3', 'exec', [top1('f5', '402', 'Task Epsilon', false)])]);
+  assert.equal(groupDot(g3), 'need');
+});
+
+test('角标残环：组条清（孤儿）⇒ 图标角标同步清（paint 先画 seen 角标 + sessions 清组条 ==== 截图橙点无组条 bug）', () => {
+  const g = group('seen');
+  g.iconHost!.setAttribute('data-dp-icon', '1');
+  g.iconHost!.setAttribute('data-dp-act', 'seen');
+  const r = row('Task Zeta', null);
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k10', 'calm', [])]);
+  assert.equal(actOf(g, 'data-dp-act'), null);
+  assert.equal(groupDot(g), null);
 });
 
 rmSync(tmp, { recursive: true, force: true });

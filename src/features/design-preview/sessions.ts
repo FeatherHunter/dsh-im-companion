@@ -143,7 +143,9 @@ export function markSessions(groups: Element[], states: RowState[]): void {
       /* 组色＝会话聚合（不变量：组蓝/黄/红 ⇒ 必有同色会话；展开组恒成立）。
        * 有会话行的组：组色只由本轮行色决定——有同色行则置色，无则清 demo 的 entry 级旧色
        *（未归因的 running/水位信号不得单独染组，否则组色无行可解释）。
-       * nosig 系诊断灰，永不动。无会话行的组（收起/映射空）：不动，留 demo 的 entry 级汇总。 */
+       * nosig 系诊断灰，永不动。无会话行的组（收起/映射空）：不动，留 demo 的 entry 级汇总。
+       * 角标（svg 宿主 data-dp-icon/act）与组条同生命周期：置色同步、清条同步清——
+       * 2026-09-07 截图实锤：paint 先画 seen 角标，组条被聚合清空，角标残留成孤儿橙点。 */
       try {
         var gHasRed = false; var gHasBlue = false; var gHasYellow = false;
         for (var u = 0; u < rows.length; u++) {
@@ -153,12 +155,21 @@ export function markSessions(groups: Element[], states: RowState[]): void {
           else if (sv === 'seen' || sv === 'done') gHasYellow = true;
         }
         var gcur = getA(groups[i], 'data-dp-act');
-        if (gHasRed) { setA(groups[i], 'data-dp-act', 'need'); setA(groups[i], 'data-dp-tip', SESS_LABEL['red']); }
-        else if (gHasBlue) { setA(groups[i], 'data-dp-act', 'exec'); setA(groups[i], 'data-dp-tip', SESS_LABEL['exec']); }
-        else if (gHasYellow) { setA(groups[i], 'data-dp-act', 'seen'); setA(groups[i], 'data-dp-tip', SESS_LABEL['seen']); }
+        var gdot: string | null = null;
+        if (gHasRed) { setA(groups[i], 'data-dp-act', 'need'); setA(groups[i], 'data-dp-tip', SESS_LABEL['red']); gdot = 'need'; }
+        else if (gHasBlue) { setA(groups[i], 'data-dp-act', 'exec'); setA(groups[i], 'data-dp-tip', SESS_LABEL['exec']); gdot = 'exec'; }
+        else if (gHasYellow) { setA(groups[i], 'data-dp-act', 'seen'); setA(groups[i], 'data-dp-tip', SESS_LABEL['seen']); gdot = 'seen'; }
         else if (gcur === 'need' || gcur === 'exec' || gcur === 'seen') {
           delA(groups[i], 'data-dp-act'); delA(groups[i], 'data-dp-tip');
         }
+        try {
+          var svgG = groups[i].querySelector('svg');
+          var hostG = svgG ? svgG.parentElement : null;
+          if (hostG) {
+            if (gdot) { setA(hostG, 'data-dp-icon', '1'); setA(hostG, 'data-dp-act', gdot); }
+            else { delA(hostG, 'data-dp-icon'); delA(hostG, 'data-dp-act'); }
+          }
+        } catch (e2) { /* 角标同步失败不影响行 */ }
       } catch (e) { /* 组同步失败不影响行 */ }
     }
   } catch (e) { /* 忽略 */ }
