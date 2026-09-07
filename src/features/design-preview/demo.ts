@@ -183,23 +183,25 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
   try {
     document.addEventListener('keydown', onKey, true);
   } catch (e) { /* 监听失败就无兜底刷新 */ }
-  /* 视觉方案对照器（2026-09-07 用户要求：组行竖条保留 × 会话行三种表达对比）。
-   * v1=左缘竖条（现状）/ v2=标题状态色 / v3=行尾状态点。仅改 body[data-dp-variant]，
-   * 样式由 styles.ts 按变体路由；数据层（data-dp-sess）三种完全一致，零行为差异。 */
+  /* 视觉方案对照器（2026-09-07 用户要求：组行竖条保留 × 会话行六种表达对比）。
+   * v1=竖条（默认）/ v2=标题色 / v3=行尾点 / v4=整行淡底 / v5=标题前胶囊 / v6=改良竖条。
+   * 仅改 body[data-dp-variant]，样式由 styles.ts 按变体路由；数据层（data-dp-sess）完全一致，零行为差异。 */
   var panel: HTMLElement | null = null;
   try {
     panel = document.createElement('div');
     panel.setAttribute('class', 'dp-switch');
-    var variants: Array<[string, string]> = [['bar', '竖条'], ['text', '标题色'], ['trail', '行尾点']];
+    var variants: Array<[string, string]> = [['bar', '竖条'], ['text', '标题色'], ['trail', '行尾点'], ['tint', '淡底'], ['chip', '胶囊'], ['bar6', '改良条']];
     for (var vi = 0; vi < variants.length; vi++) {
       var b = document.createElement('button');
       b.setAttribute('type', 'button');
       b.setAttribute('class', 'dp-switch-btn');
       b.textContent = variants[vi][1];
-      b.setAttribute('data-v', variants[vi][0]);
       (function (v: string): void {
         b.addEventListener('click', function (): void {
-          try { document.body.setAttribute('data-dp-variant', v); } catch (e) { /* 忽略 */ }
+          try {
+            if (v === 'bar') document.body.removeAttribute('data-dp-variant');
+            else document.body.setAttribute('data-dp-variant', v);
+          } catch (e) { /* 忽略 */ }
         });
       })(variants[vi][0]);
       panel.appendChild(b);
