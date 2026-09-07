@@ -2,6 +2,7 @@ import { markSessionViewed, trackSession, type RowState } from '../../client/dat
 /* 例外引用（§10 通道，理由见提审）：design-preview 为 TEMP 原型（定稿即删），复用 truth-flags
  * 纯逻辑（无 DOM/状态），T5 定稿时 flags 收敛进共享层后改道。禁反向、禁状态共享。 */
 import { flagsForSession } from '../truth-flags/flags';
+import { readNativeState } from '../truth-flags/dom-state';
 import { SESSION_VIEWED_EVENT } from '../../client/data/header-overlay';
 var LN = String.fromCharCode(10);
 var attrProbe = '';
@@ -64,89 +65,6 @@ function probeAttrs(row: Element): void {
     attrProbe = '行属性探针 | ' + parts.join(' ');
   } catch (e) { attrProbe = '行属性探针取失败'; }
 }
-var dotCache = new Map<Element, { v: boolean; t: number }>();
-var amberCache = new Map<Element, { v: boolean; t: number }>();
-export function hasNativeDot(el: Element): boolean {
-  try {
-    var now = Date.now();
-    var hit = dotCache.get(el);
-    if (hit && now - hit.t < 5000) return hit.v;
-    var found = scanDots(el);
-    if (dotCache.size > 500) dotCache.clear();
-    dotCache.set(el, { v: found, t: now });
-    return found;
-  } catch (e) { return false; }
-}
-/** 系统琥珀点（#45 黄系统优先：行上已现系统黄点时无条件采系统）：与绿点同槽，判据为琥珀色小圆点（done 绿之外的 warning 色）。与 hasNativeDot 互斥（绿要 gg 显著大于 rr，琥珀要 rr 显著大于 bb 且 gg 居中）。 */
-export function hasNativeAmber(el: Element): boolean {
-  try {
-    var now = Date.now();
-    var hit = amberCache.get(el);
-    if (hit && now - hit.t < 5000) return hit.v;
-    var found = scanAmber(el);
-    if (amberCache.size > 500) amberCache.clear();
-    amberCache.set(el, { v: found, t: now });
-    return found;
-  } catch (e) { return false; }
-}
-function scanAmber(root: Element): boolean {
-  try {
-    var rleft = 0;
-    try { rleft = (root as HTMLElement).getBoundingClientRect().left; } catch (e) { return false; }
-    var list = root.querySelectorAll('*');
-    if (list.length > 80) return false;
-    for (var i = 0; i < list.length; i++) {
-      var nd = list[i];
-      var cls = '';
-      try { cls = nd.getAttribute('class') || ''; } catch (e) { continue; }
-      if (cls.indexOf('dp-bubble') !== -1) continue;
-      var cs: CSSStyleDeclaration | null = null;
-      try { cs = getComputedStyle(nd); } catch (e) { continue; }
-      if (!cs) continue;
-      var m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(cs.backgroundColor || '');
-      if (!m) continue;
-      var rr = parseInt(m[1], 10); var gg = parseInt(m[2], 10); var bb = parseInt(m[3], 10);
-      if (!(rr > 140 && gg > 80 && bb < 140 && (rr - bb) > 60 && (gg - bb) > 30)) continue;
-      var w = 0; var h = 0; var l = 0;
-      try { var rc = (nd as HTMLElement).getBoundingClientRect(); w = rc.width; h = rc.height; l = rc.left; } catch (e) { continue; }
-      if (w <= 0 || w > 14 || h <= 0 || h > 14) continue;
-      if (l - rleft > 140) continue;
-      var br = cs.borderRadius || '';
-      if (br.indexOf('%') === -1 && parseFloat(br) < 4) continue;
-      return true;
-    }
-  } catch (e) { /* 忽略 */ }
-  return false;
-}
-function scanDots(root: Element): boolean {
-  try {
-    var rleft = 0;
-    try { rleft = (root as HTMLElement).getBoundingClientRect().left; } catch (e) { return false; }
-    var list = root.querySelectorAll('*');
-    if (list.length > 80) return false;
-    for (var i = 0; i < list.length; i++) {
-      var nd = list[i];
-      var cls = '';
-      try { cls = nd.getAttribute('class') || ''; } catch (e) { continue; }
-      if (cls.indexOf('dp-bubble') !== -1) continue;
-      var cs: CSSStyleDeclaration | null = null;
-      try { cs = getComputedStyle(nd); } catch (e) { continue; }
-      if (!cs) continue;
-      var m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(cs.backgroundColor || '');
-      if (!m) continue;
-      var rr = parseInt(m[1], 10); var gg = parseInt(m[2], 10); var bb = parseInt(m[3], 10);
-      if (!(gg > 100 && gg > rr + 30 && gg > bb + 30)) continue;
-      var w = 0; var h = 0; var l = 0;
-      try { var rc = (nd as HTMLElement).getBoundingClientRect(); w = rc.width; h = rc.height; l = rc.left; } catch (e) { continue; }
-      if (w <= 0 || w > 14 || h <= 0 || h > 14) continue;
-      if (l - rleft > 140) continue;
-      var br = cs.borderRadius || '';
-      if (br.indexOf('%') === -1 && parseFloat(br) < 4) continue;
-      return true;
-    }
-  } catch (e) { /* 忽略 */ }
-  return false;
-}
 var viewedHooked = false;
 function hookViewed(): void {
   if (viewedHooked) return;
@@ -173,40 +91,27 @@ export function markSessions(groups: Element[], states: RowState[]): void {
     for (var i = 0; i < groups.length; i++) {
       var st = states[i];
       var rows = sessMap.get(groups[i]) || [];
-      /* 黄双路径二（冻结合约）：原生绿点行不依赖组态——组 calm 亦提待看；远古完成靠播种水位（生而可见）自然回落。 */
-      if (rows.length) {
-        for (var dr = 0; dr < rows.length; dr++) {
-          var hasDot0 = false;
-          try { hasDot0 = hasNativeDot(rows[dr]); } catch (e) { hasDot0 = false; }
-          if (hasDot0) {
-            setA(rows[dr], 'data-dp-sess', 'seen');
-            setA(rows[dr], 'data-dp-tip', '待看 · 原生未读');
-          }
-        }
-      }
-      if (!st || (st.act !== 'exec' && st.act !== 'seen') || !st.top || !st.top.length) continue;
       if (!rows.length) continue;
       if (!attrProbe) probeAttrs(rows[0]);
       var taken: string[] = [];
       for (var r = 0; r < rows.length; r++) {
-        /* 系统优先（#45 黄双路径一）：行上已有系统琥珀点 → 必黄，不再自算。 */
-        var hasAmber = false;
-        try { hasAmber = hasNativeAmber(rows[r]); } catch (e) { hasAmber = false; }
-        if (hasAmber) {
-          setA(rows[r], 'data-dp-sess', 'seen');
-          setA(rows[r], 'data-dp-tip', '待看 · 系统黄');
+        /* 原生语义优先（官方 sessionStatuses 同源）：ongoing=执行中蓝，warning=等你黄。
+         * 零标题 join、零像素扫描——这是行级颜色的主路径。 */
+        var nstate = '';
+        try { nstate = readNativeState(rows[r]); } catch (e) { nstate = ''; }
+        if (nstate === 'ongoing') {
+          setA(rows[r], 'data-dp-sess', 'exec');
+          setA(rows[r], 'data-dp-tip', SESS_LABEL['exec']);
           continue;
         }
-        var hasDot = false;
-        try { hasDot = hasNativeDot(rows[r]); } catch (e) { hasDot = false; }
-        if (hasDot) {
+        if (nstate === 'warning') {
           setA(rows[r], 'data-dp-sess', 'seen');
-          setA(rows[r], 'data-dp-tip', '待看 · 原生未读');
+          setA(rows[r], 'data-dp-tip', SESS_LABEL['wait']);
           continue;
         }
-        /* 行归属 join（时间作废令）：行文本对会话标题归一匹配，不用时间窗；无标题真相即无色（诚实未知）。
-         * 颜色唯一判据 truth-flags：蓝=执行中（闪烁）、红=异常需处理（闪烁）、黄=待看/待确认选择。
+        /* 真相路径（原生 done/无点时）：红（异常 kind）与收尾/待看仍靠解码+水位+标题 join。
          * P1废：approval-pending 永不判红，只判黄（等你选择）。 */
+        if (!st || (st.act !== 'exec' && st.act !== 'seen') || !st.top || !st.top.length) continue;
         var rtext = textOf(rows[r]);
         var rnorm = normRowTitle(rtext);
         var hit: { key: string; flag: string; tip: string } | null = null;
@@ -235,7 +140,9 @@ export function markSessions(groups: Element[], states: RowState[]): void {
         setA(rows[r], 'data-dp-sess', hit.flag === 'blue' ? 'exec' : (hit.flag === 'done' ? 'done' : (hit.flag === 'red' ? 'red' : 'seen')));
         setA(rows[r], 'data-dp-tip', hit.tip);
       }
-      /* 组行升级（只升不降）：组内任一会话红→组红（need 红闪），任一蓝→组蓝，任一黄→组黄。 */
+      /* 组行升级（只升不降，不清零）：组内任一会话红→组红，任一蓝→组蓝，任一黄→组黄。
+       * 不清零的理由：entry.running（未解码/未归因会话仍在跑）是组级合法信号，demo 按水位 paint/clear
+       * 自管组条的新增与消除；此处只叠加行级实测，不销毁 entry 级信号。 */
       try {
         var gHasRed = false; var gHasBlue = false; var gHasYellow = false;
         for (var u = 0; u < rows.length; u++) {

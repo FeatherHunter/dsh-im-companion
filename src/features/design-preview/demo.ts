@@ -1,7 +1,8 @@
 /** TEMP 真实活性演示（定稿即删）：activity.snapshot 真数据 + 合成排序真排 + 真状态徽饰。 */
 /* 时间=会话文件最大 mtime（文件级近似）；方向=粗分；需干预/会话级无真信号，保持缺席。 */
 import { deriveRowStates, fetchActivity, fetchRoutesSafe, routesOf, type RowState } from '../../client/data/activity';
-import { clearSessionMarks, hasNativeDot, markSessions, sessionAttrProbe } from './sessions';
+import { clearSessionMarks, markSessions, sessionAttrProbe } from './sessions';
+import { readNativeState } from '../truth-flags/dom-state';
 import type { BotSnap } from '../../client/data/fleet-api';
 import type { StreamSnapshot } from '../../client/data/connection-stream';
 import type { FeatureCtx } from '../protocol';
@@ -45,7 +46,8 @@ function paint(groups: Element[], states: RowState[]): void {
       var row = groups[j] as HTMLElement;
       var st = states[j];
       var dot = false;
-      if (!st || (st.act !== 'exec' && st.act !== 'seen')) { try { dot = hasNativeDot(groups[j]); } catch (e) { dot = false; } }
+      /* 原生状态语义直读（svg[data-state]，替代已删的像素扫描）：行上有原生状态即视为有信号。 */
+      if (!st || (st.act !== 'exec' && st.act !== 'seen')) { try { dot = readNativeState(groups[j]) !== ''; } catch (e) { dot = false; } }
       if (dot && st && st.act === 'calm' && st.time > 0) {
         st = { key: st.key, ws: st.ws, act: 'seen', dir: '', time: st.time, via: st.via, top: st.top };
       }
@@ -137,20 +139,29 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
   var bots: BotSnap[] = [];
   var hasSnap = false;
   var fetching = false;
+  var fetchStartedAt = 0;
   var lastGood = 0;
   var disposed = false;
   var refresh = function (): void {
     /* 门禁（#45 用户裁定：竖条体系扩全工作区，无助理行方向恒普通照显）：只看快照与取数态，不看 bots 非空；bots 为空时方向细分自然回落普通（见 deriveRowStates）。 */
+    /* 防冻住：rpc 悬挂不回时 fetching 永真会杀死之后一切重绘——超 10s 强制复位 + 本轮 8s 竞速。 */
+    try { if (fetching && Date.now() - fetchStartedAt > 10000) fetching = false; } catch (e) { fetching = false; }
     if (disposed || !hasSnap || fetching) return;
     fetching = true;
+    try { fetchStartedAt = Date.now(); } catch (e) { /* 忽略 */ }
     var rpc = ctx.rpc;
-    Promise.all([fetchActivity(rpc), fetchRoutesSafe(rpc, bots)]).then(function (res) {
+    var raced: Promise<unknown[]> = Promise.race([Promise.all([fetchActivity(rpc), fetchRoutesSafe(rpc, bots)]), new Promise<unknown[]>(function (_, reject) {
+      setTimeout(function () { reject(new Error('dp-timeout')); }, 8000);
+    })]);
+    raced.then(function (res) {
+      var arr = res as unknown[];
+      var entries = arr[0] as import('../../client/data/activity').ActivityEntry[];
+      var routes = arr[1] as import('../../client/data/fleet-api').RouteRow[];
       if (disposed) return;
       try {
-        var entries = res[0];
         if (!entries.length && lastGood > 0) { fetching = false; return; }
         lastGood = entries.length;
-        var hasRoutes = routesOf(bots, res[1]);
+        var hasRoutes = routesOf(bots, routes);
         var groups = collectGroups();
         var texts = groups.map(function (g) { return keyOf(g); });
         var states = deriveRowStates(texts, bots, entries, hasRoutes);

@@ -13,6 +13,7 @@ const FEAT = join(REPO, 'src', 'features', 'truth-flags');
 const ENTRIES = [
   join(REPO, 'src', 'features', 'protocol.ts'),
   join(FEAT, 'flags.ts'),
+  join(FEAT, 'dom-state.ts'),
   join(FEAT, 'manifest.ts'),
 ];
 
@@ -43,8 +44,10 @@ function locate(base: string, name: string): string {
 
 const req = createRequire(join(tmp, 'run.cjs'));
 const flags: any = req(locate(tmp, 'flags.js'));
+const domState: any = req(locate(tmp, 'dom-state.js'));
 const manifest: any = req(locate(tmp, 'manifest.js'));
 const flagsSrc = readFileSync(join(FEAT, 'flags.ts'), 'utf8');
+const domSrc = readFileSync(join(FEAT, 'dom-state.ts'), 'utf8');
 const manifestSrc = readFileSync(join(FEAT, 'manifest.ts'), 'utf8');
 
 const base = {
@@ -166,8 +169,32 @@ test('红环：flags 纯逻辑（无 DOM、无 Node API、无样式）', () => {
   assert.ok(lines <= 200, 'flags.ts ≤200 行，实际 ' + lines);
 });
 
-test('manifest：id truth-flags，slots 空数组，仅注册逻辑', () => {
-  const f = manifest.feature;
+function stubRow(state: string | null): any {
+  const inner = state === null ? null : { getAttribute: (_k: string) => state };
+  return { querySelector: (_s: string) => inner };
+}
+
+test('dom-state：ongoing/warning/done 直读 data-state', () => {
+  assert.equal(domState.readNativeState(stubRow('ongoing')), 'ongoing');
+  assert.equal(domState.readNativeState(stubRow('warning')), 'warning');
+  assert.equal(domState.readNativeState(stubRow('done')), 'done');
+  assert.equal(domState.readNativeState(stubRow('ONGOING')), 'ongoing');
+});
+
+test('dom-state：无点/未知值/异常一律空串（fail-soft）', () => {
+  assert.equal(domState.readNativeState(stubRow(null)), '');
+  assert.equal(domState.readNativeState(stubRow('error')), '');
+  assert.equal(domState.readNativeState(stubRow('')), '');
+  assert.equal(domState.readNativeState({ querySelector: () => { throw new Error('x'); } }), '');
+});
+
+test('dom-state 红环：只读行内属性，不碰全局 DOM', () => {
+  for (const ban of ['document.', 'window.', 'getComputedStyle', 'createElement', 'localStorage']) {
+    assert.equal(domSrc.indexOf(ban), -1, 'dom-state.ts 不得出现 ' + ban);
+  }
+});
+
+test('manifest：id truth-flags，slots 空数组，仅注册逻辑', () => {  const f = manifest.feature;
   assert.equal(f.id, 'truth-flags');
   assert.ok(Array.isArray(f.slots) && f.slots.length === 0, 'slots 须为空数组');
   assert.equal(f.installStyles, undefined, '无样式不注册 installStyles');
