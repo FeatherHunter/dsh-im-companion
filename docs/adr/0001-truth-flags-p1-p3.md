@@ -23,7 +23,7 @@
 - **D1 · P1 废**：废弃“单例红永久占行”。C2-S2 三选一落定为 **B＋C**：B 会话消失即失效（归档／删除／配对丢失，机制事件非时间）；C 红配额制（同区行上只保留最近 1 个未 ack 红，更老自动转历史红进悬浮卡，不占行）。A 新 turn 内容顶替保留为活跃会话默认行为。“内容顶替满足 decay”原句收回。
 - **D2 · P2 删**：删 STICKY。`STICKY_TTL_MS` 5 分钟冻结修法删除（时间作废令下无时间兜底；黄虚线瞬时扫描失败兜底取消，改水位／真相等级）；基础设施节拍 `SNAP_TTL_MS` 8s（快照缓存，非判据）保留。
 - **D3 · P3 进 T5 池**：R7／E3 上游立案（P1 端点立案）**进 T5 需求池**，不卡 T5 前，不在本票提前开工。
-- **D4 · flags 五态＋诊断正交**：`RowFlag=red｜blue｜yellow｜done｜none`（done=刚收尾边沿，聚合时等价 yellow 但 tip 与清除独立；none=诚实无色删属性），诊断 `diag=nosig｜nosig0｜null` 正交（只解释“为何无色”，永不改色）；红保留原因 `redReason=402/aborted/unknown-default`（approval 占位永不发出，P1 废），黄保留来源 `system-amber/native-dot/water-level`，蓝保留 `running/completed-transient-demoted`；沉默 open 门控 isNew/justFinished/approval（崩溃残留 open 不得点蓝）；红不进 PRIO，视图双通道并列呈现平级。
+- **D4 · flags 五态＋诊断正交**：`RowFlag=red｜blue｜yellow｜done｜none`（done=刚收尾边沿，聚合时等价 yellow 但 tip 与清除独立；none=诚实无色删属性），诊断 `diag=nosig｜nosig0｜null` 正交（只解释“为何无色”，永不改色）；红保留原因 `redReason=402/aborted/unknown-default`（approval 占位永不发出，P1 废），黄保留来源 `system-amber/native-dot/water-level/approval-wait`，蓝只保留 `running`；open 缺 closer 即蓝，水位无进展也不断蓝（写入阵发性；崩溃残留 open 鉴别交 E4）；红不进 PRIO，视图双通道并列呈现平级。
 - **D5 · 展示时间删**：展示层删除时间。tip 仅状态词（删方向词与诊断行，nosig 诊断保留）；`RUN_WIN`／`SEEN_TTL`／`DOT_FRESH`／`RUNNING_WINDOW_MS`／`FRESH_MS`／配对文本天窗实现时删除（配对容差 :178 属配对机制，保留并正名）。mtime 仅作缓存版本号（三维键 `size:mtimeNs:尾帧 offset`，快路径 stat＋确认路径 magic 扫描）。
 - **D6 · 无标题默认关**：无标题／不可归属会话真相默认**无色**（关闭染色）；数字标题精确匹配等证实路径为例外（best-effort 保留，行 id 精确记 T5）。
 

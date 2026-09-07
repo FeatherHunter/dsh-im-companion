@@ -122,30 +122,17 @@ test('amber=>yellow（system-amber 优先）', () => {
   tipClean(r.tip);
 });
 
-test('沉默 open（open 真+!isNew+!justFinished+approval 假）=>none', () => {
+test('open 稳态无进展=>blue 不断蓝（阵发写入，次刷仍蓝）', () => {
   const r = flags.flagsForSession({ ...base, open: true, isNew: false, justFinished: false, approval: false });
-  assert.equal(r.flag, 'none');
-  tipClean(r.tip);
-});
-
-test('首见 running=>blue（信任首见，防种子水位误杀）', () => {
-  const r = flags.flagsForSession({ ...base, open: true, isNew: false, justFinished: false, approval: false, observedBefore: false });
   assert.equal(r.flag, 'blue');
   assert.equal(r.blueSrc, 'running');
   tipClean(r.tip);
 });
 
-test('持续无进展 running=>none（静默残留）', () => {
-  const r = flags.flagsForSession({ ...base, open: true, isNew: false, justFinished: false, approval: false, observedBefore: true });
-  assert.equal(r.flag, 'none');
+test('open+completed（新 turn 执行中）=>blue', () => {
+  const r = flags.flagsForSession({ ...base, open: true, kind: 'completed', isNew: false });
+  assert.equal(r.flag, 'blue');
   tipClean(r.tip);
-});
-
-test('isStaleOpen 仅持续无进展才真', () => {
-  assert.equal(flags.isStaleOpen(true, false, false, false, false), false);
-  assert.equal(flags.isStaleOpen(true, false, false, false, true), true);
-  assert.equal(flags.isStaleOpen(true, true, false, false, true), false);
-  assert.equal(flags.isStaleOpen(false, false, false, false, true), false);
 });
 
 test('green+isNew=>yellow（native-dot 压 water-level）', () => {

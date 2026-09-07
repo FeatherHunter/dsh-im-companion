@@ -66,19 +66,6 @@ function probeAttrs(row: Element): void {
 }
 var dotCache = new Map<Element, { v: boolean; t: number }>();
 var amberCache = new Map<Element, { v: boolean; t: number }>();
-/* 首见信任集（防种子水位误杀）：key 首刷即记，首见 running 信任 open 染蓝；
- * 次刷起无进展才判静默。满 2000 清零（极罕见抖动一轮，可接受）。 */
-var observedRunKeys: Record<string, number> = {};
-var observedRunCount = 0;
-function seenBefore(key: string): boolean {
-  try {
-    if (observedRunKeys[key] === 1) return true;
-    observedRunKeys[key] = 1;
-    observedRunCount++;
-    if (observedRunCount > 2000) { observedRunKeys = {}; observedRunCount = 0; }
-    return false;
-  } catch (e) { return true; }
-}
 export function hasNativeDot(el: Element): boolean {
   try {
     var now = Date.now();
@@ -236,7 +223,7 @@ export function markSessions(groups: Element[], states: RowState[]): void {
             var needApproval = t.approval === true;
             if (!running && !tr.isNew && !needApproval) continue;
             if (taken.indexOf(key) !== -1) continue;
-            var fg = flagsForSession({ open: running, kind: t.kind || '', approval: needApproval, amber: false, green: false, isNew: tr.isNew, justFinished: tr.justFinished, titleHit: true, observedBefore: seenBefore(key) });
+            var fg = flagsForSession({ open: running, kind: t.kind || '', approval: needApproval, amber: false, green: false, isNew: tr.isNew, justFinished: tr.justFinished, titleHit: true });
             if (fg.flag === 'none') continue;
             var ftip = fg.flag === 'red' ? SESS_LABEL['red'] : (fg.flag === 'blue' ? SESS_LABEL['exec'] : (fg.flag === 'done' ? SESS_LABEL['done'] : (fg.yellowSrc === 'approval-wait' ? SESS_LABEL['wait'] : SESS_LABEL['seen'])));
             hit = { key: key, flag: fg.flag, tip: ftip };

@@ -31,14 +31,6 @@ export interface FlagsInput {
   isNew: boolean;
   justFinished: boolean;
   titleHit: boolean;
-  /** 本页是否此前已见过该会话 running：首见（false）信任 open 染蓝，防种子水位误杀；
-   * 持续无进展（true）才判静默。缺省按 true（保守）。 */
-  observedBefore?: boolean;
-}
-
-/** 静默残留判定（纯函数，供断言）：open 真但水位无进展、非刚收尾、无审批、且此前已见过。 */
-export function isStaleOpen(open: boolean, isNew: boolean, justFinished: boolean, approval: boolean, observedBefore: boolean): boolean {
-  return open && !isNew && !justFinished && !approval && observedBefore;
 }
 
 function normKind(raw: string): string {
@@ -86,13 +78,9 @@ export function flagsForSession(input: FlagsInput): SessFlag {
     return { key: '', flag: 'yellow', yellowSrc: 'native-dot', diag: null, tip: '原生圆点待看' };
   }
 
-  // 沉默 open：此前已见过仍无进展、非刚收尾、无审批 => none（崩溃残留 open 不得永久蓝）。
-  // 首见（observedBefore===false）信任 open 走下蓝分支，防种子水位（首刷 mark==mtime）误杀真执行中。
-  if (isStaleOpen(input.open, input.isNew, input.justFinished, input.approval, input.observedBefore !== false)) {
-    return { key: '', flag: 'none', diag: 'nosig', tip: '静默会话无色' };
-  }
-
-  // 执行中（蓝）：重试中的 transient 也落这里（open 优先于收尾 kind）。
+  // 执行中（蓝）：open 缺 closer 即执行中，水位无进展也不断蓝——写入是阵发性的，
+  // 以“无进展”判静默会把正常思考中的任务闪灭（2026-09-07 真机复现）。
+  // 崩溃残留 open 的鉴别交 E4（stale-open 样本到后建红候选规则），此处永不静默。
   if (input.open) {
     return { key: '', flag: 'blue', blueSrc: 'running', diag: null, tip: '执行中' };
   }
