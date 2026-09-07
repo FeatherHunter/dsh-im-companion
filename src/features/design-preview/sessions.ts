@@ -69,6 +69,31 @@ function probeAttrs(row: Element): void {
  * 平静/黄（截图实锤：展开蓝→收起黄）。缓存组key→聚合色，收起时恢复，组色不再随折叠漂移。
  * 展开组：每轮聚合后写缓存；收起组：读缓存恢复（无缓存=首见，不动）。 */
 var groupActCache = new Map<string, string>();
+/* 真相判定（2026-09-07 用户裁定：磁盘红>官方黄——绿点行也先查真相，异常才红，无异常真相才兜底黄）。
+ * 返回 {key,flag,tip}|null：红=402/aborted/未知收尾（异常即处理），蓝=open，黄=approval；无信号=null（交调用方兜底）。 */
+function truthHit(st: RowState, rn: string, taken: string[]): { key: string; flag: string; tip: string } | null {
+  var hit: { key: string; flag: string; tip: string } | null = null;
+  if (!st || !st.top || !st.top.length) return null;
+  if (rn.length < 2) return null;
+  for (var c = 0; c < st.top.length; c++) {
+    var t = st.top[c];
+    var tnorm = normRowTitle(t.title || '');
+    if (!tnorm || tnorm.length < 4) continue;
+    var titleHit = tnorm === rn || (rn.length >= 4 && tnorm.indexOf(rn) === 0) || (rn.indexOf(tnorm) === 0);
+    if (!titleHit) continue;
+    var key = st.key + '/' + t.name;
+    var running = t.open === true;
+    var needApproval = t.approval === true;
+    if (taken.indexOf(key) !== -1) continue;
+    var fg = flagsForSession({ open: running, kind: t.kind || '', approval: needApproval, titleHit: true });
+    if (fg.flag === 'none') continue;
+    var ftip = fg.flag === 'red' ? SESS_LABEL['red'] : (fg.flag === 'blue' ? SESS_LABEL['exec'] : (fg.yellowSrc === 'approval-wait' ? SESS_LABEL['wait'] : SESS_LABEL['seen']));
+    hit = { key: key, flag: fg.flag, tip: ftip };
+    break;
+  }
+  return hit;
+}
+
 export function markSessions(groups: Element[], states: RowState[]): void {
   try {
     document.querySelectorAll('[data-dp-sess]').forEach(function (n) {
@@ -111,9 +136,19 @@ export function markSessions(groups: Element[], states: RowState[]): void {
           setA(rows[r], 'data-dp-tip', SESS_LABEL['wait']);
           continue;
         }
-        /* 绿点必黄（#497 真机裁定）：原生 done = 官方完成提醒（绿点只在 row.completed 时显示）。
-         * 官方绿点持续 = 待看黄持续；点开（selected）绿点灭 = 已看收敛，官方自售自清。 */
+        /* 绿点必黄（#497 真机裁定）：原生 done = 官方完成提醒。但 2026-09-07 用户裁定：磁盘红>官方黄——
+         * 绿点行先查真相（窗内解码出 error/aborted/未知收尾 ⇒ 红），无异常真相才兜底黄。
+         * 理由：官方完成提醒不区分"成功完成"与"异常收尾"；时间久≠已看（判据禁时间）。 */
         if (nstate === 'done') {
+          var rtextD = textOf(rows[r]);
+          var rnormD = normRowTitle(rtextD);
+          var hitD = truthHit(st, rnormD, taken);
+          if (hitD && hitD.flag === 'red') {
+            taken.push(hitD.key);
+            setA(rows[r], 'data-dp-sess', 'red');
+            setA(rows[r], 'data-dp-tip', hitD.tip);
+            continue;
+          }
           setA(rows[r], 'data-dp-sess', 'seen');
           setA(rows[r], 'data-dp-tip', SESS_LABEL['seen']);
           continue;
@@ -124,25 +159,7 @@ export function markSessions(groups: Element[], states: RowState[]): void {
         if (!st || !st.top || !st.top.length) continue;
         var rtext = textOf(rows[r]);
         var rnorm = normRowTitle(rtext);
-        var hit: { key: string; flag: string; tip: string } | null = null;
-        if (rnorm.length >= 2) {
-          for (var c = 0; c < st.top.length; c++) {
-            var t = st.top[c];
-            var tnorm = normRowTitle(t.title || '');
-            if (!tnorm || tnorm.length < 4) continue;
-            var titleHit = tnorm === rnorm || (rnorm.length >= 4 && tnorm.indexOf(rnorm) === 0) || (rnorm.indexOf(tnorm) === 0);
-            if (!titleHit) continue;
-            var key = st.key + '/' + t.name;
-            var running = t.open === true;
-            var needApproval = t.approval === true;
-            if (taken.indexOf(key) !== -1) continue;
-            var fg = flagsForSession({ open: running, kind: t.kind || '', approval: needApproval, titleHit: true });
-            if (fg.flag === 'none') continue;
-            var ftip = fg.flag === 'red' ? SESS_LABEL['red'] : (fg.flag === 'blue' ? SESS_LABEL['exec'] : (fg.yellowSrc === 'approval-wait' ? SESS_LABEL['wait'] : SESS_LABEL['seen']));
-            hit = { key: key, flag: fg.flag, tip: ftip };
-            break;
-          }
-        }
+        var hit = truthHit(st, rnorm, taken);
         if (!hit) continue;
         taken.push(hit.key);
         setA(rows[r], 'data-dp-sess', hit.flag === 'blue' ? 'exec' : (hit.flag === 'done' ? 'done' : (hit.flag === 'red' ? 'red' : 'seen')));

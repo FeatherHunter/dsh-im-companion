@@ -257,5 +257,38 @@ test('组级优先级·三蓝一黄仍黄：黄行存在⇒黄，蓝行再多也
   assert.equal(actOf(g, 'data-dp-act'), 'seen', '三蓝一黄 ⇒ 组黄');
 });
 
+test('真相红压绿点黄：原生 done + 窗内解码 kind=error ⇒ 行红+组红（2026-09-07 用户裁定：磁盘红>官方黄；时间久≠已看）', () => {
+  const g = group(null);
+  const r = row('Task Nu', 'done');
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k16', 'calm', [top1('f11', 'error', 'Task Nu', false)])]);
+  assert.equal(actOf(r, 'data-dp-sess'), 'red', '绿点行窗内 error 必须红，不得被绿点压黄');
+  assert.equal(actOf(g, 'data-dp-act'), 'need', '组级聚合红');
+});
+
+test('真相红压绿点黄·402 同理', () => {
+  const g = group(null);
+  const r = row('Task Xi', 'done');
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k17', 'calm', [top1('f12', '402', 'Task Xi', false)])]);
+  assert.equal(actOf(r, 'data-dp-sess'), 'red');
+});
+
+test('绿点兜底黄保持：原生 done + 窗内解码 kind=completed ⇒ 行黄（无异常真相时绿点必黄不被削弱）', () => {
+  const g = group(null);
+  const r = row('#497 打开日志目录与复制路径报 path-missing', 'done');
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k18', 'calm', [top1('f13', 'completed', '#497 打开日志目录与复制路径报 path-missing', false)])]);
+  assert.equal(actOf(r, 'data-dp-sess'), 'seen', 'completed（正常完成）保持黄——绿点必黄兜底');
+});
+
+test('绿点兜底黄保持·窗内无数据：原生 done + 无 top ⇒ 行黄（真相缺席不剥夺绿点语义）', () => {
+  const g = group(null);
+  const r = row('Task Rho', 'done');
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k19', 'calm', [])]);
+  assert.equal(actOf(r, 'data-dp-sess'), 'seen', '无解码数据时绿点必黄兜底');
+});
+
 rmSync(tmp, { recursive: true, force: true });
 console.log('features/session-marks: ALL PASS');
