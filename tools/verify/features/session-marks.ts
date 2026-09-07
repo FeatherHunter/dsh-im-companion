@@ -290,5 +290,47 @@ test('绿点兜底黄保持·窗内无数据：原生 done + 无 top ⇒ 行黄�
   assert.equal(actOf(r, 'data-dp-sess'), 'seen', '无解码数据时绿点必黄兜底');
 });
 
+test('同名串扰修复·绿点行唯一命中才压红：同名双候选（1 error + 1 completed）⇒ 黄（不冒险染红）', () => {
+  const g = group(null);
+  const r = row('[#530] 修复：英文版下列表右侧缺少 PR 标签页', 'done');
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k20', 'calm', [
+    top1('f14', 'error', '[#530] 修复：英文版下列表右侧缺少 PR 标签页', false),
+    top1('f15', 'completed', '[#530] 修复：英文版下列表右侧缺少 PR 标签页', false),
+  ])]);
+  assert.equal(actOf(r, 'data-dp-sess'), 'seen', '同名双候选+绿点 ⇒ 黄（唯一命中门无效不压红）');
+  assert.equal(actOf(g, 'data-dp-act'), 'seen');
+});
+
+test('同名串扰修复·无点行唯一命中才生效：同名多候选 ⇒ 不染（诚实无色，宁可漏不可错）', () => {
+  const g = group(null);
+  const r = row('[草稿][新增BUG]', null);
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k21', 'calm', [
+    top1('f16', 'completed', '[草稿][新增BUG]', false),
+    top1('f17', 'completed', '[草稿][新增BUG]', false),
+  ])]);
+  assert.equal(actOf(r, 'data-dp-sess'), null, '同名双候选 ⇒ 无色（不猜哪个是真身）');
+});
+
+test('同名串扰修复·唯一命中仍生效：单候选 ⇒ 正常染（不破坏真相红压绿点黄）', () => {
+  const g = group(null);
+  const r = row('Task Upsilon', 'done');
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k22', 'calm', [
+    top1('f18', 'error', 'Task Upsilon', false),
+    top1('f19', 'completed', 'Task Upsilon', false),
+  ])]);
+  assert.equal(actOf(r, 'data-dp-sess'), 'seen', '双候选但 error+completed，无点行无色（不押注）');
+
+  const g2 = group(null);
+  const r2 = row('Task Omega', null);
+  registry = [g2, r2];
+  sess.markSessions([g2 as any], [st('k23', 'calm', [
+    top1('f20', 'error', 'Task Omega', false),
+  ])]);
+  assert.equal(actOf(r2, 'data-dp-sess'), 'red', '单候选 error ⇒ 红（唯一命中正常生效）');
+});
+
 rmSync(tmp, { recursive: true, force: true });
 console.log('features/session-marks: ALL PASS');

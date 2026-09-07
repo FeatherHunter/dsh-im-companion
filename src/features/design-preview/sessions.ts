@@ -70,11 +70,15 @@ function probeAttrs(row: Element): void {
  * 展开组：每轮聚合后写缓存；收起组：读缓存恢复（无缓存=首见，不动）。 */
 var groupActCache = new Map<string, string>();
 /* 真相判定（2026-09-07 用户裁定：磁盘红>官方黄——绿点行也先查真相，异常才红，无异常真相才兜底黄）。
- * 返回 {key,flag,tip}|null：红=402/aborted/未知收尾（异常即处理），蓝=open，黄=approval；无信号=null（交调用方兜底）。 */
+ * 唯一命中门（2026-09-07 同名串扰修复）：标题 join 候选必须恰好 1 个才生效——
+ * 同名/同前缀多候选（如 [草稿][新增BUG] 双胞胎、[#530] 前缀撞车）⇒ 返回 null 不押注（诚实→无色/兜底黄），
+ * 宁可漏染不可错染（错染=把 A 会话状态套到 B 行上，正是"两个同名会话都会变色"的根因）。
+ * 返回 {key,flag,tip}|null：红=402/aborted/未知收尾，蓝=open，黄=approval；无信号=null（交调用方兜底）。 */
 function truthHit(st: RowState, rn: string, taken: string[]): { key: string; flag: string; tip: string } | null {
   var hit: { key: string; flag: string; tip: string } | null = null;
   if (!st || !st.top || !st.top.length) return null;
   if (rn.length < 2) return null;
+  var matches: { key: string; t: import('../../client/data/activity').SessTop }[] = [];
   for (var c = 0; c < st.top.length; c++) {
     var t = st.top[c];
     var tnorm = normRowTitle(t.title || '');
@@ -82,16 +86,18 @@ function truthHit(st: RowState, rn: string, taken: string[]): { key: string; fla
     var titleHit = tnorm === rn || (rn.length >= 4 && tnorm.indexOf(rn) === 0) || (rn.indexOf(tnorm) === 0);
     if (!titleHit) continue;
     var key = st.key + '/' + t.name;
-    var running = t.open === true;
-    var needApproval = t.approval === true;
     if (taken.indexOf(key) !== -1) continue;
-    var fg = flagsForSession({ open: running, kind: t.kind || '', approval: needApproval, titleHit: true });
-    if (fg.flag === 'none') continue;
-    var ftip = fg.flag === 'red' ? SESS_LABEL['red'] : (fg.flag === 'blue' ? SESS_LABEL['exec'] : (fg.yellowSrc === 'approval-wait' ? SESS_LABEL['wait'] : SESS_LABEL['seen']));
-    hit = { key: key, flag: fg.flag, tip: ftip };
-    break;
+    matches.push({ key: key, t: t });
   }
-  return hit;
+  /* 唯一命中门：0 或 >1 候选都不押注（0=无真相可依；>1=同名串扰风险）。仅恰好 1 个时生效。 */
+  if (matches.length !== 1) return null;
+  var m = matches[0];
+  var running = m.t.open === true;
+  var needApproval = m.t.approval === true;
+  var fg = flagsForSession({ open: running, kind: m.t.kind || '', approval: needApproval, titleHit: true });
+  if (fg.flag === 'none') return null;
+  var ftip = fg.flag === 'red' ? SESS_LABEL['red'] : (fg.flag === 'blue' ? SESS_LABEL['exec'] : (fg.yellowSrc === 'approval-wait' ? SESS_LABEL['wait'] : SESS_LABEL['seen']));
+  return { key: m.key, flag: fg.flag, tip: ftip };
 }
 
 export function markSessions(groups: Element[], states: RowState[]): void {
