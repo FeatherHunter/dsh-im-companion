@@ -109,6 +109,15 @@ export function markSessions(groups: Element[], states: RowState[]): void {
           setA(rows[r], 'data-dp-tip', SESS_LABEL['wait']);
           continue;
         }
+        /* 绿点必黄（#497 真机裁定 2026-09-07）：原生 done = 官方完成提醒（sessionStatuses completed→done，
+         * 且绿点只在 row.completed 时显示——官方认为此处有值得注意的东西），我们跟黄：不看水位、不看组级
+         * 门禁、不看标题 join。flags 的 native-dot 黄源（green 分支）本就为此设计，此前调用处硬编码
+         * green:false 从未接线——这是「绿点无黄条」的根因。官方绿点持续 = 待看黄持续，已看收敛走清除路径。 */
+        if (nstate === 'done') {
+          setA(rows[r], 'data-dp-sess', 'seen');
+          setA(rows[r], 'data-dp-tip', SESS_LABEL['seen']);
+          continue;
+        }
         /* 真相路径（原生 done/无点时）：红（异常 kind）与收尾/待看仍靠解码+水位+标题 join。
          * P1废：approval-pending 永不判红，只判黄（等你选择）。 */
         if (!st || (st.act !== 'exec' && st.act !== 'seen') || !st.top || !st.top.length) continue;

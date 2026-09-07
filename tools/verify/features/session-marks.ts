@@ -131,18 +131,18 @@ test('黄不变量：原生 warning 行黄 ⇒ 组黄', () => {
   assert.equal(actOf(g, 'data-dp-act'), 'seen');
 });
 
-test('红不变量：402 真相行红 ⇒ 组红', () => {
+test('红不变量：402 真相行红 ⇒ 组红（无原生点=无完成提醒，走真相路径）', () => {
   const g = group(null);
-  const r = row('Task Alpha', 'done');
+  const r = row('Task Alpha', null);
   registry = [g, r];
   sess.markSessions([g as any], [st('k3', 'exec', [top1('f1', '402', 'Task Alpha', false)])]);
   assert.equal(actOf(r, 'data-dp-sess'), 'red');
   assert.equal(actOf(g, 'data-dp-act'), 'need');
 });
 
-test('清孤儿蓝：组旧蓝 + 已完成且已看（水位不新） ⇒ 组条清除', () => {
+test('清孤儿蓝：组旧蓝 + 已完成且已看（无原生提醒点） ⇒ 组条清除', () => {
   const g = group('exec');
-  const r = row('Task Beta', 'done');
+  const r = row('Task Beta', null);
   registry = [g, r];
   act.seedSessionSeen([{ key: 'k4/f2', mtime: 100 }]);
   sess.markSessions([g as any], [st('k4', 'exec', [top1('f2', 'completed', 'Task Beta', false)])]);
@@ -185,7 +185,7 @@ test('角标不变量：组蓝/黄/红 ⇒ 图标角标同色（角标=组条终
   sess.markSessions([g2 as any], [st('g2', 'calm', [])]);
   assert.equal(groupDot(g2), 'seen');
 
-  const g3 = group(null); const r3 = row('Task Epsilon', 'done');
+  const g3 = group(null); const r3 = row('Task Epsilon', null);
   registry = [g3, r3];
   sess.markSessions([g3 as any], [st('g3', 'exec', [top1('f5', '402', 'Task Epsilon', false)])]);
   assert.equal(groupDot(g3), 'need');
@@ -200,6 +200,23 @@ test('角标残环：组条清（孤儿）⇒ 图标角标同步清（paint 先�
   sess.markSessions([g as any], [st('k10', 'calm', [])]);
   assert.equal(actOf(g, 'data-dp-act'), null);
   assert.equal(groupDot(g), null);
+});
+
+test('绿点必黄：原生 done（官方完成提醒）⇒ 行黄+组黄（#497 真机：绿点无条；绿点=官方待看信号，不信水位信绿点）', () => {
+  // 场景 A：组 calm（无 open、无新）——原门禁逻辑会拦真相路径，但原生绿点必须直接黄。
+  const gA = group(null);
+  const rA = row('[#497] 打开日志目录与复制路径报 path-missing', 'done');
+  registry = [gA, rA];
+  sess.markSessions([gA as any], [st('k11', 'calm', [top1('f6', 'completed', '[#497] 打开日志目录与复制路径报 path-missing', false)])]);
+  assert.equal(actOf(rA, 'data-dp-sess'), 'seen', '原生绿点行必须黄（官方完成提醒）');
+  assert.equal(actOf(gA, 'data-dp-act'), 'seen', '组级必须聚合出黄');
+
+  // 场景 B：组 act=exec（有 open 会话）时绿点行同样黄。
+  const gB = group(null);
+  const rB = row('Task Eta', 'done');
+  registry = [gB, rB];
+  sess.markSessions([gB as any], [st('k12', 'exec', [top1('f7', 'completed', 'Task Eta', false)])]);
+  assert.equal(actOf(rB, 'data-dp-sess'), 'seen');
 });
 
 rmSync(tmp, { recursive: true, force: true });
