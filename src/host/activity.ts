@@ -20,7 +20,9 @@ const SNAP_TTL_MS = 8000;
 let snapCache: { at: number; entries: ActivityEntry[] } | null = null;
 /* Windows 目录 mtime 内容追加不更新（仅新建/删除 bump），必须下探一层 stat 会话文件；全扫实测约 118ms。 */
 const MAX_FILES = 10;
-const TOP_PER_DIR = 3;
+/* 真相解码候选：每目录取快照 top-8（TOP_PER_DIR 2026-09-07 3→8：真机 #530 排第 4 被截断，
+ * 快照里无 title → 标题 join 无目标 → 行永无色；全局 30 文件/250ms 预算上限仍兜底）。 */
+const TOP_PER_DIR = 8;
 
 async function mtimeOf(p: string): Promise<number> {
   try {

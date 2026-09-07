@@ -85,8 +85,9 @@ export function flagsForSession(input: FlagsInput): SessFlag {
     return { key: '', flag: 'blue', blueSrc: 'running', diag: null, tip: '执行中' };
   }
 
-  // 收尾 completed 且已闭合：非新非刚收尾即平静，不染蓝。
-  if (isDoneKind) {
+  // 收尾 completed 且已闭合：仅已看（水位不低于 mtime）才平静；完成未看=待看（下落到水面黄，持续不闪灭——
+  // 2026-09-07 真机 #530：completed+isNew 曾直接 none，黄条只活一轮边沿，验收线 3 违反）。
+  if (isDoneKind && !input.isNew) {
     return { key: '', flag: 'none', diag: null, tip: '已完成' };
   }
 

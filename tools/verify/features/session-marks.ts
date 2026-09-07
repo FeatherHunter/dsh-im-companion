@@ -89,6 +89,7 @@ const gWin: any = { addEventListener: (_t: string, _f: unknown) => { /* 忽略 *
 
 const req = createRequire(join(tmp, 'run.cjs'));
 const sess: any = req(locate(tmp, 'sessions.js'));
+const act: any = req(locate(tmp, 'activity.js'));
 
 function group(pre: string | null): FakeEl {
   const g = new FakeEl('ws', null, true);
@@ -131,10 +132,11 @@ test('红不变量：402 真相行红 ⇒ 组红', () => {
   assert.equal(actOf(g, 'data-dp-act'), 'need');
 });
 
-test('清孤儿蓝：组旧蓝 + 全无色会话 ⇒ 组条清除', () => {
+test('清孤儿蓝：组旧蓝 + 已完成且已看（水位不新） ⇒ 组条清除', () => {
   const g = group('exec');
   const r = row('Task Beta', 'done');
   registry = [g, r];
+  act.seedSessionSeen([{ key: 'k4/f2', mtime: 100 }]);
   sess.markSessions([g as any], [st('k4', 'exec', [top1('f2', 'completed', 'Task Beta', false)])]);
   assert.equal(actOf(r, 'data-dp-sess'), null);
   assert.equal(actOf(g, 'data-dp-act'), null);

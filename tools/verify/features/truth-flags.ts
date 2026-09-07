@@ -91,6 +91,13 @@ test('completed闭合=>none 不染蓝（旧完成即平静）', () => {
   tipClean(r.tip);
 });
 
+test('completed闭合+isNew=>yellow（water-level：完成未看=待看，持续黄不闪灭）', () => {
+  const r = flags.flagsForSession({ ...base, kind: 'completed', isNew: true });
+  assert.equal(r.flag, 'yellow');
+  assert.equal(r.yellowSrc, 'water-level');
+  tipClean(r.tip);
+});
+
 test('completed+open 重试中=>blue（running）', () => {
   const r = flags.flagsForSession({ ...base, kind: 'completed', open: true, isNew: true });
   assert.equal(r.flag, 'blue');
