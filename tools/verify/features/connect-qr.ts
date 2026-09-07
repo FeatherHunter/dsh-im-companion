@@ -161,6 +161,7 @@ test('#49 旧分叉移除：调用方统一到共享选择器', () => {
   const barRule = theme.match(/\.af-dirbar\s*\{[^}]*\}/)?.[0] ?? '';
   assert.ok(barRule.includes('line-height'), '路径条须自带 line-height（防宿主继承挤压）');
   assert.ok(barRule.includes('align-items'), '路径条须居中对齐');
+  assert.ok(barRule.includes('scrollbar-gutter'), '路径条须显式 scrollbar-gutter（防宿主预留 phantom 轨道）');
 });
 
 test('#49 openDirPicker：工作区文案覆盖且默认不变', async () => {

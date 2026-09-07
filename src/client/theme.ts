@@ -240,7 +240,7 @@ const CSS = `
 .af-steps { margin: 8px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 12px; color: var(--af-secondary); }
 .af-steps li { display: flex; gap: 8px; }
 .af-steps li::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: var(--af-accent); margin-top: 6px; flex: none; }
-.af-dirbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 8px 10px; background: var(--af-surface); border-radius: 10px; font-size: 12px; line-height: 18px; color: var(--af-secondary); margin-bottom: 8px; max-height: 72px; overflow: auto; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
+.af-dirbar { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; padding: 8px 10px; background: var(--af-surface); border-radius: 10px; font-size: 12px; line-height: 18px; color: var(--af-secondary); margin-bottom: 8px; max-height: 72px; overflow: auto; scrollbar-gutter: auto; font-family: ui-monospace, "SF Mono", Consolas, monospace; }
 .af-diritem { display: flex; align-items: center; gap: 8px; padding: 9px 10px; border-radius: 10px; cursor: pointer; font-size: 13px; color: var(--af-primary); }
 .af-diritem:hover { background: var(--af-surface-2); }
 .af-diritem svg { color: var(--af-tertiary); flex: none; }
