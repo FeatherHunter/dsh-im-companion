@@ -8,8 +8,9 @@ import { showModal, type ModalHandle } from '../ui/modal'
 import { makeButton, type BtnKind } from '../ui/button'
 import { toast } from '../ui/toast'
 import { CHANNEL_ORDER, channelLabel } from '../data/config'
-import { fetchChannelStatus, fmtCountdown, normalizeProvisionTiming, type ProvisionState, type RpcCall } from '../data/fleet-api'
-import { openWorkspacePicker } from './workspace-picker'
+import { fetchChannelStatus, fmtCountdown, normalizeProvisionTiming, resolveNewBotId, type ProvisionState, type RpcCall } from '../data/fleet-api'
+import { createMetaStore } from '../data/meta'
+import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir-picker'
 
 export interface ConnectTarget {
   name: string
@@ -19,6 +20,52 @@ export interface ConnectTarget {
 function safeQrSrc(value: string | undefined): string | null {
   if (!value) return null
   return /^data:image\/(?:png|webp|svg\+xml)(?:;charset=[^;,]+)?;base64,/i.test(value) ? value : null
+}
+
+export interface BindingCommit {
+  rpc: RpcCall
+  channel: string
+  toast: typeof toast
+  onDone: () => void
+  botId: string
+  ws: string | null
+  prevWorkspace: string
+  agentName: string
+}
+
+/** 选家落定（#49：可单测的纯编排——set 信封校验＋名字跟人走＋如实 toast；弹窗/DOM 留在外层）。 */
+export async function commitBinding(o: BindingCommit): Promise<boolean> {
+  if (!o.ws) {
+    o.toast('机器人已就绪，请用 ⋯ 菜单「选择工作区」完成绑定')
+    o.onDone()
+    return false
+  }
+  const call = (endpoint: string, payload: Record<string, unknown>) =>
+    o.rpc('/' + o.channel, endpoint, payload, AbortSignal.timeout(8000))
+  let res: { ok?: boolean; error?: { message?: string } } | null = null
+  try {
+    res = await call('bot.workspace.set', { botId: o.botId, workspace: o.ws }) as typeof res
+  } catch (e) {
+    res = { ok: false, error: { message: String((e as Error)?.message ?? e) } }
+  }
+  if (!res || res.ok !== true) {
+    o.toast('绑定失败：' + (res?.error?.message ?? '绑定失败'))
+    o.onDone()
+    return false
+  }
+  /* 名字跟人走：无家 Agent 首次落家，家即其名，local 空壳退场；元数据失败不推翻已落地绑定。 */
+  if (!o.prevWorkspace && o.agentName.trim()) {
+    try {
+      const store = await createMetaStore(o.rpc)
+      await store.rename(o.ws, o.agentName)
+      await store.removeLocal(o.agentName)
+    } catch (e) {
+      o.toast('名称关联失败：' + String((e as Error)?.message ?? e) + '（绑定已生效）')
+    }
+  }
+  o.toast('已接入并绑定工作区', 'check')
+  o.onDone()
+  return true
 }
 
 export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLElement, target: ConnectTarget, onDone: () => void): void {
@@ -113,9 +160,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       try {
         const st = await fetchChannelStatus(rpc!, channel)
         if (finished) return
-        const fresh = st.bots.filter((b) => !baseline.has(b.botId))
-        const provBotId = st.provisioning?.botId
-        const botId = fresh[0]?.botId ?? (provBotId && st.bots.some((b) => b.botId === provBotId) ? provBotId : undefined)
+        const botId = resolveNewBotId(st.bots, baselineOk ? baseline : null, st.provisioning?.botId)
         if (botId) {
           return void succeed(botId)
         }
@@ -139,26 +184,16 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       toast(label + ' 机器人已就绪', 'check')
       try {
         if (target.workspace) {
-          await call('bot.workspace.set', { botId, workspace: target.workspace })
-          toast('已接入并绑定工作区', 'check')
           modal.close()
-          onDone()
-          return
+          if (await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })) return
         }
       } catch (e) {
         toast('绑定工作区失败：' + String((e as Error)?.message ?? e))
       }
       modal.close()
-      const picker = openWorkspacePicker(ctx, rpc)
+      const picker = openDirPicker(rpc, '', ctxNativePicker(ctx), WORKSPACE_PICKER_COPY)
       const ws = await picker.promise
-      if (ws) {
-        await call('bot.workspace.set', { botId, workspace: ws }).catch((e: unknown) => toast('绑定失败：' + String((e as Error)?.message ?? e)))
-        toast('已接入并绑定工作区', 'check')
-        onDone()
-      } else {
-        toast('机器人已就绪，请用 ⋯ 菜单「选择工作区」完成绑定')
-        onDone()
-      }
+      await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws, prevWorkspace: target.workspace, agentName: target.name })
     }
 
     function renderQr(prov: ProvisionState): void {
@@ -205,12 +240,14 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       ])
     }
 
-    /* 基线：当前该渠道已存在的 botId（用于识别新机器人） */
+    /* 基线：当前该渠道已存在的 botId（用于识别新机器人）；拉取失败按未知处理（只认 provision 上报，绝不差分认领）。 */
+    let baselineOk = false
     try {
       const st = await fetchChannelStatus(rpc!, channel)
       for (const b of st.bots) baseline.add(b.botId)
+      baselineOk = true
     } catch {
-      /* 基线失败按空处理 */
+      /* 基线未知：识别退化为 provision 匹配 */
     }
     if (finished) return
     void begin()

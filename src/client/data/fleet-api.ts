@@ -269,6 +269,17 @@ export function fmtCountdown(ms: number): string {
   return mm + ':' + ss
 }
 
+/** 新机器人识别（#49）：provision 上报 botId 优先命中；基线已知时差集唯一认领；基线未知（null，拉取失败）只认 provision；
+ * 多新并存/空则 undefined（继续等，绝不张冠李戴）。 */
+export function resolveNewBotId(
+  bots: Pick<BotSnap, 'botId'>[], baseline: ReadonlySet<string> | null, provBotId?: string | null,
+): string | undefined {
+  if (provBotId && bots.some((b) => b.botId === provBotId)) return provBotId
+  if (!baseline) return undefined
+  const fresh = bots.map((b) => b.botId).filter((id) => id && !baseline.has(id))
+  return fresh.length === 1 ? fresh[0] : undefined
+}
+
 /** Bot 展示名（#31：只加导出，不改既有行为；left-badges 悬浮卡复用）。botName 优先（超长截断），否则 botId 后四位占位，绝不返回空串。 */
 export function botDisplayLabel(b: Pick<BotSnap, 'botName' | 'botId'>): string {
   const n = (b?.botName ?? '').trim()

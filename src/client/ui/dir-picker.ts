@@ -1,5 +1,5 @@
 /** 目录选择原语（新增共享原语，各 feature 复用）：原生系统对话框优先，否则 host 桥目录浏览。
- * 与 components/workspace-picker 同源语义，落共享层供 feature 经契约使用（feature 禁直引 A1 私有）。
+ * 接入流程与「选择工作区」动作共用同一份实现（#49 统一旧分叉，文案经 copy 参数覆盖）。
  * 内置浏览全用 af-* 主题类（title/sub/dirbar/list/diritem/foot）：裸 h3/div/button 会吃到宿主样式
  * （紫标题/原生按钮），在设置页里即截图中的混乱卡片。卡片加宽 + 遮罩置顶（见 theme 附则）。 */
 import { h } from '../dom'
@@ -30,9 +30,30 @@ export function nativePicker(...svcs: unknown[]): (() => Promise<unknown>) | und
   return undefined
 }
 
+export interface DirPickerCopy { title: string; sub: string }
+
+/** 工作区文案（接入流程/选家共用；#49 统一旧分叉时保留原截图 copy）。 */
+export const WORKSPACE_PICKER_COPY: DirPickerCopy = { title: '选择工作区', sub: '选择该 Agent 的文件夹（作为它的「家」）' }
+
+const DEFAULT_COPY: DirPickerCopy = { title: '选择目录', sub: '为该 Agent 选一个文件夹' }
+
+/** ctx 原生选择器归一：官方直连（ctx.uiWorkspace）优先，其次 get 透传；都没有即 undefined（走内置浏览）。 */
+export function ctxNativePicker(ctx: unknown): (() => Promise<unknown>) | undefined {
+  let direct: unknown
+  try { direct = (ctx as { uiWorkspace?: unknown } | null)?.uiWorkspace } catch { direct = undefined }
+  let via: unknown
+  try {
+    via = typeof (ctx as { get?: unknown })?.get === 'function'
+      ? (ctx as { get: (n: string) => unknown }).get('uiWorkspace')
+      : undefined
+  } catch { via = undefined }
+  return nativePicker(direct, via)
+}
+
 export function openDirPicker(
-  rpc: RpcCall | null, initial = '', native?: () => Promise<unknown>,
+  rpc: RpcCall | null, initial = '', native?: () => Promise<unknown>, copy?: DirPickerCopy,
 ): DirPickerHandle {
+  const wording = copy ?? DEFAULT_COPY
   let resolveFn: (v: string | null) => void = () => undefined
   const promise = new Promise<string | null>((resolve) => {
     resolveFn = resolve
@@ -93,8 +114,8 @@ export function openDirPicker(
   const cancel = makeButton({ kind: 'ghost', label: '取消', onClick: () => done(null) })
   modal = showModal([
     /* 标题锁色：af-modal-title 不设 color，宿主 h3 紫字会漏进来，内联盖掉 */
-    h('h3', { className: 'af-modal-title', style: { color: 'var(--af-primary)' } }, '选择目录'),
-    h('div', { className: 'af-modal-sub', style: { color: 'var(--af-secondary)' } }, '为该 Agent 选一个文件夹'),
+    h('h3', { className: 'af-modal-title', style: { color: 'var(--af-primary)' } }, wording.title),
+    h('div', { className: 'af-modal-sub', style: { color: 'var(--af-secondary)' } }, wording.sub),
     bar, goRow, chips, list,
     h('div', { className: 'af-modal-foot', style: { flex: 'none' } }, cancel, choose),
   ], { onClose: () => resolveFn(null) })

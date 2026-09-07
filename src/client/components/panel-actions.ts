@@ -7,7 +7,7 @@ import type { RpcCall } from '../data/fleet-api'
 import type { AgentMetaDoc, MetaStore } from '../data/meta'
 import type { AgentView } from '../data/model'
 import { openConnectFlow } from './connect-flow'
-import { openWorkspacePicker } from './workspace-picker'
+import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir-picker'
 
 export interface PanelActionsDeps {
   ctx: unknown
@@ -66,9 +66,9 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
 
   async function pickWorkspace(view: AgentView): Promise<void> {
     try {
-      let picker: ReturnType<typeof openWorkspacePicker>
+      let picker: ReturnType<typeof openDirPicker>
       try {
-        picker = openWorkspacePicker(deps.ctx, deps.rpc)
+        picker = openDirPicker(deps.rpc, view.workspace, ctxNativePicker(deps.ctx), WORKSPACE_PICKER_COPY)
       } catch (e) {
         toast('目录选择器打开失败：' + String((e as Error)?.message ?? e))
         return
@@ -82,6 +82,15 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
       for (const b of view.bots) {
         await deps.rpc('/' + b.channel, 'bot.workspace.set', { botId: b.botId, workspace: ws }, AbortSignal.timeout(8000))
           .catch((e: unknown) => toast('渠道 ' + channelLabel(b.channel) + ' 绑定失败：' + String((e as Error)?.message ?? e)))
+      }
+      /* 名字跟人走（#49）：搬家后家即其名；旧工作区残留名无展示面（分组只看 bots，adopt 名单取自宿主快照），不清零。 */
+      if (view.bots.length && view.name.trim() && ws !== view.workspace) {
+        try {
+          await deps.getStore()?.rename(ws, view.name)
+          await deps.getStore()?.removeLocal(view.name)
+        } catch (e) {
+          toast('名称关联失败：' + String((e as Error)?.message ?? e) + '（绑定已生效）')
+        }
       }
       await deps.refresh()
       toast('工作区已更新', 'check')

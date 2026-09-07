@@ -71,6 +71,7 @@ function fakeCtx(): unknown {
         call: async (ch: string, endpoint: string, payload: Record<string, unknown> | undefined) => {
           if (ch === '/im-companion') {
             if (endpoint === 'fs.defaultRoot') return { ok: true, value: { path: 'C:\\' } }
+            if (endpoint === 'fs.roots') return { ok: true, value: { roots: ['C:\\', 'D:\\'] } }
             if (endpoint === 'fs.list') {
               const dir = String(payload?.path ?? '')
               const entries = dir === 'C:\\'
