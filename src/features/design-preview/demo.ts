@@ -1,6 +1,6 @@
 /** TEMP 真实活性演示（定稿即删）：activity.snapshot 真数据 + 合成排序真排 + 真状态徽饰。 */
 /* 时间=会话文件最大 mtime（文件级近似）；方向=粗分；需干预/会话级无真信号，保持缺席。 */
-import { DOT_FRESH_MS, deriveRowStates, fetchActivity, fetchRoutesSafe, fmtTime, routesOf, type RowState } from '../../client/data/activity';
+import { deriveRowStates, fetchActivity, fetchRoutesSafe, fmtTime, routesOf, type RowState } from '../../client/data/activity';
 import { clearSessionMarks, hasNativeDot, markSessions, sessionAttrProbe } from './sessions';
 import type { BotSnap } from '../../client/data/fleet-api';
 import type { StreamSnapshot } from '../../client/data/connection-stream';
@@ -48,7 +48,7 @@ function paint(groups: Element[], states: RowState[]): void {
       var st = states[j];
       var dot = false;
       if (!st || (st.act !== 'exec' && st.act !== 'seen')) { try { dot = hasNativeDot(groups[j]); } catch (e) { dot = false; } }
-      if (dot && st && st.act === 'calm' && st.time > 0 && Date.now() - st.time < DOT_FRESH_MS) {
+      if (dot && st && st.act === 'calm' && st.time > 0) {
         st = { key: st.key, ws: st.ws, act: 'seen', dir: '', time: st.time, via: st.via, top: st.top };
       }
       if (!st || st.via === 'none') {

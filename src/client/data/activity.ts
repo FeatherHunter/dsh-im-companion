@@ -2,7 +2,7 @@
 /* 时间=会话文件最大 mtime（文件级近似，非逐条发言）；方向=粗分（有IM路由即混合/机器人相关）。 */
 import { fetchRouteRows, type BotSnap, type RpcCall, type RouteRow } from './fleet-api';
 
-export interface SessTop { name: string; mtime: number }
+export interface SessTop { name: string; mtime: number; open?: boolean; kind?: string; approval?: boolean; title?: string }
 
 export interface ActivityEntry { dir: string; lastActive: number; sessions: number; running: boolean; top: SessTop[] }
 
@@ -55,10 +55,15 @@ export async function fetchActivity(rpc: RpcCall | null): Promise<ActivityEntry[
       var top: SessTop[] = [];
       if (Array.isArray(e.top)) {
         for (var ti = 0; ti < e.top.length && top.length < 8; ti++) {
-          var te = e.top[ti] as { name?: unknown; mtime?: unknown };
+          var te = e.top[ti] as { name?: unknown; mtime?: unknown; open?: unknown; kind?: unknown; approval?: unknown; title?: unknown };
           if (!te || typeof te.name !== 'string' || !te.name) continue;
           var tm = typeof te.mtime === 'number' && Number.isFinite(te.mtime) && te.mtime > 0 ? Math.floor(te.mtime) : 0;
-          top.push({ name: te.name, mtime: tm });
+          var to: SessTop = { name: te.name, mtime: tm };
+          if (te.open === true || te.open === false) to.open = te.open;
+          if (typeof te.kind === 'string' && te.kind) to.kind = te.kind.slice(0, 24);
+          if (te.approval === true) to.approval = true;
+          if (typeof te.title === 'string' && te.title.trim()) to.title = te.title.trim().slice(0, 80);
+          top.push(to);
         }
       }
       out.push({ dir: e.dir, lastActive: t, sessions: typeof e.sessions === 'number' ? e.sessions : 0, running: e.running === true, top: top });
@@ -91,11 +96,7 @@ export async function fetchRoutesSafe(rpc: RpcCall | null, bots: BotSnap[]): Pro
 
 const PRIO: Record<ActKind, number> = { exec: 0, seen: 1, calm: 2, sink: 3 };
 
-/** 待看有效期：旧闻回落为平静（文件层无已读真相，常黄即狼来了）。 */
-export const SEEN_TTL_MS = 2 * 3600 * 1000;
-/** 绿点升级门：仅文件层 24h 内有动静，才允许原生点把平静提成待看。 */
-export const DOT_FRESH_MS = 24 * 3600 * 1000;
-
+/* 时间作废令（#45 用户裁定）：判据禁时间窗；待看只认水位比较（isNew），mtime 仅作水位与展示。旧 SEEN_TTL/DOT_FRESH 已删。 */
 export function deriveStates(bots: BotSnap[], entries: ActivityEntry[], hasRoutes: Map<string, boolean>, seen: Map<string, number>, nowMs?: number): WsState[] {
   var out: WsState[] = [];
   var order: string[] = [];
@@ -108,8 +109,7 @@ export function deriveStates(bots: BotSnap[], entries: ActivityEntry[], hasRoute
     var e = matchEntry(ws, entries);
     if (!e || e.lastActive <= 0) { out.push({ ws: ws, act: 'sink', dir: '', time: 0, n: 0 }); continue; }
     var mark = seen.get(ws) || 0;
-    var now = typeof nowMs === 'number' && nowMs > 0 ? nowMs : Date.now();
-    var act: ActKind = e.running ? 'exec' : ((e.lastActive > mark && now - e.lastActive < SEEN_TTL_MS) ? 'seen' : 'calm');
+    var act: ActKind = e.running ? 'exec' : (e.lastActive > mark ? 'seen' : 'calm');
     var dir = (act === 'exec' || act === 'seen') ? (hasRoutes.get(ws) ? '混合' : '普通') : '';
     out.push({ ws: ws, act: act, dir: dir, time: e.lastActive, n: e.sessions });
   }
@@ -243,7 +243,6 @@ export function deriveRowStates(rowTexts: string[], bots: BotSnap[], entries: Ac
     var t = m.entry ? m.entry.lastActive : 0;
     var etop: SessTop[] = (m.entry && m.entry.top) ? m.entry.top : [];
     if (!m.entry || t <= 0) { out.push({ key: key, ws: m.ws, act: 'sink', dir: '', time: 0, via: m.via, top: etop }); continue; }
-    var now = typeof nowMs === 'number' && nowMs > 0 ? nowMs : Date.now();
     var act: ActKind = 'calm';
     if (m.entry.running) act = 'exec';
     else {
@@ -253,7 +252,7 @@ export function deriveRowStates(rowTexts: string[], bots: BotSnap[], entries: Ac
           if (peekSession(key + '/' + etop[s].name, etop[s].mtime)) { anyNew = true; break; }
         }
       }
-      act = (anyNew && now - t < SEEN_TTL_MS) ? 'seen' : 'calm';
+      act = anyNew ? 'seen' : 'calm';
     }
     var dir = '';
     if (act === 'exec' || act === 'seen') dir = m.via === 'bot' ? (hasRoutes.get(m.ws) ? '混合' : '普通') : '普通';

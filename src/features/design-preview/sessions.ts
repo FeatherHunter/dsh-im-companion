@@ -1,8 +1,6 @@
 import { fmtTime, markSessionViewed, trackSession, type RowState } from '../../client/data/activity';
 import { SESSION_VIEWED_EVENT } from '../../client/data/header-overlay';
 var LN = String.fromCharCode(10);
-var RUN_WIN = 30000;
-var FRESH_MS = 24 * 3600 * 1000;
 var attrProbe = '';
 export function sessionAttrProbe(): string { return attrProbe; }
 var SESS_LABEL: Record<string, string> = { exec: '执行中', seen: '待看', done: '刚执行完待看' };
@@ -15,17 +13,14 @@ function setA(el: Element, k: string, v: string): void {
 function delA(el: Element, k: string): void {
   try { if (el.hasAttribute(k)) el.removeAttribute(k); } catch (e) { /* 忽略 */ }
 }
-function parseWindow(text: string, nowMs: number): [number, number] | null {
+function normRowTitle(s: string): string {
+  /* 行文本/会话标题归一：去原生时间尾巴、去省略号、小写。时间只做字符串清洗，不做判据。 */
   try {
-    var m = /(\d+)\s*分钟/.exec(text);
-    if (m) { var n = parseInt(m[1], 10); if (isFinite(n)) return [nowMs - (n + 2) * 60000, nowMs]; }
-    m = /(\d+)\s*小时/.exec(text);
-    if (m) { var h = parseInt(m[1], 10); if (isFinite(h)) return [nowMs - (h + 2) * 3600000, nowMs]; }
-    m = /(\d+)\s*天/.exec(text);
-    if (m) { var d = parseInt(m[1], 10); if (isFinite(d)) return [nowMs - (d + 1) * 86400000, nowMs]; }
-    if (text.indexOf('刚刚') !== -1) return [nowMs - 120000, nowMs];
-  } catch (e) { /* 忽略 */ }
-  return null;
+    var t = String(s == null ? '' : s).toLowerCase().trim();
+    t = t.replace(/(刚刚|\d+\s*(分钟|小时|天))\s*$/, '').trim();
+    t = t.replace(/[…\.]+$/, '').trim();
+    return t;
+  } catch (e) { return ''; }
 }
 function sessionsOf(groups: Element[]): Map<Element, Element[]> {
   var map = new Map<Element, Element[]>();
@@ -162,7 +157,6 @@ function hookViewed(): void {
 }
 export function markSessions(groups: Element[], states: RowState[]): void {
   hookViewed();
-  var nowMs = Date.now();
   try {
     document.querySelectorAll('[data-dp-sess]').forEach(function (n) {
       try { delA(n, 'data-dp-sess'); delA(n, 'data-dp-tip'); } catch (e) { /* 忽略 */ }
@@ -170,17 +164,11 @@ export function markSessions(groups: Element[], states: RowState[]): void {
   } catch (e) { /* 忽略 */ }
   try {
     var sessMap = sessionsOf(groups);
-    var freshCut = nowMs - FRESH_MS;
     for (var i = 0; i < groups.length; i++) {
       var st = states[i];
       var rows = sessMap.get(groups[i]) || [];
-      /* 黄双路径二（冻结合约）：原生绿点行不依赖组态——即使组 calm，有绿点 + 文件新鲜即提待看；远古完成因 freshCut 守卫自然回落，不会常黄。 */
-      var stFresh0 = 0;
-      try {
-        var tp0 = (st && st.top) ? st.top : [];
-        for (var fi0 = 0; fi0 < tp0.length; fi0++) { if (tp0[fi0].mtime > stFresh0) stFresh0 = tp0[fi0].mtime; }
-      } catch (e) { /* 忽略 */ }
-      if (stFresh0 >= freshCut && rows.length) {
+      /* 黄双路径二（冻结合约）：原生绿点行不依赖组态——组 calm 亦提待看；远古完成靠播种水位（生而可见）自然回落。 */
+      if (rows.length) {
         for (var dr = 0; dr < rows.length; dr++) {
           var hasDot0 = false;
           try { hasDot0 = hasNativeDot(rows[dr]); } catch (e) { hasDot0 = false; }
@@ -192,8 +180,6 @@ export function markSessions(groups: Element[], states: RowState[]): void {
       }
       if (!st || (st.act !== 'exec' && st.act !== 'seen') || !st.top || !st.top.length) continue;
       if (!rows.length) continue;
-      var stFresh = 0;
-      for (var fi = 0; fi < st.top.length; fi++) { if (st.top[fi].mtime > stFresh) stFresh = st.top[fi].mtime; }
       if (!attrProbe) probeAttrs(rows[0]);
       var taken: string[] = [];
       for (var r = 0; r < rows.length; r++) {
@@ -207,41 +193,30 @@ export function markSessions(groups: Element[], states: RowState[]): void {
         }
         var hasDot = false;
         try { hasDot = hasNativeDot(rows[r]); } catch (e) { hasDot = false; }
-        if (hasDot && stFresh >= freshCut) {
+        if (hasDot) {
           setA(rows[r], 'data-dp-sess', 'seen');
           setA(rows[r], 'data-dp-tip', '待看 · 原生未读');
           continue;
         }
-        var w = parseWindow(textOf(rows[r]), nowMs);
-        if (!w) continue;
+        /* 行归属 join（时间作废令）：行文本对会话标题归一匹配，不用时间窗；无标题真相即无色（诚实未知）。 */
         var rtext = textOf(rows[r]);
-        var center = 0;
-        var agem = /(\d+)\s*分钟/.exec(rtext);
-        if (agem) center = nowMs - parseInt(agem[1], 10) * 60000;
-        else {
-          var ageh = /(\d+)\s*小时/.exec(rtext);
-          if (ageh) center = nowMs - parseInt(ageh[1], 10) * 3600000;
-          else {
-            var aged = /(\d+)\s*天/.exec(rtext);
-            if (aged) center = nowMs - parseInt(aged[1], 10) * 86400000;
-            else if (rtext.indexOf('刚刚') !== -1) center = nowMs;
-          }
-        }
-        if (!center) continue;
-        var tol1 = Math.min(3 * 3600000, Math.max(120000, (nowMs - center) * 0.25));
-        var tol2 = Math.max(300000, (nowMs - center) * 0.1);
+        var rnorm = normRowTitle(rtext);
         var hit: { key: string; mtime: number; running: boolean; done: boolean } | null = null;
-        for (var c = 0; c < st.top.length; c++) {
-          var t = st.top[c];
-          if (t.mtime < freshCut) continue;
-          var key = st.key + '/' + t.name;
-          var running = t.mtime > 0 && nowMs - t.mtime < RUN_WIN;
-          var tr = trackSession(key, t.mtime, running);
-          var isNew = tr.isNew;
-          if (!running && !isNew) continue;
-          var done = tr.justFinished;
-          if (taken.indexOf(key) !== -1) continue;
-          if (t.mtime >= w[0] && t.mtime <= w[1] && t.mtime >= center - tol1 && t.mtime <= center + tol2) { hit = { key: key, mtime: t.mtime, running: running, done: done }; break; }
+        if (rnorm.length >= 2) {
+          for (var c = 0; c < st.top.length; c++) {
+            var t = st.top[c];
+            var tnorm = normRowTitle(t.title || '');
+            if (!tnorm || tnorm.length < 4) continue;
+            var titleHit = tnorm === rnorm || (rnorm.length >= 4 && tnorm.indexOf(rnorm) === 0) || (rnorm.indexOf(tnorm) === 0);
+            if (!titleHit) continue;
+            var key = st.key + '/' + t.name;
+            var running = t.open === true;
+            var tr = trackSession(key, t.mtime, running);
+            if (!running && !tr.isNew) continue;
+            if (taken.indexOf(key) !== -1) continue;
+            hit = { key: key, mtime: t.mtime, running: running, done: tr.justFinished };
+            break;
+          }
         }
         if (!hit) continue;
         taken.push(hit.key);
