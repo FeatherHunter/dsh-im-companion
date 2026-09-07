@@ -151,6 +151,7 @@ test('#49 旧分叉移除：调用方统一到共享选择器', () => {
   }
   assert.ok(flow.includes('resolveNewBotId'), '应使用唯一新机器人识别');
   assert.ok(flow.includes('commitBinding'), '落定应走可测编排');
+  assert.ok(flow.includes('选家失败'), '选家尾链须有兜底报错（禁静默死）');
   assert.ok(flow.includes('workspace-bot-not-found'), '登记竞态应重试');
   assert.ok(flow.includes('removeLocal'), '成功后应清 local 空壳（名字跟人走）');
   assert.ok(flow.includes('createMetaStore'), '改名/清壳应走 MetaStore');

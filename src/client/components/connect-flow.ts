@@ -208,10 +208,16 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       } catch (e) {
         toast('绑定工作区失败：' + String((e as Error)?.message ?? e))
       }
-      modal.close()
-      const picker = openDirPicker(rpc, '', ctxNativePicker(ctx), WORKSPACE_PICKER_COPY)
-      const ws = await picker.promise
-      await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws, prevWorkspace: target.workspace, agentName: target.name })
+      try {
+        modal.close()
+        const picker = openDirPicker(rpc, '', ctxNativePicker(ctx), WORKSPACE_PICKER_COPY)
+        const ws = await picker.promise
+        await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws, prevWorkspace: target.workspace, agentName: target.name })
+      } catch (e) {
+        /* 兜底如实报错（#49：此前此段无 try，意外抛错即静默死——点了确定却零反馈零落定）。 */
+        toast('选家失败：' + String((e as Error)?.message ?? e))
+        try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
+      }
     }
 
     function renderQr(prov: ProvisionState): void {
