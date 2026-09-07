@@ -64,6 +64,7 @@ function probeAttrs(row: Element): void {
   } catch (e) { attrProbe = '行属性探针取失败'; }
 }
 var dotCache = new Map<Element, { v: boolean; t: number }>();
+var amberCache = new Map<Element, { v: boolean; t: number }>();
 export function hasNativeDot(el: Element): boolean {
   try {
     var now = Date.now();
@@ -74,6 +75,47 @@ export function hasNativeDot(el: Element): boolean {
     dotCache.set(el, { v: found, t: now });
     return found;
   } catch (e) { return false; }
+}
+/** 系统琥珀点（#45 黄系统优先：行上已现系统黄点时无条件采系统）：与绿点同槽，判据为琥珀色小圆点（done 绿之外的 warning 色）。与 hasNativeDot 互斥（绿要 gg 显著大于 rr，琥珀要 rr 显著大于 bb 且 gg 居中）。 */
+export function hasNativeAmber(el: Element): boolean {
+  try {
+    var now = Date.now();
+    var hit = amberCache.get(el);
+    if (hit && now - hit.t < 5000) return hit.v;
+    var found = scanAmber(el);
+    if (amberCache.size > 500) amberCache.clear();
+    amberCache.set(el, { v: found, t: now });
+    return found;
+  } catch (e) { return false; }
+}
+function scanAmber(root: Element): boolean {
+  try {
+    var rleft = 0;
+    try { rleft = (root as HTMLElement).getBoundingClientRect().left; } catch (e) { return false; }
+    var list = root.querySelectorAll('*');
+    if (list.length > 80) return false;
+    for (var i = 0; i < list.length; i++) {
+      var nd = list[i];
+      var cls = '';
+      try { cls = nd.getAttribute('class') || ''; } catch (e) { continue; }
+      if (cls.indexOf('dp-bubble') !== -1) continue;
+      var cs: CSSStyleDeclaration | null = null;
+      try { cs = getComputedStyle(nd); } catch (e) { continue; }
+      if (!cs) continue;
+      var m = /^rgba?\((\d+),\s*(\d+),\s*(\d+)/.exec(cs.backgroundColor || '');
+      if (!m) continue;
+      var rr = parseInt(m[1], 10); var gg = parseInt(m[2], 10); var bb = parseInt(m[3], 10);
+      if (!(rr > 140 && gg > 80 && bb < 140 && (rr - bb) > 60 && (gg - bb) > 30)) continue;
+      var w = 0; var h = 0; var l = 0;
+      try { var rc = (nd as HTMLElement).getBoundingClientRect(); w = rc.width; h = rc.height; l = rc.left; } catch (e) { continue; }
+      if (w <= 0 || w > 14 || h <= 0 || h > 14) continue;
+      if (l - rleft > 140) continue;
+      var br = cs.borderRadius || '';
+      if (br.indexOf('%') === -1 && parseFloat(br) < 4) continue;
+      return true;
+    }
+  } catch (e) { /* 忽略 */ }
+  return false;
 }
 function scanDots(root: Element): boolean {
   try {
@@ -139,6 +181,14 @@ export function markSessions(groups: Element[], states: RowState[]): void {
       if (!attrProbe) probeAttrs(rows[0]);
       var taken: string[] = [];
       for (var r = 0; r < rows.length; r++) {
+        /* 系统优先（#45 黄双路径一）：行上已有系统琥珀点 → 必黄，不再自算。 */
+        var hasAmber = false;
+        try { hasAmber = hasNativeAmber(rows[r]); } catch (e) { hasAmber = false; }
+        if (hasAmber) {
+          setA(rows[r], 'data-dp-sess', 'seen');
+          setA(rows[r], 'data-dp-tip', '待看 · 系统黄');
+          continue;
+        }
         var hasDot = false;
         try { hasDot = hasNativeDot(rows[r]); } catch (e) { hasDot = false; }
         if (hasDot && stFresh >= freshCut) {

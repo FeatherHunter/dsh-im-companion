@@ -143,7 +143,8 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
   var lastGood = 0;
   var disposed = false;
   var refresh = function (): void {
-    if (disposed || !hasSnap || fetching || !bots.length) return;
+    /* 门禁（#45 用户裁定：竖条体系扩全工作区，无助理行方向恒普通照显）：只看快照与取数态，不看 bots 非空；bots 为空时方向细分自然回落普通（见 deriveRowStates）。 */
+    if (disposed || !hasSnap || fetching) return;
     fetching = true;
     var rpc = ctx.rpc;
     Promise.all([fetchActivity(rpc), fetchRoutesSafe(rpc, bots)]).then(function (res) {
