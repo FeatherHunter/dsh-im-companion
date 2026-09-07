@@ -69,16 +69,6 @@ function probeAttrs(row: Element): void {
  * 平静/黄（截图实锤：展开蓝→收起黄）。缓存组key→聚合色，收起时恢复，组色不再随折叠漂移。
  * 展开组：每轮聚合后写缓存；收起组：读缓存恢复（无缓存=首见，不动）。 */
 var groupActCache = new Map<string, string>();
-function syncGroupBadge(g: Element, gdot: string | null): void {
-  try {
-    var svgG = g.querySelector('svg');
-    var hostG = svgG ? svgG.parentElement : null;
-    if (hostG) {
-      if (gdot) { setA(hostG, 'data-dp-icon', '1'); setA(hostG, 'data-dp-act', gdot); }
-      else { delA(hostG, 'data-dp-icon'); delA(hostG, 'data-dp-act'); }
-    }
-  } catch (e) { /* 角标同步失败不影响行 */ }
-}
 export function markSessions(groups: Element[], states: RowState[]): void {
   try {
     document.querySelectorAll('[data-dp-sess]').forEach(function (n) {
@@ -99,7 +89,6 @@ export function markSessions(groups: Element[], states: RowState[]): void {
             try {
               if (rc) { setA(groups[i], 'data-dp-act', rc); setA(groups[i], 'data-dp-tip', rc === 'need' ? SESS_LABEL['red'] : (rc === 'exec' ? SESS_LABEL['exec'] : SESS_LABEL['seen'])); }
               else { delA(groups[i], 'data-dp-act'); delA(groups[i], 'data-dp-tip'); }
-              syncGroupBadge(groups[i], rc || null);
             } catch (e) { /* 恢复失败不影响行 */ }
           }
         }
@@ -163,7 +152,7 @@ export function markSessions(groups: Element[], states: RowState[]): void {
        * 有会话行的组：组色只由本轮行色决定——有同色行则置色，无则清 demo 的 entry 级旧色
        *（未归因的 running 信号不得单独染组，否则组色无行可解释）。
        * nosig 系诊断灰，永不动。收起组：走上方缓存恢复（B 方案），不依赖可见行。
-       * 角标（svg 宿主 data-dp-icon/act）与组条同生命周期：置色同步、清条同步清，防孤儿橙点。 */
+       * 角标（图标圆点）2026-09-07 已删（用户裁定：与竖条功能重复，无增量信息）。 */
       try {
         var gHasRed = false; var gHasBlue = false; var gHasYellow = false;
         for (var u = 0; u < rows.length; u++) {
@@ -182,7 +171,6 @@ export function markSessions(groups: Element[], states: RowState[]): void {
           delA(groups[i], 'data-dp-act'); delA(groups[i], 'data-dp-tip');
         }
         if (gKey) groupActCache.set(gKey, gdot || '');
-        syncGroupBadge(groups[i], gdot);
       } catch (e) { /* 组同步失败不影响行 */ }
     }
   } catch (e) { /* 忽略 */ }

@@ -110,7 +110,6 @@ function top1(name: string, kind: string, title: string, open: boolean): unknown
   return { name, mtime: 100, open, kind, approval: false, title };
 }
 function actOf(el: FakeEl, k: string): string | null { return el.getAttribute(k); }
-function groupDot(g: FakeEl): string | null { return g.iconHost ? g.iconHost.getAttribute('data-dp-act') : null; }
 
 test('蓝不变量：原生 ongoing 行蓝 ⇒ 组蓝', () => {
   const g = group(null);
@@ -172,32 +171,12 @@ test('诊断保留：nosig 组 + 全无色会话 ⇒ nosig 不动', () => {
   assert.equal(actOf(g, 'data-dp-act'), 'nosig');
 });
 
-test('角标不变量：组蓝/黄/红 ⇒ 图标角标同色（角标=组条终态，防 paint 残留孤儿点）', () => {
-  const g1 = group(null); const r1 = row('x1', 'ongoing');
-  registry = [g1, r1];
-  sess.markSessions([g1 as any], [st('g1', 'calm', [])]);
-  assert.equal(groupDot(g1), 'exec');
-
-  const g2 = group(null); const r2 = row('x2', 'warning');
-  registry = [g2, r2];
-  sess.markSessions([g2 as any], [st('g2', 'calm', [])]);
-  assert.equal(groupDot(g2), 'seen');
-
-  const g3 = group(null); const r3 = row('Task Epsilon', null);
-  registry = [g3, r3];
-  sess.markSessions([g3 as any], [st('g3', 'exec', [top1('f5', '402', 'Task Epsilon', false)])]);
-  assert.equal(groupDot(g3), 'need');
-});
-
-test('角标残环：组条清（孤儿）⇒ 图标角标同步清（paint 先画 seen 角标 + sessions 清组条 ==== 截图橙点无组条 bug）', () => {
+test('角标残环清理（角标已删）：组条清（孤儿）⇒ 组条清除，无角标残留可断言', () => {
   const g = group('seen');
-  g.iconHost!.setAttribute('data-dp-icon', '1');
-  g.iconHost!.setAttribute('data-dp-act', 'seen');
   const r = row('Task Zeta', null);
   registry = [g, r];
   sess.markSessions([g as any], [st('k10', 'calm', [])]);
   assert.equal(actOf(g, 'data-dp-act'), null);
-  assert.equal(groupDot(g), null);
 });
 
 test('绿点必黄：原生 done（官方完成提醒）⇒ 行黄+组黄（#497 真机：绿点无条；绿点=官方待看信号，不看水位看绿点）', () => {
@@ -228,7 +207,6 @@ test('折叠缓存 B 方案：展开组蓝→收起（无行）⇒ 组条保持�
   registry = [g];
   sess.markSessions([g as any], [st('k13', 'calm', [])]);
   assert.equal(actOf(g, 'data-dp-act'), 'exec', '收起后组条必须保持展开时的蓝色，不得变黄');
-  assert.equal(groupDot(g), 'exec', '角标同步保持');
 });
 
 test('折叠缓存 B 方案·清：展开组平静→收起⇒ 组条清（缓存空色生效，不残留旧蓝）', () => {
@@ -240,7 +218,6 @@ test('折叠缓存 B 方案·清：展开组平静→收起⇒ 组条清（缓�
   registry = [g];
   sess.markSessions([g as any], [st('k14', 'calm', [])]);
   assert.equal(actOf(g, 'data-dp-act'), null, '收起后保持平静（缓存空色）');
-  assert.equal(groupDot(g), null);
 });
 
 test('折叠缓存 B 方案·首见收起：无缓存⇒不动（留 paint 初稿，不擅自改色）', () => {
@@ -260,7 +237,6 @@ test('组级优先级：红>黄>蓝（2026-09-07 用户裁定；原为红>蓝>�
   assert.equal(actOf(r1a, 'data-dp-sess'), 'exec', '前置：蓝行成立');
   assert.equal(actOf(r1b, 'data-dp-sess'), 'seen', '前置：黄行成立');
   assert.equal(actOf(g1, 'data-dp-act'), 'seen', '蓝+黄 ⇒ 组黄（黄压蓝）');
-  assert.equal(groupDot(g1), 'seen', '角标同黄');
 
   // 黄行 + 红行 ⇒ 组红。
   const g2 = group(null);

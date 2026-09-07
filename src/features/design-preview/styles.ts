@@ -1,4 +1,5 @@
-/** TEMP 设计演示（定稿即删）：左缘活性竖条 + 文件夹图标角标 + 竖条悬浮气泡。徽标位不动，卸载即净。 */
+/** TEMP 设计演示（定稿即删）：左缘活性竖条（组行+会话行）。徽标位不动，卸载即净。
+ * 2026-09-07：图标角标（data-dp-icon）与悬浮气泡（dp-bubble）已删——用户裁定与竖条功能重复/污染视觉。 */
 export const CSS = [
 'div[role=treeitem][aria-expanded][data-dp-act]{position:relative}',
 'div[role=treeitem][aria-expanded][data-dp-act]::before{content:"";position:absolute;left:0;top:4px;bottom:4px;width:3px;border-radius:1px;background:#98a2ad;pointer-events:none}',
@@ -8,11 +9,6 @@ export const CSS = [
 '@keyframes dp-breathe{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}',
 '@keyframes dp-blink{0%,100%{opacity:1}50%{opacity:.25}}',
 '@media (prefers-reduced-motion:reduce){div[role=treeitem][aria-expanded][data-dp-act]::before,[data-dp-sess]::before{animation:none}}',
-'[data-dp-icon]{position:relative}',
-'[data-dp-icon]::after{content:"";position:absolute;right:-1px;bottom:-1px;width:6px;height:6px;border-radius:50%;background:#98a2ad;border:1px solid #fff;pointer-events:none}',
-'[data-dp-icon][data-dp-act=need]::after{background:#d92d20}',
-'[data-dp-icon][data-dp-act=exec]::after{background:#1677ff}',
-'[data-dp-icon][data-dp-act=seen]::after{background:#dc6803}',
 'div[role=treeitem][aria-expanded][data-dp-act=nosig]::before{background:transparent;border-left:3px dotted #b0b6bd;width:0}',
 'div[role=treeitem][aria-expanded][data-dp-act=nosig0]::before{background:transparent;border-left:3px dotted #d92d20;width:0}',
 '[data-dp-sess]{position:relative}',
@@ -21,5 +17,4 @@ export const CSS = [
 '[data-dp-sess=seen]::before{background:#dc6803}',
 '[data-dp-sess=done]::before{background:#dc6803}',
 '[data-dp-sess=red]::before{background:#d92d20;animation:dp-blink 1s infinite}',
-'.dp-bubble{position:fixed;z-index:9999;pointer-events:none;display:none;max-width:260px;padding:8px 10px;border-radius:10px;background:rgba(28,28,30,.94);color:#fff;font-size:12px;line-height:18px;white-space:pre-line;box-shadow:0 8px 24px rgba(0,0,0,.35)}',
 ].join(String.fromCharCode(10));

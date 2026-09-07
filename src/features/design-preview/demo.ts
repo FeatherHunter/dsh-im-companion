@@ -74,22 +74,8 @@ function paint(groups: Element[], states: RowState[]): void {
     }
   } catch (e) { /* 绘制失败下次 */ }
 }
-/* reorder 已拔（暴力重排否决，只高亮不搬 DOM，见 #45）。 */
-var bubble: HTMLElement | null = null;
+/* reorder 已拔（暴力重排否决，只高亮不搬 DOM，见 #45）。bubble 已删（2026-09-07 用户裁定：悬浮状态词污染视觉）。 */
 var moving = false;
-function hideBubble(): void {
-  try { if (bubble) bubble.style.display = 'none'; } catch (e) { /* 忽略 */ }
-}
-function ensureBubble(): HTMLElement | null {
-  try {
-    if (bubble) return bubble;
-    var div = document.createElement('div');
-    div.setAttribute('class', 'dp-bubble');
-    document.body.appendChild(div);
-    bubble = div as HTMLElement;
-    return bubble;
-  } catch (e) { return null; }
-}
 export function mountDesignPreview(ctx: FeatureCtx): () => void {
   var noop = function (): void {};
   if (typeof document === 'undefined') return noop;
@@ -183,28 +169,8 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
     observer = new MutationObserver(function () { if (!moving) refresh(); });
     observer.observe(document.body ? document.body : document.documentElement, { childList: true, subtree: true });
   } catch (e) { /* 无 observer 只靠快照 */ }
-  var onMove = function (e: MouseEvent): void {
-    try {
-      var t = e.target as unknown as { closest?: (s: string) => Element | null } | null;
-      var row = t && typeof t.closest === 'function' ? t.closest('div[role=treeitem][data-dp-act],div[role=treeitem][data-dp-sess]') : null;
-      if (!row) { hideBubble(); return; }
-      var rect = (row as Element).getBoundingClientRect();
-      var actNow = (row as Element).getAttribute('data-dp-act') || '';
-      var isDiag = actNow === 'nosig' || actNow === 'nosig0';
-      var isSessRow = false;
-      try { isSessRow = (row as Element).hasAttribute('data-dp-sess'); } catch (e) { isSessRow = false; }
-      if (!isDiag && !isSessRow && e.clientX - rect.left > 16) { hideBubble(); return; }
-      var tip = (row as Element).getAttribute('data-dp-tip') || '';
-      if (!tip) { hideBubble(); return; }
-      var b = ensureBubble();
-      if (!b) return;
-      b.textContent = tip;
-      b.style.display = 'block';
-      b.style.left = Math.min(window.innerWidth - 270, rect.left + 20) + 'px';
-      b.style.top = Math.min(window.innerHeight - 80, e.clientY + 12) + 'px';
-    } catch (err) { hideBubble(); }
-  };
-  var onScroll = function (): void { hideBubble(); };
+  /* 悬浮气泡已删（2026-09-07 用户裁定："待看/执行中/异常需处理"提示污染视觉，与竖条重复）。
+   * data-dp-tip 属性保留（devtools 诊断用），不再渲染可见文字。onKey 保留（5s 兜底刷新节拍）。 */
   var lastKey = 0;
   var onKey = function (): void {
     try {
@@ -215,24 +181,17 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
     } catch (e) { /* 忽略 */ }
   };
   try {
-    document.addEventListener('mousemove', onMove, true);
-    window.addEventListener('scroll', onScroll, true);
     document.addEventListener('keydown', onKey, true);
-  } catch (e) { /* 监听失败就无气泡 */ }
+  } catch (e) { /* 监听失败就无兜底刷新 */ }
   return function (): void {
     disposed = true;
     try { if (unsub) unsub(); } catch (e) { /* 忽略 */ }
     try { if (observer) observer.disconnect(); } catch (e) { /* 忽略 */ }
-    try { document.removeEventListener('mousemove', onMove, true); window.removeEventListener('scroll', onScroll, true); document.removeEventListener('keydown', onKey, true); } catch (e) { /* 忽略 */ }
-    hideBubble();
+    try { document.removeEventListener('keydown', onKey, true); } catch (e) { /* 忽略 */ }
     try { clearSessionMarks(); } catch (e) { /* 忽略 */ }
-    try { if (bubble && bubble.parentNode) bubble.parentNode.removeChild(bubble); bubble = null; } catch (e) { /* 忽略 */ }
     try {
       document.querySelectorAll('[data-dp-act]').forEach(function (n) {
         try { n.removeAttribute('data-dp-act'); n.removeAttribute('data-dp-tip'); n.removeAttribute('data-dp-n'); } catch (e) { /* 忽略 */ }
-      });
-      document.querySelectorAll('[data-dp-icon]').forEach(function (n) {
-        try { n.removeAttribute('data-dp-icon'); } catch (e) { /* 忽略 */ }
       });
     } catch (e) { /* 忽略 */ }
   };
