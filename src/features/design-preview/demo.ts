@@ -183,11 +183,36 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
   try {
     document.addEventListener('keydown', onKey, true);
   } catch (e) { /* 监听失败就无兜底刷新 */ }
+  /* 视觉方案对照器（2026-09-07 用户要求：组行竖条保留 × 会话行三种表达对比）。
+   * v1=左缘竖条（现状）/ v2=标题状态色 / v3=行尾状态点。仅改 body[data-dp-variant]，
+   * 样式由 styles.ts 按变体路由；数据层（data-dp-sess）三种完全一致，零行为差异。 */
+  var panel: HTMLElement | null = null;
+  try {
+    panel = document.createElement('div');
+    panel.setAttribute('class', 'dp-switch');
+    var variants: Array<[string, string]> = [['bar', '竖条'], ['text', '标题色'], ['trail', '行尾点']];
+    for (var vi = 0; vi < variants.length; vi++) {
+      var b = document.createElement('button');
+      b.setAttribute('type', 'button');
+      b.setAttribute('class', 'dp-switch-btn');
+      b.textContent = variants[vi][1];
+      b.setAttribute('data-v', variants[vi][0]);
+      (function (v: string): void {
+        b.addEventListener('click', function (): void {
+          try { document.body.setAttribute('data-dp-variant', v); } catch (e) { /* 忽略 */ }
+        });
+      })(variants[vi][0]);
+      panel.appendChild(b);
+    }
+    document.body.appendChild(panel);
+  } catch (e) { panel = null; }
   return function (): void {
     disposed = true;
     try { if (unsub) unsub(); } catch (e) { /* 忽略 */ }
     try { if (observer) observer.disconnect(); } catch (e) { /* 忽略 */ }
     try { document.removeEventListener('keydown', onKey, true); } catch (e) { /* 忽略 */ }
+    try { if (panel && panel.parentNode) panel.parentNode.removeChild(panel); panel = null; } catch (e) { /* 忽略 */ }
+    try { document.body.removeAttribute('data-dp-variant'); } catch (e) { /* 忽略 */ }
     try { clearSessionMarks(); } catch (e) { /* 忽略 */ }
     try {
       document.querySelectorAll('[data-dp-act]').forEach(function (n) {
