@@ -151,6 +151,7 @@ test('#49 旧分叉移除：调用方统一到共享选择器', () => {
   }
   assert.ok(flow.includes('resolveNewBotId'), '应使用唯一新机器人识别');
   assert.ok(flow.includes('commitBinding'), '落定应走可测编排');
+  assert.ok(flow.includes('workspace-bot-not-found'), '登记竞态应重试');
   assert.ok(flow.includes('removeLocal'), '成功后应清 local 空壳（名字跟人走）');
   assert.ok(flow.includes('createMetaStore'), '改名/清壳应走 MetaStore');
   assert.ok(acts.includes('名字跟人走'), '换家也应名字跟人走');
@@ -220,6 +221,7 @@ test('#49 commitBinding：落定/失败/取消/已绑/关联失败', async () =>
       }
       if (ep === 'bot.workspace.set') {
         if (opts.setThrows) throw new Error('net down');
+        if (opts.setSeq && opts.setSeq.length) return opts.setSeq.shift();
         return setRes;
       }
       return { ok: false, error: { code: 'x', message: 'x', details: {} } };
@@ -230,6 +232,7 @@ test('#49 commitBinding：落定/失败/取消/已绑/关联失败', async () =>
       onDone: () => { done++; },
       botId: 'new1', ws: opts.ws === undefined ? 'D:\\home\\xiaoshuai' : opts.ws,
       prevWorkspace: opts.prev ?? '', agentName: opts.name === undefined ? '小帅' : opts.name,
+      notFoundRetry: opts.retry,
     });
     return { calls, toasts: toasts.join('|'), done, ok };
   };
@@ -277,6 +280,30 @@ test('#49 commitBinding：落定/失败/取消/已绑/关联失败', async () =>
     assert.equal(r.ok, true);
     assert.ok(r.toasts.includes('已接入并绑定工作区'));
     assert.ok(r.toasts.includes('名称关联失败'));
+    assert.equal(r.done, 1);
+  }
+  {
+    const notFound = { ok: false, error: { code: 'workspace-bot-not-found', message: '找不到要修改的机器人。' } };
+    const r = await run(null, {
+      setSeq: [notFound, { ok: true, value: {} }],
+      retry: { attempts: 3, gapMs: 1 },
+    });
+    assert.equal(r.ok, true);
+    assert.ok(r.toasts.includes('登记新机器人'));
+    assert.ok(r.toasts.includes('已接入并绑定工作区'));
+    assert.equal(r.calls.filter((c) => c === '/wechat bot.workspace.set').length, 2);
+    assert.equal(r.done, 1);
+  }
+  {
+    const notFound = { ok: false, error: { code: 'workspace-bot-not-found', message: '找不到要修改的机器人。' } };
+    const r = await run(null, {
+      setSeq: [notFound, notFound, notFound, notFound],
+      retry: { attempts: 3, gapMs: 1 },
+    });
+    assert.equal(r.ok, false);
+    assert.ok(r.toasts.includes('绑定失败：找不到要修改的机器人。'));
+    assert.ok(!r.toasts.includes('已接入并绑定工作区'));
+    assert.equal(r.calls.filter((c) => c === '/wechat bot.workspace.set').length, 3);
     assert.equal(r.done, 1);
   }
 });

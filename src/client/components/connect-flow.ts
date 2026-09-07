@@ -31,9 +31,15 @@ export interface BindingCommit {
   ws: string | null
   prevWorkspace: string
   agentName: string
+  /** 服务端登记竞态重试（默认 5 次 × 2s；单测可注入小值）。 */
+  notFoundRetry?: { attempts: number; gapMs: number }
 }
 
-/** 选家落定（#49：可单测的纯编排——set 信封校验＋名字跟人走＋如实 toast；弹窗/DOM 留在外层）。 */
+const NOT_FOUND_RETRY = { attempts: 5, gapMs: 2000 }
+const sleep = (ms: number): Promise<void> => new Promise<void>((r) => setTimeout(r, ms))
+
+/** 选家落定（#49：可单测的纯编排——set 信封校验＋名字跟人走＋如实 toast；弹窗/DOM 留在外层）。
+ * 服务端登记竞态（上游 ensure 晚于状态可见）：`workspace-bot-not-found` 按间隔重试，其余失败直报。 */
 export async function commitBinding(o: BindingCommit): Promise<boolean> {
   if (!o.ws) {
     o.toast('机器人已就绪，请用 ⋯ 菜单「选择工作区」完成绑定')
@@ -42,13 +48,25 @@ export async function commitBinding(o: BindingCommit): Promise<boolean> {
   }
   const call = (endpoint: string, payload: Record<string, unknown>) =>
     o.rpc('/' + o.channel, endpoint, payload, AbortSignal.timeout(8000))
-  let res: { ok?: boolean; error?: { message?: string } } | null = null
-  try {
-    res = await call('bot.workspace.set', { botId: o.botId, workspace: o.ws }) as typeof res
-  } catch (e) {
-    res = { ok: false, error: { message: String((e as Error)?.message ?? e) } }
-  }
-  if (!res || res.ok !== true) {
+  type SetRes = { ok?: boolean; error?: { code?: string; message?: string } } | null
+  const retry = o.notFoundRetry ?? NOT_FOUND_RETRY
+  let res: SetRes = null
+  let announced = false
+  for (let attempt = 1; ; attempt++) {
+    try {
+      res = await call('bot.workspace.set', { botId: o.botId, workspace: o.ws }) as SetRes
+    } catch (e) {
+      res = { ok: false, error: { message: String((e as Error)?.message ?? e) } }
+    }
+    if (res && res.ok === true) break
+    if (res?.error?.code === 'workspace-bot-not-found' && attempt < retry.attempts) {
+      if (!announced) {
+        announced = true
+        o.toast('服务端正在登记新机器人，绑定稍候重试…')
+      }
+      await sleep(retry.gapMs)
+      continue
+    }
     o.toast('绑定失败：' + (res?.error?.message ?? '绑定失败'))
     o.onDone()
     return false
