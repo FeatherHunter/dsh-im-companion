@@ -86,6 +86,13 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: { dshHome?:
           await store.renameLocal(from, to)
           return ok({})
         }
+        case 'meta.local.workspace': {
+          const name = String(p.name ?? '')
+          const workspace = String(p.workspace ?? '')
+          if (!name) return fail('bad-request', 'name 必填')
+          await store.setLocalWorkspace(name, workspace)
+          return ok({})
+        }
         case 'meta.preset.set': {
           const key = String(p.key ?? '')
           const preset = String(p.preset ?? '')

@@ -136,6 +136,18 @@ export class AgentMetaStore {
     await this.persist()
   }
 
+  /** 给本地空壳落家（#49：家是 Agent 属性，不以 bot 为前置；空串即清除）。 */
+  async setLocalWorkspace(name: string, workspace: string): Promise<void> {
+    await this.load()
+    const n = sanitizeString(name, 64)
+    const ws = sanitizeString(workspace, 1024)
+    if (!n) return
+    for (const l of this.doc.locals) {
+      if (l.name === n) l.workspace = ws
+    }
+    await this.persist()
+  }
+
   async setPreset(key: string, preset: string): Promise<void> {
     await this.load()
     const k = sanitizeString(key, 256)

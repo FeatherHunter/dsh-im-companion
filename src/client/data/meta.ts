@@ -34,6 +34,8 @@ export interface MetaStore {
   addLocal(name: string): Promise<void>
   removeLocal(name: string): Promise<void>
   renameLocal(from: string, to: string): Promise<void>
+  /** 给本地空壳落家（#49：家是 Agent 属性，不以 bot 为前置；空串即清除）。 */
+  setLocalWorkspace(name: string, workspace: string): Promise<void>
   setPreset(key: string, preset: string): Promise<void>
   setCtx(key: string, cfg: { enabled: boolean; level: string }): Promise<void>
   /** E4 P 进门记忆写（seen=false 时清除该工作区记录，解绑重现用）。 */
@@ -74,6 +76,9 @@ export class RpcMetaStore implements MetaStore {
   }
   async renameLocal(from: string, to: string): Promise<void> {
     await this.call('meta.local.rename', { from, to })
+  }
+  async setLocalWorkspace(name: string, workspace: string): Promise<void> {
+    await this.call('meta.local.workspace', { name, workspace })
   }
   async setPreset(key: string, preset: string): Promise<void> {
     await this.call('meta.preset.set', { key, preset })
@@ -155,6 +160,11 @@ export class LocalMetaStore implements MetaStore {
   async renameLocal(from: string, to: string): Promise<void> {
     const doc = await this.loadMeta()
     for (const l of doc.locals) if (l.name === from) l.name = to
+    this.writeJson(this.K_LOCALS, doc.locals)
+  }
+  async setLocalWorkspace(name: string, workspace: string): Promise<void> {
+    const doc = await this.loadMeta()
+    for (const l of doc.locals) if (l.name === name) l.workspace = workspace
     this.writeJson(this.K_LOCALS, doc.locals)
   }
   async setPreset(key: string, preset: string): Promise<void> {

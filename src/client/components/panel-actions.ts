@@ -66,11 +66,6 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
 
   async function pickWorkspace(view: AgentView): Promise<void> {
     try {
-      /* 无机器人空壳（#49B）：没有可绑定的 bot，直接明示走接入流程，不开空选家。 */
-      if (!view.bots.length) {
-        toast('「' + view.name + '」尚无机器人，请先点「接入」创建渠道机器人，扫码后即可选家绑定')
-        return
-      }
       let picker: ReturnType<typeof openDirPicker>
       try {
         picker = openDirPicker(deps.rpc, view.workspace, ctxNativePicker(deps.ctx), WORKSPACE_PICKER_COPY)
@@ -82,6 +77,25 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
       if (!ws) return
       if (!deps.rpc) {
         toast('连接服务不可用，无法绑定工作区')
+        return
+      }
+      const store = deps.getStore()
+      if (!view.bots.length) {
+        /* 无机器人只落家（#49：家是 Agent 属性，不以 bot 为前置；有家后接入直绑）。 */
+        if (!view.name.trim()) {
+          toast('该 Agent 暂无有效名称，无法落家')
+          return
+        }
+        try {
+          if (!store) throw new Error('连接服务不可用')
+          await store.setLocalWorkspace(view.name, ws)
+          await store.rename(ws, view.name)
+        } catch (e) {
+          toast('设置家失败：' + String((e as Error)?.message ?? e))
+          return
+        }
+        await deps.refresh()
+        toast('已为「' + view.name + '」选家，接入渠道后机器人会自动落进来', 'check')
         return
       }
       for (const b of view.bots) {

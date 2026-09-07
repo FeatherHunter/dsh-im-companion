@@ -185,8 +185,8 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
       stateLabel: '未接入',
       isLocal: true,
       sub: '尚未接入渠道',
-      workspaceLine: '未绑定工作区',
-      healthDetail: '本地 Agent，尚未接入渠道',
+      workspaceLine: l.workspace ? '工作区·' + l.workspace : '未绑定工作区',
+      healthDetail: l.workspace ? '已有家，尚未接入渠道' : '本地 Agent，尚未接入渠道',
       bots: [],
     })
   }
