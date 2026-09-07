@@ -22,6 +22,9 @@ const ENTRIES = [
   join(REPO, 'src', 'client', 'ui', 'toast.ts'),
   join(REPO, 'src', 'client', 'ui', 'dir-picker.ts'),
   join(REPO, 'src', 'client', 'components', 'connect-flow.ts'),
+  join(REPO, 'src', 'client', 'components', 'panel-actions.ts'),
+  join(REPO, 'src', 'client', 'data', 'model.ts'),
+  join(REPO, 'src', 'host', 'meta-store.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'connect-qr-'));
@@ -65,8 +68,16 @@ const doc: any = createDocument();
   dispatchEvent: () => true,
 };
 (globalThis as any).document = (globalThis as any).document ?? doc;
+(globalThis as any).requestAnimationFrame = (globalThis as any).requestAnimationFrame
+  ?? ((fn: (...a: any[]) => void) => setTimeout(() => fn(Date.now()), 0) as unknown as number);
+(globalThis as any).cancelAnimationFrame = (globalThis as any).cancelAnimationFrame
+  ?? ((id: any) => clearTimeout(id));
 const picker: any = req(locate(tmp, 'dir-picker.js'));
 const flowMod: any = req(locate(tmp, 'connect-flow.js'));
+const clientMeta: any = req(locate(tmp, 'meta.js'));
+const modelMod: any = req(locate(tmp, 'model.js'));
+const hostStore: any = req(locate(tmp, 'meta-store.js'));
+const actsMod: any = req(locate(tmp, 'panel-actions.js'));
 
 function texts(el: any, out: string[] = []): string[] {
   if (!el || typeof el !== 'object') return out;
@@ -156,7 +167,17 @@ test('#49 旧分叉移除：调用方统一到共享选择器', () => {
   assert.ok(flow.includes('removeLocal'), '成功后应清 local 空壳（名字跟人走）');
   assert.ok(flow.includes('createMetaStore'), '改名/清壳应走 MetaStore');
   assert.ok(acts.includes('名字跟人走'), '换家也应名字跟人走');
-  assert.ok(acts.includes('尚无机器人'), '无 bot 空壳不得空选家');
+  assert.ok(acts.includes('只落家'), '无 bot 只落家（家不以 bot 为前置）');
+  assert.ok(acts.includes('setLocalWorkspace'), '落家应走 MetaStore');
+  assert.ok(!acts.includes('尚无机器人'), '禁空选家旧逻辑不得残留');
+  const modelSrc = readFileSync(join(REPO, 'src', 'client', 'data', 'model.ts'), 'utf8');
+  assert.ok(modelSrc.includes("l.workspace ? '工作区·'"), '有家空壳应展示家路径');
+  const dirPickerSrc = readFileSync(join(REPO, 'src', 'client', 'ui', 'dir-picker.ts'), 'utf8');
+  const doneAt = dirPickerSrc.indexOf('const done');
+  const resolveAt = dirPickerSrc.indexOf('resolveFn(v)', doneAt);
+  const closeAt = dirPickerSrc.indexOf('modal?.close()', doneAt);
+  assert.ok(doneAt !== -1 && resolveAt !== -1 && closeAt !== -1 && resolveAt < closeAt, '先回值再关窗（关窗触发 onClose 会抢占 null）');
+  assert.ok(dirPickerSrc.includes('settled'), '回值须幂等');
   assert.ok(!flow.includes("(e: unknown) => toast('绑定失败"), '吞错旧式 catch 不得残留');
   const preview = readFileSync(join(REPO, 'src', 'dev', 'preview-host.ts'), 'utf8');
   assert.ok(preview.includes('fs.roots'), '预览 mock 应补盘符入口');
@@ -307,6 +328,84 @@ test('#49 commitBinding：落定/失败/取消/已绑/关联失败', async () =>
     assert.equal(r.calls.filter((c) => c === '/wechat bot.workspace.set').length, 3);
     assert.equal(r.done, 1);
   }
+});
+
+test('#49 家落 local：host 落盘＋双 Store 写透', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'issue49-home-'));
+  try {
+    const f = join(dir, 'meta.json');
+    const s = new hostStore.AgentMetaStore(f);
+    await s.addLocal('小帅');
+    await s.setLocalWorkspace('小帅', 'D:\\agents\\xiaoshuai');
+    assert.deepEqual(s.snapshot().locals, [{ name: '小帅', workspace: 'D:\\agents\\xiaoshuai' }]);
+    await s.setLocalWorkspace('不存在', 'D:\\x');
+    await s.setLocalWorkspace('', 'D:\\x');
+    assert.deepEqual(s.snapshot().locals, [{ name: '小帅', workspace: 'D:\\agents\\xiaoshuai' }]);
+    const s2 = new hostStore.AgentMetaStore(f);
+    await s2.load();
+    assert.deepEqual(s2.snapshot().locals, [{ name: '小帅', workspace: 'D:\\agents\\xiaoshuai' }]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  const seen: string[] = [];
+  const rpcStore = new clientMeta.RpcMetaStore('/im-companion', async (ch: string, ep: string, pl: any) => {
+    seen.push(ch + ' ' + ep + ' ' + JSON.stringify(pl));
+    return { ok: true, value: {} };
+  });
+  await rpcStore.setLocalWorkspace('小帅', 'D:\\agents\\xiaoshuai');
+  assert.ok(seen.includes('/im-companion meta.local.workspace {"name":"小帅","workspace":"D:\\\\agents\\\\xiaoshuai"}'));
+  const bag: Record<string, string> = {};
+  const local = new clientMeta.LocalMetaStore({ getItem: (k: string) => bag[k] ?? null, setItem: (k: string, v: string) => { bag[k] = v; } });
+  await local.addLocal('小帅');
+  await local.setLocalWorkspace('小帅', 'D:\\agents\\xiaoshuai');
+  assert.deepEqual((await local.loadMeta()).locals, [{ name: '小帅', workspace: 'D:\\agents\\xiaoshuai' }]);
+});
+
+test('#49 无机器人选家：只落家不绑 bot', async () => {
+  const calls: string[] = [];
+  const stored: string[] = [];
+  let refreshed = 0;
+  const fakeRpc = async (ch: string, ep: string) => {
+    calls.push(ch + ' ' + ep);
+    if (ep === 'fs.defaultRoot') return { ok: true, value: { path: 'D:\\agents' } };
+    if (ep === 'fs.list') return { ok: true, value: { path: 'D:\\agents', parent: 'D:\\', entries: [] } };
+    if (ep === 'meta.local.workspace' || ep === 'meta.rename') {
+      stored.push(ep);
+      return { ok: true, value: {} };
+    }
+    if (ep === 'ping') return { ok: true, value: {} };
+    return { ok: false, error: { code: 'x', message: 'x', details: {} } };
+  };
+  const deps = {
+    ctx: {}, rpc: fakeRpc,
+    getStore: () => new clientMeta.RpcMetaStore('/im-companion', fakeRpc as any),
+    getMeta: () => ({ names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }),
+    refresh: async () => { refreshed++; },
+    loadMeta: async () => undefined,
+    render: () => undefined,
+  };
+  const view = { name: '小帅', workspace: '', bots: [] };
+  const pending = actsMod.createPanelActions(deps).pickWorkspace(view as any);
+  await new Promise((r) => setTimeout(r, 40));
+  const choose = doc.body.querySelectorAll('.af-btn').find((b: any) => b.textContent === '选择此目录');
+  assert.ok(choose, '选家弹窗应出现且可确认');
+  choose.dispatchEvent({ type: 'click' });
+  await pending;
+  assert.ok(!calls.some((c) => c.includes('bot.workspace.set')), '无 bot 不得调 set');
+  assert.ok(stored.includes('meta.local.workspace'), '应落家到 local');
+  assert.ok(stored.includes('meta.rename'), '应记家名');
+  assert.equal(refreshed, 1);
+  const cancelLeft = doc.body.querySelectorAll('.af-btn').find((b: any) => b.textContent === '选择此目录');
+  assert.equal(cancelLeft, undefined, '弹窗应已关闭');
+});
+
+test('#49 有家空壳展示家路径', () => {
+  const metaDoc = { names: {}, avatars: {}, locals: [{ name: '小帅', workspace: 'D:\\agents\\xiaoshuai' }], presets: {}, ctxEnhance: {} };
+  const m = modelMod.buildModel([], metaDoc, 'agent', '');
+  const row = m.agents.find((v: any) => v.name === '小帅');
+  assert.ok(row, '空壳行应在');
+  assert.equal(row.workspaceLine, '工作区·D:\\agents\\xiaoshuai');
+  assert.equal(row.sub, '尚未接入渠道');
 });
 
 rmSync(tmp, { recursive: true, force: true });

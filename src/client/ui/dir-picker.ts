@@ -104,11 +104,14 @@ export function openDirPicker(
   const goRow = h('div', { className: 'af-compose', style: { margin: '8px 0 0' } }, goInput, goBtn)
   /* 盘符入口：实心按钮（ghost 在深色下像裸文本）；预留 30px 高，加载前后 chrome 零位移 */
   const chips = h('div', { style: { display: 'none', gap: '6px', flexWrap: 'wrap', margin: '8px 0 0', minHeight: '30px' } })
-  /* 按钮只 resolve 不关窗 = 点取消没反应（选择亦然）：统一经 done 先关窗再回值 */
+  /* 先回值再关窗（#49：关窗会同步触发 onClose；先关再回值会让 null 抢占，回值恒丢——点确定恒等于取消）。 */
   let modal: ModalHandle;
+  let settled = false
   const done = (v: string | null): void => {
-    try { modal?.close() } catch { /* 关闭失败忽略 */ }
+    if (settled) return
+    settled = true
     resolveFn(v)
+    try { modal?.close() } catch { /* 关闭失败忽略 */ }
   }
   const choose = makeButton({ kind: 'primary', label: '选择此目录', disabled: true, onClick: () => done(state.path) })
   const cancel = makeButton({ kind: 'ghost', label: '取消', onClick: () => done(null) })
@@ -118,7 +121,7 @@ export function openDirPicker(
     h('div', { className: 'af-modal-sub', style: { color: 'var(--af-secondary)' } }, wording.sub),
     bar, goRow, chips, list,
     h('div', { className: 'af-modal-foot', style: { flex: 'none' } }, cancel, choose),
-  ], { onClose: () => resolveFn(null) })
+  ], { onClose: () => done(null) })
   try {
     /* 宽卡（长 Windows 路径不挤压）+ 置顶于 DetailDrawer 抽屉遮罩（1250 > 1200）；极简 DOM 环境缺 classList 则跳过 */
     modal.el.classList.add('af-modal--wide')
