@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T4 排序对照：V-s0 / V-s1 / V-s2（抛弃式原型）</title>
+<link rel="stylesheet" href="./shared.css">
+<script src="./data.js"></script>
+</head>
+<body>
+<div class="wa-wrap">
+  <span class="wa-proto">PROTOTYPE·抛弃式·不进生产·不碰 src/</span>
+  <h1>排序对照：纯时间 vs 合成排序 vs 分区（同数据并列）</h1>
+  <p class="wa-lede">回答：<b>全部分类统一排序</b>用哪种？左边是现状语义（对照组），中间是冻结的合成 comparator，右边是备选。三列同 7 个 mock 工作区（含混合示例 deploy-agent：执行中·普通 + 待看·机器人×3）。悬浮每行看“卡里展开”明细。</p>
+  <div class="wa-card"><div class="wa-hd">❓ 冻结输入（用户裁定，只呈现变体）</div><div class="wa-bd">
+    <p class="wa-q">A：全部分类统一排序；时间口径=<b>最后用户发言</b>；合成 comparator=<b>活性优先（需干预&gt;执行中&gt;待看&gt;平静）+ 该活性对应时间</b>，平静区按最后发言，无交流沉底。B：语义态 6+平静，<b>行上合一（最高优先，多方向标“混合”）+ 卡里展开</b>。铁律①：<b>右侧“在线”健康徽标位不动</b>（本页右侧徽标即示意，任何变体不碰它）。S8/S9 待验证，<b>乐观零降级</b>。</p>
+    <p class="wa-assume">行上每行同时标 ⚡活性时间 与 💬最后用户发言，comparator 透明可审。降级开关只改“行上标签”，排序永远按全量语义（降级≠重排）。</p>
+  </div></div>
+  <div class="wa-toolbar"><span>降级模拟（一键）：</span>
+    <button class="wa-act on" data-dg="0">L0 六态+平静</button>
+    <button class="wa-act" data-dg="1">L1 两态（方向折叠）</button>
+    <button class="wa-act" data-dg="2">L2 单维（有动态/平静）</button>
+    <span class="wa-assume" id="dgHint">L0：行上 6 态全量。卡里明细永远全量——这就是优雅降级的证明。</span>
+  </div>
+  <div class="wa-sortgrid">
+    <div class="wa-col"><h3>V-s0 纯时间排序</h3><p class="wa-sub">对照组：按💬最后用户发言倒序。deploy-agent（💬11:20）沉到第 4——有活干却排后面，这就是纯时间的问题。</p><div id="colS0"></div></div>
+    <div class="wa-col wa-reco"><h3>V-s1 连续合成排序 ★默认推荐</h3><p class="wa-sub">冻结方案：(活性, 活性时间) 全局一列。doc-writer（执行中·11:37）反超 deploy-agent（执行中·11:35）：同活性拼开始时间，诚实但反直觉，重点看。</p><div id="colS1"></div></div>
+    <div class="wa-col"><h3>V-s2 分区排序</h3><p class="wa-sub">备选：同 S1 全序，切段加标题。扫读快，但分区标题占纵向空间，分区间顺序争议仍在（本质与 S1 同序）。</p><div id="colS2"></div></div>
+  </div>
+  <div class="wa-card"><div class="wa-hd">🔍 关键对照（盯着看）</div><div class="wa-bd"><p class="wa-q" style="font-size:12.5px">
+    ① pay（需干预·11:42）三列都置顶：活性之首无争议。<br>
+    ② deploy-agent 混合行：行上仅 <b>执行中·👤🤖混合</b>（最高优先），卡里展开两条明细——聚合规则本体。<br>
+    ③ review-helper 健康离线却有待看：<b>活性 ≠ 健康</b>，右侧徽标照常显示离线，互不干扰。<br>
+    ④ orphan-tmp 无交流：三列全沉底（筛选与排序正交）。</p>
+  </div></div>
+  <div class="wa-card"><div class="wa-hd">📦 性能预算（实现约束；本页静态 mock，不实测）</div><div class="wa-bd"><p class="wa-perf">
+    ① <b>零新增定时器</b>：复用 <code>connection-stream</code> 15s，同 tick piggyback 拉 activity（S8 验证分支）。② <b>有界 fail-soft</b>：单轮 O(行数)，并发上限 K=3、工作区上限 N=50、超时 2s，失败标 stale 不谎报，失配行 fail-closed 留原位。③ <b>rAF 节流</b>：重排与属性重写合并一帧一次，复用 left-filter <code>scheduleRepaint</code> 模式；仅快照变化才重排。④ 真机验收含性能确认，<b>卡顿即不通过</b>。</p>
+  </div></div>
+  <div class="wa-card"><div class="wa-hd">🗳️ 待你 verdict（逐项）</div><div class="wa-bd"><p class="wa-q" style="font-size:12.5px">
+    s-排序：V-s1 连续（默认推荐） / V-s2 分区 / V-s0 纯时间（对照，一般应淘汰）。<br>
+    d-降级：L0→L1→L2 阶梯是否接受（触发条件：S8/S9 验证失败才降级，T5 仍有否决权）。<br>
+     verdict 请发在 #45 评论（本页不收结论）。视觉变体在隔壁：<a href="./visual.html">visual.html</a>。</p>
+  </div></div>
+  <p class="wa-foot">打开方式：双击本文件，或仓库根 <code>python -m http.server 8788</code> 后访问 <code>prototypes/workspace-activity/sort.html</code>。返回 <a href="../../preview.html">preview.html</a>。</p>
+</div>
+<script>
+(function () {
+  'use strict';
+  var level = 0;
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function pop(ws) {
+    var rows = WA.degrade(ws, 0).map(function (s) {
+      var a = WA.ACT[s.act].label, d = WA.dirTag(s.dir);
+      return '<div>· <b>' + a + '</b>·' + d + ' ×' + s.n + '（' + WA.ACT[s.act].timeKind + ' ' + (s.label || '—') + '）</div>';
+    }).join('') || '<div>· 无动态（平静 / 未绑定）</div>';
+    return '<div class="wa-pop"><b>' + esc(ws.name) + '</b> 明细（卡里展开）<br>' + rows +
+      '<br>💬最后用户发言：' + (ws.lastUser ? ws.lastUser.label : '无') + (ws.note ? '<br>注：' + esc(ws.note) : '') + '</div>';
+  }
+  function rowHtml(ws) {
+    var row = WA.rowView(ws, level);
+    var meta = WA.ACT[row.act];
+    var tag = row.act === 'calm' ? '平静' : row.act === 'sink' ? '沉底' : meta.label + '·' + WA.dirTag(row.dir);
+    var tm = row.act === 'calm' ? '💬' + (ws.lastUser ? ws.lastUser.label : '无')
+      : row.act === 'sink' ? '—' : '⚡' + (row.t >= 0 ? ('' + Math.floor(row.t / 60) + ':' + String(row.t % 60).padStart(2, '0')) : '—') + ' · 💬' + (ws.lastUser ? ws.lastUser.label : '无');
+    return '<div class="wa-row" tabindex="0" style="--wa-c:' + meta.color + '"><span class="wa-nm">' + esc(ws.name) +
+      '</span><span class="wa-cat">' + esc(ws.cat) + '</span><span class="wa-tag">' + tag + '</span>' +
+      '<span class="wa-tm">' + tm + '</span><span class="wa-health ' + ws.health + '">' + WA.healthLabel(ws.health) + '</span>' + pop(ws) + '</div>';
+  }
+  function render() {
+    document.getElementById('colS0').innerHTML = WA.sortS0(WA.WS).map(rowHtml).join('');
+    document.getElementById('colS1').innerHTML = WA.sortS1(WA.WS).map(rowHtml).join('');
+    document.getElementById('colS2').innerHTML = WA.sortS2(WA.WS).map(function (sec) {
+      return '<div class="wa-seclabel">' + sec.label + '</div>' + sec.items.map(rowHtml).join('');
+    }).join('');
+  }
+  var hints = ['L0：行上 6 态全量。卡里明细永远全量——这就是优雅降级的证明。',
+    'L1：方向折叠（👤/🤖后缀消失），需干预并入执行中；悬浮卡仍可见“需干预·普通”原文——信息未丢，只是不再占行。',
+    'L2：单维有动态/平静；排序不变，行上只剩一个颜色。降无可降时再谈“仅高亮不重排”（无解候选①的替代）。'];
+  Array.prototype.forEach.call(document.querySelectorAll('[data-dg]'), function (btn) {
+    btn.addEventListener('click', function () {
+      level = Number(btn.getAttribute('data-dg'));
+      Array.prototype.forEach.call(document.querySelectorAll('[data-dg]'), function (b) { b.classList.toggle('on', b === btn); });
+      document.getElementById('dgHint').textContent = hints[level];
+      render();
+    });
+  });
+  render();
+})();
+</script>
+</body>
+</html>

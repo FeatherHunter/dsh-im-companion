@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T4 视觉对照：V-v1..v4（抛弃式原型）</title>
+<link rel="stylesheet" href="./shared.css">
+<script src="./data.js"></script>
+</head>
+<body>
+<div class="wa-wrap">
+  <span class="wa-proto">PROTOTYPE·抛弃式·不进生产·不碰 src/</span>
+  <h1>视觉对照：活性新通道四变体（默认 V-s1 排序）</h1>
+  <p class="wa-lede">回答：<b>活性状态</b>长什么样，才不抢右侧“在线”健康徽标的戏？四变体同数据（V-s1 连续合成排序），底条 / 键盘 ←→ 切换，URL <code>?variant=v1..v4</code> 可分享。方向区分永远双表达：<b>图标</b>（👤普通/🤖机器人/👤🤖混合，全变体）＋ <b>纹理或文字后缀</b>（各变体第二表达）。悬浮每行看“卡里展开”。</p>
+  <div class="wa-card"><div class="wa-hd">🎨 图例（活性 × 方向）</div><div class="wa-bd"><div class="wa-legend" id="legend"></div>
+    <p class="wa-assume">第二表达对照：V-v1/v4 = 竖条纹理（实心·普通 / 斜纹·机器人 / 对半·混合）；V-v2 = 名字后 chip（·普/·机/·混合）；V-v3 = 角标后缀（数字+·普/·机/·混）。颜色永不单打独斗。</p>
+  </div></div>
+  <div class="wa-toolbar"><span>降级模拟（一键）：</span>
+    <button class="wa-act on" data-dg="0">L0 六态+平静</button>
+    <button class="wa-act" data-dg="1">L1 两态</button>
+    <button class="wa-act" data-dg="2">L2 单维</button>
+    <span class="wa-assume" id="dgHint">行上简化，卡里永远全量。</span>
+  </div>
+  <div class="wa-card"><div class="wa-hd" id="listTitle">V-v1 · 左缘活性竖条</div><div class="wa-bd"><div id="rows"></div>
+    <p class="wa-assume" id="varNote"></p>
+  </div></div>
+  <div class="wa-card"><div class="wa-hd">🔬 真机小步验证（只读 dry-run：零写操作，未重启 DSH）</div><div class="wa-bd"><p class="wa-q" style="font-size:12.5px">
+    ① <b>挂载位不打架</b>：左栏行 <code>::after</code> 已被健康徽标占用（left-badges/styles.ts:4），<code>::before</code> 全仓零占用（#43 勘误）→ V-v1/V-v4 左缘条与右侧徽标分属不同伪元素与盒边，CSS 层面可共存；实现沿用 left-badges“只读写 data-* 属性、不增删节点”（view.ts:88-128），重渲染无东西可吃。<br>
+    ② <b>重排风险与 fail-soft</b>：本仓零重排原语（G1）；原生重渲染会换掉整个左栏容器（left-badges/view.ts:15-16）→ 顺序补丁是一次性的，需 left-filter 式 observer + rAF 合并重算；闪回/焦点丢失风险仍在 → fail-soft：失配行 fail-closed 留原位、仅快照变化才重排、降级“仅高亮不重排”兜底。<br>
+    ③ <b>未触达项（诚实）</b>：headless 探针撞上 dsh web 认证墙（空标题、0 行），未能实测行盒模型（position/overflow）与真实闪烁度 → “V-s1 默认推荐”附条件，真机确认留给用户侧 P1。本次 dry-run 未做任何 DOM 写操作。</p>
+  </div></div>
+  <div class="wa-card"><div class="wa-hd">♿ 无障碍对照</div><div class="wa-bd"><p class="wa-q" style="font-size:12.5px">
+    色盲：颜色永远配第二通道（纹理/文字/数字），单通道淘汰。对比度：竖条 5px 在浅底上 need/exec/seen 目标 ≥4.5:1（mock 断言，真机主题待复核）。拥挤度：V-v4 双通道最挤，窄栏建议回落 V-v1。动效：呼吸仅 need/exec，已含 <code>prefers-reduced-motion</code> 熔断，真机复用 presence Body 档位。</p>
+  </div></div>
+  <div class="wa-card"><div class="wa-hd">📦 性能预算（实现约束；同 sort 页）</div><div class="wa-bd"><p class="wa-perf">
+    零新增定时器（复用 15s）· 单轮 O(行数) 有界（K=3 并发 / N=50 上限 / 2s 超时 fail-soft）· rAF 合并一帧一次 · 卡顿即不通过。</p>
+  </div></div>
+  <div class="wa-card"><div class="wa-hd">🗳️ 待你 verdict（逐项，可混搭）</div><div class="wa-bd"><p class="wa-q" style="font-size:12.5px">
+    v-视觉：V-v1 左缘竖条（最稳，::before 空闲）/ V-v2 名字颜色（最省位，色盲需后缀）/ V-v3 数字角标（数感强，占用行尾）/ V-v4 组合（信息最全，最挤）。允许“v1 条 + v3 角标弱化版”式混搭。verdict 发 #45。排序对照在 <a href="./sort.html">sort.html</a>。</p>
+  </div></div>
+  <p class="wa-foot">打开方式：双击本文件（<code>?variant=v2</code> 直接进某变体），或 <code>python -m http.server 8788</code>。返回 <a href="../../preview.html">preview.html</a>。</p>
+</div>
+<div class="wa-switcher"><button id="prev" title="上一个（←）">‹</button><span id="cur">V-v1 · 左缘竖条</span><button id="next" title="下一个（→）">›</button></div>
+<script>
+(function () {
+  'use strict';
+  var NAMES = { v1: 'V-v1 · 左缘竖条', v2: 'V-v2 · 名字颜色', v3: 'V-v3 · 数字角标', v4: 'V-v4 · 竖条+角标' };
+  var ORDER = ['v1', 'v2', 'v3', 'v4'];
+  var NOTES = {
+    v1: 'V-v1：::before 左缘 5px 竖条（色+呼吸，需干预/执行中呼吸，待看静止，平静细灰）。方向=纹理。真机成本最低的一档。',
+    v2: 'V-v2：名字染活性色、需干预加粗；方向=名字后 chip。最省横向空间；纯色弱提示，依赖后缀文字。',
+    v3: 'V-v3：名字不动，行尾数字角标（活性色底+短标签+方向后缀，如 执4·混）；平静/沉底无角标，行面最干净。',
+    v4: 'V-v4：竖条 + 角标组合，信息最全也最挤；窄栏可只保留竖条（=回落 v1），天然是一组响应式。'
+  };
+  var SHORT = { need: '需', exec: '执', seen: '待', hot: '动' };
+  var SUF = { human: '·普', bot: '·机', mixed: '·混' };
+  var variant = (location.search.match(/variant=(v[1-4])/) || [])[1] || 'v1';
+  var level = 0;
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  function pop(ws) {
+    var rows = WA.degrade(ws, 0).map(function (s) {
+      return '<div>· <b>' + WA.ACT[s.act].label + '</b>·' + WA.dirTag(s.dir) + ' ×' + s.n + '（' + (s.label || WA.ACT[s.act].timeKind) + '）</div>';
+    }).join('') || '<div>· 无动态（平静 / 未绑定）</div>';
+    return '<div class="wa-pop"><b>' + esc(ws.name) + '</b> 明细（卡里展开）<br>' + rows + '<br>💬最后用户发言：' + (ws.lastUser ? ws.lastUser.label : '无') + '</div>';
+  }
+  function tLabel(t) { return t >= 0 ? ('' + Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0')) : '—'; }
+  function render() {
+    document.body.className = variant === 'v2' ? 'wa-v2' : (variant === 'v3' ? '' : 'wa-v1');
+    document.getElementById('rows').innerHTML = WA.sortS1(WA.WS).map(function (ws) {
+      var row = WA.rowView(ws, level), meta = WA.ACT[row.act];
+      var live = (row.act !== 'calm' && row.act !== 'sink');
+      var cls = 'wa-row' + (live ? ' wa-live' : '') + ((row.act === 'need' || row.act === 'exec') ? ' wa-breathe' : '') +
+        ' wa-dir-' + row.dir + (row.act === 'need' ? ' wa-heavy' : '');
+      var inner = '<span class="wa-nm">' + esc(ws.name) + '</span><span class="wa-cat">' + esc(ws.cat) + '</span>';
+      if (variant === 'v1' || variant === 'v4') inner += '<span class="wa-tag">' + meta.label + '·' + WA.dirTag(row.dir) + '</span>';
+      if (variant === 'v2') inner += '<span class="wa-dirtag">' + WA.dirTag(row.dir) + '</span>';
+      if ((variant === 'v3' || variant === 'v4') && live) {
+        var n = 0;
+        WA.degrade(ws, level).forEach(function (s) { n += s.n; });
+        inner += '<span class="wa-cnt">' + SHORT[row.act] + n + SUF[row.dir] + '</span>';
+      }
+      inner += '<span class="wa-tm">' + (live ? '⚡' + tLabel(row.t) + ' · 💬' + (ws.lastUser ? ws.lastUser.label : '无') : (row.act === 'calm' ? '💬' + (ws.lastUser ? ws.lastUser.label : '无') : '—')) + '</span>';
+      inner += '<span class="wa-health ' + ws.health + '">' + WA.healthLabel(ws.health) + '</span>' + pop(ws);
+      var glow = row.act === 'need' ? 'rgba(217,45,32,.55)' : row.act === 'exec' ? 'rgba(22,119,255,.5)' : 'transparent';
+      return '<div class="' + cls + '" tabindex="0" style="--wa-c:' + meta.color + ';--wa-glow:' + glow + '">' + inner + '</div>';
+    }).join('');
+    document.getElementById('listTitle').textContent = NAMES[variant] + '（V-s1 排序 · ' + ['L0 六态', 'L1 两态', 'L2 单维'][level] + '）';
+    document.getElementById('varNote').textContent = NOTES[variant];
+    document.getElementById('cur').textContent = NAMES[variant];
+    var url = location.pathname + '?variant=' + variant;
+    if (location.protocol.indexOf('http') === 0) history.replaceState(null, '', url);
+  }
+  function go(d) {
+    variant = ORDER[(ORDER.indexOf(variant) + d + ORDER.length) % ORDER.length];
+    render();
+  }
+  document.getElementById('prev').addEventListener('click', function () { go(-1); });
+  document.getElementById('next').addEventListener('click', function () { go(1); });
+  document.addEventListener('keydown', function (e) {
+    if (/INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || '') || (document.activeElement || {}).isContentEditable) return;
+    if (e.key === 'ArrowLeft') go(-1);
+    if (e.key === 'ArrowRight') go(1);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-dg]'), function (btn) {
+    btn.addEventListener('click', function () {
+      level = Number(btn.getAttribute('data-dg'));
+      Array.prototype.forEach.call(document.querySelectorAll('[data-dg]'), function (b) { b.classList.toggle('on', b === btn); });
+      document.getElementById('dgHint').textContent = ['行上简化，卡里永远全量。', 'L1：方向折叠；卡里仍见“需干预·普通/待看·机器人×3”原文。', 'L2：单维有动态/平静；排序与卡片不变。'][level];
+      render();
+    });
+  });
+  document.getElementById('legend').innerHTML = ['need', 'exec', 'seen', 'calm'].map(function (k) {
+    return '<span class="wa-chip"><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:' + WA.ACT[k].color + '"></span> ' + WA.ACT[k].label + '</span>';
+  }).join('') + '<span class="wa-chip">👤普通 · 🤖机器人 · 👤🤖混合</span><span class="wa-chip">右侧 ●在线/○离线 位不动</span>';
+  render();
+})();
+</script>
+</body>
+</html>

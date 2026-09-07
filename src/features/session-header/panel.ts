@@ -9,7 +9,7 @@ import * as React from 'react'
 import { botDisplayLabel, type BotSnap, type RpcCall } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import {
-  SEND_TEST_EVENT, botsInChannel, chooseBot, headerOverlayFor, runTestSend, sendToSuggestion,
+  SEND_TEST_EVENT, SESSION_VIEWED_EVENT, botsInChannel, chooseBot, headerOverlayFor, runTestSend, sendToSuggestion,
   suggestionLabel, type DeliverySuggestion, type DotKind, type OverlayChannel, type TestSendOutcome,
 } from '../../client/data/header-overlay'
 import { channelLogo, pickerBlock } from './pickers'
@@ -72,6 +72,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   }, [sessionId, subscribe])
   React.useEffect(() => {
     setOpen(false); setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null)
+    try { emit(SESSION_VIEWED_EVENT, { sessionId: sessionId }) } catch { /* 已读回写上报失败不影响展示 */ }
   }, [sessionId])
   React.useEffect(() => {
     if (!open || typeof document === 'undefined') return

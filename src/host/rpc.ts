@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 import type { AgentMetaStore } from './meta-store.js'
 import { collectRoutes } from './routes.js'
+import { collectActivity } from './activity.js'
 
 export type RpcPayload = Record<string, unknown>
 
@@ -120,6 +121,10 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: { dshHome?:
             return true
           }).map((b) => ({ channel: String(b?.channel ?? ''), botId: String(b?.botId ?? '') }))
           return ok(await collectRoutes(home, clean))
+        }
+        case 'activity.snapshot': {
+          const now = Date.now()
+          return ok(await collectActivity(dshHome, now))
         }
         case 'fs.defaultRoot':
           return ok({ path: homedir() })
