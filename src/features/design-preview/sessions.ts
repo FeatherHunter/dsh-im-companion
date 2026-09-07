@@ -170,12 +170,28 @@ export function markSessions(groups: Element[], states: RowState[]): void {
   } catch (e) { /* 忽略 */ }
   try {
     var sessMap = sessionsOf(groups);
+    var freshCut = nowMs - FRESH_MS;
     for (var i = 0; i < groups.length; i++) {
       var st = states[i];
-      if (!st || (st.act !== 'exec' && st.act !== 'seen') || !st.top || !st.top.length) continue;
       var rows = sessMap.get(groups[i]) || [];
+      /* 黄双路径二（冻结合约）：原生绿点行不依赖组态——即使组 calm，有绿点 + 文件新鲜即提待看；远古完成因 freshCut 守卫自然回落，不会常黄。 */
+      var stFresh0 = 0;
+      try {
+        var tp0 = (st && st.top) ? st.top : [];
+        for (var fi0 = 0; fi0 < tp0.length; fi0++) { if (tp0[fi0].mtime > stFresh0) stFresh0 = tp0[fi0].mtime; }
+      } catch (e) { /* 忽略 */ }
+      if (stFresh0 >= freshCut && rows.length) {
+        for (var dr = 0; dr < rows.length; dr++) {
+          var hasDot0 = false;
+          try { hasDot0 = hasNativeDot(rows[dr]); } catch (e) { hasDot0 = false; }
+          if (hasDot0) {
+            setA(rows[dr], 'data-dp-sess', 'seen');
+            setA(rows[dr], 'data-dp-tip', '待看 · 原生未读');
+          }
+        }
+      }
+      if (!st || (st.act !== 'exec' && st.act !== 'seen') || !st.top || !st.top.length) continue;
       if (!rows.length) continue;
-      var freshCut = nowMs - FRESH_MS;
       var stFresh = 0;
       for (var fi = 0; fi < st.top.length; fi++) { if (st.top[fi].mtime > stFresh) stFresh = st.top[fi].mtime; }
       if (!attrProbe) probeAttrs(rows[0]);
