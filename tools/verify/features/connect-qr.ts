@@ -154,6 +154,7 @@ test('#49 旧分叉移除：调用方统一到共享选择器', () => {
   assert.ok(flow.includes('removeLocal'), '成功后应清 local 空壳（名字跟人走）');
   assert.ok(flow.includes('createMetaStore'), '改名/清壳应走 MetaStore');
   assert.ok(acts.includes('名字跟人走'), '换家也应名字跟人走');
+  assert.ok(acts.includes('尚无机器人'), '无 bot 空壳不得空选家');
   assert.ok(!flow.includes("(e: unknown) => toast('绑定失败"), '吞错旧式 catch 不得残留');
   const preview = readFileSync(join(REPO, 'src', 'dev', 'preview-host.ts'), 'utf8');
   assert.ok(preview.includes('fs.roots'), '预览 mock 应补盘符入口');

@@ -66,6 +66,11 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
 
   async function pickWorkspace(view: AgentView): Promise<void> {
     try {
+      /* 无机器人空壳（#49B）：没有可绑定的 bot，直接明示走接入流程，不开空选家。 */
+      if (!view.bots.length) {
+        toast('「' + view.name + '」尚无机器人，请先点「接入」创建渠道机器人，扫码后即可选家绑定')
+        return
+      }
       let picker: ReturnType<typeof openDirPicker>
       try {
         picker = openDirPicker(deps.rpc, view.workspace, ctxNativePicker(deps.ctx), WORKSPACE_PICKER_COPY)
