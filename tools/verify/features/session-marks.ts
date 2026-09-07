@@ -250,5 +250,36 @@ test('折叠缓存 B 方案·首见收起：无缓存⇒不动（留 paint 初�
   assert.equal(actOf(g, 'data-dp-act'), 'need', '无缓存时收起组不动，留 entry 级初稿');
 });
 
+test('组级优先级：红>黄>蓝（2026-09-07 用户裁定；原为红>蓝>黄，黄被蓝压没——组有待看即显黄）', () => {
+  // 蓝行 + 黄行 ⇒ 组黄。
+  const g1 = group(null);
+  const r1a = row('x-a', 'ongoing');
+  const r1b = row('x-b', 'done');
+  registry = [g1, r1a, r1b];
+  sess.markSessions([g1 as any], [st('g1', 'calm', [])]);
+  assert.equal(actOf(r1a, 'data-dp-sess'), 'exec', '前置：蓝行成立');
+  assert.equal(actOf(r1b, 'data-dp-sess'), 'seen', '前置：黄行成立');
+  assert.equal(actOf(g1, 'data-dp-act'), 'seen', '蓝+黄 ⇒ 组黄（黄压蓝）');
+  assert.equal(groupDot(g1), 'seen', '角标同黄');
+
+  // 黄行 + 红行 ⇒ 组红。
+  const g2 = group(null);
+  const r2a = row('Task Mu', null);
+  const r2b = row('x-c', 'done');
+  registry = [g2, r2a, r2b];
+  sess.markSessions([g2 as any], [st('g2', 'exec', [top1('f10', '402', 'Task Mu', false)])]);
+  assert.equal(actOf(r2a, 'data-dp-sess'), 'red', '前置：红行成立');
+  assert.equal(actOf(g2, 'data-dp-act'), 'need', '黄+红 ⇒ 组红（红压黄）');
+});
+
+test('组级优先级·三蓝一黄仍黄：黄行存在⇒黄，蓝行再多也压不过', () => {
+  const g = group(null);
+  registry = [g,
+    row('x-d1', 'ongoing'), row('x-d2', 'ongoing'), row('x-d3', 'ongoing'),
+    row('x-e', 'done')];
+  sess.markSessions([g as any], [st('g2b', 'calm', [])]);
+  assert.equal(actOf(g, 'data-dp-act'), 'seen', '三蓝一黄 ⇒ 组黄');
+});
+
 rmSync(tmp, { recursive: true, force: true });
 console.log('features/session-marks: ALL PASS');

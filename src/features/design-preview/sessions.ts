@@ -174,9 +174,10 @@ export function markSessions(groups: Element[], states: RowState[]): void {
         }
         var gcur = getA(groups[i], 'data-dp-act');
         var gdot: string | null = null;
+        /* 组级优先级 红>黄>蓝（2026-09-07 用户裁定；原红>蓝>黄——有待看的组被蓝行压没，违反"黄=等你看"）。 */
         if (gHasRed) { setA(groups[i], 'data-dp-act', 'need'); setA(groups[i], 'data-dp-tip', SESS_LABEL['red']); gdot = 'need'; }
-        else if (gHasBlue) { setA(groups[i], 'data-dp-act', 'exec'); setA(groups[i], 'data-dp-tip', SESS_LABEL['exec']); gdot = 'exec'; }
         else if (gHasYellow) { setA(groups[i], 'data-dp-act', 'seen'); setA(groups[i], 'data-dp-tip', SESS_LABEL['seen']); gdot = 'seen'; }
+        else if (gHasBlue) { setA(groups[i], 'data-dp-act', 'exec'); setA(groups[i], 'data-dp-tip', SESS_LABEL['exec']); gdot = 'exec'; }
         else if (gcur === 'need' || gcur === 'exec' || gcur === 'seen') {
           delA(groups[i], 'data-dp-act'); delA(groups[i], 'data-dp-tip');
         }
