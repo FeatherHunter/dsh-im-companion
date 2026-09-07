@@ -157,6 +157,10 @@ test('#49 旧分叉移除：调用方统一到共享选择器', () => {
   assert.ok(!flow.includes("(e: unknown) => toast('绑定失败"), '吞错旧式 catch 不得残留');
   const preview = readFileSync(join(REPO, 'src', 'dev', 'preview-host.ts'), 'utf8');
   assert.ok(preview.includes('fs.roots'), '预览 mock 应补盘符入口');
+  const theme = readFileSync(join(REPO, 'src', 'client', 'theme.ts'), 'utf8');
+  const barRule = theme.match(/\.af-dirbar\s*\{[^}]*\}/)?.[0] ?? '';
+  assert.ok(barRule.includes('line-height'), '路径条须自带 line-height（防宿主继承挤压）');
+  assert.ok(barRule.includes('align-items'), '路径条须居中对齐');
 });
 
 test('#49 openDirPicker：工作区文案覆盖且默认不变', async () => {
