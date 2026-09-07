@@ -1,5 +1,5 @@
 /** activity 快照（host 侧只读）：mtime 快扫全量 + 真相解码子集（open/kind/approval/title，预算内新者优先）。 */
-/* 时间作废令（#45 用户裁定）：running 只认解码 open，不认 mtime 窗；mtime 仅作排序/水位/展示。STICKY 沿用冻结修法（P2 待定前不动）。 */
+/* P2删STICKY（多智能体结论）：缺席即消失，fail-soft空 */
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { TRUTH_BUDGET_MS, TRUTH_MAX_FILES, readSessionTruth, type SessionTruth } from './truth.js';
@@ -21,9 +21,6 @@ let snapCache: { at: number; entries: ActivityEntry[] } | null = null;
 /* Windows 目录 mtime 内容追加不更新（仅新建/删除 bump），必须下探一层 stat 会话文件；全扫实测约 118ms。 */
 const MAX_FILES = 10;
 const TOP_PER_DIR = 3;
-/* 瞬时扫描失败兜底（mergeStaleBots 同款）：缺席目录保留上一轮快照最多 5 分钟，时间冻结且不谎称 running。 */
-const STICKY_TTL_MS = 5 * 60 * 1000;
-const sticky = new Map<string, { e: ActivityEntry; at: number }>();
 
 async function mtimeOf(p: string): Promise<number> {
   try {
@@ -73,7 +70,7 @@ export async function collectActivity(dshHome: string, nowMs: number): Promise<{
       }
       tops.sort((a, b) => b.mtime - a.mtime);
       raws.push({ dir, max, sessions: kids.length, tops: tops.slice(0, 8) });
-    } catch { /* 单工作区失败跳过：走 sticky 兜底 */ }
+    } catch { /* 单工作区失败跳过 */ }
   }
   /* 真相解码：每目录取最新 TOP_PER_DIR，汇合按新排序取预算内，金 fuse 熔断；未解码会话保持未知（不猜）。 */
   const pool: { dir: string; name: string; mtime: number; file: string }[] = [];
@@ -107,11 +104,6 @@ export async function collectActivity(dshHome: string, nowMs: number): Promise<{
     }
     const rec: ActivityEntry = { dir: r.dir, lastActive: r.max, sessions: r.sessions, running, top };
     entries.push(rec);
-    sticky.set(r.dir, { e: rec, at: nowMs });
-  }
-  for (const [dir, rec] of sticky) {
-    if (nowMs - rec.at > STICKY_TTL_MS) { sticky.delete(dir); continue; }
-    if (!entries.some((e) => e.dir === dir)) entries.push({ ...rec.e, running: false });
   }
   snapCache = { at: nowMs, entries };
   return { entries, scannedAt: nowMs };

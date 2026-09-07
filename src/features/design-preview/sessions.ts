@@ -1,9 +1,15 @@
-import { fmtTime, markSessionViewed, trackSession, type RowState } from '../../client/data/activity';
+import { markSessionViewed, trackSession, type RowState } from '../../client/data/activity';
+/* 例外引用（§10 通道，理由见提审）：design-preview 为 TEMP 原型（定稿即删），复用 truth-flags
+ * 纯逻辑（无 DOM/状态），T5 定稿时 flags 收敛进共享层后改道。禁反向、禁状态共享。 */
+import { flagsForSession } from '../truth-flags/flags';
 import { SESSION_VIEWED_EVENT } from '../../client/data/header-overlay';
 var LN = String.fromCharCode(10);
 var attrProbe = '';
 export function sessionAttrProbe(): string { return attrProbe; }
-var SESS_LABEL: Record<string, string> = { exec: '执行中', seen: '待看', done: '刚执行完待看' };
+var SESS_LABEL: Record<string, string> = { exec: '执行中', seen: '待看', done: '刚执行完待看', red: '异常 · 需处理', wait: '待确认 · 等你选择' };
+function getA(el: Element, k: string): string {
+  try { return el.getAttribute(k) || ''; } catch (e) { return ''; }
+}
 function textOf(el: Element): string {
   try { return typeof el.textContent === 'string' ? el.textContent : ''; } catch (e) { return ''; }
 }
@@ -60,6 +66,19 @@ function probeAttrs(row: Element): void {
 }
 var dotCache = new Map<Element, { v: boolean; t: number }>();
 var amberCache = new Map<Element, { v: boolean; t: number }>();
+/* 首见信任集（防种子水位误杀）：key 首刷即记，首见 running 信任 open 染蓝；
+ * 次刷起无进展才判静默。满 2000 清零（极罕见抖动一轮，可接受）。 */
+var observedRunKeys: Record<string, number> = {};
+var observedRunCount = 0;
+function seenBefore(key: string): boolean {
+  try {
+    if (observedRunKeys[key] === 1) return true;
+    observedRunKeys[key] = 1;
+    observedRunCount++;
+    if (observedRunCount > 2000) { observedRunKeys = {}; observedRunCount = 0; }
+    return false;
+  } catch (e) { return true; }
+}
 export function hasNativeDot(el: Element): boolean {
   try {
     var now = Date.now();
@@ -198,10 +217,12 @@ export function markSessions(groups: Element[], states: RowState[]): void {
           setA(rows[r], 'data-dp-tip', '待看 · 原生未读');
           continue;
         }
-        /* 行归属 join（时间作废令）：行文本对会话标题归一匹配，不用时间窗；无标题真相即无色（诚实未知）。 */
+        /* 行归属 join（时间作废令）：行文本对会话标题归一匹配，不用时间窗；无标题真相即无色（诚实未知）。
+         * 颜色唯一判据 truth-flags：蓝=执行中（闪烁）、红=异常需处理（闪烁）、黄=待看/待确认选择。
+         * P1废：approval-pending 永不判红，只判黄（等你选择）。 */
         var rtext = textOf(rows[r]);
         var rnorm = normRowTitle(rtext);
-        var hit: { key: string; mtime: number; running: boolean; done: boolean } | null = null;
+        var hit: { key: string; flag: string; tip: string } | null = null;
         if (rnorm.length >= 2) {
           for (var c = 0; c < st.top.length; c++) {
             var t = st.top[c];
@@ -212,20 +233,35 @@ export function markSessions(groups: Element[], states: RowState[]): void {
             var key = st.key + '/' + t.name;
             var running = t.open === true;
             var tr = trackSession(key, t.mtime, running);
-            if (!running && !tr.isNew) continue;
+            var needApproval = t.approval === true;
+            if (!running && !tr.isNew && !needApproval) continue;
             if (taken.indexOf(key) !== -1) continue;
-            hit = { key: key, mtime: t.mtime, running: running, done: tr.justFinished };
+            var fg = flagsForSession({ open: running, kind: t.kind || '', approval: needApproval, amber: false, green: false, isNew: tr.isNew, justFinished: tr.justFinished, titleHit: true, observedBefore: seenBefore(key) });
+            if (fg.flag === 'none') continue;
+            var ftip = fg.flag === 'red' ? SESS_LABEL['red'] : (fg.flag === 'blue' ? SESS_LABEL['exec'] : (fg.flag === 'done' ? SESS_LABEL['done'] : (fg.yellowSrc === 'approval-wait' ? SESS_LABEL['wait'] : SESS_LABEL['seen'])));
+            hit = { key: key, flag: fg.flag, tip: ftip };
             break;
           }
         }
         if (!hit) continue;
         taken.push(hit.key);
-        setA(rows[r], 'data-dp-sess', hit.done ? 'done' : (hit.running ? 'exec' : 'seen'));
-        var lbl = hit.done ? SESS_LABEL['done'] : (hit.running ? SESS_LABEL['exec'] : SESS_LABEL['seen']);
-        var stime = fmtTime(hit.mtime);
-        var stip = hit.running ? (lbl + ' - 开始于' + stime) : (stime ? (lbl + ' - ' + stime) : lbl);
-        setA(rows[r], 'data-dp-tip', stip);
+        setA(rows[r], 'data-dp-sess', hit.flag === 'blue' ? 'exec' : (hit.flag === 'done' ? 'done' : (hit.flag === 'red' ? 'red' : 'seen')));
+        setA(rows[r], 'data-dp-tip', hit.tip);
       }
+      /* 组行升级（只升不降）：组内任一会话红→组红（need 红闪），任一蓝→组蓝，任一黄→组黄。 */
+      try {
+        var gHasRed = false; var gHasBlue = false; var gHasYellow = false;
+        for (var u = 0; u < rows.length; u++) {
+          var sv = getA(rows[u], 'data-dp-sess');
+          if (sv === 'red') gHasRed = true;
+          else if (sv === 'exec') gHasBlue = true;
+          else if (sv === 'seen' || sv === 'done') gHasYellow = true;
+        }
+        var gcur = getA(groups[i], 'data-dp-act');
+        if (gHasRed && gcur !== 'need') { setA(groups[i], 'data-dp-act', 'need'); setA(groups[i], 'data-dp-tip', SESS_LABEL['red']); }
+        else if (gHasBlue && gcur !== 'need' && gcur !== 'exec') { setA(groups[i], 'data-dp-act', 'exec'); setA(groups[i], 'data-dp-tip', SESS_LABEL['exec']); }
+        else if (gHasYellow && (gcur === '' || gcur === 'nosig' || gcur === 'nosig0')) { setA(groups[i], 'data-dp-act', 'seen'); setA(groups[i], 'data-dp-tip', SESS_LABEL['seen']); }
+      } catch (e) { /* 组升级失败不影响行 */ }
     }
   } catch (e) { /* 忽略 */ }
 }

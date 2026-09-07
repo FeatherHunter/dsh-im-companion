@@ -1,6 +1,6 @@
 /** TEMP 真实活性演示（定稿即删）：activity.snapshot 真数据 + 合成排序真排 + 真状态徽饰。 */
 /* 时间=会话文件最大 mtime（文件级近似）；方向=粗分；需干预/会话级无真信号，保持缺席。 */
-import { deriveRowStates, fetchActivity, fetchRoutesSafe, fmtTime, routesOf, type RowState } from '../../client/data/activity';
+import { deriveRowStates, fetchActivity, fetchRoutesSafe, routesOf, type RowState } from '../../client/data/activity';
 import { clearSessionMarks, hasNativeDot, markSessions, sessionAttrProbe } from './sessions';
 import type { BotSnap } from '../../client/data/fleet-api';
 import type { StreamSnapshot } from '../../client/data/connection-stream';
@@ -36,10 +36,8 @@ function collectGroups(): Element[] {
 function tipFor(st: RowState, rank: number, total: number): string {
   void rank;
   void total;
-  var t = fmtTime(st.time);
   var label = ACT_LABEL[st.act] || st.act;
-  var head = (st.act === 'exec' && t) ? (label + ' - 开始于' + t) : (t ? (label + ' - ' + t) : label);
-  return head;
+  return label;
 }
 function paint(groups: Element[], states: RowState[]): void {
   try {
@@ -83,8 +81,7 @@ function paint(groups: Element[], states: RowState[]): void {
       }
       if (dot && st.act === 'sink') {
         setAttr(row, 'data-dp-act', 'seen');
-        var snt = fmtTime(st.time);
-        setAttr(row, 'data-dp-tip', snt ? ('待看 - ' + snt + ' · 原生未读') : '待看 · 原生未读');
+        setAttr(row, 'data-dp-tip', '待看 · 原生未读');
         try {
           var svgS = groups[j].querySelector('svg');
           var hostS = svgS ? svgS.parentElement : null;
