@@ -140,9 +140,10 @@ export function markSessions(groups: Element[], states: RowState[]): void {
         setA(rows[r], 'data-dp-sess', hit.flag === 'blue' ? 'exec' : (hit.flag === 'done' ? 'done' : (hit.flag === 'red' ? 'red' : 'seen')));
         setA(rows[r], 'data-dp-tip', hit.tip);
       }
-      /* 组行升级（只升不降，不清零）：组内任一会话红→组红，任一蓝→组蓝，任一黄→组黄。
-       * 不清零的理由：entry.running（未解码/未归因会话仍在跑）是组级合法信号，demo 按水位 paint/clear
-       * 自管组条的新增与消除；此处只叠加行级实测，不销毁 entry 级信号。 */
+      /* 组色＝会话聚合（不变量：组蓝/黄/红 ⇒ 必有同色会话；展开组恒成立）。
+       * 有会话行的组：组色只由本轮行色决定——有同色行则置色，无则清 demo 的 entry 级旧色
+       *（未归因的 running/水位信号不得单独染组，否则组色无行可解释）。
+       * nosig 系诊断灰，永不动。无会话行的组（收起/映射空）：不动，留 demo 的 entry 级汇总。 */
       try {
         var gHasRed = false; var gHasBlue = false; var gHasYellow = false;
         for (var u = 0; u < rows.length; u++) {
@@ -152,10 +153,13 @@ export function markSessions(groups: Element[], states: RowState[]): void {
           else if (sv === 'seen' || sv === 'done') gHasYellow = true;
         }
         var gcur = getA(groups[i], 'data-dp-act');
-        if (gHasRed && gcur !== 'need') { setA(groups[i], 'data-dp-act', 'need'); setA(groups[i], 'data-dp-tip', SESS_LABEL['red']); }
-        else if (gHasBlue && gcur !== 'need' && gcur !== 'exec') { setA(groups[i], 'data-dp-act', 'exec'); setA(groups[i], 'data-dp-tip', SESS_LABEL['exec']); }
-        else if (gHasYellow && (gcur === '' || gcur === 'nosig' || gcur === 'nosig0')) { setA(groups[i], 'data-dp-act', 'seen'); setA(groups[i], 'data-dp-tip', SESS_LABEL['seen']); }
-      } catch (e) { /* 组升级失败不影响行 */ }
+        if (gHasRed) { setA(groups[i], 'data-dp-act', 'need'); setA(groups[i], 'data-dp-tip', SESS_LABEL['red']); }
+        else if (gHasBlue) { setA(groups[i], 'data-dp-act', 'exec'); setA(groups[i], 'data-dp-tip', SESS_LABEL['exec']); }
+        else if (gHasYellow) { setA(groups[i], 'data-dp-act', 'seen'); setA(groups[i], 'data-dp-tip', SESS_LABEL['seen']); }
+        else if (gcur === 'need' || gcur === 'exec' || gcur === 'seen') {
+          delA(groups[i], 'data-dp-act'); delA(groups[i], 'data-dp-tip');
+        }
+      } catch (e) { /* 组同步失败不影响行 */ }
     }
   } catch (e) { /* 忽略 */ }
 }
