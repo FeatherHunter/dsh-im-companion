@@ -1,9 +1,8 @@
-import { markSessionViewed, trackSession, type RowState } from '../../client/data/activity';
+import { type RowState } from '../../client/data/activity';
 /* 例外引用（§10 通道，理由见提审）：design-preview 为 TEMP 原型（定稿即删），复用 truth-flags
  * 纯逻辑（无 DOM/状态），T5 定稿时 flags 收敛进共享层后改道。禁反向、禁状态共享。 */
 import { flagsForSession } from '../truth-flags/flags';
 import { readNativeState } from '../truth-flags/dom-state';
-import { SESSION_VIEWED_EVENT } from '../../client/data/header-overlay';
 var LN = String.fromCharCode(10);
 var attrProbe = '';
 export function sessionAttrProbe(): string { return attrProbe; }
@@ -65,22 +64,22 @@ function probeAttrs(row: Element): void {
     attrProbe = '行属性探针 | ' + parts.join(' ');
   } catch (e) { attrProbe = '行属性探针取失败'; }
 }
-var viewedHooked = false;
-function hookViewed(): void {
-  if (viewedHooked) return;
-  viewedHooked = true;
+/* B 方案（2026-09-07 用户拍板）：收起组保留最后一次展开的行聚合色。
+ * 官方折叠时不渲染会话行 → markSessions 聚合无行可看；demo paint 的组级"数据层色"会覆盖成
+ * 平静/黄（截图实锤：展开蓝→收起黄）。缓存组key→聚合色，收起时恢复，组色不再随折叠漂移。
+ * 展开组：每轮聚合后写缓存；收起组：读缓存恢复（无缓存=首见，不动）。 */
+var groupActCache = new Map<string, string>();
+function syncGroupBadge(g: Element, gdot: string | null): void {
   try {
-    window.addEventListener(SESSION_VIEWED_EVENT, function (ev: Event): void {
-      try {
-        var d = (ev as CustomEvent).detail as { sessionId?: unknown } | null;
-        var sid = d && typeof d.sessionId === 'string' ? d.sessionId : '';
-        if (sid) markSessionViewed(sid);
-      } catch (e) { /* 忽略 */ }
-    });
-  } catch (e) { /* 忽略 */ }
+    var svgG = g.querySelector('svg');
+    var hostG = svgG ? svgG.parentElement : null;
+    if (hostG) {
+      if (gdot) { setA(hostG, 'data-dp-icon', '1'); setA(hostG, 'data-dp-act', gdot); }
+      else { delA(hostG, 'data-dp-icon'); delA(hostG, 'data-dp-act'); }
+    }
+  } catch (e) { /* 角标同步失败不影响行 */ }
 }
 export function markSessions(groups: Element[], states: RowState[]): void {
-  hookViewed();
   try {
     document.querySelectorAll('[data-dp-sess]').forEach(function (n) {
       try { delA(n, 'data-dp-sess'); delA(n, 'data-dp-tip'); } catch (e) { /* 忽略 */ }
@@ -91,12 +90,26 @@ export function markSessions(groups: Element[], states: RowState[]): void {
     for (var i = 0; i < groups.length; i++) {
       var st = states[i];
       var rows = sessMap.get(groups[i]) || [];
-      if (!rows.length) continue;
+      var gKey = st ? st.key : '';
+      /* 收起组（无可见行）：用缓存恢复组条+角标；无缓存（首见收起）不动，留 paint 初稿。 */
+      if (!rows.length) {
+        if (gKey) {
+          var rc = groupActCache.get(gKey);
+          if (rc !== undefined) {
+            try {
+              if (rc) { setA(groups[i], 'data-dp-act', rc); setA(groups[i], 'data-dp-tip', rc === 'need' ? SESS_LABEL['red'] : (rc === 'exec' ? SESS_LABEL['exec'] : SESS_LABEL['seen'])); }
+              else { delA(groups[i], 'data-dp-act'); delA(groups[i], 'data-dp-tip'); }
+              syncGroupBadge(groups[i], rc || null);
+            } catch (e) { /* 恢复失败不影响行 */ }
+          }
+        }
+        continue;
+      }
       if (!attrProbe) probeAttrs(rows[0]);
       var taken: string[] = [];
       for (var r = 0; r < rows.length; r++) {
-        /* 原生语义优先（官方 sessionStatuses 同源）：ongoing=执行中蓝，warning=等你黄。
-         * 零标题 join、零像素扫描——这是行级颜色的主路径。 */
+        /* 原生语义优先（官方 sessionStatuses 同源）：ongoing=执行中蓝，warning=等你黄，done=完成提醒绿点黄。
+         * 零标题 join、零像素扫描——这是行级颜色的主路径。不看水位：已看由官方绿点自售自清。 */
         var nstate = '';
         try { nstate = readNativeState(rows[r]); } catch (e) { nstate = ''; }
         if (nstate === 'ongoing') {
@@ -109,18 +122,17 @@ export function markSessions(groups: Element[], states: RowState[]): void {
           setA(rows[r], 'data-dp-tip', SESS_LABEL['wait']);
           continue;
         }
-        /* 绿点必黄（#497 真机裁定 2026-09-07）：原生 done = 官方完成提醒（sessionStatuses completed→done，
-         * 且绿点只在 row.completed 时显示——官方认为此处有值得注意的东西），我们跟黄：不看水位、不看组级
-         * 门禁、不看标题 join。flags 的 native-dot 黄源（green 分支）本就为此设计，此前调用处硬编码
-         * green:false 从未接线——这是「绿点无黄条」的根因。官方绿点持续 = 待看黄持续，已看收敛走清除路径。 */
+        /* 绿点必黄（#497 真机裁定）：原生 done = 官方完成提醒（绿点只在 row.completed 时显示）。
+         * 官方绿点持续 = 待看黄持续；点开（selected）绿点灭 = 已看收敛，官方自售自清。 */
         if (nstate === 'done') {
           setA(rows[r], 'data-dp-sess', 'seen');
           setA(rows[r], 'data-dp-tip', SESS_LABEL['seen']);
           continue;
         }
-        /* 真相路径（原生 done/无点时）：红（异常 kind）与收尾/待看仍靠解码+水位+标题 join。
-         * P1废：approval-pending 永不判红，只判黄（等你选择）。 */
-        if (!st || (st.act !== 'exec' && st.act !== 'seen') || !st.top || !st.top.length) continue;
+        /* 真相路径（原生无点——读失败/挂载错位时补偿）：红（402/aborted/未知收尾）与 approval 黄与 open 蓝。
+         * 不做组级 act 门禁（异常即处理，无关组级活性）；不做水位（已退役）。
+         * completed 收尾在 flags 为 none——绿点已由主路径处理，此处不重复染黄。 */
+        if (!st || !st.top || !st.top.length) continue;
         var rtext = textOf(rows[r]);
         var rnorm = normRowTitle(rtext);
         var hit: { key: string; flag: string; tip: string } | null = null;
@@ -133,13 +145,11 @@ export function markSessions(groups: Element[], states: RowState[]): void {
             if (!titleHit) continue;
             var key = st.key + '/' + t.name;
             var running = t.open === true;
-            var tr = trackSession(key, t.mtime, running);
             var needApproval = t.approval === true;
-            if (!running && !tr.isNew && !needApproval) continue;
             if (taken.indexOf(key) !== -1) continue;
-            var fg = flagsForSession({ open: running, kind: t.kind || '', approval: needApproval, amber: false, green: false, isNew: tr.isNew, justFinished: tr.justFinished, titleHit: true });
+            var fg = flagsForSession({ open: running, kind: t.kind || '', approval: needApproval, titleHit: true });
             if (fg.flag === 'none') continue;
-            var ftip = fg.flag === 'red' ? SESS_LABEL['red'] : (fg.flag === 'blue' ? SESS_LABEL['exec'] : (fg.flag === 'done' ? SESS_LABEL['done'] : (fg.yellowSrc === 'approval-wait' ? SESS_LABEL['wait'] : SESS_LABEL['seen'])));
+            var ftip = fg.flag === 'red' ? SESS_LABEL['red'] : (fg.flag === 'blue' ? SESS_LABEL['exec'] : (fg.yellowSrc === 'approval-wait' ? SESS_LABEL['wait'] : SESS_LABEL['seen']));
             hit = { key: key, flag: fg.flag, tip: ftip };
             break;
           }
@@ -151,10 +161,9 @@ export function markSessions(groups: Element[], states: RowState[]): void {
       }
       /* 组色＝会话聚合（不变量：组蓝/黄/红 ⇒ 必有同色会话；展开组恒成立）。
        * 有会话行的组：组色只由本轮行色决定——有同色行则置色，无则清 demo 的 entry 级旧色
-       *（未归因的 running/水位信号不得单独染组，否则组色无行可解释）。
-       * nosig 系诊断灰，永不动。无会话行的组（收起/映射空）：不动，留 demo 的 entry 级汇总。
-       * 角标（svg 宿主 data-dp-icon/act）与组条同生命周期：置色同步、清条同步清——
-       * 2026-09-07 截图实锤：paint 先画 seen 角标，组条被聚合清空，角标残留成孤儿橙点。 */
+       *（未归因的 running 信号不得单独染组，否则组色无行可解释）。
+       * nosig 系诊断灰，永不动。收起组：走上方缓存恢复（B 方案），不依赖可见行。
+       * 角标（svg 宿主 data-dp-icon/act）与组条同生命周期：置色同步、清条同步清，防孤儿橙点。 */
       try {
         var gHasRed = false; var gHasBlue = false; var gHasYellow = false;
         for (var u = 0; u < rows.length; u++) {
@@ -171,14 +180,8 @@ export function markSessions(groups: Element[], states: RowState[]): void {
         else if (gcur === 'need' || gcur === 'exec' || gcur === 'seen') {
           delA(groups[i], 'data-dp-act'); delA(groups[i], 'data-dp-tip');
         }
-        try {
-          var svgG = groups[i].querySelector('svg');
-          var hostG = svgG ? svgG.parentElement : null;
-          if (hostG) {
-            if (gdot) { setA(hostG, 'data-dp-icon', '1'); setA(hostG, 'data-dp-act', gdot); }
-            else { delA(hostG, 'data-dp-icon'); delA(hostG, 'data-dp-act'); }
-          }
-        } catch (e2) { /* 角标同步失败不影响行 */ }
+        if (gKey) groupActCache.set(gKey, gdot || '');
+        syncGroupBadge(groups[i], gdot);
       } catch (e) { /* 组同步失败不影响行 */ }
     }
   } catch (e) { /* 忽略 */ }

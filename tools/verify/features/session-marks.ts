@@ -96,7 +96,6 @@ const gWin: any = { addEventListener: (_t: string, _f: unknown) => { /* 忽略 *
 
 const req = createRequire(join(tmp, 'run.cjs'));
 const sess: any = req(locate(tmp, 'sessions.js'));
-const act: any = req(locate(tmp, 'activity.js'));
 
 function group(pre: string | null, withSvg = true): FakeEl {
   const g = new FakeEl('ws', null, true, withSvg);
@@ -140,11 +139,10 @@ test('红不变量：402 真相行红 ⇒ 组红（无原生点=无完成提醒�
   assert.equal(actOf(g, 'data-dp-act'), 'need');
 });
 
-test('清孤儿蓝：组旧蓝 + 已完成且已看（无原生提醒点） ⇒ 组条清除', () => {
+test('清孤儿蓝：组旧蓝 + 已完成闭合（无原生提醒点） ⇒ 组条清除', () => {
   const g = group('exec');
   const r = row('Task Beta', null);
   registry = [g, r];
-  act.seedSessionSeen([{ key: 'k4/f2', mtime: 100 }]);
   sess.markSessions([g as any], [st('k4', 'exec', [top1('f2', 'completed', 'Task Beta', false)])]);
   assert.equal(actOf(r, 'data-dp-sess'), null);
   assert.equal(actOf(g, 'data-dp-act'), null);
@@ -159,7 +157,7 @@ test('清孤儿黄：组旧黄 + 全无色会话 ⇒ 组条清除', () => {
   assert.equal(actOf(g, 'data-dp-act'), null);
 });
 
-test('收起例外：无会话行 ⇒ 组旧色不动', () => {
+test('收起例外：无会话行 + 无缓存 ⇒ 组旧色不动', () => {
   const g = group('exec');
   registry = [g];
   sess.markSessions([g as any], [st('k6', 'exec', [])]);
@@ -202,8 +200,8 @@ test('角标残环：组条清（孤儿）⇒ 图标角标同步清（paint 先�
   assert.equal(groupDot(g), null);
 });
 
-test('绿点必黄：原生 done（官方完成提醒）⇒ 行黄+组黄（#497 真机：绿点无条；绿点=官方待看信号，不信水位信绿点）', () => {
-  // 场景 A：组 calm（无 open、无新）——原门禁逻辑会拦真相路径，但原生绿点必须直接黄。
+test('绿点必黄：原生 done（官方完成提醒）⇒ 行黄+组黄（#497 真机：绿点无条；绿点=官方待看信号，不看水位看绿点）', () => {
+  // 场景 A：组 calm（无 open）——原门禁/水位逻辑会拦真相路径，但原生绿点必须直接黄。
   const gA = group(null);
   const rA = row('[#497] 打开日志目录与复制路径报 path-missing', 'done');
   registry = [gA, rA];
@@ -217,6 +215,39 @@ test('绿点必黄：原生 done（官方完成提醒）⇒ 行黄+组黄（#497
   registry = [gB, rB];
   sess.markSessions([gB as any], [st('k12', 'exec', [top1('f7', 'completed', 'Task Eta', false)])]);
   assert.equal(actOf(rB, 'data-dp-sess'), 'seen');
+});
+
+test('折叠缓存 B 方案：展开组蓝→收起（无行）⇒ 组条保持蓝非黄（截图实锤：展开蓝→收起黄）', () => {
+  // 第一轮：展开（有行）→ 组蓝。
+  const g = group(null);
+  const r = row('Task Theta', 'ongoing');
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k13', 'exec', [top1('f8', 'completed', 'Task Theta', false)])]);
+  assert.equal(actOf(g, 'data-dp-act'), 'exec');
+  // 第二轮：收起（无行）→ 必须保持 exec（蓝），不得回落到数据层 seen（黄）。
+  registry = [g];
+  sess.markSessions([g as any], [st('k13', 'calm', [])]);
+  assert.equal(actOf(g, 'data-dp-act'), 'exec', '收起后组条必须保持展开时的蓝色，不得变黄');
+  assert.equal(groupDot(g), 'exec', '角标同步保持');
+});
+
+test('折叠缓存 B 方案·清：展开组平静→收起⇒ 组条清（缓存空色生效，不残留旧蓝）', () => {
+  const g = group(null);
+  const r = row('Task Iota', null);
+  registry = [g, r];
+  sess.markSessions([g as any], [st('k14', 'calm', [top1('f9', 'completed', 'Task Iota', false)])]);
+  assert.equal(actOf(g, 'data-dp-act'), null);
+  registry = [g];
+  sess.markSessions([g as any], [st('k14', 'calm', [])]);
+  assert.equal(actOf(g, 'data-dp-act'), null, '收起后保持平静（缓存空色）');
+  assert.equal(groupDot(g), null);
+});
+
+test('折叠缓存 B 方案·首见收起：无缓存⇒不动（留 paint 初稿，不擅自改色）', () => {
+  const g = group('need');
+  registry = [g];
+  sess.markSessions([g as any], [st('k15', 'exec', [])]);
+  assert.equal(actOf(g, 'data-dp-act'), 'need', '无缓存时收起组不动，留 entry 级初稿');
 });
 
 rmSync(tmp, { recursive: true, force: true });

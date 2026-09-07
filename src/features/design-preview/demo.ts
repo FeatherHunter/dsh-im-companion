@@ -2,7 +2,6 @@
 /* 时间=会话文件最大 mtime（文件级近似）；方向=粗分；需干预/会话级无真信号，保持缺席。 */
 import { deriveRowStates, fetchActivity, fetchRoutesSafe, routesOf, type RowState } from '../../client/data/activity';
 import { clearSessionMarks, markSessions, sessionAttrProbe } from './sessions';
-import { readNativeState } from '../truth-flags/dom-state';
 import type { BotSnap } from '../../client/data/fleet-api';
 import type { StreamSnapshot } from '../../client/data/connection-stream';
 import type { FeatureCtx } from '../protocol';
@@ -45,24 +44,13 @@ function paint(groups: Element[], states: RowState[]): void {
     for (var j = 0; j < groups.length; j++) {
       var row = groups[j] as HTMLElement;
       var st = states[j];
-      var dot = false;
-      /* 原生状态语义直读（svg[data-state]，替代已删的像素扫描）：行上有原生状态即视为有信号。 */
-      if (!st || (st.act !== 'exec' && st.act !== 'seen')) { try { dot = readNativeState(groups[j]) !== ''; } catch (e) { dot = false; } }
-      if (dot && st && st.act === 'calm' && st.time > 0) {
-        st = { key: st.key, ws: st.ws, act: 'seen', dir: '', time: st.time, via: st.via, top: st.top };
-      }
+      /* dot 兜底已删（2026-09-07 水位退役+R1 证伪）：组行无原生点，readNativeState 恒空；
+       * "原生未读"提示基于已删水位/旧前提。组色终态由 markSessions 行聚合/折叠缓存决定，
+       * paint 只做 entry 级初稿与诊断（nosig/nosig0/pristine 净）。 */
       if (!st || st.via === 'none') {
         var lb = false;
         try { lb = (groups[j] as Element).hasAttribute('data-lb-kind'); } catch (e) { lb = false; }
-        if (dot) {
-          setAttr(row, 'data-dp-act', 'seen');
-          setAttr(row, 'data-dp-tip', '待看 · 原生未读');
-          try {
-            var svgD = groups[j].querySelector('svg');
-            var hostD = svgD ? svgD.parentElement : null;
-            if (hostD) { setAttr(hostD, 'data-dp-icon', '1'); setAttr(hostD, 'data-dp-act', 'seen'); delAttr(hostD, 'data-dp-n'); }
-          } catch (eD) { /* 忽略 */ }
-        } else if (lb) {
+        if (lb) {
           setAttr(row, 'data-dp-act', 'nosig');
           setAttr(row, 'data-dp-tip', '诊断：行“' + keyOf(groups[j]).slice(0, 20) + '”未匹配到绑定工作区');
         } else {
@@ -74,21 +62,6 @@ function paint(groups: Element[], states: RowState[]): void {
       if (st.act === 'calm') {
         delAttr(row, 'data-dp-act');
         delAttr(row, 'data-dp-tip');
-        try {
-          var svg0 = groups[j].querySelector('svg');
-          var host0 = svg0 ? svg0.parentElement : null;
-          if (host0) { delAttr(host0, 'data-dp-icon'); delAttr(host0, 'data-dp-act'); delAttr(host0, 'data-dp-n'); }
-        } catch (e0) { /* 忽略 */ }
-        continue;
-      }
-      if (dot && st.act === 'sink') {
-        setAttr(row, 'data-dp-act', 'seen');
-        setAttr(row, 'data-dp-tip', '待看 · 原生未读');
-        try {
-          var svgS = groups[j].querySelector('svg');
-          var hostS = svgS ? svgS.parentElement : null;
-          if (hostS) { setAttr(hostS, 'data-dp-icon', '1'); setAttr(hostS, 'data-dp-act', 'seen'); delAttr(hostS, 'data-dp-n'); }
-        } catch (eS) { /* 忽略 */ }
         continue;
       }
       if (st.act === 'sink') {
@@ -98,21 +71,6 @@ function paint(groups: Element[], states: RowState[]): void {
       }
       setAttr(row, 'data-dp-act', st.act);
       setAttr(row, 'data-dp-tip', tipFor(st, 0, states.length));
-      if (dot) { try { setAttr(row, 'data-dp-tip', ((row as HTMLElement).getAttribute('data-dp-tip') || '') + ' · 原生未读'); } catch (e) { /* 忽略 */ } }
-      try {
-        var svg = groups[j].querySelector('svg');
-        var host = svg ? svg.parentElement : null;
-        if (host) {
-          if (st.act === 'seen') {
-            setAttr(host, 'data-dp-icon', '1');
-            setAttr(host, 'data-dp-act', st.act);
-          } else {
-            delAttr(host, 'data-dp-icon');
-            delAttr(host, 'data-dp-act');
-          }
-          delAttr(host, 'data-dp-n');
-        }
-      } catch (e2) { /* 无图标只留竖条 */ }
     }
   } catch (e) { /* 绘制失败下次 */ }
 }

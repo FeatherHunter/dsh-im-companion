@@ -1,4 +1,7 @@
 // truth-flags 自验证（只测本票触碰面：flags 纯逻辑 + manifest 空槽 + 红环断言）。
+// 2026-09-07 水位退役（用户拍板：水位=AI 错误引入概念；已看=官方绿点自售自清）：
+// 删 isNew/justFinished/amber/green/water-level。新语义：红=402/aborted/未知收尾（异常即处理）；
+// 黄=approval；蓝=open；completed 收尾=平静（绿点必黄由 DOM 原生主路径管，flags 不产绿点黄）。
 // node --test 运行，零第三方依赖；转译仅 protocol+flags+manifest 三文件。
 import { mkdtempSync, rmSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -51,8 +54,7 @@ const domSrc = readFileSync(join(FEAT, 'dom-state.ts'), 'utf8');
 const manifestSrc = readFileSync(join(FEAT, 'manifest.ts'), 'utf8');
 
 const base = {
-  open: false, kind: '', approval: false,
-  amber: false, green: false, isNew: false, justFinished: false, titleHit: true,
+  open: false, kind: '', approval: false, titleHit: true,
 };
 
 function tipClean(tip: unknown) {
@@ -63,15 +65,15 @@ function tipClean(tip: unknown) {
   assert.ok(s.indexOf('Date') < 0 && s.indexOf('time') < 0, 'tip 不拼时间：' + s);
 }
 
-test('open真+isNew=>blue（running）', () => {
-  const r = flags.flagsForSession({ ...base, open: true, isNew: true });
+test('open真=>blue（running）', () => {
+  const r = flags.flagsForSession({ ...base, open: true });
   assert.equal(r.flag, 'blue');
   assert.equal(r.blueSrc, 'running');
   tipClean(r.tip);
 });
 
-test('402+isNew=>red（forbidden402）', () => {
-  const r = flags.flagsForSession({ ...base, kind: '402', isNew: true });
+test('402=>red（forbidden402）', () => {
+  const r = flags.flagsForSession({ ...base, kind: '402' });
   assert.equal(r.flag, 'red');
   assert.equal(r.redReason, 'forbidden402');
   tipClean(r.tip);
@@ -84,29 +86,29 @@ test('aborted=>red', () => {
   tipClean(r.tip);
 });
 
-test('completed闭合=>none 不染蓝（旧完成即平静）', () => {
+test('completed闭合=>none（平静；绿点必黄由 DOM 主路径管，flags 不产）', () => {
   const r = flags.flagsForSession({ ...base, kind: 'completed' });
   assert.equal(r.flag, 'none');
   assert.notEqual(r.flag, 'red');
   tipClean(r.tip);
 });
 
-test('completed闭合+isNew=>yellow（water-level：完成未看=待看，持续黄不闪灭）', () => {
-  const r = flags.flagsForSession({ ...base, kind: 'completed', isNew: true });
-  assert.equal(r.flag, 'yellow');
-  assert.equal(r.yellowSrc, 'water-level');
-  tipClean(r.tip);
-});
-
 test('completed+open 重试中=>blue（running）', () => {
-  const r = flags.flagsForSession({ ...base, kind: 'completed', open: true, isNew: true });
+  const r = flags.flagsForSession({ ...base, kind: 'completed', open: true });
   assert.equal(r.flag, 'blue');
   assert.equal(r.blueSrc, 'running');
   tipClean(r.tip);
 });
 
-test('error终止未恢复=>red（unknown-default）', () => {
-  const r = flags.flagsForSession({ ...base, kind: 'error', isNew: true });
+test('error收尾=>red（unknown-default：异常即处理，不看水位——水位已退役）', () => {
+  const r = flags.flagsForSession({ ...base, kind: 'error' });
+  assert.equal(r.flag, 'red');
+  assert.equal(r.redReason, 'unknown-default');
+  tipClean(r.tip);
+});
+
+test('interrupted=>red（unknown-default：E4 未知收尾，异常语义）', () => {
+  const r = flags.flagsForSession({ ...base, kind: 'interrupted' });
   assert.equal(r.flag, 'red');
   assert.equal(r.redReason, 'unknown-default');
   tipClean(r.tip);
@@ -120,55 +122,32 @@ test('approval 等弹窗=>yellow 非 red（P1 废）', () => {
 });
 
 test('approval 压 open=>yellow（弹窗阻塞等你拍板）', () => {
-  const r = flags.flagsForSession({ ...base, approval: true, open: true, isNew: true });
+  const r = flags.flagsForSession({ ...base, approval: true, open: true });
   assert.equal(r.flag, 'yellow');
   tipClean(r.tip);
 });
 
-test('amber=>yellow（system-amber 优先）', () => {
-  const r = flags.flagsForSession({ ...base, amber: true });
-  assert.equal(r.flag, 'yellow');
-  assert.equal(r.yellowSrc, 'system-amber');
-  tipClean(r.tip);
-});
-
-test('open 稳态无进展=>blue 不断蓝（阵发写入，次刷仍蓝）', () => {
-  const r = flags.flagsForSession({ ...base, open: true, isNew: false, justFinished: false, approval: false });
-  assert.equal(r.flag, 'blue');
-  assert.equal(r.blueSrc, 'running');
-  tipClean(r.tip);
-});
-
-test('open+completed（新 turn 执行中）=>blue', () => {
-  const r = flags.flagsForSession({ ...base, open: true, kind: 'completed', isNew: false });
-  assert.equal(r.flag, 'blue');
-  tipClean(r.tip);
-});
-
-test('green+isNew=>yellow（native-dot 压 water-level）', () => {
-  const r = flags.flagsForSession({ ...base, green: true, isNew: true });
-  assert.equal(r.flag, 'yellow');
-  assert.equal(r.yellowSrc, 'native-dot');
-  tipClean(r.tip);
-});
-
-test('justFinished=>done', () => {
-  const r = flags.flagsForSession({ ...base, justFinished: true });
-  assert.equal(r.flag, 'done');
+test('kind空（解码无收尾/无信号）=>none diag=nosig0', () => {
+  const r = flags.flagsForSession({ ...base });
+  assert.equal(r.flag, 'none');
+  assert.equal(r.diag, 'nosig0');
   tipClean(r.tip);
 });
 
 test('titleHit 假=>none+diag null（无标题默认无色）', () => {
-  const r = flags.flagsForSession({ ...base, titleHit: false, open: true, isNew: true });
+  const r = flags.flagsForSession({ ...base, titleHit: false, open: true });
   assert.equal(r.flag, 'none');
   assert.equal(r.diag, null);
   tipClean(r.tip);
 });
 
-test('红环：flags 纯逻辑（无 DOM、无 Node API、无样式）', () => {
+test('红环：flags 纯逻辑（无 DOM、无 Node API、无样式、无水位残留字段）', () => {
   for (const ban of ['document', 'window', 'localStorage', 'querySelector', 'appendChild', 'createElement',
     'node:fs', 'node:path', "from 'node", 'from "node', 'process.env', 'installFeatureStyles', '.css', 'setInterval']) {
     assert.equal(flagsSrc.indexOf(ban), -1, 'flags.ts 不得出现 ' + ban);
+  }
+  for (const ban of ['isNew', 'justFinished', 'water-level', 'watermark', 'sessSeen', 'seedSession', 'trackSession', 'peekSession', 'amber', 'green']) {
+    assert.equal(flagsSrc.indexOf(ban), -1, 'flags.ts 不得出现 ' + ban + '（水位已退役）');
   }
   assert.ok(flagsSrc.indexOf('P1') >= 0, '须写明 P1 废注释');
   assert.ok(flagsSrc.indexOf('approval-pending') >= 0 || flagsSrc.indexOf('永不产red') >= 0, '须写明 approval 永不产 red');

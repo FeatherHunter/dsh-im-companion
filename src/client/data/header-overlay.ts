@@ -11,7 +11,7 @@ import { viewName } from './model'
 /** 发测试消息意图事件名：detail = { workspace, agent, botId, channel, targetId }（只读意图，见组件）。 */
 export const SEND_TEST_EVENT = 'dsh-im-companion:send-test'
 
-/** 会话被打开（已读回写）：detail = { sessionId }，会话头挂载/切换时触发，供活性水位消费。 */
+/** 会话被打开：detail = { sessionId }，会话头挂载/切换时触发（事件契约，当前无订阅方）。 */
 export const SESSION_VIEWED_EVENT = 'dsh-im-companion:session-viewed'
 
 /** dsh-im 主动投递通道（PROACTIVE_DELIVERY.md）：Connection RPC 共用投递核心。 */

@@ -1,8 +1,11 @@
-/** truth-flags 纯逻辑：六路结论冻结 + 红环断言（无 DOM、无 Node API、无时间拼接）。 */
+/** truth-flags 纯逻辑：六路结论冻结 + 红环断言（无 DOM、无 Node API、无时间拼接）。
+ * 2026-09-07 水位退役（用户拍板：水位=AI 错误引入概念；已看判定=官方绿点自售自清）：
+ * flags 只接收四个真相字段（open/kind/approval/titleHit），不做任何"看过没看过"判断——
+ * 绿点必黄由 DOM 原生主路径（sessions.ts done→seen）负责，本模块只管真相路径（红/蓝/approval 黄）。 */
 export type RowFlag = 'red' | 'blue' | 'yellow' | 'done' | 'none';
 
 export type RedReason = 'approval' | 'aborted' | 'forbidden402' | 'unknown-default';
-export type YellowSrc = 'system-amber' | 'native-dot' | 'water-level' | 'approval-wait';
+export type YellowSrc = 'approval-wait';
 export type BlueSrc = 'running';
 export type Diag = 'nosig' | 'nosig0' | null;
 
@@ -26,10 +29,6 @@ export interface FlagsInput {
   open: boolean;
   kind: string;
   approval: boolean;
-  amber: boolean;
-  green: boolean;
-  isNew: boolean;
-  justFinished: boolean;
   titleHit: boolean;
 }
 
@@ -51,10 +50,6 @@ export function flagsForSession(input: FlagsInput): SessFlag {
     return { key: '', flag: 'none', diag: null, tip: '无标题默认无色' };
   }
 
-  if (input.justFinished) {
-    return { key: '', flag: 'done', diag: null, tip: '已收尾完成' };
-  }
-
   // 红环：402 / aborted 优先于一切黄蓝。
   if (is402) {
     return { key: '', flag: 'red', redReason: 'forbidden402', diag: null, tip: '请求被拒需处理' };
@@ -70,39 +65,23 @@ export function flagsForSession(input: FlagsInput): SessFlag {
     return { key: '', flag: 'yellow', yellowSrc: 'approval-wait', diag: null, tip: '待确认 · 等你选择' };
   }
 
-  // 黄源内部优先级：amber > green（“amber 优先”仅指黄源内部排序，红优先于黄）。
-  if (input.amber) {
-    return { key: '', flag: 'yellow', yellowSrc: 'system-amber', diag: null, tip: '系统警告待看' };
-  }
-  if (input.green) {
-    return { key: '', flag: 'yellow', yellowSrc: 'native-dot', diag: null, tip: '原生圆点待看' };
-  }
-
-  // 执行中（蓝）：open 缺 closer 即执行中，水位无进展也不断蓝——写入是阵发性的，
-  // 以“无进展”判静默会把正常思考中的任务闪灭（2026-09-07 真机复现）。
+  // 执行中（蓝）：open 缺 closer 即执行中——写入是阵发性的，
+  // 以"无进展"判静默会把正常思考中的任务闪灭（2026-09-07 真机复现）。
   // 崩溃残留 open 的鉴别交 E4（stale-open 样本到后建红候选规则），此处永不静默。
   if (input.open) {
     return { key: '', flag: 'blue', blueSrc: 'running', diag: null, tip: '执行中' };
   }
 
-  // 收尾 completed 且已闭合：仅已看（水位不低于 mtime）才平静；完成未看=待看（下落到水面黄，持续不闪灭——
-  // 2026-09-07 真机 #530：completed+isNew 曾直接 none，黄条只活一轮边沿，验收线 3 违反）。
-  if (isDoneKind && !input.isNew) {
+  // 收尾 completed 且已闭合：平静（绿点必黄由 DOM 主路径管；官方绿点灭=已看）。
+  if (isDoneKind) {
     return { key: '', flag: 'none', diag: null, tip: '已完成' };
   }
 
-  // 未知 kind 默认：仅 isNew 时产 red（已终止的异常等你处理），否则无色。
+  // 未知 kind（error/blocked/interrupted/max-tokens 等）：异常即处理，不看水位/新旧。
   if (isUnknown) {
-    if (input.isNew) {
-      return { key: '', flag: 'red', redReason: 'unknown-default', diag: null, tip: '未知收尾需确认' };
-    }
-    return { key: '', flag: 'none', diag: 'nosig0', tip: '未知收尾暂无色' };
+    return { key: '', flag: 'red', redReason: 'unknown-default', diag: null, tip: '未知收尾需确认' };
   }
 
-  // 等待用户查看（黄）：水位未看。
-  if (input.isNew) {
-    return { key: '', flag: 'yellow', yellowSrc: 'water-level', diag: null, tip: '待看' };
-  }
-
+  // kind 空（解码无收尾/无信号）：诚实无色。
   return { key: '', flag: 'none', diag: 'nosig0', tip: '暂无信号无色' };
 }

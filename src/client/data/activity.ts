@@ -96,7 +96,7 @@ export async function fetchRoutesSafe(rpc: RpcCall | null, bots: BotSnap[]): Pro
 
 const PRIO: Record<ActKind, number> = { exec: 0, seen: 1, calm: 2, sink: 3 };
 
-/* 时间作废令（#45 用户裁定）：判据禁时间窗；待看只认水位比较（isNew），mtime 仅作水位与展示。旧 SEEN_TTL/DOT_FRESH 已删。 */
+/* 时间作废令（#45 用户裁定）：判据禁时间窗；mtime 仅作展示与缓存版本号。旧 SEEN_TTL/DOT_FRESH 已删。 */
 export function deriveStates(bots: BotSnap[], entries: ActivityEntry[], hasRoutes: Map<string, boolean>, seen: Map<string, number>, nowMs?: number): WsState[] {
   var out: WsState[] = [];
   var order: string[] = [];
@@ -172,70 +172,11 @@ export function matchRowEntry(rowText: string, bots: BotSnap[], entries: Activit
   return { ws: '', entry: null, via: 'none' };
 }
 
-var sessSeen = new Map<string, number>();
-var sessPrev = new Map<string, boolean>();
-var sessSeeded = false;
-
-export function seedSessionSeen(items: { key: string; mtime: number }[]): void {
-  if (sessSeeded) return;
-  sessSeeded = true;
-  for (var i = 0; i < items.length; i++) sessSeen.set(items[i].key, items[i].mtime);
-}
-
-export function trackSession(key: string, mtime: number, running: boolean): { isNew: boolean; justFinished: boolean } {
-  var prev = sessPrev.get(key);
-  var mark = sessSeen.get(key);
-  var isNew = mtime > (mark || 0);
-  var justFinished = prev === true && !running && isNew;
-  sessPrev.set(key, running);
-  return { isNew: isNew, justFinished: justFinished };
-}
-
-export function peekSession(key: string, mtime: number): boolean {
-  try {
-    var mark = sessSeen.get(key);
-    return mtime > (mark || 0);
-  } catch (e) { return false; }
-}
-
-function normSid(id: string): string {
-  var s = String(id || '').toLowerCase().trim();
-  if (s.indexOf('session-') === 0) s = s.slice(8);
-  return s;
-}
-
-export function markSessionViewed(sessionId: string): number {
-  var hit = 0;
-  try {
-    var nid = normSid(sessionId);
-    if (!nid || nid.length < 4) return 0;
-    var now = Date.now();
-    sessSeen.forEach(function (_, k) {
-      try {
-        var tail = k.slice(k.lastIndexOf('/') + 1).toLowerCase();
-        if (tail.indexOf('session-') === 0) tail = tail.slice(8);
-        var m = Math.min(nid.length, tail.length);
-        if (m >= 8 && (tail === nid || tail.indexOf(nid) !== -1 || nid.indexOf(tail) !== -1)) { sessSeen.set(k, now); hit++; }
-      } catch (e) { /* 单键忽略 */ }
-    });
-  } catch (e) { /* 忽略 */ }
-  return hit;
-}
-
+/* 水位（seed/track/peek/markSessionViewed/sessSeen）已于 2026-09-07 退役——
+ * 用户拍板：水位=AI 错误引入概念；已看判定=官方绿点自售自清，插件不再存"看过没看过"。 */
 export function deriveRowStates(rowTexts: string[], bots: BotSnap[], entries: ActivityEntry[], hasRoutes: Map<string, boolean>, nowMs?: number): RowState[] {
   var out: RowState[] = [];
-  var seeds: { key: string; mtime: number }[] = [];
   var i: number;
-  for (i = 0; i < rowTexts.length; i++) {
-    var m0 = matchRowEntry(rowTexts[i], bots, entries);
-    if (m0.via === 'none') continue;
-    var key0 = m0.via === 'bot' ? ('w:' + m0.ws) : ('d:' + String(m0.entry && m0.entry.dir));
-    var t0 = m0.entry ? m0.entry.lastActive : 0;
-    if (t0 > 0) seeds.push({ key: key0, mtime: t0 });
-    var e0 = (m0.entry && m0.entry.top) ? m0.entry.top : [];
-    for (var s0 = 0; s0 < e0.length; s0++) seeds.push({ key: key0 + '/' + e0[s0].name, mtime: e0[s0].mtime });
-  }
-  seedSessionSeen(seeds);
   for (i = 0; i < rowTexts.length; i++) {
     var m = matchRowEntry(rowTexts[i], bots, entries);
     if (m.via === 'none') { out.push({ key: 'row:' + rowTexts[i], ws: '', act: 'sink', dir: '', time: 0, via: 'none', top: [] }); continue; }
@@ -243,19 +184,13 @@ export function deriveRowStates(rowTexts: string[], bots: BotSnap[], entries: Ac
     var t = m.entry ? m.entry.lastActive : 0;
     var etop: SessTop[] = (m.entry && m.entry.top) ? m.entry.top : [];
     if (!m.entry || t <= 0) { out.push({ key: key, ws: m.ws, act: 'sink', dir: '', time: 0, via: m.via, top: etop }); continue; }
-    var act: ActKind = 'calm';
-    if (m.entry.running) act = 'exec';
-    else {
-      var anyNew = peekSession(key, t);
-      if (!anyNew) {
-        for (var s = 0; s < etop.length; s++) {
-          if (peekSession(key + '/' + etop[s].name, etop[s].mtime)) { anyNew = true; break; }
-        }
-      }
-      act = anyNew ? 'seen' : 'calm';
+    var act: ActKind = m.entry.running ? 'exec' : 'calm';
+    if (act === 'calm') {
+      /* 2026-09-07 水位退役：行级 act 只认"有无 open 会话"，不再有 seen（未看）——
+       * 未看由官方绿点表达（DOM 主路径），数据层不得产出"未看"判定。 */
     }
     var dir = '';
-    if (act === 'exec' || act === 'seen') dir = m.via === 'bot' ? (hasRoutes.get(m.ws) ? '混合' : '普通') : '普通';
+    if (act === 'exec') dir = m.via === 'bot' ? (hasRoutes.get(m.ws) ? '混合' : '普通') : '普通';
     out.push({ key: key, ws: m.ws, act: act, dir: dir, time: t, via: m.via, top: etop });
   }
   return out;
