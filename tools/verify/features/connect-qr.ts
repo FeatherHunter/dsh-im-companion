@@ -563,6 +563,9 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   byText('选择工作区').dispatchEvent({ type: 'click' });
   await new Promise((r) => setTimeout(r, 20));
   assert.ok(((bar.el as any).textContent ?? '').includes('xiaoshuai'), '应回显所选之家');
+  /* 已选家一眼认：叶名加粗回显，按钮变“更换…”。 */
+  assert.equal((bar.el as any).querySelectorAll('.af-compose-leaf')[0]?.textContent, 'xiaoshuai', '叶名应加粗回显');
+  assert.equal(byText('更换')?.textContent, '更换…', '选定后按钮应变更换');
   assert.ok(!homeRow.classList.contains('af-compose-row--attention'), '选家后高亮应撤');
   assert.equal(reasonEl().style.display, 'none', '就绪后原因行应藏');
   assert.equal((bar.el as any).querySelectorAll('.af-required')[0].style.display, 'none', '选定后必填徽应退');
@@ -572,6 +575,7 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   byText('取消').dispatchEvent({ type: 'click' });
   bar.setVisible(true);
   assert.equal(byText('创建').disabled, true, '取消后重开不得复用旧家');
+  assert.ok(byText('选择工作区'), '取消后重开选家按钮应复位');
   assert.ok(((bar.el as any).textContent ?? '').includes('必须选择工作区，否则无法创建'), '取消后重开应回醒目占位');
 });
 

@@ -81,13 +81,27 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => vo
     const ready = hasName && !!home
     create.disabled = !ready
     create.title = ready ? '创建' : blockReason(hasName, !!home)
-    homeLabel.textContent = home || HOME_PLACEHOLDER
+    paintHome()
     homeLabel.title = home || HOME_PLACEHOLDER
+    pick.textContent = home ? '更换…' : '选择工作区…'
     mark(rowHome, 'af-compose-row--attention', !home)
     mark(homeLabel, 'af-compose-home--empty', !home)
     required.style.display = home ? 'none' : ''
     reason.textContent = ready ? '' : blockReason(hasName, !!home)
     reason.style.display = ready ? 'none' : ''
+  }
+
+  /** 已选家一眼认：父径淡化＋叶名加粗（title 仍留全路径）；空家回占位。 */
+  function paintHome(): void {
+    if (!home) {
+      homeLabel.replaceChildren(HOME_PLACEHOLDER)
+      return
+    }
+    const i = Math.max(home.lastIndexOf('\\'), home.lastIndexOf('/'))
+    homeLabel.replaceChildren(
+      h('span', { className: 'af-compose-parent' }, i >= 0 ? home.slice(0, i + 1) : ''),
+      h('span', { className: 'af-compose-leaf' }, i >= 0 ? home.slice(i + 1) || home : home),
+    )
   }
 
   function blockReason(hasName: boolean, hasHome: boolean): string {

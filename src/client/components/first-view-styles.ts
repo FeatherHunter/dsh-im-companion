@@ -69,6 +69,10 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
 .af-compose--create .primary:disabled { background: var(--af-surface-2); color: var(--af-tertiary); }
 .af-compose-reason { flex: 1 1 100%; min-width: 0; font-size: 12px; color: var(--af-danger); }
 
+/* #62 已选家一眼认：父径淡化＋叶名加粗放大（只新增类；过长仍按容器省略） */
+.af-compose-parent { color: var(--af-tertiary); font-size: 12px; }
+.af-compose-leaf { color: var(--af-primary); font-weight: 700; font-size: 14px; }
+
 `;
 
 /** 安装首屏赢家样式（幂等，热重载安全）；返回清理函数，面板卸载时调用。 */
