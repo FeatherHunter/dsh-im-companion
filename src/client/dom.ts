@@ -68,6 +68,21 @@ export function clear(el: HTMLElement): void {
   el.replaceChildren()
 }
 
+/** 侧栏宽度作用域（2026-09-08 幽灵黄行修复）：只认侧栏宽度的行，排除主面板宽节点。
+ * design-preview 之前全文档扫 div[role=treeitem]，把主面板里的折叠块/消息状态点
+ * 当成会话行归因给最后一组——点选不同会话→主面板内容变→组色跟着变，且组黄时组里无黄行。
+ * 侧栏行约 300px（上限见 WORKSPACE_LIST_MAX_WIDTH）；主面板宽节点一律跳过。
+ * 无布局环境（单测桩无 getBoundingClientRect / 宽 0）中性通过，既有验证行为不变。 */
+export function fitsSidebarWidth(el: Element | null | undefined): boolean {
+  try {
+    if (!el) return false
+    const r = (el as HTMLElement).getBoundingClientRect?.()
+    const w = typeof r?.width === 'number' ? r.width : 0
+    if (!Number.isFinite(w) || w <= 0) return true
+    return w <= WORKSPACE_LIST_MAX_WIDTH
+  } catch { return true }
+}
+
 /** 第一性原理头栏锚点（左栏三件套唯一真相源）。
  * DSH 未开放 workspace-rail 槽位，故锚点只能是原生头栏（有按钮、无 treeitem 行的那一行）。
  * 小机器人 + 漏斗挂头栏上，条带挂列表顶部但必须经头栏验货——猜错就藏（fail-closed），宁可缺席不许贴错。
