@@ -548,6 +548,14 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   assert.ok(((bar.el as any).textContent ?? '').includes('必填'), '应有必填徽');
   const homeRow = (bar.el as any).querySelectorAll('.af-compose-row')[1];
   assert.ok(homeRow.classList.contains('af-compose-row--attention'), '空家时选家行应高亮');
+  /* 缺件原因直说：缺家直说家，两缺直说两件。 */
+  const reasonEl = () => (bar.el as any).querySelectorAll('.af-compose-reason')[0];
+  assert.equal(reasonEl().textContent, '还差一步：选择工作区', '缺家时应直说');
+  bar.input.value = '';
+  bar.input.dispatchEvent({ type: 'input' });
+  assert.equal(reasonEl().textContent, '还差两步：输入名称、选择工作区', '两缺时应直说');
+  bar.input.value = '小帅';
+  bar.input.dispatchEvent({ type: 'input' });
   assert.equal(byText('创建').disabled, true, '未选家时创建应置灰');
   byText('创建').dispatchEvent({ type: 'click' });
   assert.equal(seen.length, 0, '未选家不得提交');
@@ -556,6 +564,8 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   await new Promise((r) => setTimeout(r, 20));
   assert.ok(((bar.el as any).textContent ?? '').includes('xiaoshuai'), '应回显所选之家');
   assert.ok(!homeRow.classList.contains('af-compose-row--attention'), '选家后高亮应撤');
+  assert.equal(reasonEl().style.display, 'none', '就绪后原因行应藏');
+  assert.equal((bar.el as any).querySelectorAll('.af-required')[0].style.display, 'none', '选定后必填徽应退');
   assert.ok(!byText('创建').disabled, '选家后创建应可用');
   byText('创建').dispatchEvent({ type: 'click' });
   assert.deepEqual(seen, [['小帅', 'D:\\agents\\xiaoshuai']]);

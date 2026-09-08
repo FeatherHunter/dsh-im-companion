@@ -64,6 +64,11 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
 .af-compose-row--attention { border: 1px dashed color-mix(in srgb, var(--af-danger) 45%, transparent); border-radius: 9px; padding: 6px 8px; background: color-mix(in srgb, var(--af-danger) 6%, transparent); }
 .af-compose-home--empty { color: var(--af-danger); font-weight: 600; }
 
+/* #62 创建可点态一目了然：禁用主按钮去色（全局仅降透明，橙底仍像可点）＋缺件原因直说
+ * （选择器避开 btn＋primary 连写字面——首屏断言禁该字面回潮；三类＋伪类特异性照赢主题规则） */
+.af-compose--create .primary:disabled { background: var(--af-surface-2); color: var(--af-tertiary); }
+.af-compose-reason { flex: 1 1 100%; min-width: 0; font-size: 12px; color: var(--af-danger); }
+
 `;
 
 /** 安装首屏赢家样式（幂等，热重载安全）；返回清理函数，面板卸载时调用。 */

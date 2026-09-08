@@ -65,7 +65,9 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => vo
   /* 选家行：必填徽＋空态整行高亮（不选建不出，必须一眼看到）。 */
   const required = h('span', { className: 'af-required', title: '不选工作区无法创建' }, '必填')
   const rowHome = h('div', { className: 'af-compose-row' }, required, pick, homeLabel)
-  const el = h('div', { className: 'af-compose af-compose--create', style: { display: 'none' } }, rowName, rowHome)
+  /* 缺件原因直说（光置灰不够：用户不知道卡在名字还是家）。 */
+  const reason = h('div', { className: 'af-compose-reason' })
+  const el = h('div', { className: 'af-compose af-compose--create', style: { display: 'none' } }, rowName, rowHome, reason)
 
   input.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter') create.click()
@@ -73,13 +75,25 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => vo
   })
   input.addEventListener('input', () => paint())
 
-  /** 名与家齐了创建才可用（置灰是主防线，onClick 内复核是底线）；空家时整行高亮催选。 */
+  /** 名与家齐了创建才可用（置灰是主防线，onClick 内复核是底线）；缺哪件直说，选定后徽记功成身退。 */
   function paint(): void {
-    create.disabled = !(input.value.trim() && home)
+    const hasName = !!input.value.trim()
+    const ready = hasName && !!home
+    create.disabled = !ready
+    create.title = ready ? '创建' : blockReason(hasName, !!home)
     homeLabel.textContent = home || HOME_PLACEHOLDER
     homeLabel.title = home || HOME_PLACEHOLDER
     mark(rowHome, 'af-compose-row--attention', !home)
     mark(homeLabel, 'af-compose-home--empty', !home)
+    required.style.display = home ? 'none' : ''
+    reason.textContent = ready ? '' : blockReason(hasName, !!home)
+    reason.style.display = ready ? 'none' : ''
+  }
+
+  function blockReason(hasName: boolean, hasHome: boolean): string {
+    if (!hasName && !hasHome) return '还差两步：输入名称、选择工作区'
+    if (!hasName) return '还差一步：输入 Agent 名称'
+    return '还差一步：选择工作区'
   }
 
   function setVisible(v: boolean): void {
