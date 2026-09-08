@@ -66,7 +66,10 @@ function paint(groups: Element[], states: RowState[]): void {
         continue;
       }
       if (st.act === 'sink') {
-        setAttr(row, 'data-dp-act', 'nosig0');
+        /* #61 修复（Q1 锁定：nosig0 与平静一致无条）：已匹配但无会话数据不再置任何
+         * 竖条 act（红 dotted 漏到用户视觉，与“红=异常需人工”冲突）；诊断 tip 保留
+         * 在行属性供 devtools 查看，不再以红色污染视觉。全量组行生效，无单行特判。 */
+        delAttr(row, 'data-dp-act');
         setAttr(row, 'data-dp-tip', '诊断：已匹配 ' + (st.ws || st.key) + '，但无会话数据（端点空或目录未命中）');
         continue;
       }

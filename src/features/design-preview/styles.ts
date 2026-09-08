@@ -10,7 +10,9 @@ export const CSS = [
 'div[role=treeitem][aria-expanded][data-dp-act=exec]::before{background:#1677ff;animation:dp-breathe 1.6s infinite}',
 'div[role=treeitem][aria-expanded][data-dp-act=seen]::before{background:#dc6803}',
 'div[role=treeitem][aria-expanded][data-dp-act=nosig]::before{background:transparent;border-left:3px dotted #b0b6bd;width:0}',
-'div[role=treeitem][aria-expanded][data-dp-act=nosig0]::before{background:transparent;border-left:3px dotted #d92d20;width:0}',
+/* #61 修复（Q1 锁定：nosig0 与平静一致无条）：陈旧 data-dp-act=nosig0（热重载旧 DOM/首刷前）
+ * 兜底不渲染任何竖条，永不使用异常红；新 paint 已不再产出 nosig0 act，诊断只留 tip。 */
+'div[role=treeitem][aria-expanded][data-dp-act=nosig0]::before{display:none}',
 '@keyframes dp-breathe{0%{opacity:1}50%{opacity:.35}100%{opacity:1}}',
 '@keyframes dp-blink{0%,100%{opacity:1}50%{opacity:.25}}',
 '@media (prefers-reduced-motion:reduce){div[role=treeitem][aria-expanded][data-dp-act]::before{animation:none}}',
