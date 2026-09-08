@@ -126,6 +126,18 @@ dsh-im 掌管接入，dsh-im-companion 以助理和家的概念增强能力。
 
 <img src="assets/舰队雷达-矩阵总览-深色.png" width="720" alt="舰队雷达矩阵总览">
 
+<strong>👇 蓝：在执行，橙：需人工查看，红：异常情况。</strong>
+
+<img src="assets/工作区增强-显示工作区红色状态-内部也有执行中的会话.png" width="340" alt="工作区红色竖条，组内有异常会话">
+
+<strong>👇 蓝条代表有会话在执行。点开工作区，一眼知道是哪一个。</strong>
+
+<img src="assets/会话状态-工作区-执行中.png" width="340" alt="工作区蓝色竖条，组内有执行中会话">
+
+<strong>👇 橙条代表有消息等你确认。点开后自动熄灭。</strong>
+
+<img src="assets/工作区增强-轻松看到待用户确认的消息.png" width="340" alt="工作区橙色竖条，有待确认消息">
+
 <div align="center">
 <table>
 <tr>

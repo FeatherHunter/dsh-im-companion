@@ -126,6 +126,18 @@ dsh-im owns connecting; dsh-im-companion adds capabilities through the concepts 
 
 <img src="../assets/舰队雷达-矩阵总览-深色.png" width="720" alt="Fleet radar matrix overview">
 
+<strong>👇 Blue: running, orange: needs your review, red: error.</strong>
+
+<img src="../assets/工作区增强-显示工作区红色状态-内部也有执行中的会话.png" width="340" alt="Red rail bar with a failing session inside">
+
+<strong>👇 A blue bar means a session is running. Open the workspace and you'll know which one.</strong>
+
+<img src="../assets/会话状态-工作区-执行中.png" width="340" alt="Blue rail bars with running sessions">
+
+<strong>👇 An orange bar means a message is waiting for you. It goes away once opened.</strong>
+
+<img src="../assets/工作区增强-轻松看到待用户确认的消息.png" width="340" alt="Orange rail bar with a waiting message">
+
 <div align="center">
 <table>
 <tr>
