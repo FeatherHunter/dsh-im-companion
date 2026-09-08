@@ -648,4 +648,113 @@ test('#62 创建接线：面板创建表单必带选家', () => {
   assert.ok(panel.includes('openDirPicker'), '面板须为创建表单接选家器');
 });
 
+// ---- T4 双模式接入（#69，消费 #66 T1 矩阵 + #67 T2 定稿 + #68 T3-A 变体）----
+const dmTmp = mkdtempSync(join(tmpdir(), 'dual-mode-'));
+try {
+  execFileSync(process.execPath, [
+    join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
+    join(REPO, 'src', 'client', 'data', 'dual-mode-capabilities.ts'),
+    '--ignoreConfig',
+    '--outDir', dmTmp, '--module', 'commonjs', '--target', 'es2023',
+    '--moduleResolution', 'bundler', '--skipLibCheck', '--types', 'node',
+    '--declaration', 'false', '--sourceMap', 'false',
+  ], { stdio: 'pipe' });
+} catch (e) {
+  console.error('TRANSPILE-FAIL ' + String((e as any).stdout ?? '') + String((e as any).stderr ?? (e as Error).message));
+  process.exit(1);
+}
+const dmReq = createRequire(join(dmTmp, 'run.cjs'));
+const capMod: any = dmReq(locate(dmTmp, 'dual-mode-capabilities.js'));
+
+test('T4 矩阵显隐与直达规则：4 双支持 / 2 仅扫码 / 3 仅手动', () => {
+  assert.equal(capMod.getChannelMode('feishu'), 'dual');
+  assert.equal(capMod.getChannelMode('dingtalk'), 'dual');
+  assert.equal(capMod.getChannelMode('qq'), 'dual');
+  assert.equal(capMod.getChannelMode('wecom'), 'dual');
+  assert.equal(capMod.getChannelMode('weixin'), 'qr-only');
+  assert.equal(capMod.getChannelMode('whatsapp'), 'qr-only');
+  assert.equal(capMod.getChannelMode('slack'), 'manual-only');
+  assert.equal(capMod.getChannelMode('telegram'), 'manual-only');
+  assert.equal(capMod.getChannelMode('discord'), 'manual-only');
+  assert.equal(capMod.isOutOfScopeChannel('office'), true);
+  assert.equal(capMod.isOutOfScopeChannel('feishu'), false);
+  assert.ok(capMod.supportsQr('weixin') && !capMod.supportsManual('weixin'), '微信仅扫码');
+  assert.ok(!capMod.supportsQr('slack') && capMod.supportsManual('slack'), 'Slack 仅手动');
+  assert.ok(capMod.DUAL_MODE_PIN.commit === '1c7c2d7b', '矩阵须钉住 T1 上游 pin');
+});
+
+test('T4 键名归一 + TG/DC 对称 + FORBIDDEN 分级', () => {
+  assert.equal(capMod.normalizeFieldKey('  AppId　'), 'appid');
+  assert.equal(capMod.normalizeFieldKey('ＢＯＴＴＯＫＥＮ'), 'bottoken');
+  assert.equal(capMod.isTokenLengthOk('  ' + 'x'.repeat(20) + '  '), true);
+  assert.equal(capMod.isTokenLengthOk('short'), false);
+  assert.equal(capMod.isTokenLengthOk('x'.repeat(4097)), false);
+  assert.equal(capMod.isForbiddenKey('appSecret'), true);
+  assert.equal(capMod.isForbiddenKey('botToken'), true);
+  assert.equal(capMod.isForbiddenKey('token'), true);
+  assert.equal(capMod.isForbiddenKey('appId'), false);
+  assert.equal(capMod.isForbiddenKey('botId'), false);
+  assert.deepEqual(capMod.manualFieldsFor('slack').map((f: any) => f.key), ['botToken', 'appToken']);
+  assert.deepEqual(capMod.manualFieldsFor('weixin'), []);
+});
+
+test('T4 resolveManualBotId：直带优先、单 fresh 兜底、多新不认', () => {
+  assert.equal(capMod.resolveManualBotId({ ok: true, value: { botId: 'b1' } }, new Set()), undefined, '信封层 botId 不认（只看 value 内）');
+  assert.equal(capMod.resolveManualBotId({ botId: 'b1' }, new Set()), 'b1');
+  assert.equal(capMod.resolveManualBotId({ bots: [{ botId: 'b0' }, { botId: 'b1' }] }, new Set(['b0'])), 'b1');
+  assert.equal(capMod.resolveManualBotId({ bots: [{ botId: 'b1' }, { botId: 'b2' }] }, new Set()), undefined);
+  assert.equal(capMod.resolveManualBotId({ bots: [] }, new Set()), undefined);
+  assert.equal(capMod.resolveManualBotId(null, new Set()), undefined);
+  assert.equal(capMod.resolveManualBotId({ bots: [{ botId: 'b9' }] }, null), 'b9');
+  assert.equal(capMod.resolveManualBotId({ snapshot: { bots: [{ botId: 'n1' }] } }, new Set(['o1'])), 'n1');
+});
+
+test('T4 connect-flow 分支钉：只加分支，renderQr/poll 原样', () => {
+  const src = readFileSync(join(REPO, 'src', 'client', 'components', 'connect-flow.ts'), 'utf8');
+  assert.ok(src.includes('enterDualMode'), '应接入双模式编排');
+  assert.ok(src.includes('getChannelMode'), '应按能力矩阵分支');
+  assert.ok(src.includes('renderManualForm') || src.includes('dual-mode-flow'), '手动页应走独立模块');
+  assert.ok(src.includes('qrSwitch'), '双支持 QR 页应可切手动');
+  assert.ok(src.includes('dm-backrow'), '切手动按钮须走独立返回行（底栏既有 3 按钮不动，防挤换行）');
+  assert.ok(src.includes('normalizeProvisionTiming'), 'QR 计时归一不得动');
+  assert.ok(src.includes('resolveNewBotId'), 'QR 新机器人识别不得动');
+  assert.ok(src.includes('pollTimer'), 'QR 单链轮询不得动');
+  assert.ok(!src.includes('机器人已就绪'), 'T2 去双 toast：成功只留终态一条确认');
+  assert.ok(src.indexOf('!target.workspace') < src.indexOf('enterDualMode({'), '无家守卫须前置于双模式入口');
+});
+
+test('T4 手动表单钉：走 bind-credentials + 复用落定，禁扫码链', () => {
+  const src = readFileSync(join(REPO, 'src', 'client', 'components', 'manual-form.ts'), 'utf8');
+  assert.ok(src.includes('bot.bind-credentials'), '手动应走各渠道凭据绑定');
+  assert.ok(src.includes('o.commit(botId)'), '成功应复用绑定落定编排');
+  assert.ok(!src.includes("'provision.begin'"), '手动禁走扫码 begin');
+  assert.ok(!src.includes("'provision.cancel'"), '手动禁走扫码 cancel');
+  assert.ok(src.includes('AbortSignal.timeout(8000)'), '超时应与扫码侧一致（8s）');
+  assert.ok(src.includes('submitting'), '应有单飞守卫');
+  assert.ok(src.includes('submitBtn.disabled'), '提交中应禁用');
+  assert.ok(src.includes('isForbiddenKey'), '失败应按 FORBIDDEN 分级脱敏');
+  assert.ok(src.includes('manualHint'), '前置 4 项应只做提示行');
+});
+
+test('T4 取消语义钉：未 submitted 才 cancel，已提交保留', () => {
+  const src = readFileSync(join(REPO, 'src', 'client', 'components', 'dual-mode-flow.ts'), 'utf8');
+  assert.ok(src.includes('submitted'), '切页须读 submitted 快照');
+  assert.ok(src.includes('cancelAttempt'), '未提交切走应取消本轮');
+  assert.ok(!src.includes("'provision."), '编排层不得直调扫码端点（经钩子走）');
+  assert.ok(src.includes('showChoice') && src.includes('showManual'), '双支持二选一与两页可来回切');
+});
+
+test('T4 样式与 Added-only：dm- 命名空间，旧文件不动既有', () => {
+  const css = readFileSync(join(REPO, 'src', 'client', 'components', 'dual-mode-styles.ts'), 'utf8');
+  assert.ok(css.includes('dual-mode') && css.includes('installFeatureStyles'), '应经命名空间注入');
+  assert.ok(css.includes('.dm-'), '类前缀须为 dm-*');
+  assert.ok(!css.includes('.af-qr'), '不得占用既有扫码类');
+  const theme = readFileSync(join(REPO, 'src', 'client', 'theme.ts'), 'utf8');
+  assert.ok(!theme.includes('.dm-'), 'theme.ts 一字不动（防 300 行破线）');
+  const copy = readFileSync(join(REPO, 'src', 'client', 'components', 'first-view-copy.ts'), 'utf8');
+  assert.ok(!copy.includes('choiceTitle'), '首屏旧字典不动（三态领地，8 键走新文件）');
+});
+
+rmSync(dmTmp, { recursive: true, force: true });
+
 rmSync(tmp, { recursive: true, force: true });

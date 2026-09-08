@@ -9,8 +9,16 @@ import { makeButton, type BtnKind } from '../ui/button'
 import { toast } from '../ui/toast'
 import { CHANNEL_ORDER, channelLabel } from '../data/config'
 import { fetchChannelStatus, fmtCountdown, normalizeProvisionTiming, resolveNewBotId, type ProvisionState, type RpcCall } from '../data/fleet-api'
-import { createMetaStore } from '../data/meta'
 import { firstViewCopy } from './first-view-copy'
+import { commitBinding } from '../data/binding-commit'
+import { getChannelMode } from '../data/dual-mode-capabilities'
+import { dualModeCopy } from './dual-mode-copy'
+import { ensureDualModeStyles } from './dual-mode-styles'
+import { enterDualMode } from './dual-mode-flow'
+
+export { commitBinding }
+export type { BindingCommit } from '../data/binding-commit'
+/* 落定编排已搬 ../data/binding-commit（登记竞态 workspace-bot-not-found 重试＋removeLocal＋createMetaStore 同效，重导出保兼容）。 */
 
 export interface ConnectTarget {
   name: string
@@ -20,72 +28,6 @@ export interface ConnectTarget {
 function safeQrSrc(value: string | undefined): string | null {
   if (!value) return null
   return /^data:image\/(?:png|webp|svg\+xml)(?:;charset=[^;,]+)?;base64,/i.test(value) ? value : null
-}
-
-export interface BindingCommit {
-  rpc: RpcCall
-  channel: string
-  toast: typeof toast
-  onDone: () => void
-  botId: string
-  ws: string | null
-  prevWorkspace: string
-  agentName: string
-  /** 服务端登记竞态重试（默认 5 次 × 2s；单测可注入小值）。 */
-  notFoundRetry?: { attempts: number; gapMs: number }
-}
-
-const NOT_FOUND_RETRY = { attempts: 5, gapMs: 2000 }
-const sleep = (ms: number): Promise<void> => new Promise<void>((r) => setTimeout(r, ms))
-
-/** 选家落定（#49：可单测的纯编排——set 信封校验＋名字跟人走＋如实 toast；弹窗/DOM 留在外层）。
- * 服务端登记竞态（上游 ensure 晚于状态可见）：`workspace-bot-not-found` 按间隔重试，其余失败直报。
- * #62：空工作区分支仅作纵深防御（正常流程无家连扫码都进不来）；提示须指向真能补绑的卡，
- * 绝不复活“扫码后再选家、可取消”的旧分叉。 */
-export async function commitBinding(o: BindingCommit): Promise<boolean> {
-  if (!o.ws) {
-    o.toast('机器人已就绪但未绑定工作区：请在该机器人所在卡片用 ⋯ 菜单「选择工作区」完成绑定')
-    o.onDone()
-    return false
-  }
-  const call = (endpoint: string, payload: Record<string, unknown>) =>
-    o.rpc('/' + o.channel, endpoint, payload, AbortSignal.timeout(8000))
-  type SetRes = { ok?: boolean; error?: { code?: string; message?: string } } | null
-  const retry = o.notFoundRetry ?? NOT_FOUND_RETRY
-  let res: SetRes = null
-  let announced = false
-  for (let attempt = 1; ; attempt++) {
-    try {
-      res = await call('bot.workspace.set', { botId: o.botId, workspace: o.ws }) as SetRes
-    } catch (e) {
-      res = { ok: false, error: { message: String((e as Error)?.message ?? e) } }
-    }
-    if (res && res.ok === true) break
-    if (res?.error?.code === 'workspace-bot-not-found' && attempt < retry.attempts) {
-      if (!announced) {
-        announced = true
-        o.toast('服务端正在登记新机器人，绑定稍候重试…')
-      }
-      await sleep(retry.gapMs)
-      continue
-    }
-    o.toast('绑定失败：' + (res?.error?.message ?? '绑定失败'))
-    o.onDone()
-    return false
-  }
-  /* 名字跟人走：无家 Agent 首次落家，家即其名，local 空壳退场；元数据失败不推翻已落地绑定。 */
-  if (!o.prevWorkspace && o.agentName.trim()) {
-    try {
-      const store = await createMetaStore(o.rpc)
-      await store.rename(o.ws, o.agentName)
-      await store.removeLocal(o.agentName)
-    } catch (e) {
-      o.toast('名称关联失败：' + String((e as Error)?.message ?? e) + '（绑定已生效）')
-    }
-  }
-  o.toast('已接入并绑定工作区', 'check')
-  o.onDone()
-  return true
 }
 
 export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLElement, target: ConnectTarget, onDone: () => void): void {
@@ -143,6 +85,10 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       if (id) void cancelAttempt(id)
     }
     const modal: ModalHandle = showModal([title, sub, body], { onClose: handleClose })
+    /* T4 双模式：文案 + 模式 + QR 页切手动钩子（renderQr 仅追加一个分支按钮，既有不动）。 */
+    const dmCopy = dualModeCopy()
+    const dmMode = getChannelMode(channel)
+    let qrSwitch: (() => void) | null = null
 
     async function begin(): Promise<void> {
       stopTimers()
@@ -215,7 +161,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
         try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
         return
       }
-      toast(label + ' 机器人已就绪', 'check')
+      /* T2 去双 toast：成功只留终态“已接入并绑定工作区”（commitBinding 内），此处不再单独报就绪。 */
       try {
         modal.close()
         await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })
@@ -240,6 +186,10 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
         makeButton({ kind: 'ghost', label: '换一个二维码', onClick: () => void begin() }),
         makeButton({ kind: 'ghost', label: '取消', onClick: () => { handleClose(); modal.close() } }),
       ]
+      /* T4 加分支：双支持 QR 页经独立返回行切手动（底栏既有 3 按钮不动，防挤换行）。 */
+      const switchRow = qrSwitch
+        ? h('div', { className: 'dm-backrow' }, makeButton({ kind: 'ghost', size: 'sm', label: dmCopy.choiceManual, onClick: () => qrSwitch?.() }))
+        : null
       const verif = prov.verificationUrl && /^https?:/i.test(prov.verificationUrl)
         ? makeButton({ label: '在 ' + label + ' 中打开', iconName: 'external', onClick: () => { window.open(prov.verificationUrl!, '_blank', 'noopener') } })
         : null
@@ -254,6 +204,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
           h('li', null, '核对应用名称与权限范围后确认创建'),
           h('li', null, '保持本页打开，等待新机器人长连接就绪'),
         ),
+        switchRow,
         h('div', { className: 'af-modal-foot' }, ...actions),
       ])
       startTicking(timerEl, barEl, expiresAt, durationMs)
@@ -271,14 +222,46 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
 
     /* 基线：当前该渠道已存在的 botId（用于识别新机器人）；拉取失败按未知处理（只认 provision 上报，绝不差分认领）。 */
     let baselineOk = false
-    try {
-      const st = await fetchChannelStatus(rpc!, channel)
-      for (const b of st.bots) baseline.add(b.botId)
-      baselineOk = true
-    } catch {
-      /* 基线未知：识别退化为 provision 匹配 */
+    const refreshBaseline = async (): Promise<void> => {
+      try {
+        const st = await fetchChannelStatus(rpc!, channel)
+        for (const b of st.bots) baseline.add(b.botId)
+        baselineOk = true
+      } catch {
+        /* 基线未知：识别退化为 provision 匹配 */
+      }
     }
+    await refreshBaseline()
     if (finished) return
+    /* T4 双模式入口（provision 未启动，无取消语义）：单扫码走既有链路；其余进二选一/直达后 return。 */
+    if (dmMode !== 'qr-only') {
+      ensureDualModeStyles()
+      enterDualMode({
+        channel, label, target, rpc: rpc!, body, modal, copy: dmCopy, baseline, onDone,
+        anchor, menuItems: items,
+        commitManual: async (botId: string): Promise<void> => {
+          if (finished) return
+          finished = true
+          stopTimers()
+          attemptId = undefined
+          try {
+            modal.close()
+            await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })
+          } catch (e) {
+            toast('绑定工作区失败：' + String((e as Error)?.message ?? e))
+            try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
+          }
+        },
+      }, {
+        begin: () => void begin(),
+        cancelAttempt, stopTimers,
+        getAttemptId: () => attemptId,
+        setAttemptId: (id) => { attemptId = id },
+        setQrSwitch: (fn) => { qrSwitch = fn },
+        refreshBaseline,
+      })
+      return
+    }
     void begin()
   }
 }
