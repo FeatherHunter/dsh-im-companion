@@ -69,9 +69,10 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
 .af-compose--create .primary:disabled { background: var(--af-surface-2); color: var(--af-tertiary); }
 .af-compose-reason { flex: 1 1 100%; min-width: 0; font-size: 12px; color: var(--af-danger); }
 
-/* #62 已选家一眼认：父径淡化＋叶名加粗放大（只新增类；过长仍按容器省略） */
-.af-compose-parent { color: var(--af-tertiary); font-size: 12px; }
-.af-compose-leaf { color: var(--af-primary); font-weight: 700; font-size: 14px; }
+/* #62 已选家整行落定：描边＋底色＋图标＋全路径加粗（整行都是重点；只新增类） */
+.af-compose-row--set { border: 1px solid color-mix(in srgb, var(--af-accent) 45%, transparent); border-radius: 9px; padding: 6px 8px; background: color-mix(in srgb, var(--af-accent) 10%, transparent); }
+.af-compose-home--set { color: var(--af-primary); font-weight: 600; font-size: 13px; }
+.af-compose-home--set svg { flex: none; color: var(--af-accent); vertical-align: -2px; }
 
 `;
 

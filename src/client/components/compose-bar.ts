@@ -2,6 +2,7 @@
  * 无家不允许创建出可接入助理——扫码绑定直落自带之家，不再经过可取消的二次选家）。
  * 选家器由调用方注入（可测编排 seam），本表单只管“两者齐了才提交”。 */
 import { h } from '../dom'
+import { icon } from '../icons'
 import { makeButton } from '../ui/button'
 
 export interface ComposeBar {
@@ -85,23 +86,21 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => vo
     homeLabel.title = home || HOME_PLACEHOLDER
     pick.textContent = home ? '更换…' : '选择工作区…'
     mark(rowHome, 'af-compose-row--attention', !home)
+    mark(rowHome, 'af-compose-row--set', !!home)
     mark(homeLabel, 'af-compose-home--empty', !home)
+    mark(homeLabel, 'af-compose-home--set', !!home)
     required.style.display = home ? 'none' : ''
     reason.textContent = ready ? '' : blockReason(hasName, !!home)
     reason.style.display = ready ? 'none' : ''
   }
 
-  /** 已选家一眼认：父径淡化＋叶名加粗（title 仍留全路径）；空家回占位。 */
+  /** 已选家整行落定：文件夹图标＋全路径（整行都是重点，不只描叶名）；空家回占位。 */
   function paintHome(): void {
     if (!home) {
       homeLabel.replaceChildren(HOME_PLACEHOLDER)
       return
     }
-    const i = Math.max(home.lastIndexOf('\\'), home.lastIndexOf('/'))
-    homeLabel.replaceChildren(
-      h('span', { className: 'af-compose-parent' }, i >= 0 ? home.slice(0, i + 1) : ''),
-      h('span', { className: 'af-compose-leaf' }, i >= 0 ? home.slice(i + 1) || home : home),
-    )
+    homeLabel.replaceChildren(icon('folder', 15), h('span', null, ' ' + home))
   }
 
   function blockReason(hasName: boolean, hasHome: boolean): string {
