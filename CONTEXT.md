@@ -21,9 +21,6 @@
 | **Feature（功能模块）** | 一个票=一个功能=一个自包含开发单元（src/features/<feature>/），可独立 session 开发；模块间只经契约交互。 |
 | **Contract（契约）** | 模块间唯一交互面：共享包导出接口（theme/ui 原语/data 层）、挂载点（slot/左栏 DOM）、host 桥端点前缀（/im-companion 下按功能隔离）。 |
 | **红线（300 行）** | 任何源文件 ≤300 行；lib/* 为构建产物豁免；由 T0 守卫脚本机械执行。 |
-| **Feature（功能模块）** | 一个票=一个功能=一个自包含开发单元（src/features/<feature>/），可独立 session 开发；模块间只经契约交互。 |
-| **Contract（契约）** | 模块间唯一交互面：共享包导出接口（theme/ui 原语/data 层）、挂载点（slot/左栏 DOM）、host 桥端点前缀（/im-companion 下按功能隔离）。 |
-| **红线（300 行）** | 任何源文件 ≤300 行；lib/* 为构建产物豁免；由 T0 守卫脚本机械执行。 |
 | **Map** | Wayfinder 的目的地索引 issue，本文档对应的规划图谱。 |
 
 ## Boundaries

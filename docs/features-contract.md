@@ -64,7 +64,8 @@ export interface FeatureManifest {
 
 ## 6. 验证与验收
 
-- 每功能自验证：`tools/verify/features/<id>.ts` 或分区断言；共享层改动跑既有 17 项 + 功能断言。
+- 每功能自验证：`tools/verify/features/<id>.ts` 或分区断言；共享层改动跑 verify 全链（现 14 项，以 package.json 为准）+ 功能断言。
+> 溯源（2026-09-08 #41 收尾）：原“既有 17 项”为旧数，实测 chain 14 项；改述以 package.json 为准，防止漏跑误判。
 - 真机验收：功能票按地图 Notes 逐卡验收（重启 → 截图 → 用户确认）。
 
 ## 7. 并发布局（R5 输入，F0 确认）

@@ -4,6 +4,7 @@
 > 关联票：E4 issue #15 · E3 issue #14 · 地图 #1（R1-R4 传统续 05 号）
 > 原型：prototypes/e4-welcome/prototype-e4-welcome.html（mock） · E3 原型：prototypes/routing-preview/prototype-e3-routing-preview.html
 > 约束：docs/features-contract.md §4 单份轮询——不得新开第二份轮询，必须复用 connection-stream
+> 作废注记（2026-09-08 #41 收尾）：结论 5 的 B 方案水位路线（lastSeenSeq 自算水位／水位持久化）已作废——水位 2026-09-07 退役，V2 事件溯源回滚见 93e5d22；正文保留为调研历史，不改字。
 
 ## 1. 问题（一句话）
 E4 对话区欢迎横幅要显示今日 N 个会话 / M 条未读，但原型数字是 mock 的，本调研回答 M 在 dsh-im / DSH harness 里有无现成来源，若无则最小可行自算方案是什么（轮询什么、存什么水位、精度与代价）。
