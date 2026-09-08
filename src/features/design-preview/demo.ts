@@ -1,7 +1,7 @@
 /** TEMP 真实活性演示（定稿即删）：activity.snapshot 真数据 + 合成排序真排 + 真状态徽饰。 */
 /* 时间=会话文件最大 mtime（文件级近似）；方向=粗分；需干预/会话级无真信号，保持缺席。 */
 import { deriveRowStates, fetchActivity, fetchRoutesSafe, routesOf, type RowState } from '../../client/data/activity';
-import { fitsSidebarWidth } from '../../client/dom';
+import { isLineageNode } from '../../client/dom';
 import { clearSessionMarks, markSessions, sessionAttrProbe } from './sessions';
 import type { BotSnap } from '../../client/data/fleet-api';
 import type { StreamSnapshot } from '../../client/data/connection-stream';
@@ -30,7 +30,7 @@ function keyOf(row: Element): string {
 }
 function collectGroups(): Element[] {
   var out: Element[] = [];
-  try { document.querySelectorAll(ROW_SEL).forEach(function (n) { if (fitsSidebarWidth(n)) out.push(n); }); } catch (e) { /* 空 */ }
+  try { document.querySelectorAll(ROW_SEL).forEach(function (n) { if (!isLineageNode(n)) out.push(n); }); } catch (e) { /* 空 */ }
   return out;
 }
 /* blockOf 已删（暴力重排否决，连带移除）。 */

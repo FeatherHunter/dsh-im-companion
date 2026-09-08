@@ -3,7 +3,7 @@ import { type RowState } from '../../client/data/activity';
  * 纯逻辑（无 DOM/状态），T5 定稿时 flags 收敛进共享层后改道。禁反向、禁状态共享。 */
 import { flagsForSession } from '../truth-flags/flags';
 import { readNativeState } from '../truth-flags/dom-state';
-import { fitsSidebarWidth } from '../../client/dom';
+import { isLineageNode } from '../../client/dom';
 var LN = String.fromCharCode(10);
 var attrProbe = '';
 export function sessionAttrProbe(): string { return attrProbe; }
@@ -33,7 +33,7 @@ function sessionsOf(groups: Element[]): Map<Element, Element[]> {
   var map = new Map<Element, Element[]>();
   try {
     var order: Element[] = [];
-    document.querySelectorAll('div[role="treeitem"]').forEach(function (n) { if (fitsSidebarWidth(n)) order.push(n); });
+    document.querySelectorAll('div[role="treeitem"]').forEach(function (n) { if (!isLineageNode(n)) order.push(n); });
     var idx = new Map<Element, number>();
     for (var i = 0; i < groups.length; i++) idx.set(groups[i], i);
     var cur = -1;

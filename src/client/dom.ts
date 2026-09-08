@@ -68,19 +68,18 @@ export function clear(el: HTMLElement): void {
   el.replaceChildren()
 }
 
-/** 侧栏宽度作用域（2026-09-08 幽灵黄行修复）：只认侧栏宽度的行，排除主面板宽节点。
- * design-preview 之前全文档扫 div[role=treeitem]，把主面板里的折叠块/消息状态点
- * 当成会话行归因给最后一组——点选不同会话→主面板内容变→组色跟着变，且组黄时组里无黄行。
- * 侧栏行约 300px（上限见 WORKSPACE_LIST_MAX_WIDTH）；主面板宽节点一律跳过。
- * 无布局环境（单测桩无 getBoundingClientRect / 宽 0）中性通过，既有验证行为不变。 */
-export function fitsSidebarWidth(el: Element | null | undefined): boolean {
+/** 血统节点排除（2026-09-08 幽灵黄行根因）：主面板里的子会话血统树也是
+ * div[role=treeitem]，叶子带 aria-level、可展开的父节点还带 aria-expanded，
+ * 全文档扫描会把它们当会话行/组归因给最后一组——点选不同会话→主面板血统树
+ * 出现/消失→组色跟着变，且组黄时组里无黄行。官方实锤：
+ * dsh-client-ui-workspace 包内 aria-level 出现 0 次（侧栏行/组永不用它），
+ * dsh-client-ui-subagent 血统节点必带 aria-level。官方同款排除见其 treeItems。
+ * 无该属性一律视为侧栏行（单测桩无属性→行为与旧版一致）。 */
+export function isLineageNode(el: Element | null | undefined): boolean {
   try {
-    if (!el) return false
-    const r = (el as HTMLElement).getBoundingClientRect?.()
-    const w = typeof r?.width === 'number' ? r.width : 0
-    if (!Number.isFinite(w) || w <= 0) return true
-    return w <= WORKSPACE_LIST_MAX_WIDTH
-  } catch { return true }
+    if (!el || typeof (el as Element).getAttribute !== 'function') return false
+    return (el as Element).getAttribute('aria-level') !== null
+  } catch { return false }
 }
 
 /** 第一性原理头栏锚点（左栏三件套唯一真相源）。
