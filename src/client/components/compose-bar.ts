@@ -54,7 +54,10 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => vo
     label: '取消',
     onClick: () => setVisible(false),
   })
-  const el = h('div', { className: 'af-compose', style: { display: 'none' } }, input, pick, homeLabel, create, cancel)
+  /* 双行：单行 5 元素在窄栏必挤折行（视觉回归）；行类新增，.af-compose 本体不动（dir-picker 复用）。 */
+  const rowName = h('div', { className: 'af-compose-row' }, input, create, cancel)
+  const rowHome = h('div', { className: 'af-compose-row' }, pick, homeLabel)
+  const el = h('div', { className: 'af-compose af-compose--create', style: { display: 'none' } }, rowName, rowHome)
 
   input.addEventListener('keydown', (e: KeyboardEvent) => {
     if (e.key === 'Enter') create.click()

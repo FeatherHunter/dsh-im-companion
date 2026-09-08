@@ -52,6 +52,13 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
   .af-row .af-actions .af-btn, .af-row .af-actions .af-more-btn { transition: none; transform: none; }
 }
 
+/* #62 创建表单双行：单行 5 元素在窄栏必挤折行（按钮竖排/粘连）；只新增类，.af-compose 本体不动 */
+.af-compose--create { flex-wrap: wrap; row-gap: 8px; }
+.af-compose--create .af-compose-row { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; min-width: 0; }
+.af-compose--create .af-compose-row input { min-width: 0; }
+.af-compose--create .af-btn { white-space: nowrap; flex: none; }
+.af-compose-home { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--af-secondary); }
+
 `;
 
 /** 安装首屏赢家样式（幂等，热重载安全）；返回清理函数，面板卸载时调用。 */

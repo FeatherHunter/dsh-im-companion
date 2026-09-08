@@ -541,6 +541,9 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   bar.input.dispatchEvent({ type: 'input' });
   const byText = (t: string) => (bar.el as any).querySelectorAll('.af-btn').find((b: any) => (b.textContent ?? '').includes(t));
   assert.ok(byText('选择工作区'), '创建表单须内嵌选家按钮');
+  /* 双行布局：容器挂新类、两行各就其位（单行 5 元素窄栏必挤折行）。 */
+  assert.ok((bar.el as any).classList.contains('af-compose--create'), '创建表单应走双行容器');
+  assert.equal((bar.el as any).querySelectorAll('.af-compose-row').length, 2, '名字行与选家行应分开');
   assert.equal(byText('创建').disabled, true, '未选家时创建应置灰');
   byText('创建').dispatchEvent({ type: 'click' });
   assert.equal(seen.length, 0, '未选家不得提交');
