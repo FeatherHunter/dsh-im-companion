@@ -29,6 +29,8 @@ export interface FirstViewCopy {
   searchAria: string
   segAria: string
   radar: string
+  /** 串门搬家工具栏入口（label 与 title 共用）。 */
+  adopt: string
   refresh: string
   plus: string
   join: string
@@ -75,7 +77,8 @@ const ZH: FirstViewCopy = {
   search: '搜索',
   searchAria: '搜索助理',
   segAria: '分组方式',
-  radar: '舰队视图事件入口',
+  radar: '扬帆远航！',
+  adopt: '串门搬家',
   refresh: '刷新列表',
   plus: '新建助理',
   join: '接入',
@@ -117,7 +120,8 @@ const EN: FirstViewCopy = {
   search: 'Search',
   searchAria: 'Search assistants',
   segAria: 'Group by',
-  radar: 'Fleet view event entry',
+  radar: 'Set sail!',
+  adopt: 'Visit & move',
   refresh: 'Refresh list',
   plus: 'New assistant',
   join: 'Connect',

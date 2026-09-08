@@ -28,6 +28,9 @@ export interface OpenDrawerDetail {
 /** 舰队视图切换事件名：detail = { view }（A1 船按钮/矩阵返回按钮派发，装配层监听做显隐切换；DetailDrawer 抽屉同款事件制）。 */
 export const FLEET_VIEW_EVENT = 'dsh-im-companion:fleet-view'
 
+/** 串门搬家开窗事件名（A1 工具栏按钮派发，adopt 特性监听自开面板；FLEET_VIEW_EVENT 同款事件制）。 */
+export const ADOPT_VIEW_EVENT = 'dsh-im-companion:adopt-view'
+
 export interface FleetViewDetail {
   view: 'list' | 'radar'
 }

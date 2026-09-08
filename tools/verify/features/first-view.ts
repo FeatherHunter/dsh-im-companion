@@ -74,7 +74,8 @@ test("中文文案 = 赢家口径（增强标题 / 按助理 / 按渠道 / ghost
   assert.equal(zh.join, "接入");
   assert.equal(zh.joinTitle, "接入新渠道");
   assert.equal(zh.detail, "详情");
-  assert.equal(zh.radar, "舰队视图事件入口");
+  assert.equal(zh.radar, "扬帆远航！");
+  assert.equal(zh.adopt, "串门搬家");
   assert.equal(zh.starHref, "https://github.com/FeatherHunter/dsh-im-companion");
   assert.equal(zh.promoDeck, "dsh-mattpocock-skills-deck");
   assert.equal(zh.promoPal, "dsh-opencode-palette");
@@ -87,6 +88,8 @@ test("英文文案成套（实现侧以 key 提供两套，不做切换器）", 
   assert.equal(en.byChannel(2), "By Channels (2)");
   assert.equal(en.join, "Connect");
   assert.equal(en.detail, "Details");
+  assert.equal(en.radar, "Set sail!");
+  assert.equal(en.adopt, "Visit & move");
   assert.equal(en.promoTitle, "Related projects");
 });
 
@@ -110,6 +113,8 @@ test("样式命名空间与关键规则（新增类 only，既有零改动）", 
   assert.equal(css.indexOf(".af-btn.primary"), -1, "详情不再整排 primary 高亮，禁回潮");
   assert.equal(css.indexOf("#fff"), -1, "样式禁硬编码 #fff（走别名）");
   assert.equal(css.indexOf("#000"), -1, "样式禁硬编码 #000（走别名）");
+  assert.ok(css.indexOf(".af-toolbar") >= 0 && css.indexOf("nowrap") >= 0, "工具栏须单行不断行（4 按钮与搜索同行）");
+  assert.ok(css.indexOf(".af-toolbar .af-icon-btn") >= 0, "工具栏按钮应收紧（32px，防挤换行）");
 });
 
 test("#27 三态说人话（旧 Agent 名词禁回潮）", () => {
@@ -130,5 +135,67 @@ test("#27 三态说人话（旧 Agent 名词禁回潮）", () => {
   assert.equal(en.retry, "Retry");
   assert.ok(en.emptyNoneSub.indexOf("toolbar") >= 0);
 });
+
+// ---- T4 双模式 8 键文案（#69 辅接缝：新增 8 键中英断言 + 既有三态未动）----
+const dmTmp2 = mkdtempSync(join(tmpdir(), "fv-dual-mode-"));
+try {
+  execFileSync(process.execPath, [
+    join(REPO, "node_modules", "typescript", "bin", "tsc"),
+    join(REPO, "src", "client", "data", "config.ts"),
+    join(REPO, "src", "client", "data", "model.ts"),
+    join(COMP, "first-view-copy.ts"),
+    join(COMP, "dual-mode-copy.ts"),
+    "--ignoreConfig",
+    "--outDir", dmTmp2, "--module", "commonjs", "--target", "es2023",
+    "--moduleResolution", "bundler", "--skipLibCheck",
+    "--declaration", "false", "--sourceMap", "false",
+  ], { stdio: "pipe" });
+} catch (e) {
+  console.error("TRANPILE-FAIL " + String((e as any).stdout ?? "") + String((e as any).stderr ?? (e as Error).message));
+  process.exit(1);
+}
+const dmReq2 = createRequire(join(dmTmp2, "components", "run.cjs"));
+const dmCopy: any = dmReq2("./dual-mode-copy.js");
+
+test("T4 双模式 8 键中文（T2 定稿一字不差）", () => {
+  const zh = dmCopy.dualModeCopy("zh");
+  assert.equal(zh.choiceTitle, "选择接入方式");
+  assert.equal(zh.choiceSub("小帅", "飞书"), "为「小帅」创建飞书机器人，请选择方式");
+  assert.equal(zh.choiceQr, "扫码创建");
+  assert.equal(zh.choiceManual, "手动填写");
+  assert.equal(zh.manualTitle("飞书"), "手动填写飞书信息");
+  assert.equal(zh.manualSubmit, "提交并接入");
+  assert.equal(zh.back, "返回选择");
+  assert.equal(zh.fail("denied"), "接入失败：denied");
+});
+
+test("T4 双模式 8 键英文（自然语序）", () => {
+  const en = dmCopy.dualModeCopy("en");
+  assert.equal(en.choiceTitle, "Choose a connection method");
+  assert.equal(en.choiceQr, "Create by scanning");
+  assert.equal(en.choiceManual, "Enter manually");
+  assert.equal(en.manualSubmit, "Submit and connect");
+  assert.equal(en.back, "Back to options");
+  assert.ok(en.choiceSub("X", "Slack").indexOf("choose how to proceed") >= 0);
+  assert.equal(en.fail("denied"), "Connection failed: denied");
+});
+
+test("T4 前置提示零硬门 + 脱敏分级 helper", () => {
+  assert.ok((dmCopy.manualHint("slack", "zh") ?? "").indexOf("Manifest") >= 0);
+  assert.ok((dmCopy.manualHint("discord", "zh") ?? "").indexOf("Intent") >= 0);
+  assert.equal(dmCopy.manualHint("weixin", "zh"), null);
+  assert.equal(dmCopy.maskPreview("1234567"), "••••");
+  assert.equal(dmCopy.maskPreview("abcdef1234"), "•••1234");
+  assert.ok(dmCopy.secretPlaceholder("configured", "zh").indexOf("已配置") >= 0);
+});
+
+test("T4 既有三态一字不动（8 键只新增，不回写旧页）", () => {
+  const zh = copy.firstViewCopy("zh").states;
+  assert.equal(zh.emptySearchTitle, "没有找到匹配的助理");
+  assert.equal(zh.emptyNoneTitle, "还没有助理");
+  assert.equal(zh.retry, "重试");
+});
+
+rmSync(dmTmp2, { recursive: true, force: true });
 
 rmSync(tmp, { recursive: true, force: true });

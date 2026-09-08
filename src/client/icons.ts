@@ -3,7 +3,7 @@
 export type IconName =
   | 'plus' | 'search' | 'close' | 'pencil' | 'image' | 'refresh'
   | 'person' | 'check' | 'trash' | 'camera' | 'chevron-right' | 'more' | 'folder' | 'external'
-  | 'ship' | 'star' | 'feedback'
+  | 'ship' | 'star' | 'feedback' | 'home'
 
 const NS = 'http://www.w3.org/2000/svg'
 
@@ -25,6 +25,7 @@ const PATHS: Record<IconName, string> = {
   ship: '<path d="M12 3v12"/><path d="M12 4c3.2 2 4.8 5 4.8 9H12V4Z"/><path d="M11 6.5C8.8 8 7.8 10 7.8 12.5H11V6.5Z"/><path d="M4 16h16l-1.6 3a2 2 0 0 1-1.8 1H7.4a2 2 0 0 1-1.8-1L4 16Z"/><path d="M2 21.5c.8-.8 1.7-.8 2.5 0s1.7.8 2.5 0 1.7-.8 2.5 0 1.7.8 2.5 0 1.7-.8 2.5 0 1.7.8 2.5 0 1.7-.8 2.5 0 1.7.8 2.5 0"/>',
   star: '<path d="M12 3.6l2.5 5.2 5.7.8-4.1 4 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4.1-4 5.7-.8Z"/>',
   feedback: '<path d="M4 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4V6Z"/><path d="M8.5 9.5h7M8.5 12.5h4"/>',
+  home: '<path d="M4 11.5 12 4l8 7.5"/><path d="M6.5 10v9a1 1 0 0 0 1 1H16a1 1 0 0 0 1-1v-9"/>',
 }
 
 export function icon(name: IconName, size = 18): SVGSVGElement {

@@ -1,6 +1,6 @@
 // Adopt 自验证（F0 每功能自验证）：拖拽领养纯逻辑 + 面板视图分支（node --test，零第三方依赖）。
 // 只测外部行为：给定绑定关系 + 动作 → 断言用户可见结论，不断言内部形状。
-import { mkdtempSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -599,4 +599,32 @@ test('view：撤销窗过期 → 落定提示且窗消失', async () => {
   } finally {
     (globalThis as any).setTimeout = realSetTimeout;
   }
+});
+
+// ---- 工具栏串门搬家入口（舰队同款事件制：A1 只派发，adopt 自管面板）----
+test('toolbar：串门搬家按钮与舰队/新增同组，只派发不直引特性', () => {
+  const panel = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
+  assert.ok(panel.includes('ADOPT_VIEW_EVENT'), '面板应派发串门搬家事件');
+  assert.ok(panel.includes('adoptBtn'), '工具栏应有串门搬家按钮');
+  const order = [panel.indexOf('plusBtn, radarBtn, adoptBtn, refreshBtn')];
+  assert.ok(order[0] !== -1, '按钮顺序应为新增、舰队、串门搬家、刷新');
+  assert.ok(!panel.includes('features/adopt') && !panel.includes('adopt/view'), '面板不得直引 adopt 特性（事件制解耦）');
+});
+
+test('adopt：监听工具栏事件自开面板，卸载即退订', () => {
+  const src = readFileSync(join(FEAT, 'view.ts'), 'utf8');
+  assert.ok(src.includes('ADOPT_VIEW_EVENT'), '应监听串门搬家事件');
+  assert.ok(src.includes('addEventListener(ADOPT_VIEW_EVENT'), '挂载时订阅');
+  assert.ok(src.includes('removeEventListener(ADOPT_VIEW_EVENT'), '卸载时退订');
+  assert.ok(src.includes('openPanel(ctx)'), '事件到即自开面板');
+  const cfg = readFileSync(join(CLIENT, 'data', 'config.ts'), 'utf8');
+  assert.ok(cfg.includes("ADOPT_VIEW_EVENT = 'dsh-im-companion:adopt-view'"), '事件名单点定义在共享 config');
+});
+
+test('toolbar：home 图标与悬浮文案', () => {
+  const icons = readFileSync(join(CLIENT, 'icons.ts'), 'utf8');
+  assert.ok(icons.includes('home:'), '图标集应追加 home（只加不改）');
+  const copy = readFileSync(join(REPO, 'src', 'client', 'components', 'first-view-copy.ts'), 'utf8');
+  assert.ok(copy.includes('扬帆远航'), '舰队悬浮应为扬帆远航');
+  assert.ok(!copy.includes('舰队视图事件入口'), '旧悬浮文案不得残留');
 });

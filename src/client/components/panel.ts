@@ -4,7 +4,7 @@
 import { h } from '../dom'
 import type { RpcCall } from '../data/fleet-api'
 import type { AgentView, ViewMode } from '../data/model'
-import { FLEET_VIEW_EVENT, type FleetViewDetail } from '../data/config'
+import { ADOPT_VIEW_EVENT, FLEET_VIEW_EVENT, type FleetViewDetail } from '../data/config'
 import { icon } from '../icons'
 import { makeIconButton } from '../ui/button'
 import { makeSearchField } from '../ui/field'
@@ -95,8 +95,13 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     iconName: 'ship', label: copy.radar, title: copy.radar,
     onClick: () => emitFleetView('radar'),
   })
-  /* ＋ 进工具栏按钮组最左：新增、船、刷新（☆ 已搬右上角）。 */
-  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '12px' } }, plusBtn, radarBtn, refreshBtn))
+  /* 串门搬家入口（舰队同款事件制：只加按钮+事件派发，不引 adopt 特性；面板由 adopt 特性自管）。 */
+  const adoptBtn = makeIconButton({
+    iconName: 'home', label: copy.adopt, title: copy.adopt,
+    onClick: () => emitAdoptView(),
+  })
+  /* ＋ 进工具栏按钮组最左：新增、船、串门搬家、刷新（☆ 已搬右上角）。 */
+  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '12px' } }, plusBtn, radarBtn, adoptBtn, refreshBtn))
   /* #62 创建即选家：表单自带工作区选择器，创建编排原子落家（addLocal＋落家＋记名）。
    * 建完即收由表单按编排返回值决定（成功关、失败留单保现场）。 */
   const compose = makeComposeBar(
@@ -172,6 +177,15 @@ function emitFleetView(view: FleetViewDetail['view']): void {
   try {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
     window.dispatchEvent(new window.CustomEvent<FleetViewDetail>(FLEET_VIEW_EVENT, { detail: { view } }))
+  } catch {
+    /* 派发失败不影响列表 */
+  }
+}
+
+function emitAdoptView(): void {
+  try {
+    if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
+    window.dispatchEvent(new window.CustomEvent(ADOPT_VIEW_EVENT))
   } catch {
     /* 派发失败不影响列表 */
   }

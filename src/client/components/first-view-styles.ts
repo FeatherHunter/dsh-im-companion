@@ -45,6 +45,11 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
 /* #56 右上组（对标 deck dsws-cfg-head：右组 margin-left:auto 推右，窄窗换行；版本小字 11px  caption 色可点）。 */
 .af-hd { flex-wrap: wrap; }
 .af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+
+/* 工具栏单行不断行：4 按钮与搜索/分段同行（搜索可压到 0，按钮 32px 不换行不缩小；theme 本体不动）。 */
+.af-toolbar { flex-wrap: nowrap; }
+.af-toolbar .af-search { min-width: 0; }
+.af-toolbar .af-icon-btn { width: 32px; height: 32px; border-radius: 10px; flex: none; }
 .af-version { font-size: 11px; line-height: 16px; color: var(--af-tertiary); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .af-version:hover { color: var(--af-secondary); text-decoration: underline; }
 

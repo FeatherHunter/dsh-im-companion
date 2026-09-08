@@ -2,6 +2,7 @@
  * 头栏锚点走共享唯一真相源（client/dom，与 left-filter 同锚→成对出现，要错一起错）。 */
 import { h } from '../../client/dom'
 import { findWorkspaceHeaderFromNode } from '../../client/dom'
+import { ADOPT_VIEW_EVENT } from '../../client/data/config'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import { installFeatureStyles } from '../../client/theme'
@@ -117,6 +118,14 @@ export function mountAdopt(ctx: FeatureCtx): () => void {
     if (s === lastSig) return
     paint()
   })
+
+  /* 工具栏串门搬家入口（FLEET_VIEW_EVENT 同款事件制）：A1 只派发，本特性自开面板。 */
+  const onAdoptEvent = (): void => { if (alive(g)) openPanel(ctx) }
+  try {
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+      window.addEventListener(ADOPT_VIEW_EVENT, onAdoptEvent)
+    }
+  } catch { /* 无窗口环境跳过 */ }
 
   const onDragStart = (e: Event): void => {
     if (!alive(g)) return
@@ -253,6 +262,11 @@ export function mountAdopt(ctx: FeatureCtx): () => void {
   } catch { /* 无 DOM 环境可挂载为空操作 */ }
 
   return () => {
+    try {
+      if (typeof window !== 'undefined' && typeof window.removeEventListener === 'function') {
+        window.removeEventListener(ADOPT_VIEW_EVENT, onAdoptEvent)
+      }
+    } catch { /* 忽略 */ }
     try {
       document.removeEventListener('pointerdown', onPress)
       document.removeEventListener('pointerup', onRelease)
