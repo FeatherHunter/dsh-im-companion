@@ -23,7 +23,7 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 `dsh-im-companion` — dsh-im 辅助插件（解耦外挂）（`D:\dsh-plugin\dsh-im-companion`），承接最大全集 11 项试验。详见 handoff：`C:\Users\辰辰洋洋\AppData\Local\Temp\dsh-im-companion-handoff-2026-09-02.md` 及 `README.md`。
 
 * Host: `lib/index.js`（空壳）
-* Client: `lib/client.js`（React IM机器人辅助，`slots.inject('settings.section', order 22)`）
+* Client: `lib/client.js`（React IM机器人增强，`slots.inject('settings.section', order 22)`）
 * 预览：`preview.html` (`python -m http.server 8788`)
 * 挂载：`desktop` + `web` 双 profile（Junction + bundles；**两边同时生效**——用户走 web profile，desktop 记录同样适用）
 * 生效门（每次 `lib/` 重打后必走）：对两边 `node_modules/dsh-im-companion/lib/client.js` 验 hash 与本仓一致 → 页面 Ctrl+F5（或热重载插件）；`dsh web` 若起过老进程先杀掉重起（14:55 坑：老进程不 serve 新 bundle）。验收前新旧只认 hash 是否一致（徽标悬停本来就带“最后检测时间”，不拿它判断新旧）。

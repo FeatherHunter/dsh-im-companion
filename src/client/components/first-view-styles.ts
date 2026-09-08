@@ -42,6 +42,12 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
 .af-promo-item span { color: var(--af-secondary); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .af-promo-item i { color: var(--af-accent); font-style: normal; }
 
+/* #56 右上组（对标 deck dsws-cfg-head：右组 margin-left:auto 推右，窄窗换行；版本小字 11px  caption 色可点）。 */
+.af-hd { flex-wrap: wrap; }
+.af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+.af-version { font-size: 11px; line-height: 16px; color: var(--af-tertiary); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.af-version:hover { color: var(--af-secondary); text-decoration: underline; }
+
 @media (prefers-reduced-motion: reduce) {
   .af-row .af-actions .af-btn, .af-row .af-actions .af-more-btn { transition: none; transform: none; }
 }

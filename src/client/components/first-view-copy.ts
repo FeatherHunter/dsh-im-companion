@@ -40,6 +40,9 @@ export interface FirstViewCopy {
   rowTip: (name: string) => string
   starTitle: string
   starHref: string
+  feedbackTitle: string
+  feedbackHref: string
+  versionTitle: (v: string) => string
   promoTitle: string
   promoDeck: string
   promoDeckDesc: string
@@ -60,8 +63,8 @@ export interface FirstViewStates {
 }
 
 const ZH: FirstViewCopy = {
-  title: '助理',
-  sub: 'ASSISTANTS',
+  title: 'IM机器人增强',
+  sub: 'IM COMPANION',
   byAgent: (n) => '按助理 (' + n + ')',
   byChannel: (n) => '按渠道 (' + n + ')',
   updatedTip: (t) => (t ? '更新于 ' + t + '（标题计数行已收起：助理 / 渠道数看分段）' : '助理 / 渠道数看分段'),
@@ -78,8 +81,11 @@ const ZH: FirstViewCopy = {
   moreActions: (name) => '更多操作 ' + name + '：重命名 / 更换工作区 / 移除渠道机器人',
   wsPrefix: '工作区·',
   rowTip: (name) => name + '（整行悬停出按钮；触屏点一下行）',
-  starTitle: '给本项目点 Star（跳 GitHub 仓库）',
+  starTitle: '你的⭐是我夜空中最亮的星',
   starHref: 'https://github.com/FeatherHunter/dsh-im-companion',
+  feedbackTitle: '反馈问题',
+  feedbackHref: 'https://github.com/FeatherHunter/dsh-im-companion/issues/new',
+  versionTitle: (v) => 'dsh-im-companion ' + v + '（点跳 GitHub 仓库首页）',
   promoTitle: '作者其他插件',
   promoDeck: 'dsh-mattpocock-skills-deck',
   promoDeckDesc: 'Mattpocock SKILLS 在DSH中增强插件。开发伴侣☕️。',
@@ -97,8 +103,8 @@ const ZH: FirstViewCopy = {
 }
 
 const EN: FirstViewCopy = {
-  title: 'Assistants',
-  sub: '助理',
+  title: 'IM Companion',
+  sub: 'IM机器人增强',
   byAgent: (n) => 'By Assistants (' + n + ')',
   byChannel: (n) => 'By Channels (' + n + ')',
   updatedTip: (t) => (t ? 'Updated ' + t + ' (title counts folded into seg labels)' : 'See seg labels for counts'),
@@ -115,8 +121,11 @@ const EN: FirstViewCopy = {
   moreActions: (name) => 'More actions ' + name + ': Rename / Change workspace / Remove channel bots',
   wsPrefix: 'Workspace: ',
   rowTip: (name) => name + ' (hover row for actions; tap row on touch)',
-  starTitle: 'Star this project on GitHub',
+  starTitle: 'Your ⭐ is the brightest star in my night sky',
   starHref: 'https://github.com/FeatherHunter/dsh-im-companion',
+  feedbackTitle: 'Report an issue',
+  feedbackHref: 'https://github.com/FeatherHunter/dsh-im-companion/issues/new',
+  versionTitle: (v) => 'dsh-im-companion ' + v + ' (open repo on GitHub)',
   promoTitle: 'Related projects',
   promoDeck: 'dsh-mattpocock-skills-deck',
   promoDeckDesc: 'Agent skills method deck',

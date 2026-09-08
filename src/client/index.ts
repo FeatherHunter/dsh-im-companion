@@ -74,7 +74,7 @@ export function apply(ctx: any): void {
       } catch (e) {
         console.error('[dsh-im-companion] mount error', e)
         const box = document.createElement('div')
-        box.textContent = 'IM机器人辅助 加载失败：' + String((e as Error)?.message ?? e)
+        box.textContent = 'IM机器人增强 加载失败：' + String((e as Error)?.message ?? e)
         box.style.cssText = 'padding:20px;color:var(--dsw-alias-state-error-primary);'
         mount.replaceChildren(box)
       }
@@ -116,7 +116,7 @@ export function apply(ctx: any): void {
       name: 'settings.section',
       id: PLUGIN_ID,
       order: 22,
-      label: () => 'IM机器人辅助',
+      label: () => 'IM机器人增强',
       inject: () => ({}),
     }, FleetSettingsTab),
   )

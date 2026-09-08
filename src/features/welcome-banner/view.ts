@@ -41,7 +41,7 @@ function appendClouds(sky: HTMLElement): void {
 }
 
 /** P 弹窗渲染：顶层遮罩 + 居中面板（主人行 + 大标题 + 真实健康副标题 + 进门按钮）。
- * 主人行显示工作区名字：IM机器人辅助自取名优先，原目录名兜底（model.name 口径，与副标题改名一致）。 */
+ * 主人行显示工作区名字：IM机器人增强自取名优先，原目录名兜底（model.name 口径，与副标题改名一致）。 */
 export function renderHome(input: {
   copy: TimeCopy;
   model: BannerModel;

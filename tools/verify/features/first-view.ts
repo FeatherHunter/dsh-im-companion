@@ -64,10 +64,10 @@ test("莫兰迪兜底只染 Xiao 系（自定义头像走 img 层，本函数只
     "同名同色（仅兜底，不随传入 fallback 漂移）");
 });
 
-test("中文文案 = 赢家口径（助理 / 按助理 / 按渠道 / ghost 同级）", () => {
+test("中文文案 = 赢家口径（增强标题 / 按助理 / 按渠道 / ghost 同级）", () => {
   const zh = copy.firstViewCopy("zh");
-  assert.equal(zh.title, "助理");
-  assert.equal(zh.sub, "ASSISTANTS");
+  assert.equal(zh.title, "IM机器人增强");
+  assert.equal(zh.sub, "IM COMPANION");
   assert.equal(zh.byAgent(12), "按助理 (12)");
   assert.equal(zh.byChannel(2), "按渠道 (2)");
   assert.ok(zh.updatedTip("11:26:13").indexOf("11:26:13") >= 0);
@@ -82,7 +82,7 @@ test("中文文案 = 赢家口径（助理 / 按助理 / 按渠道 / ghost 同�
 
 test("英文文案成套（实现侧以 key 提供两套，不做切换器）", () => {
   const en = copy.firstViewCopy("en");
-  assert.equal(en.title, "Assistants");
+  assert.equal(en.title, "IM Companion");
   assert.equal(en.byAgent(12), "By Assistants (12)");
   assert.equal(en.byChannel(2), "By Channels (2)");
   assert.equal(en.join, "Connect");

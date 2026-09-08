@@ -43,8 +43,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     或者
 dsh plugin --profile web add dsh-im-companion
 
-# 锁定版本更稳（当前 0.1.1）
-dsh plugin --profile desktop add dsh-im-companion@0.1.1 --registry https://registry.npmjs.org
+# 锁定版本更稳（当前 0.1.2）
+dsh plugin --profile desktop add dsh-im-companion@0.1.2 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -73,7 +73,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.1.1 --registry https://regis
 下面以 desktop 为例，web 用户请把 --profile desktop 换成 --profile web：
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.1.1 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.1.2 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
@@ -106,7 +106,7 @@ dsh-im 掌管接入，dsh-im-companion 以助理和家的概念增强能力。
 
 <div align="center">
 
-<strong>👇 进设置 → IM机器人辅助：助理、渠道、在线状态一屏看尽。</strong>
+<strong>👇 进设置 → IM机器人增强：助理、渠道、在线状态一屏看尽。</strong>
 
 <img src="assets/设置-以Agent为核心-聚合视图-深色.png" width="720" alt="设置页助理聚合视图">
 

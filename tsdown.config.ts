@@ -1,7 +1,18 @@
+import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { UserConfig } from 'tsdown'
 
 const PLUGIN_ID = "dsh-im-companion"
+
+/* #56：package.json 为唯一真相，构建时注入 __PLUGIN_VERSION__（对标 deck 的 DSW_VERSION）。 */
+function pluginVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+    return 'v' + String(pkg.version ?? '0.0.0')
+  } catch {
+    return 'v0.0.0'
+  }
+}
 
 const CLIENT_EXTERNALS = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client',
@@ -20,6 +31,7 @@ const clientBundle: UserConfig = {
   clean: false,
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
+    __PLUGIN_VERSION__: JSON.stringify(pluginVersion()),
   },
   deps: {
     neverBundle: [...CLIENT_EXTERNALS],

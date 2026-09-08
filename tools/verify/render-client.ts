@@ -95,8 +95,8 @@ console.log('---- rendered text (first 700) ----');
 console.log(text.slice(0, 700));
 
 const checks: [string, boolean][] = [
-  ['顶部标题 助理(#26 赢家)', text.includes('助理')],
-  ['英文副标 ASSISTANTS(#26)', text.includes('ASSISTANTS')],
+  ['顶部标题 IM机器人增强(#56)', text.includes('IM机器人增强')],
+  ['英文副标 IM COMPANION(#56)', text.includes('IM COMPANION')],
   ['按助理 计数 (3)(#26)', text.includes('按助理 (3)')],
   ['按渠道 计数 (2)', text.includes('按渠道 (2)')],
   ['标题计数行收起(#26)', !text.includes('个机器人')],

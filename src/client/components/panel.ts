@@ -17,6 +17,18 @@ import { createPanelActions } from './panel-actions'
 import { createPanelBody } from './panel-body'
 import { createPanelData } from './panel-data'
 
+/* #56：构建注入的插件版本（tsdown define __PLUGIN_VERSION__，package.json 唯一真相）。 */
+declare const __PLUGIN_VERSION__: string | undefined
+
+function pluginVersion(): string {
+  try {
+    if (typeof __PLUGIN_VERSION__ === 'string' && __PLUGIN_VERSION__) return __PLUGIN_VERSION__
+  } catch {
+    /* 无注入环境（单测直引源码）回退空串，调用方隐藏版本位 */
+  }
+  return ''
+}
+
 export function FleetPanel(ctx: unknown): HTMLElement {
   const rpc: RpcCall | null = extractRpc(ctx)
   const data = createPanelData(rpc)
@@ -30,6 +42,17 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   const titleMeta = h('div', { className: 'af-title-meta' }, '')
   titleMeta.hidden = true
   const plusBtn = makeIconButton({ iconName: 'plus', label: copy.plus, title: copy.plus })
+  /* #56 右上组（对标 deck SettingsPage：版本小字可点跳仓库 + Star/Issue 双按钮；右组 margin-left:auto，窄窗换行）。 */
+  const ver = pluginVersion()
+  const verLink = h('a', {
+    className: 'af-version',
+    href: copy.starHref,
+    target: '_blank',
+    rel: 'noopener',
+    title: copy.versionTitle(ver),
+    'aria-label': copy.versionTitle(ver),
+  }, ver)
+  verLink.hidden = ver === ''
   /* P2 引流星标：ghost 虚线风，新开页跳 companion 仓库点 Star（右上角，＋原位）。 */
   const starLink = h('a', {
     className: 'af-icon-btn af-star',
@@ -39,7 +62,16 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     title: copy.starTitle,
     'aria-label': copy.starTitle,
   }, icon('star', 18))
-  const hd = h('div', { className: 'af-hd' }, h('div', null, title, sub, titleMeta), starLink)
+  const feedbackLink = h('a', {
+    className: 'af-icon-btn af-star',
+    href: copy.feedbackHref,
+    target: '_blank',
+    rel: 'noopener',
+    title: copy.feedbackTitle,
+    'aria-label': copy.feedbackTitle,
+  }, icon('feedback', 18))
+  const hdRight = h('div', { className: 'af-hd-right' }, verLink, starLink, feedbackLink)
+  const hd = h('div', { className: 'af-hd' }, h('div', null, title, sub, titleMeta), hdRight)
 
   const search = makeSearchField((v) => {
     data.state.query = v
