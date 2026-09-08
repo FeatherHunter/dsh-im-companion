@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v0.1.4 — 2026-09-08
+
+主题：接入双模式（扫码/手动二选一，按渠道能力隐藏）落地；一键收起与串门搬家入口随包；Wayfinder Map #65 收尾关闭。
+
+提炼：
+
+- package.json / package-lock.json 0.1.3 → 0.1.4；README 中英文版本锁同步到 0.1.4。
+- 接入双模式（#65 map T1–T4 全关）：9 渠道能力矩阵单点（4 双支持 feishu/dingtalk/qq/wecom、2 仅扫码 weixin/whatsapp、3 仅手动 slack/telegram/discord）；双支持渠道弹窗内二选一（扫码创建 / 手动填写），可来回切换；单支持渠道一步直达；手动走各渠道 `bot.bind-credentials`、成功复用绑定落定编排，失败留表单脱敏可重试；8 键中英文案，扫码页既有行为一字未动。
+- 一键收起左栏可见工作区分组（#64）：筛选条旁同行按钮，只收当前可见展开组。
+- 舰队面板工具栏「串门搬家」入口：事件制派发，adopt 特性自开面板。
+- 配置页右上版本小字自动变为 v0.1.4（package.json 唯一真相，构建时注入）。
+- 对应提交：见 GitHub Release v0.1.4 附件与提交历史。
+
+验证与影响：
+
+- `npm run check` 全绿（connect-qr 30/30、first-view 12/12、guard 101 文件 max≤300）；本仓 / web / desktop 三方 bundle sha256 一致。
+- 手动绑定走既有 rpc 通道调上游 `bot.bind-credentials`，无新增契约通道；共享层 Added-only。
+
 ## v0.1.3 — 2026-09-09
 
 主题：创建时强制选家断裂修复与新建空工作区红虚线修复随包；README 版式（ hero 双图 + 三色竖条）同步。
