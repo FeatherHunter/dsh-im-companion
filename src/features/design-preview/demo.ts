@@ -1,4 +1,4 @@
-/** TEMP 真实活性演示（定稿即删）：activity.snapshot 真数据 + 合成排序真排 + 真状态徽饰。 */
+/** 组行活性（#57 转正，原 TEMP 演示）：activity.snapshot 真数据 + 真状态徽饰。 */
 /* 时间=会话文件最大 mtime（文件级近似）；方向=粗分；需干预/会话级无真信号，保持缺席。 */
 import { deriveRowStates, fetchActivity, fetchRoutesSafe, routesOf, type RowState } from '../../client/data/activity';
 import { isLineageNode } from '../../client/dom';
@@ -80,7 +80,7 @@ var moving = false;
 export function mountDesignPreview(ctx: FeatureCtx): () => void {
   var noop = function (): void {};
   if (typeof document === 'undefined') return noop;
-  try { console.info('[dsh-im-companion] 真实活性演示（临时，定稿即删）：已挂载，等 stream 首轮快照'); } catch (e) { /* 静默 */ }
+  try { console.info('[dsh-im-companion] 组行活性已挂载，等 stream 首轮快照'); } catch (e) { /* 静默 */ }
   var bots: BotSnap[] = [];
   var hasSnap = false;
   var fetching = false;

@@ -1,5 +1,5 @@
 import { type RowState } from '../../client/data/activity';
-/* 例外引用（§10 通道，理由见提审）：design-preview 为 TEMP 原型（定稿即删），复用 truth-flags
+/* 例外引用（§10 通道，理由见提审）：design-preview 为组竖条特性（#57 转正），复用 truth-flags
  * 纯逻辑（无 DOM/状态），T5 定稿时 flags 收敛进共享层后改道。禁反向、禁状态共享。 */
 import { flagsForSession } from '../truth-flags/flags';
 import { readNativeState } from '../truth-flags/dom-state';
@@ -114,7 +114,22 @@ export function markSessions(groups: Element[], states: RowState[]): void {
       var rows = sessMap.get(groups[i]) || [];
       var gKey = st ? st.key : '';
       /* 收起组（无可见行）：用缓存恢复组条+角标；无缓存（首见收起）不动，留 paint 初稿。 */
+      /* #57 修订 C：必须先读展开标记的值——显式展开(true)但零归因行（行未渲染/错位）
+       * 时不得恢复收起缓存，否则展开组长明旧蓝。磁盘仍报 exec 则留 paint 初稿
+       * （信 fresh 磁盘信号），否则清旧条并置空缓存；非显式 true 一律走老路
+       * （空串/缺失不断言，避免 DSH 写法差异导致 B 方案回归）。 */
       if (!rows.length) {
+        var expandedNow = false;
+        try { expandedNow = groups[i].getAttribute('aria-expanded') === 'true'; } catch (e) { expandedNow = false; }
+        if (expandedNow) {
+          var diskExec = false;
+          try { diskExec = !!st && st.act === 'exec'; } catch (e) { diskExec = false; }
+          if (!diskExec) {
+            try { delA(groups[i], 'data-dp-act'); delA(groups[i], 'data-dp-tip'); } catch (e) { /* 忽略 */ }
+          }
+          try { if (gKey) groupActCache.set(gKey, ''); } catch (e) { /* 忽略 */ }
+          continue;
+        }
         if (gKey) {
           var rc = groupActCache.get(gKey);
           if (rc !== undefined) {

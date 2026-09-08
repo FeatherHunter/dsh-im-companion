@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v0.1.2 — 2026-09-08
+
+主题：版本号 +1 并在配置页右上角显示版本；命名统一为 IM机器人增强；修复展开态工作组蓝条 lingering。
+
+提炼：
+
+- package.json / package-lock.json 0.1.1 → 0.1.2；README 中英文版本锁同步到 0.1.2。
+- 配置页标题行右上新增版本小字 v0.1.2（package.json 唯一真相，构建时注入；点跳仓库首页）。
+- 新增 Issue 反馈按钮（跳 `/issues/new`），与 Star 同组右对齐；右组 `margin-left: auto` + 窄窗换行，对标 dsh-mattpocock-skills-deck SettingsPage。
+- 命名统一：面板大标题与设置侧栏入口均称 IM机器人增强（英文 IM Companion）。
+- 修复展开态工作组蓝条 lingering（#57）：零归因行时不再恢复收起缓存旧蓝（entry-exec tiebreaker）；design-preview 转正并正名。
+- 对应提交：见 GitHub Release v0.1.2 附件与提交历史。
+
+验证与影响：
+
+- `npm run check` 全绿。
+- 无新增契约通道与行为契约变更。
+
 ## v0.1.1 — 2026-09-05
 
 主题：许可证换 MIT、README 打磨定稿、换绑修复随包。

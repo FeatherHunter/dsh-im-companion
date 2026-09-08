@@ -60,15 +60,17 @@ class FakeEl {
   text = '';
   dot: string | null;
   expanded: boolean;
+  expVal: string | null; // #57：显式 aria-expanded 值（'true'/'false'）；null=沿用老口径（展开返回''）
   iconHost: FakeEl | null; // svg 的 parentElement（真实 DOM 中是独立元素，角标挂这里）
-  constructor(text: string, dot: string | null, expanded: boolean, withSvg = false) {
+  constructor(text: string, dot: string | null, expanded: boolean, withSvg = false, expVal: string | null = null) {
     this.text = text; this.dot = dot; this.expanded = expanded;
+    this.expVal = expVal;
     this.iconHost = withSvg ? new FakeEl('', null, false) : null;
   }
   get textContent(): string { return this.text; }
   get attributes(): unknown[] { return []; }
   getAttribute(k: string): string | null {
-    if (k === 'aria-expanded') return this.expanded ? '' : null;
+    if (k === 'aria-expanded') return this.expVal !== null ? this.expVal : (this.expanded ? '' : null);
     const v = this.attrs.get(k);
     return v === undefined ? null : v;
   }
@@ -97,8 +99,8 @@ const gWin: any = { addEventListener: (_t: string, _f: unknown) => { /* 忽略 *
 const req = createRequire(join(tmp, 'run.cjs'));
 const sess: any = req(locate(tmp, 'sessions.js'));
 
-function group(pre: string | null, withSvg = true): FakeEl {
-  const g = new FakeEl('ws', null, true, withSvg);
+function group(pre: string | null, withSvg = true, expVal: string | null = null): FakeEl {
+  const g = new FakeEl('ws', null, true, withSvg, expVal);
   if (pre) g.setAttribute('data-dp-act', pre);
   return g;
 }
@@ -272,6 +274,40 @@ test('真相红压绿点黄·402 同理', () => {
   registry = [g, r];
   sess.markSessions([g as any], [st('k17', 'calm', [top1('f12', '402', 'Task Xi', false)])]);
   assert.equal(actOf(r, 'data-dp-sess'), 'red');
+});
+
+test('#57 展开组零归因行+磁盘平静 ⇒ 旧蓝清除（红回路转正：ilife lingering）', () => {
+  // 第 1 轮：展开 + 蓝行 ⇒ 组蓝，缓存='exec'。
+  const gIlife = group(null, true, 'true');
+  const rLive = row('Task Live', 'ongoing');
+  registry = [gIlife, rLive];
+  sess.markSessions([gIlife as any], [st('m57a', 'exec', [])]);
+  assert.equal(actOf(gIlife, 'data-dp-act'), 'exec', '前置：展开+蓝行 ⇒ 组蓝');
+  // 第 2 轮：任务结束（行无色）且行落在别组头之后 ⇒ ilife 零归因行。
+  const gDeck = group(null, true, 'true');
+  const rDone = row('Task Live', null);
+  registry = [gIlife, gDeck, rDone];
+  sess.markSessions([gIlife as any, gDeck as any], [st('m57a', 'calm', []), st('deck57a', 'calm', [])]);
+  assert.equal(actOf(rDone, 'data-dp-sess'), null, '前置：结束行无色');
+  assert.equal(actOf(gIlife, 'data-dp-act'), null, '展开组零归因行+磁盘平静 ⇒ 不得恢复收起缓存旧蓝');
+});
+
+test('#57 tiebreaker：展开组零归因行+磁盘仍exec ⇒ 保留 paint 初稿（防展开闪灭）', () => {
+  const g = group('exec', true, 'true');
+  registry = [g];
+  sess.markSessions([g as any], [st('m57b', 'exec', [])]);
+  assert.equal(actOf(g, 'data-dp-act'), 'exec', '磁盘仍报 exec ⇒ 留初稿，不清除');
+});
+
+test('#57 收起显式 false+无行 ⇒ 保持缓存蓝（B 方案映射锁定）', () => {
+  const g = group(null, true, 'false');
+  const r = row('Task Live', 'ongoing');
+  registry = [g, r];
+  sess.markSessions([g as any], [st('m57c', 'exec', [])]);
+  assert.equal(actOf(g, 'data-dp-act'), 'exec', '前置：组蓝');
+  registry = [g];
+  sess.markSessions([g as any], [st('m57c', 'calm', [])]);
+  assert.equal(actOf(g, 'data-dp-act'), 'exec', '显式收起保持缓存蓝');
 });
 
 test('绿点兜底黄保持：原生 done + 窗内解码 kind=completed ⇒ 行黄（无异常真相时绿点必黄不被削弱）', () => {
