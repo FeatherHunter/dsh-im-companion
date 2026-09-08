@@ -97,9 +97,10 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   })
   /* ＋ 进工具栏按钮组最左：新增、船、刷新（☆ 已搬右上角）。 */
   const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '12px' } }, plusBtn, radarBtn, refreshBtn))
-  /* #62 创建即选家：表单自带工作区选择器，创建编排原子落家（addLocal＋落家＋记名）。 */
+  /* #62 创建即选家：表单自带工作区选择器，创建编排原子落家（addLocal＋落家＋记名）。
+   * 建完即收由表单按编排返回值决定（成功关、失败留单保现场）。 */
   const compose = makeComposeBar(
-    (name, ws) => void actions.create(name, ws),
+    (name, ws) => actions.create(name, ws),
     { pickWorkspace: () => openDirPicker(rpc, '', ctxNativePicker(ctx), WORKSPACE_PICKER_COPY).promise },
   )
   const body = h('div', { className: 'af-body' })

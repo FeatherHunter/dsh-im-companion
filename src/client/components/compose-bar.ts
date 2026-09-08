@@ -25,7 +25,7 @@ function mark(el: HTMLElement, cls: string, on: boolean): void {
   else el.classList.remove(cls)
 }
 
-export function makeComposeBar(onCreate: (name: string, workspace: string) => void, opts: ComposeBarOpts): ComposeBar {
+export function makeComposeBar(onCreate: (name: string, workspace: string) => unknown, opts: ComposeBarOpts): ComposeBar {
   const input = h('input', { type: 'text', placeholder: '输入名称，如「小帅」', 'aria-label': '新的 Agent 名称' })
   let home = NO_HOME
   const homeLabel = h('span', { className: 'af-compose-home', title: HOME_PLACEHOLDER }, HOME_PLACEHOLDER)
@@ -41,7 +41,10 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => vo
       input.value = ''
       home = NO_HOME
       paint()
-      onCreate(v, ws)
+      /* 建完即收（成功才关：回 false 则留表单保现场，输入已清、家已 reset，用户照红字重来）。 */
+      const r = onCreate(v, ws)
+      if (r instanceof Promise) void r.then((ok) => { if (ok !== false) setVisible(false) })
+      else if (r !== false) setVisible(false)
     },
   })
   const pick = makeButton({

@@ -441,14 +441,15 @@ test('#62 create：无工作区拒绝创建、有工作区原子落家', async (
     render: () => { rendered++; },
   });
   const acts = actsMod.createPanelActions(deps);
-  await acts.create('小帅', '');
+  assert.equal(await acts.create('小帅', ''), false, '无家应回失败（表单不收）');
   assert.ok(!calls.some((c) => c.startsWith('addLocal')), '无家不得创建空壳：' + calls.join(','));
   assert.equal(rendered, 0);
   await acts.create('小帅', 'D:\\agents\\xiaoshuai');
+  assert.equal(await acts.create('小美', 'D:\\agents\\xiaomei'), true, '成功应回真（表单即收）');
   assert.ok(calls.includes('addLocal:小帅'), calls.join(','));
   assert.ok(calls.includes('setLocalWorkspace:小帅|D:\\agents\\xiaoshuai'), calls.join(','));
   assert.ok(calls.includes('rename:D:\\agents\\xiaoshuai|小帅'), calls.join(','));
-  assert.equal(rendered, 1);
+  assert.equal(rendered, 2);
 });
 
 test('#62 create：同名已存在不覆写其家', async () => {
@@ -573,11 +574,31 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   assert.ok(!byText('创建').disabled, '选家后创建应可用');
   byText('创建').dispatchEvent({ type: 'click' });
   assert.deepEqual(seen, [['小帅', 'D:\\agents\\xiaoshuai']]);
+  assert.equal((bar.el as any).style.display, 'none', '建完即收（同步成功）');
   byText('取消').dispatchEvent({ type: 'click' });
   bar.setVisible(true);
   assert.equal(byText('创建').disabled, true, '取消后重开不得复用旧家');
   assert.ok(byText('选择工作区'), '取消后重开选家按钮应复位');
   assert.ok(((bar.el as any).textContent ?? '').includes('必须选择工作区，否则无法创建'), '取消后重开应回醒目占位');
+});
+
+test('#62 compose-bar：编排失败留单保现场', async () => {
+  let home: string | null = null;
+  const bar = composeMod.makeComposeBar(async () => false, {
+    pickWorkspace: async () => home,
+  });
+  (bar.input as any).focus = () => undefined;
+  bar.setVisible(true);
+  bar.input.value = '小帅';
+  bar.input.dispatchEvent({ type: 'input' });
+  home = 'D:\\agents\\xiaoshuai';
+  (bar.el as any).querySelectorAll('.af-btn').find((b: any) => (b.textContent ?? '').includes('选择工作区'))
+    .dispatchEvent({ type: 'click' });
+  await new Promise((r) => setTimeout(r, 20));
+  (bar.el as any).querySelectorAll('.af-btn').find((b: any) => (b.textContent ?? '').includes('创建'))
+    .dispatchEvent({ type: 'click' });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal((bar.el as any).style.display, 'flex', '编排失败不得收单');
 });
 
 test('#62 agent-row：无家接入置灰、有家可用', () => {

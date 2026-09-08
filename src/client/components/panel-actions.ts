@@ -25,7 +25,7 @@ export interface PanelActionsDeps {
 
 export interface PanelActions {
   /** 创建即落家（#62：无工作区不允许创建出可接入助理）。 */
-  create(name: string, workspace: string): Promise<void>
+  create(name: string, workspace: string): Promise<boolean>
   rename(view: AgentView, next: string): Promise<void>
   connect(view: AgentView, anchor: HTMLElement): void
   pickWorkspace(view: AgentView): Promise<void>
@@ -40,25 +40,26 @@ export function canConnect(view: Pick<AgentView, 'workspace'>): boolean {
 }
 
 export function createPanelActions(deps: PanelActionsDeps): PanelActions {
-  async function create(name: string, workspace: string): Promise<void> {
+  /** 创建即落家（#62：无工作区不允许创建出可接入助理）。成败如实返回，供表单决定收不收。 */
+  async function create(name: string, workspace: string): Promise<boolean> {
     const clean = name.trim()
     const home = workspace.trim()
     if (!clean) {
       toast('请输入 Agent 名称')
-      return
+      return false
     }
     if (!home) {
       toast('创建「' + clean + '」需要先选择工作区')
-      return
+      return false
     }
     if (deps.getMeta().locals.some((l) => l.name === clean)) {
       toast('「' + clean + '」已存在')
-      return
+      return false
     }
     const store = deps.getStore()
     if (!store) {
       toast('连接服务不可用，无法创建')
-      return
+      return false
     }
     try {
       await store.addLocal(clean)
@@ -67,8 +68,10 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
       await deps.loadMeta()
       toast('已创建「' + clean + '」', 'check')
       deps.render()
+      return true
     } catch (e) {
       toast('创建失败：' + String((e as Error)?.message ?? e))
+      return false
     }
   }
 
