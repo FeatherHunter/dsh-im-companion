@@ -7,6 +7,7 @@ import type { RpcCall } from '../data/fleet-api'
 import type { AgentMetaDoc, MetaStore } from '../data/meta'
 import type { AgentView } from '../data/model'
 import { openConnectFlow } from './connect-flow'
+import { firstViewCopy } from './first-view-copy'
 import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir-picker'
 
 export interface PanelActionsDeps {
@@ -23,7 +24,8 @@ export interface PanelActionsDeps {
 }
 
 export interface PanelActions {
-  create(name: string): Promise<void>
+  /** 创建即落家（#62：无工作区不允许创建出可接入助理）。 */
+  create(name: string, workspace: string): Promise<void>
   rename(view: AgentView, next: string): Promise<void>
   connect(view: AgentView, anchor: HTMLElement): void
   pickWorkspace(view: AgentView): Promise<void>
@@ -32,12 +34,38 @@ export interface PanelActions {
   removeLocal(view: AgentView): Promise<void>
 }
 
+/** 有家才可接入（#62 源头预防：无家连扫码菜单都不进，绝不产生扫码后取消的孤儿）。 */
+export function canConnect(view: Pick<AgentView, 'workspace'>): boolean {
+  return !!view.workspace
+}
+
 export function createPanelActions(deps: PanelActionsDeps): PanelActions {
-  async function create(name: string): Promise<void> {
+  async function create(name: string, workspace: string): Promise<void> {
+    const clean = name.trim()
+    const home = workspace.trim()
+    if (!clean) {
+      toast('请输入 Agent 名称')
+      return
+    }
+    if (!home) {
+      toast('创建「' + clean + '」需要先选择工作区')
+      return
+    }
+    if (deps.getMeta().locals.some((l) => l.name === clean)) {
+      toast('「' + clean + '」已存在')
+      return
+    }
+    const store = deps.getStore()
+    if (!store) {
+      toast('连接服务不可用，无法创建')
+      return
+    }
     try {
-      await deps.getStore()?.addLocal(name)
+      await store.addLocal(clean)
+      await store.setLocalWorkspace(clean, home)
+      await store.rename(home, clean)
       await deps.loadMeta()
-      toast('已创建「' + name + '」', 'check')
+      toast('已创建「' + clean + '」', 'check')
       deps.render()
     } catch (e) {
       toast('创建失败：' + String((e as Error)?.message ?? e))
@@ -61,6 +89,12 @@ export function createPanelActions(deps: PanelActionsDeps): PanelActions {
   }
 
   function connect(view: AgentView, anchor: HTMLElement): void {
+    if (!canConnect(view)) {
+      /* 存量无家空壳：阻断扫码，直接引导去唯一真能落家的选家动作（该动作无 Bot 时只落家）。 */
+      toast(firstViewCopy().needHomeForConnect(view.name))
+      void pickWorkspace(view)
+      return
+    }
     openConnectFlow(deps.ctx, deps.rpc, anchor, { name: view.name, workspace: view.workspace }, () => void deps.refresh())
   }
 

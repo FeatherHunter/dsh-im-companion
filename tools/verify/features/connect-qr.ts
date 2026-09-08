@@ -23,6 +23,8 @@ const ENTRIES = [
   join(REPO, 'src', 'client', 'ui', 'dir-picker.ts'),
   join(REPO, 'src', 'client', 'components', 'connect-flow.ts'),
   join(REPO, 'src', 'client', 'components', 'panel-actions.ts'),
+  join(REPO, 'src', 'client', 'components', 'compose-bar.ts'),
+  join(REPO, 'src', 'client', 'components', 'agent-row.ts'),
   join(REPO, 'src', 'client', 'data', 'model.ts'),
   join(REPO, 'src', 'host', 'meta-store.ts'),
 ];
@@ -78,6 +80,8 @@ const clientMeta: any = req(locate(tmp, 'meta.js'));
 const modelMod: any = req(locate(tmp, 'model.js'));
 const hostStore: any = req(locate(tmp, 'meta-store.js'));
 const actsMod: any = req(locate(tmp, 'panel-actions.js'));
+const composeMod: any = req(locate(tmp, 'compose-bar.js'));
+const rowMod: any = req(locate(tmp, 'agent-row.js'));
 
 function texts(el: any, out: string[] = []): string[] {
   if (!el || typeof el !== 'object') return out;
@@ -158,11 +162,20 @@ test('#49 旧分叉移除：调用方统一到共享选择器', () => {
   const acts = readFileSync(join(REPO, 'src', 'client', 'components', 'panel-actions.ts'), 'utf8');
   for (const [name, src] of [['connect-flow', flow], ['panel-actions', acts]] as const) {
     assert.ok(!src.includes('workspace-picker'), name + ' 不得再引用旧分叉');
-    assert.ok(src.includes('openDirPicker'), name + ' 应走共享 openDirPicker');
+  }
+  /* #62 取代 #49 部分约定：connect-flow 不再走二次选家（创建即带家、扫码直绑）；
+   * 共享选择器改由创建表单（panel.ts 接线）与选家动作（panel-actions）使用，不开新分叉。 */
+  assert.ok(acts.includes('openDirPicker'), 'panel-actions 选家应走共享 openDirPicker');
+  assert.ok(!flow.includes('openDirPicker'), '#62 后 connect-flow 不得再弹二次选家窗');
+  assert.ok(!panelComposeSrc().includes('workspace-picker'), '创建表单不得复活旧分叉');
+  function panelComposeSrc(): string {
+    return readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8')
+      + readFileSync(join(REPO, 'src', 'client', 'components', 'compose-bar.ts'), 'utf8');
   }
   assert.ok(flow.includes('resolveNewBotId'), '应使用唯一新机器人识别');
   assert.ok(flow.includes('commitBinding'), '落定应走可测编排');
-  assert.ok(flow.includes('选家失败'), '选家尾链须有兜底报错（禁静默死）');
+  /* #62：二次选家分叉已删，尾链兜底改为直绑失败如实报错（禁静默死约定不变）。 */
+  assert.ok(flow.includes('绑定工作区失败'), '直绑尾链须有兜底报错（禁静默死）');
   assert.ok(flow.includes('workspace-bot-not-found'), '登记竞态应重试');
   assert.ok(flow.includes('removeLocal'), '成功后应清 local 空壳（名字跟人走）');
   assert.ok(flow.includes('createMetaStore'), '改名/清壳应走 MetaStore');
@@ -406,6 +419,189 @@ test('#49 有家空壳展示家路径', () => {
   assert.ok(row, '空壳行应在');
   assert.equal(row.workspaceLine, '工作区·D:\\agents\\xiaoshuai');
   assert.equal(row.sub, '尚未接入渠道');
+});
+
+// ---- #62：创建时强制选 HOME（源头预防 A；B 移出范围）----
+test('#62 canConnect：无家不可接入、有家可接入', () => {
+  assert.equal(actsMod.canConnect({ workspace: '' }), false);
+  assert.equal(actsMod.canConnect({ workspace: 'D:\\agents\\xiaoshuai' }), true);
+});
+
+test('#62 create：无工作区拒绝创建、有工作区原子落家', async () => {
+  const calls: string[] = [];
+  const fakeStore = {
+    addLocal: async (n: string) => { calls.push('addLocal:' + n); },
+    setLocalWorkspace: async (n: string, ws: string) => { calls.push('setLocalWorkspace:' + n + '|' + ws); },
+    rename: async (k: string, n: string) => { calls.push('rename:' + k + '|' + n); },
+  };
+  let rendered = 0;
+  const deps = issue62Deps({
+    rpc: null,
+    getStore: () => fakeStore,
+    render: () => { rendered++; },
+  });
+  const acts = actsMod.createPanelActions(deps);
+  await acts.create('小帅', '');
+  assert.ok(!calls.some((c) => c.startsWith('addLocal')), '无家不得创建空壳：' + calls.join(','));
+  assert.equal(rendered, 0);
+  await acts.create('小帅', 'D:\\agents\\xiaoshuai');
+  assert.ok(calls.includes('addLocal:小帅'), calls.join(','));
+  assert.ok(calls.includes('setLocalWorkspace:小帅|D:\\agents\\xiaoshuai'), calls.join(','));
+  assert.ok(calls.includes('rename:D:\\agents\\xiaoshuai|小帅'), calls.join(','));
+  assert.equal(rendered, 1);
+});
+
+test('#62 create：同名已存在不覆写其家', async () => {
+  const calls: string[] = [];
+  const fakeStore = {
+    addLocal: async (n: string) => { calls.push('addLocal:' + n); },
+    setLocalWorkspace: async (n: string, ws: string) => { calls.push('setLocalWorkspace:' + n + '|' + ws); },
+    rename: async (k: string, n: string) => { calls.push('rename:' + k + '|' + n); },
+  };
+  const deps = issue62Deps({
+    rpc: null,
+    getStore: () => fakeStore,
+    getMeta: () => ({ names: {}, avatars: {}, locals: [{ name: '小帅', workspace: 'D:\\old' }], presets: {}, ctxEnhance: {} }),
+  });
+  await actsMod.createPanelActions(deps).create('小帅', 'D:\\new');
+  assert.equal(calls.length, 0, '同名复建不得动旧家：' + calls.join(','));
+});
+
+test('#62 create：存储未就绪不空报创建', async () => {
+  (doc as any).body.replaceChildren();
+  let rendered = 0;
+  const deps = issue62Deps({ rpc: null, getStore: () => null, render: () => { rendered++; } });
+  await actsMod.createPanelActions(deps).create('小帅', 'D:\\agents\\xiaoshuai');
+  assert.equal(rendered, 0, '存储未就绪不得渲染成功态');
+  assert.ok(texts((doc as any).body).join('|').includes('连接服务不可用'), '应如实报错而非空报创建');
+  (doc as any).body.replaceChildren();
+});
+
+function issue62Rpc() {
+  return async (_ch: string, ep: string) => {
+    if (ep === 'ping') return { ok: true, value: {} };
+    if (ep === 'fs.defaultRoot') return { ok: true, value: { path: 'D:\\agents' } };
+    if (ep === 'fs.list') return { ok: true, value: { path: 'D:\\agents', parent: 'D:\\', entries: [] } };
+    if (ep === 'meta.local.workspace' || ep === 'meta.rename') return { ok: true, value: {} };
+    return { ok: false, error: { code: 'x', message: 'x' } };
+  };
+}
+
+function issue62Anchor(): any {
+  const a = (doc as any).createElement('button');
+  a.getBoundingClientRect = () => ({ left: 0, right: 0, top: 0, bottom: 0 });
+  return a;
+}
+
+/** #62 deps 样板（各测按需覆盖 getStore/getMeta/render；默认走 RpcMetaStore 假桥）。 */
+function issue62Deps(over: Record<string, any> = {}): any {
+  const fakeRpc = issue62Rpc();
+  return {
+    ctx: {}, rpc: fakeRpc,
+    getStore: () => new clientMeta.RpcMetaStore('/im-companion', fakeRpc as any),
+    getMeta: () => ({ names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }),
+    refresh: async () => undefined,
+    loadMeta: async () => undefined,
+    render: () => undefined,
+    ...over,
+  };
+}
+
+test('#62 connect：无家阻断扫码并引导选家', async () => {
+  (doc as any).body.replaceChildren();
+  const deps = issue62Deps();
+  actsMod.createPanelActions(deps).connect({ name: '小帅', workspace: '', bots: [], isLocal: true }, issue62Anchor());
+  await new Promise((r) => setTimeout(r, 40));
+  const titles = (doc as any).body.querySelectorAll('.af-modal-title').map((e: any) => e.textContent);
+  assert.ok(titles.some((t: string) => t.includes('选择工作区')), '无家应直接引导选家：' + titles.join(','));
+  assert.equal((doc as any).body.querySelectorAll('.af-menu').length, 0, '无家不得弹出渠道扫码菜单');
+  (doc as any).body.replaceChildren();
+});
+
+test('#62 connect：有家仍走扫码菜单（回归）', async () => {
+  (doc as any).body.replaceChildren();
+  (doc as any).documentElement = (doc as any).documentElement ?? { clientWidth: 1280 };
+  const deps = issue62Deps();
+  actsMod.createPanelActions(deps).connect({ name: '小帅', workspace: 'D:\\agents\\xiaoshuai', bots: [], isLocal: true }, issue62Anchor());
+  await new Promise((r) => setTimeout(r, 20));
+  const all = texts((doc as any).body).join('|');
+  assert.ok(all.includes('接入'), '有家应保留扫码入口：' + all.slice(0, 200));
+  (doc as any).body.replaceChildren();
+});
+
+test('#62 compose-bar：选家前不提交、选家后原子提交', async () => {
+  const seen: [string, string][] = [];
+  let picked: string | null = null;
+  const bar = composeMod.makeComposeBar((name: string, ws: string) => { seen.push([name, ws]); }, {
+    pickWorkspace: async () => picked,
+  });
+  (bar.input as any).focus = () => undefined;
+  bar.setVisible(true);
+  bar.input.value = '小帅';
+  bar.input.dispatchEvent({ type: 'input' });
+  const byText = (t: string) => (bar.el as any).querySelectorAll('.af-btn').find((b: any) => (b.textContent ?? '').includes(t));
+  assert.ok(byText('选择工作区'), '创建表单须内嵌选家按钮');
+  assert.equal(byText('创建').disabled, true, '未选家时创建应置灰');
+  byText('创建').dispatchEvent({ type: 'click' });
+  assert.equal(seen.length, 0, '未选家不得提交');
+  picked = 'D:\\agents\\xiaoshuai';
+  byText('选择工作区').dispatchEvent({ type: 'click' });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.ok(((bar.el as any).textContent ?? '').includes('xiaoshuai'), '应回显所选之家');
+  assert.ok(!byText('创建').disabled, '选家后创建应可用');
+  byText('创建').dispatchEvent({ type: 'click' });
+  assert.deepEqual(seen, [['小帅', 'D:\\agents\\xiaoshuai']]);
+  byText('取消').dispatchEvent({ type: 'click' });
+  bar.setVisible(true);
+  assert.equal(byText('创建').disabled, true, '取消后重开不得复用旧家');
+  assert.ok(((bar.el as any).textContent ?? '').includes('尚未选择工作区'), '取消后重开应回占位');
+});
+
+test('#62 agent-row：无家接入置灰、有家可用', () => {
+  const noop = () => undefined;
+  const cb = { rename: noop, connect: noop, avatarMenu: noop, pickWorkspace: noop, removeBot: noop, deleteLocal: noop };
+  const base = {
+    key: 'local:小帅', base: '', name: '小帅', initial: '小', avatar: null, workspace: '',
+    channels: [], status: 'offline', stateLabel: '未接入', isLocal: true,
+    sub: '尚未接入渠道', workspaceLine: '未绑定工作区', healthDetail: '', bots: [],
+  };
+  const rowNo = rowMod.makeAgentRow(base, cb, 'agent');
+  const joinNo = (rowNo as any).querySelectorAll('.af-btn').find((b: any) => (b.textContent ?? '').includes('接入'));
+  assert.ok(joinNo, '应有接入按钮');
+  assert.equal(joinNo.disabled, true, '无家接入应置灰');
+  assert.ok(((joinNo as any).getAttribute('title') ?? '').includes('选择工作区'), '置灰须说明去选家');
+  const rowYes = rowMod.makeAgentRow({ ...base, workspace: 'D:\\agents\\xiaoshuai' }, cb, 'agent');
+  const joinYes = (rowYes as any).querySelectorAll('.af-btn').find((b: any) => (b.textContent ?? '').includes('接入'));
+  assert.ok(joinYes, '应有接入按钮');
+  assert.ok(!(joinYes as any).disabled, '有家接入应可用');
+});
+
+test('#62 connect-flow：扫码成功后直绑、不再弹二次选家', () => {
+  const src = readFileSync(join(REPO, 'src', 'client', 'components', 'connect-flow.ts'), 'utf8');
+  assert.ok(!src.includes('openDirPicker'), '不得再弹可取消的二次选家窗');
+  assert.ok(src.includes('target.workspace'), '无家应有守卫');
+});
+
+test('#62 commitBinding：空工作区提示须指向真能补绑的卡', async () => {
+  const toasts: string[] = [];
+  let done = 0;
+  const ok = await flowMod.commitBinding({
+    rpc: async () => ({ ok: true, value: {} }),
+    channel: 'wechat',
+    toast: (m: string, k?: string) => { toasts.push((k ?? '') + ':' + m); },
+    onDone: () => { done++; },
+    botId: 'new1', ws: null, prevWorkspace: '', agentName: '小帅',
+  });
+  assert.equal(ok, false);
+  assert.ok(toasts.join('|').includes('该机器人所在卡片'), '须指明去有 Bot 的卡补绑：' + toasts.join('|'));
+  assert.equal(done, 1);
+});
+
+test('#62 创建接线：面板创建表单必带选家', () => {
+  const panel = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
+  const compose = readFileSync(join(REPO, 'src', 'client', 'components', 'compose-bar.ts'), 'utf8');
+  assert.ok(compose.includes('选择工作区'), '创建表单须内嵌选家');
+  assert.ok(panel.includes('openDirPicker'), '面板须为创建表单接选家器');
 });
 
 rmSync(tmp, { recursive: true, force: true });

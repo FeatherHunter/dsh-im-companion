@@ -93,7 +93,9 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
     kind: 'tinted',
     size: 'sm',
     label: copy.join,
-    title: copy.joinTitle,
+    /* #62 无家阻断：置灰＋悬停指路选家（真阻断在动作层 connect 守卫，此处是可见防线）。 */
+    title: view.workspace ? copy.joinTitle : copy.joinNeedHome,
+    disabled: !view.workspace,
     onClick: (e: Event) => cb.connect(view, e.currentTarget as HTMLElement),
   })
   const actions = h('div', { className: 'af-actions' }, status, connectBtn)

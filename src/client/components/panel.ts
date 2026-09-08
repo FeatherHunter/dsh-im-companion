@@ -16,6 +16,7 @@ import { installFirstViewStyles } from './first-view-styles'
 import { createPanelActions } from './panel-actions'
 import { createPanelBody } from './panel-body'
 import { createPanelData } from './panel-data'
+import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir-picker'
 
 /* #56：构建注入的插件版本（tsdown define __PLUGIN_VERSION__，package.json 唯一真相）。 */
 declare const __PLUGIN_VERSION__: string | undefined
@@ -96,7 +97,11 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   })
   /* ＋ 进工具栏按钮组最左：新增、船、刷新（☆ 已搬右上角）。 */
   const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '12px' } }, plusBtn, radarBtn, refreshBtn))
-  const compose = makeComposeBar((name) => void actions.create(name))
+  /* #62 创建即选家：表单自带工作区选择器，创建编排原子落家（addLocal＋落家＋记名）。 */
+  const compose = makeComposeBar(
+    (name, ws) => void actions.create(name, ws),
+    { pickWorkspace: () => openDirPicker(rpc, '', ctxNativePicker(ctx), WORKSPACE_PICKER_COPY).promise },
+  )
   const body = h('div', { className: 'af-body' })
   /* P2 底部关联卡：名 + 一句话 + 右箭头，新开页（常驻；点击不记数）。 */
   const promo = h('div', { className: 'af-promo' },

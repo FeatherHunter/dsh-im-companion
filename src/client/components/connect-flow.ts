@@ -10,7 +10,7 @@ import { toast } from '../ui/toast'
 import { CHANNEL_ORDER, channelLabel } from '../data/config'
 import { fetchChannelStatus, fmtCountdown, normalizeProvisionTiming, resolveNewBotId, type ProvisionState, type RpcCall } from '../data/fleet-api'
 import { createMetaStore } from '../data/meta'
-import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir-picker'
+import { firstViewCopy } from './first-view-copy'
 
 export interface ConnectTarget {
   name: string
@@ -39,10 +39,12 @@ const NOT_FOUND_RETRY = { attempts: 5, gapMs: 2000 }
 const sleep = (ms: number): Promise<void> => new Promise<void>((r) => setTimeout(r, ms))
 
 /** 选家落定（#49：可单测的纯编排——set 信封校验＋名字跟人走＋如实 toast；弹窗/DOM 留在外层）。
- * 服务端登记竞态（上游 ensure 晚于状态可见）：`workspace-bot-not-found` 按间隔重试，其余失败直报。 */
+ * 服务端登记竞态（上游 ensure 晚于状态可见）：`workspace-bot-not-found` 按间隔重试，其余失败直报。
+ * #62：空工作区分支仅作纵深防御（正常流程无家连扫码都进不来）；提示须指向真能补绑的卡，
+ * 绝不复活“扫码后再选家、可取消”的旧分叉。 */
 export async function commitBinding(o: BindingCommit): Promise<boolean> {
   if (!o.ws) {
-    o.toast('机器人已就绪，请用 ⋯ 菜单「选择工作区」完成绑定')
+    o.toast('机器人已就绪但未绑定工作区：请在该机器人所在卡片用 ⋯ 菜单「选择工作区」完成绑定')
     o.onDone()
     return false
   }
@@ -87,6 +89,13 @@ export async function commitBinding(o: BindingCommit): Promise<boolean> {
 }
 
 export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLElement, target: ConnectTarget, onDone: () => void): void {
+  void ctx
+  /* #62 纵深守卫：无家不进扫码（主防线在行按钮置灰＋动作层阻断；此处兜住直调）。 */
+  if (!target.workspace) {
+    toast(firstViewCopy().needHomeForConnect(target.name))
+    try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
+    return
+  }
   if (!rpc) {
     toast('host 桥不可用，无法发起接入')
     return
@@ -199,23 +208,19 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       finished = true
       stopTimers()
       attemptId = undefined
+      /* #62：创建即带家，扫码成功直绑；旧“扫码后再弹可取消选家窗”分叉已删（无家连扫码都进不来）。 */
+      if (!target.workspace) {
+        modal.close()
+        toast(firstViewCopy().needHomeForConnect(target.name))
+        try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
+        return
+      }
       toast(label + ' 机器人已就绪', 'check')
       try {
-        if (target.workspace) {
-          modal.close()
-          if (await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })) return
-        }
+        modal.close()
+        await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })
       } catch (e) {
         toast('绑定工作区失败：' + String((e as Error)?.message ?? e))
-      }
-      try {
-        modal.close()
-        const picker = openDirPicker(rpc, '', ctxNativePicker(ctx), WORKSPACE_PICKER_COPY)
-        const ws = await picker.promise
-        await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws, prevWorkspace: target.workspace, agentName: target.name })
-      } catch (e) {
-        /* 兜底如实报错（#49：此前此段无 try，意外抛错即静默死——点了确定却零反馈零落定）。 */
-        toast('选家失败：' + String((e as Error)?.message ?? e))
         try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
       }
     }

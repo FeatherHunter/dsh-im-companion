@@ -33,6 +33,10 @@ export interface FirstViewCopy {
   plus: string
   join: string
   joinTitle: string
+  /** 无家时接入按钮置灰悬停（#62：先选家再接入）。 */
+  joinNeedHome: string
+  /** 无家阻断扫码的引导语（#62：指向真能落家的选家动作）。 */
+  needHomeForConnect: (name: string) => string
   detail: string
   detailTitle: string
   moreActions: (name: string) => string
@@ -76,6 +80,8 @@ const ZH: FirstViewCopy = {
   plus: '新建助理',
   join: '接入',
   joinTitle: '接入新渠道',
+  joinNeedHome: '请先选择工作区后再接入',
+  needHomeForConnect: (name) => '请先为「' + name + '」选择工作区，再接入渠道',
   detail: '详情',
   detailTitle: '打开助理详情抽屉',
   moreActions: (name) => '更多操作 ' + name + '：重命名 / 更换工作区 / 移除渠道机器人',
@@ -116,6 +122,8 @@ const EN: FirstViewCopy = {
   plus: 'New assistant',
   join: 'Connect',
   joinTitle: 'Connect a new channel',
+  joinNeedHome: 'Choose a workspace before connecting',
+  needHomeForConnect: (name) => 'Choose a workspace for "' + name + '" before connecting a channel.',
   detail: 'Details',
   detailTitle: 'Open assistant details',
   moreActions: (name) => 'More actions ' + name + ': Rename / Change workspace / Remove channel bots',
