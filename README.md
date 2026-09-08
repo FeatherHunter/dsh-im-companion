@@ -20,7 +20,7 @@
 <br><img src="assets/工作区-有助理的工作区一目了然-深色.png" width="300" alt="左栏工作区：全部、有助理、无助理，在线绿灯">
 </td>
 <td align="center" valign="top" width="50%">
-<strong>👇 蓝：在执行，橙：需人工查看，红：异常情况。</strong>
+<strong>👇 额外增强DSH原生会话状态。</strong>
 <br><img src="assets/工作区增强-显示工作区红色状态-内部也有执行中的会话.png" width="300" alt="工作区红色竖条，组内有异常会话">
 </td>
 </tr>
@@ -141,7 +141,7 @@ dsh-im 掌管接入，dsh-im-companion 以助理和家的概念增强能力。
 <table>
 <tr>
 <td align="center" valign="top" width="50%">
-<strong>👇 蓝条代表有会话在执行。点开工作区，一眼知道是哪一个。</strong>
+<strong>👇 蓝条代表有会话在执行。</strong>
 <br><img src="assets/会话状态-工作区-执行中.png" width="330" alt="工作区蓝色竖条，组内有执行中会话">
 </td>
 <td align="center" valign="top" width="50%">

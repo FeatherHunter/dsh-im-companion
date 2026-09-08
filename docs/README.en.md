@@ -20,7 +20,7 @@ Your star means the world to me.
 <br><img src="../assets/工作区-有助理的工作区一目了然-深色.png" width="300" alt="Left workspace rail: all, with-assistant, without-assistant, online lights">
 </td>
 <td align="center" valign="top" width="50%">
-<strong>👇 Blue: running, orange: needs your review, red: error.</strong>
+<strong>👇 Enhances DSH's native session states.</strong>
 <br><img src="../assets/工作区增强-显示工作区红色状态-内部也有执行中的会话.png" width="300" alt="Red rail bar with a failing session inside">
 </td>
 </tr>
@@ -141,7 +141,7 @@ dsh-im owns connecting; dsh-im-companion adds capabilities through the concepts 
 <table>
 <tr>
 <td align="center" valign="top" width="50%">
-<strong>👇 A blue bar means a session is running. Open the workspace and you'll know which one.</strong>
+<strong>👇 A blue bar means a session is running.</strong>
 <br><img src="../assets/会话状态-工作区-执行中.png" width="330" alt="Blue rail bars with running sessions">
 </td>
 <td align="center" valign="top" width="50%">
