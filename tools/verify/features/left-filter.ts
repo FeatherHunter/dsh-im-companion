@@ -46,6 +46,7 @@ const req = createRequire(join(tmp, 'run.cjs'));
 const model: any = req('./features/left-filter/model.js');
 const view: any = req('./features/left-filter/view.js');
 const headerBtn: any = req('./features/left-filter/header-btn.js');
+const dom: any = req('./client/dom.js');
 const styles: any = req('./features/left-filter/styles.js');
 const registry: any = req('./features/index.js');
 
@@ -146,6 +147,7 @@ const stubNode: any = (tag: string) => {
       walk(n);
       if (sel === GROUP_SEL) return deep.filter((c: any) => c.tagName === 'DIV' && c.attrs?.role === 'treeitem' && ('aria-expanded' in (c.attrs ?? {})));
       if (sel === RESULT_SEL) return deep.filter((c: any) => c.tagName === 'BUTTON' && c.attrs?.role === 'treeitem');
+      if (sel === 'button') return deep.filter((c: any) => c.tagName === 'BUTTON');
       if (sel.startsWith('.')) { const cls = sel.slice(1); return deep.filter((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)); }
       return [];
     },
@@ -217,6 +219,7 @@ const nestedSectionWith = (text: string, sessions: string[], container: any) => 
 };
 const resultButton = (text: string, container: any) => {
   const b = stubNode('button');
+  b.setAttribute('role', 'treeitem');
   b._text = text;
   container.appendChild(b);
   resultRows.push(b);
@@ -414,6 +417,122 @@ test('view：无头栏时只留条带（fail-closed 头按钮）', () => {
   snapFn({ bots, failed: [], updatedAt: 8 });
   const strip = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-strip'));
   assert.ok(strip, '无头栏也有条带');
+  dispose();
+});
+
+test('view：容器混入头栏按钮即猜大→藏条带（首装全宽回归）', () => {
+  groupRows = []; resultRows = [];
+  const sidebar = stubNode('div');
+  const header = stubNode('div');
+  header.appendChild(stubNode('button'));
+  sidebar.appendChild(header);
+  const container = stubNode('div');
+  sidebar.appendChild(container);
+  const sec = sectionWith('小帅', container);
+  let snapFn: any = null;
+  const dispose = view.mountLeftFilter({ subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; } });
+  snapFn({ bots, failed: [], updatedAt: 11 });
+  const strip = allNodes.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('left-filter-strip') && c.parentNode);
+  assert.equal(strip, undefined, '猜大时宁可缺席：不插条带');
+  assert.notEqual((sec as any).style.display, 'none', '藏显也不执行，原样还原');
+  const hb0 = header.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('left-filter-hbtn'));
+  assert.ok(hb0, '头钮常在：条带藏，漏斗照挂');
+  assert.equal(header.children.length, 2, '只追加漏斗，原生不动');
+  dispose();
+});
+
+test('dom锚点：行内按钮不算混入，行外原生按钮才算（真机回归）', () => {
+  const mkRow = () => {
+    const r = stubNode('div');
+    r.setAttribute('role', 'treeitem');
+    r.setAttribute('aria-expanded', 'true');
+    return r;
+  };
+  const listA = stubNode('div');
+  const secA = stubNode('div');
+  const rowA = mkRow();
+  rowA.appendChild(stubNode('button'));
+  secA.appendChild(rowA);
+  listA.appendChild(secA);
+  assert.equal(dom.isPlausibleListContainer(listA), true, '行 hover 操作按钮不算头栏混入');
+  const listB = stubNode('div');
+  listB.appendChild(stubNode('button'));
+  const secB = stubNode('div');
+  secB.appendChild(mkRow());
+  listB.appendChild(secB);
+  assert.equal(dom.isPlausibleListContainer(listB), false, '行外原生按钮=猜大');
+  const listC = stubNode('div');
+  const strip = stubNode('div');
+  strip.setAttribute('class', 'left-filter-strip');
+  strip.appendChild(stubNode('button'));
+  listC.appendChild(strip);
+  const secC = stubNode('div');
+  secC.appendChild(mkRow());
+  listC.appendChild(secC);
+  assert.equal(dom.isPlausibleListContainer(listC), true, '自家条带按钮不算混入');
+  const ownStrip = stubNode('div');
+  ownStrip.setAttribute('class', 'left-filter-strip');
+  assert.equal(dom.isOwnNode(ownStrip), true, '条带是自家节点');
+  const plainHeader = stubNode('div');
+  plainHeader.appendChild(stubNode('button'));
+  assert.equal(dom.isOwnNode(plainHeader), false, '原生头栏不是自家节点');
+  const livedHeader = stubNode('div');
+  const livedHb = stubNode('button');
+  livedHb.setAttribute('class', 'left-filter-hbtn');
+  livedHeader.appendChild(livedHb);
+  livedHeader.appendChild(stubNode('button'));
+  assert.equal(dom.isOwnNode(livedHeader), false, '已挂漏斗的真头栏仍是头栏');
+});
+
+test('view：容器猜大时条带藏但漏斗照常挂（头钮常在）', () => {
+  groupRows = []; resultRows = [];
+  const root = stubNode('div');
+  const header = stubNode('div');
+  header.appendChild(stubNode('button'));
+  root.appendChild(header);
+  const mid = stubNode('div');
+  root.appendChild(mid);
+  const container = stubNode('div');
+  container.appendChild(stubNode('button'));
+  mid.appendChild(container);
+  const sec1 = sectionWith('小帅', container);
+  const sec2 = sectionWith('某个空组', container);
+  let snapFn: any = null;
+  const dispose = view.mountLeftFilter({ subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; } });
+  snapFn({ bots, failed: [], updatedAt: 12 });
+  const strip = container.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('left-filter-strip'));
+  assert.equal(strip, undefined, '猜大时条带缺席');
+  const hb = header.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('left-filter-hbtn'));
+  assert.ok(hb, '漏斗照常挂，不陪条带一起死');
+  assert.match(String(hb.attrs.title ?? ''), /全部 2/);
+  assert.notEqual((sec1 as any).style.display, 'none', '藏显也不执行');
+  assert.notEqual((sec2 as any).style.display, 'none', '藏显也不执行');
+  dispose();
+  assert.equal(header.children.length, 1, '卸载摘除漏斗');
+});
+
+test('view：条带挂出后不被认成头栏（自匹配回归）', () => {
+  groupRows = []; resultRows = [];
+  const root = stubNode('div');
+  const header = stubNode('div');
+  header.appendChild(stubNode('button'));
+  header.appendChild(stubNode('button'));
+  root.appendChild(header);
+  const mid = stubNode('div');
+  root.appendChild(mid);
+  const container = stubNode('div');
+  mid.appendChild(container);
+  sectionWith('小帅', container);
+  sectionWith('某个空组', container);
+  let snapFn: any = null;
+  const dispose = view.mountLeftFilter({ subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; } });
+  snapFn({ bots, failed: [], updatedAt: 13 });
+  const strip = container.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('left-filter-strip'));
+  assert.ok(strip, '条带先挂出');
+  segButton(strip, 'bound').fire('click');
+  assert.equal(header.children.length, 3, '漏斗仍在真头栏，不重复');
+  assert.equal(strip.querySelector('.left-filter-hbtn'), null, '漏斗没被挂进条带');
+  segButton(strip, 'all').fire('click');
   dispose();
 });
 

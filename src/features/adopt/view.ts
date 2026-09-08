@@ -1,5 +1,7 @@
-/** adopt 视图：左栏头按钮 → 中央驾驶舱（纯拖拽 + 巷子口歇脚）。自有 DOM（adopt-*）；无自有轮询；写走渠道 RPC + 写后立刷。 */
+/** adopt 视图：左栏头按钮 → 中央驾驶舱（纯拖拽 + 巷子口歇脚）。自有 DOM（adopt-*）；无自有轮询；写走渠道 RPC + 写后立刷。
+ * 头栏锚点走共享唯一真相源（client/dom，与 left-filter 同锚→成对出现，要错一起错）。 */
 import { h } from '../../client/dom'
+import { findWorkspaceHeaderFromNode } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import { installFeatureStyles } from '../../client/theme'
@@ -44,33 +46,9 @@ const alive = (g: number): boolean => {
   try { return (window as unknown as Record<string, number>).__adoptGen === g } catch { return true }
 }
 
+/** 头栏锚点：共享唯一真相源（与 left-filter 同函数→同输入同输出，配对永不散）。 */
 function resolveHeader(container: Element): Element | null {
-  try {
-    let path: Element | null = container
-    let node: Element | null = null
-    try { node = container.parentElement } catch { return null }
-    for (let depth = 0; depth < 5 && node; depth++) {
-      try {
-        const tag = String(node.tagName ?? '').toLowerCase()
-        if (tag === 'body' || tag === 'html') return null
-        const kids: Element[] = []
-        try { node.children && Array.prototype.forEach.call(node.children, (k: Element) => kids.push(k)) } catch { /* 上一层 */ }
-        for (const k of kids) {
-          if (k === path) continue
-          try {
-            if (typeof k.contains === 'function' && k.contains(container)) continue
-          } catch { /* 当平级继续 */ }
-          try {
-            const hasBtn = typeof k.querySelector === 'function' && !!k.querySelector('button')
-            const hasRow = typeof k.querySelector === 'function' && !!k.querySelector('[role="treeitem"]')
-            if (hasBtn && !hasRow) return k
-          } catch { /* 下一个 */ }
-        }
-      } catch { /* 上一层 */ }
-      try { path = node; node = node.parentElement } catch { return null }
-    }
-    return null
-  } catch { return null }
+  try { return findWorkspaceHeaderFromNode(container) } catch { return null }
 }
 
 function clearAfford(): void {

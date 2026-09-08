@@ -53,8 +53,10 @@ export async function fetchActivity(rpc: RpcCall | null): Promise<ActivityEntry[
       if (!e || typeof e.dir !== 'string' || !e.dir) continue;
       var t = typeof e.lastActive === 'number' && Number.isFinite(e.lastActive) && e.lastActive > 0 ? Math.floor(e.lastActive) : 0;
       var top: SessTop[] = [];
+      /* V2 全量口径（#55）：未看判定要求全量会话可见——host 快照本已全量，此处解析窗需同步放开。
+       * 旧 top-8 是 T4 性能窗残留；现唯一消费者为 unread paint（读快照侧已验证），500 与 entries 上限对齐。 */
       if (Array.isArray(e.top)) {
-        for (var ti = 0; ti < e.top.length && top.length < 8; ti++) {
+        for (var ti = 0; ti < e.top.length && top.length < 500; ti++) {
           var te = e.top[ti] as { name?: unknown; mtime?: unknown; open?: unknown; kind?: unknown; approval?: unknown; title?: unknown };
           if (!te || typeof te.name !== 'string' || !te.name) continue;
           var tm = typeof te.mtime === 'number' && Number.isFinite(te.mtime) && te.mtime > 0 ? Math.floor(te.mtime) : 0;

@@ -5,6 +5,7 @@ import path from 'node:path'
 import type { AgentMetaStore } from './meta-store.js'
 import { collectRoutes } from './routes.js'
 import { collectActivity } from './activity.js'
+import { UnreadStore, writePaintDiag } from './unread-store.js'
 
 export type RpcPayload = Record<string, unknown>
 
@@ -37,6 +38,8 @@ async function listDirectories(dir: string): Promise<{ name: string; path: strin
 
 
 export function createAgentFleetHandler(store: AgentMetaStore, opts: { dshHome?: string } = {}): (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null) => Promise<RpcResult> {
+  const storeHome = typeof opts.dshHome === 'string' && opts.dshHome ? opts.dshHome : path.join(homedir(), '.dsh')
+  const unread = new UnreadStore(path.join(storeHome, 'integrations', 'dsh-im-companion', 'unread.json'))
   return async (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null): Promise<RpcResult> => {
     if (signal?.aborted) return fail('cancelled', '已取消')
     const p = payload ?? {}
@@ -142,6 +145,38 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: { dshHome?:
           if (!dir || !path.isAbsolute(dir)) return fail('bad-request', '需要绝对路径')
           const entries = await listDirectories(dir)
           return ok({ path: dir, parent: path.dirname(dir) === dir ? null : path.dirname(dir), entries })
+        }
+        case 'im-companion.unread.get':
+          return ok(await unread.dump())
+        case 'im-companion.unread.observe': {
+          const sessionId = String(p.sessionId ?? '').trim()
+          const at = Number(p.at)
+          if (!sessionId || !Number.isFinite(at)) return fail('bad-request', 'sessionId/at 必填')
+          await unread.noteObserved(sessionId, at)
+          return ok({})
+        }
+        case 'im-companion.unread.viewed': {
+          const sessionId = String(p.sessionId ?? '').trim()
+          const at = Number(p.at)
+          if (!sessionId || !Number.isFinite(at)) return fail('bad-request', 'sessionId/at 必填')
+          await unread.noteViewed(sessionId, at)
+          return ok({})
+        }
+        case 'im-companion.unread.clear': {
+          const sessionId = String(p.sessionId ?? '').trim()
+          if (!sessionId) return fail('bad-request', 'sessionId 必填')
+          await unread.clearNotify(sessionId)
+          return ok({})
+        }
+        case 'im-companion.unread.prune': {
+          const keep = Array.isArray(p.keep) ? p.keep.map((k) => String(k ?? '')).filter((k) => !!k) : null
+          if (!keep) return fail('bad-request', 'keep 数组必填')
+          await unread.pruneUnread(new Set(keep))
+          return ok({})
+        }
+        case 'im-companion.unread.diag': {
+          await writePaintDiag(path.join(storeHome, 'integrations', 'dsh-im-companion'), p as Record<string, unknown>)
+          return ok({})
         }
         default:
           return fail('bad-request', '未知端点: ' + endpoint)

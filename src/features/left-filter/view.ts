@@ -3,6 +3,7 @@
  * 搜索态（button[role=treeitem] 结果行）按归属名二次映射，实现叠加 AND。无自有轮询。
  * 行悬停无原生 title（2026-09-04 用户裁定）：原生“助理：…”气泡与自画卡打架，永久退役，悬停只留自画卡。 */
 import { makeSegmented, type SegHandle } from '../../client/ui/segmented'
+import { isPlausibleListContainer } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
@@ -144,8 +145,29 @@ function paint(bots: BotSnap[], gen: number): void {
   let validContainer = okParent(firstRoots.length > 0 ? firstRoots[0].parentElement : null)
     ?? (results.length > 0 ? okParent(results[0].parentElement) : null)
   if (!validContainer && firstRoots.length > 0) validContainer = okParent(firstRoots[0])
-  const header = validContainer ? resolveHeader(validContainer) : null
+  /* 头锚优先：从行种子找头栏（行比容器稳定；容器首装时易取大，行才是真身）。
+   * 头钮挂载不依赖条带验货——头钮常在，条带可藏（2026-09-07 真机回归：验货失败早退曾连带摘掉漏斗）。 */
+  const seedForHeader = groups.length > 0 ? groups[0] : results.length > 0 ? results[0] : validContainer
+  const header = seedForHeader ? resolveHeader(seedForHeader) : null
   const sig = currentFilter + '|' + counts.all + '/' + counts.bound + '/' + counts.unbound + '|' + visKeys.join(',') + '|' + hiddenSections.length + '/' + hiddenResults.length + '|h:' + (header ? '1' : '0')
+  const mountHead = (): void => {
+    if (!header) return
+    try { ensureHeaderBtn(header, currentFilter, counts, () => { currentFilter = nextFilter(currentFilter); scheduleRepaint(latestBots, activeGen) }) } catch { /* 头按钮失败不影响条带 */ }
+  }
+  /* 第三步验货：容器混入行外原生按钮或超宽即猜大了→条带 fail-closed（摘条带、还原），但头钮照常挂。 */
+  try {
+    if (validContainer && !isPlausibleListContainer(validContainer)) {
+      if (sig === lastSig && validContainer === lastContainer) return
+      lastSig = sig
+      if (lastContainer && lastContainer !== validContainer) removeHint(lastContainer)
+      lastContainer = validContainer
+      restoreAll()
+      removeStrip()
+      removeHint(validContainer)
+      mountHead()
+      return
+    }
+  } catch { /* 验货失败按通过处理，下游照常 */ }
   if (sig === lastSig && validContainer === lastContainer) return
   lastSig = sig
   if (lastContainer && lastContainer !== validContainer) removeHint(lastContainer)
@@ -153,9 +175,7 @@ function paint(bots: BotSnap[], gen: number): void {
   restoreAll()
   if (!validContainer) { removeStrip(); return }
   ensureStrip(validContainer, gen)
-  if (header) {
-    try { ensureHeaderBtn(header, currentFilter, counts, () => { currentFilter = nextFilter(currentFilter); scheduleRepaint(latestBots, activeGen) }) } catch { /* 头按钮失败不影响条带 */ }
-  }
+  mountHead()
   const key = counts.all + '/' + counts.bound + '/' + counts.unbound
   try {
     if (stripSeg) for (const f of FILTERS) stripSeg.setLabel(f, segLabel(f, counts[f]))
