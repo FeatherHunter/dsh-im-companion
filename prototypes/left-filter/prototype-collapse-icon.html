@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE · 一键收起图标选型（抛弃式，看完即焚）</title>
+<style>
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Noto Sans SC","Segoe UI",Roboto,sans-serif; background:#f2f3f5; color:#1c1c1e; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:720px; margin:0 auto; padding:20px 16px 120px; }
+  .proto-tag { display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; color:#fff; background:#b42318; border-radius:6px; padding:3px 8px; margin-bottom:10px; }
+  h1 { font-size:20px; margin:0 0 6px; }
+  .lede { font-size:13.5px; color:#6e6e73; margin:0 0 14px; line-height:1.7; }
+  .ruler { display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:12px; color:#6e6e73; margin:0 0 10px; }
+  .ruler .rlab { font-weight:700; }
+  .ruler button { font:inherit; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid rgba(0,0,0,.14); background:#fff; cursor:pointer; }
+  .ruler button.on { border-color:#0a84ff; background:rgba(10,132,255,.12); color:#0a84ff; font-weight:700; }
+  /* —— 左栏沙盒（按用户截图 1:1：浅色、三段 + 收起同行） —— */
+  .dsb { border:1px solid rgba(0,0,0,.12); border-radius:12px; overflow:hidden; background:#fff; margin:0 0 10px; transition:width .15s; }
+  .dsb.dark { background:#1b1e26; color:#e8eaf0; border-color:rgba(255,255,255,.14); }
+  .dsb-in { padding:6px 10px 10px; }
+  .strip { display:flex; align-items:center; gap:6px; width:100%; max-width:360px; margin:0 auto 2px; padding:6px 0 8px; }
+  .seg { display:flex; flex:1 1 auto; width:auto; min-width:0; gap:2px; padding:2px; }
+  .seg button { flex:1 1 0; min-width:0; font:inherit; font-size:12px; font-weight:600; padding:5px 2px; border:none; background:transparent; border-radius:7px; color:#6e6e73; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+  .seg button.active { background:#3a3a3c; color:#fff; font-weight:700; }
+  .dsb.dark .seg button.active { background:rgba(255,255,255,.2); }
+  .seg .n { font-size:11px; font-weight:500; opacity:.6; margin-left:3px; }
+  /* V0 现状：带边框 pill */
+  .c-v0 { flex:none; display:inline-flex; align-items:center; gap:3px; height:26px; padding:0 8px; border-radius:7px; border:1px solid rgba(0,0,0,.22); background:transparent; color:#6e6e73; font-size:12px; font-weight:600; white-space:nowrap; cursor:pointer; }
+  /* A/B/C 图标 ghost：无边框 tertiary，悬停才显底 */
+  .c-ghost { flex:none; width:26px; height:26px; border-radius:7px; border:none; background:transparent; color:#98989d; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; padding:0; }
+  .c-ghost:hover { background:rgba(0,0,0,.06); color:#1c1c1e; }
+  .dsb.dark .c-ghost:hover { background:rgba(255,255,255,.1); color:#fff; }
+  .c-ghost svg { width:14px; height:14px; display:block; }
+  /* D 去边框 quiet 文本 */
+  .c-quiet { flex:none; display:inline-flex; align-items:center; gap:2px; height:24px; padding:0 6px; border:none; background:transparent; color:#98989d; font-size:11.5px; font-weight:500; white-space:nowrap; cursor:pointer; border-radius:6px; }
+  .c-quiet:hover { background:rgba(0,0,0,.06); color:#1c1c1e; }
+  .c-quiet svg { width:11px; height:11px; display:block; }
+  .group { border-radius:8px; }
+  .grow { height:34px; display:flex; align-items:center; gap:6px; padding:0 8px; font-size:14px; cursor:pointer; border-radius:8px; }
+  .grow:hover { background:rgba(0,0,0,.05); }
+  .caret { width:16px; color:#98989d; font-size:11px; flex:none; text-align:center; transition:transform .12s; }
+  .collapsed .caret { transform:rotate(-90deg); }
+  .srow { height:30px; display:flex; align-items:center; padding:0 8px 0 30px; font-size:13px; color:#6e6e73; border-radius:8px; }
+  .collapsed-sib { display:none; }
+  .state { font-size:12px; line-height:1.8; background:#f7f8fa; border-radius:10px; padding:10px 12px; margin:10px 0 0; }
+  .state b { color:#0a84ff; }
+  .navbar { position:fixed; left:0; right:0; bottom:0; background:rgba(255,255,255,.94); border-top:1px solid rgba(0,0,0,.1); padding:10px 12px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:8px; justify-content:center; flex-wrap:wrap; backdrop-filter:blur(8px); }
+  .navbar button { font:inherit; font-size:13px; padding:7px 14px; border-radius:999px; border:1px solid rgba(0,0,0,.14); background:#fff; cursor:pointer; }
+  .navbar button.on { border-color:#0a84ff; background:#0a84ff; color:#fff; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="proto-tag">PROTOTYPE · 抛弃式</span>
+  <h1>一键收起图标选型</h1>
+  <p class="lede">问题：收起键能否只用图标表达？底栏切换 8 个变体（V0 现状基线 + A/B/C/D/E/F/G），点图标真的会收起下面两个模拟分组，再点组标题可展开。窄栏 240px 验不溢出。</p>
+  <div class="ruler"><span class="rlab">栏宽</span><button data-w="240" class="on">240 窄栏</button><button data-w="320">320 常规</button><span class="rlab" style="margin-left:8px">主题</span><button data-t="light" class="on">浅色</button><button data-t="dark">深色</button></div>
+  <div class="dsb" id="dsb" style="width:240px"><div class="dsb-in">
+    <div class="strip">
+      <div class="seg"><button class="active">全部 <span class="n">7</span></button><button>有助理 <span class="n">2</span></button><button>无助理 <span class="n">5</span></button></div>
+      <span id="cslot"></span>
+    </div>
+    <div class="group" id="g1"><div class="grow" data-g="g1"><span class="caret">▾</span><span>小帅的工作区</span></div></div>
+    <div class="srow" data-s="g1">需求讨论</div><div class="srow" data-s="g1">周报同步</div>
+    <div class="group" id="g2"><div class="grow" data-g="g2"><span class="caret">▾</span><span>星火的工作区</span></div></div>
+    <div class="srow" data-s="g2">试运行记录</div>
+  </div></div>
+  <div class="state" id="state"></div>
+</div>
+<nav class="navbar" id="navbar"></nav>
+<script>
+  var q = new URLSearchParams(location.search);
+  var VARIANTS = {
+    v0: { name: "V0 现状", desc: "带边框 pill ＾收起（线上版，显眼基线）", html: '<button class="c-v0" title="一键收起当前可见分组"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l5-5 5 5"/></svg><span>收起</span></button>' },
+    a: { name: "A 双上箭头", desc: "^^ ghost 无边框（推荐：全部折叠通用语）", html: '<button class="c-ghost" title="一键收起当前可见分组" aria-label="一键收起当前可见分组"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5l5-5 5 5"/><path d="M3 13.5l5-5 5 5"/></svg></button>' },
+    b: { name: "B 对压箭头", desc: "上下箭头向中间收（垂直压缩，语义最准）", html: '<button class="c-ghost" title="一键收起当前可见分组" aria-label="一键收起当前可见分组"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l5-3.5L13 6"/><path d="M3 10l5 3.5 5-3.5"/></svg></button>' },
+    c: { name: "C 列表折叠", desc: "横线列表 + 折叠箭头（最写实，线条最多）", html: '<button class="c-ghost" title="一键收起当前可见分组" aria-label="一键收起当前可见分组"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4h9"/><path d="M2 8h9"/><path d="M2 12h9"/><path d="M11.5 10.5l2 2 2-2"/></svg></button>' },
+    d: { name: "D quiet 文本", desc: "去边框 ＾收起 11.5px/500（备选：保留文字）", html: '<button class="c-quiet" title="一键收起当前可见分组"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l5-5 5 5"/></svg><span>收起</span></button>' },
+    e: { name: "E 顶线箭头", desc: "箭头收到顶线（全部到顶，一步到位）", html: '<button class="c-ghost" title="一键收起当前可见分组" aria-label="一键收起当前可见分组"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.8h10"/><path d="M8 13.5V4.5"/><path d="M4.8 7.7L8 4.5l3.2 3.2"/></svg></button>' },
+    f: { name: "F 减号盒", desc: "圆角框 + 减号（通用折叠语）", html: '<button class="c-ghost" title="一键收起当前可见分组" aria-label="一键收起当前可见分组"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="2.5" width="11" height="11" rx="3"/><path d="M5.5 8h5"/></svg></button>' },
+    g: { name: "G 圈箭头", desc: "圆圈 + 单箭头（现＾的 quiet 版）", html: '<button class="c-ghost" title="一键收起当前可见分组" aria-label="一键收起当前可见分组"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="5.5"/><path d="M5.8 9.6l2.2-2.2 2.2 2.2"/></svg></button>' }
+  };
+  var cur = VARIANTS[q.get("variant")] ? q.get("variant") : "a";
+  var navbar = document.getElementById("navbar");
+  var navBtns = {};
+  Object.keys(VARIANTS).forEach(function (k) {
+    var b = document.createElement("button");
+    b.textContent = VARIANTS[k].name;
+    if (k === cur) b.className = "on";
+    /* 沙盒侧栏禁整页导航：内存切换 + replaceState（失败静默），绝不碰 location.search */
+    b.onclick = function () {
+      cur = k;
+      Object.keys(navBtns).forEach(function (key) { navBtns[key].className = key === k ? "on" : ""; });
+      try { history.replaceState(null, "", "?variant=" + k); } catch (e) { /* 沙盒无 history 权限就纯内存态 */ }
+      paint(null);
+    };
+    navBtns[k] = b;
+    navbar.appendChild(b);
+  });
+  var slot = document.getElementById("cslot");
+  function collapseAll() {
+    var n = 0;
+    ["g1", "g2"].forEach(function (g) {
+      var gr = document.getElementById(g);
+      if (!gr.classList.contains("collapsed")) { gr.classList.add("collapsed"); n++; }
+      document.querySelectorAll('[data-s="' + g + '"]').forEach(function (s) { s.classList.add("collapsed-sib"); });
+    });
+    paint("收起 " + n + " 组");
+  }
+  document.querySelectorAll(".grow").forEach(function (r) {
+    r.onclick = function () {
+      var g = r.getAttribute("data-g");
+      var gr = document.getElementById(g);
+      gr.classList.toggle("collapsed");
+      var hide = gr.classList.contains("collapsed");
+      document.querySelectorAll('[data-s="' + g + '"]').forEach(function (s) { s.classList.toggle("collapsed-sib", hide); });
+      paint(hide ? "展开 1 组（点组标题）" : "手动展开 1 组");
+    };
+  });
+  function paint(last) {
+    slot.innerHTML = VARIANTS[cur].html;
+    slot.firstChild.onclick = collapseAll;
+    var btn = slot.firstChild.getBoundingClientRect();
+    var open = document.querySelectorAll(".group:not(.collapsed)").length;
+    document.getElementById("state").innerHTML = "变体：<b>" + VARIANTS[cur].name + "</b>（" + VARIANTS[cur].desc + "）<br>按钮盒：" + Math.round(btn.width) + "×" + Math.round(btn.height) + "px · 展开中分组：" + open + "/2 · 上次动作：" + (last || "无") + "<br>链接分享：<b>?variant=" + cur + "</b>";
+  }
+  document.querySelectorAll("[data-w]").forEach(function (b) {
+    b.onclick = function () {
+      document.querySelectorAll("[data-w]").forEach(function (x) { x.classList.remove("on"); });
+      b.classList.add("on");
+      document.getElementById("dsb").style.width = b.getAttribute("data-w") + "px";
+    };
+  });
+  document.querySelectorAll("[data-t]").forEach(function (b) {
+    b.onclick = function () {
+      document.querySelectorAll("[data-t]").forEach(function (x) { x.classList.remove("on"); });
+      b.classList.add("on");
+      document.getElementById("dsb").classList.toggle("dark", b.getAttribute("data-t") === "dark");
+    };
+  });
+  paint(null);
+</script>
+</body>
+</html>
