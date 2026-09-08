@@ -1,0 +1,525 @@
+<!doctype html>
+<!-- THROWAWAY PROTOTYPE for issue #68 (接入双模式 T3). Do NOT ship to main. -->
+<!-- Plan: Three variants of the dual-mode connect modal, switchable via ?variant=, in one throwaway file prototypes/dual-mode/prototype-t3-dual-mode.html (sub-shape B: 双模式弹窗尚无既有页面，最近宿主是 connect-flow 扫码弹窗，此处用弹窗 mock 承接)。 -->
+<!-- Design Q: 在 T2 定稿约束下（渠道菜单→弹窗内二选一、单支持直达+换渠道返回、submitted 切页语义、手动字段/脱敏/单飞），二选一 + 扫码页 + 手动表单应该长什么样？Branch: UI (what-should-this-look-like). -->
+<!-- Grilling 共识 (2026-09-08): 渠道=飞书(双支持)/微信(仅扫码)/Slack(仅手动)3 代表；校验=全量复刻 T2；变体方向由第一性原理定——推荐 A 向导步骤式，三变体照做供亲手翻。 -->
+<!-- Run: 双击打开，或 python -m http.server 8788 后访问 /prototypes/dual-mode/prototype-t3-dual-mode.html?variant=A -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[PROTOTYPE #68] 双模式接入三变体（抛弃式）</title>
+<style>
+  :root { color-scheme: light; --bg:#f6f8fa; --panel:#fff; --ink:#1f2329; --mut:#646a73; --line:#e5e6eb; --acc:#1677ff; --ok:#20a162; --bad:#d92d20; --warn:#e8890c; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:14px/1.5 -apple-system,"PingFang SC","Noto Sans SC",Segoe UI,Roboto,sans-serif; }
+  .proto-banner { background:#fff7e6; border-bottom:2px dashed var(--warn); color:#7a4b00; padding:8px 16px; font-size:12px; }
+  .wrap { max-width:980px; margin:0 auto; padding:16px 16px 130px; }
+  h1 { font-size:20px; margin:12px 0 4px; }
+  .q { color:var(--mut); font-size:13px; margin:0 0 6px; line-height:1.7; }
+  .q b { color:var(--ink); }
+  .rec { font-size:12px; background:#eef7ee; border:1px solid var(--ok); border-radius:10px; padding:8px 12px; margin:0 0 12px; line-height:1.7; }
+  .console { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; font-size:12px; }
+  .console .lab { color:var(--mut); }
+  .pill { padding:6px 12px; border:1px solid var(--line); border-radius:999px; background:var(--panel); color:var(--ink); cursor:pointer; font-size:12px; }
+  .pill.on { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:700; }
+  .modal { background:var(--panel); border:1px solid var(--line); border-radius:14px; overflow:hidden; max-width:640px; margin:0 auto; }
+  .m-hd { padding:12px 16px; border-bottom:1px solid var(--line); background:#f7f8fa; }
+  .m-hd h3 { margin:0; font-size:15px; }
+  .m-hd .sub { font-size:12px; color:var(--mut); margin-top:2px; }
+  .m-bd { padding:14px 16px; }
+  .m-ft { padding:10px 16px; border-top:1px solid var(--line); display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .btn { padding:7px 12px; border:1px solid var(--line); border-radius:8px; background:var(--panel); color:var(--ink); cursor:pointer; font-size:12px; }
+  .btn.primary { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:700; }
+  .btn.ghost { background:transparent; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .btnrow { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .choice-cards { display:grid; gap:10px; }
+  @media(min-width:560px){ .choice-cards { grid-template-columns:1fr 1fr; } }
+  .choice { border:2px solid var(--line); border-radius:12px; padding:14px; cursor:pointer; background:var(--panel); text-align:left; color:var(--ink); font-size:13px; }
+  .choice:hover { border-color:var(--acc); }
+  .choice b { display:block; font-size:14px; margin-bottom:4px; }
+  .choice small { color:var(--mut); }
+  .steps-bar { display:flex; gap:6px; align-items:center; font-size:11px; color:var(--mut); margin-bottom:12px; flex-wrap:wrap; }
+  .steps-bar .st { padding:3px 9px; border-radius:999px; border:1px solid var(--line); background:var(--panel); }
+  .steps-bar .st.on { background:var(--acc); border-color:var(--acc); color:#fff; font-weight:700; }
+  .steps-bar .st.skip { border-style:dashed; }
+  .tabs { display:flex; gap:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; margin-bottom:12px; }
+  .tabs button { flex:1; padding:9px; border:0; background:var(--panel); color:var(--ink); cursor:pointer; font-size:13px; font-weight:700; }
+  .tabs button.on { background:var(--acc); color:#fff; }
+  .tabs button:disabled { opacity:.5; cursor:default; }
+  .qr-frame { width:180px; height:180px; margin:6px auto; border:1px solid var(--line); border-radius:12px; display:grid; place-items:center; text-align:center; font-size:11px; color:var(--mut); background:repeating-conic-gradient(#eef0f3 0 25%, #fff 0 50%) 0 0/22px 22px; }
+  .qr-timer { text-align:center; font-size:12px; margin-top:6px; }
+  .qr-progress { height:6px; background:#eef0f3; border-radius:99px; overflow:hidden; margin:6px 0; }
+  .qr-progress span { display:block; height:100%; background:var(--acc); }
+  .qr-msg, .hint { font-size:11px; color:var(--mut); background:#f7f8fa; border-radius:8px; padding:7px 10px; margin:8px 0; line-height:1.7; }
+  ol.how { font-size:12px; color:var(--mut); margin:8px 0 0; padding-left:20px; line-height:1.8; }
+  .field { display:grid; gap:4px; margin-bottom:10px; font-size:12px; }
+  .field input { padding:8px 10px; border:1px solid var(--line); border-radius:8px; font:inherit; width:100%; background:#fff; color:var(--ink); }
+  .field .err { color:var(--bad); font-size:11px; min-height:14px; }
+  .banner-fail { font-size:12px; background:#fdf1f0; border:1px solid var(--bad); color:#a02318; border-radius:10px; padding:8px 12px; margin-bottom:10px; line-height:1.7; }
+  .banner-ok { font-size:13px; background:#eef7ee; border:1px solid var(--ok); color:#14532d; border-radius:10px; padding:12px; line-height:1.8; }
+  .toastline { font-size:11px; color:var(--mut); margin-top:8px; min-height:16px; }
+  .radio-row { display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
+  .radio-row label { flex:1; min-width:140px; display:flex; gap:8px; align-items:flex-start; border:2px solid var(--line); border-radius:10px; padding:9px 11px; font-size:12px; cursor:pointer; }
+  .radio-row label.on { border-color:var(--acc); }
+  .sect { border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:10px; }
+  .sect.fold { opacity:.65; }
+  .sect h4 { margin:0 0 8px; font-size:13px; }
+  .state { margin-top:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .stateHead { padding:10px 12px; border-bottom:1px solid var(--line); font-weight:700; font-size:13px; }
+  .stateBody { padding:12px; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  @media (max-width:760px){ .stateBody{grid-template-columns:1fr} }
+  .kv { display:grid; gap:4px; font-size:12px; align-content:start; }
+  .kv div { display:flex; justify-content:space-between; gap:8px; border-bottom:1px dashed var(--line); padding:3px 0; }
+  .kv span:first-child { color:var(--mut); }
+  pre { margin:0; background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:8px; font-size:11px; overflow:auto; max-height:260px; }
+  .note { font-size:11px; color:var(--mut); margin-top:8px; line-height:1.7; }
+  .verdict { margin-top:12px; background:var(--panel); border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+  .verdict table { width:100%; border-collapse:collapse; font-size:12px; }
+  .verdict th, .verdict td { padding:8px 10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+  .verdict th { background:#f7f8fa; font-size:11px; color:var(--mut); }
+  .verdict input[type=text] { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:7px; font:inherit; font-size:12px; }
+  .switcher { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; align-items:center; gap:12px; background:#111; color:#fff; border-radius:999px; padding:8px 10px; box-shadow:0 8px 30px rgba(0,0,0,.35); z-index:99; font-size:13px; white-space:nowrap; }
+  .switcher button { width:32px; height:32px; border-radius:50%; border:0; background:#2a2f36; color:#fff; cursor:pointer; font-size:15px; }
+  .switcher .dots { display:flex; gap:6px; }
+  .switcher .dots button { width:10px; height:10px; padding:0; background:#555; }
+  .switcher .dots button.on { background:#fff; }
+</style>
+</head>
+<body>
+<div class="proto-banner">⚠️ THROWAWAY PROTOTYPE · issue #68 · 抛弃式原型，不进 main（决议后折叠赢家进真代码，原型归档到 throwaway 分支）。运行：双击本文件或 <code>python -m http.server 8788</code> 后访问 <code>/prototypes/dual-mode/prototype-t3-dual-mode.html?variant=A</code>。</div>
+<div class="wrap">
+  <h1 id="varTitle">双模式接入 · 变体 A</h1>
+  <p class="q">设计问题：<b>在 T2 定稿约束下，二选一 + 扫码页 + 手动表单应该长什么样？</b>分支：UI（<code>?variant=A/B/C</code> + 底部悬浮切换）。点击只走内存 mock（扫码计时/提交模拟、手动校验/提交模拟），不写真 RPC；内存态，无持久化。每次点击后看下方“当前状态”面板。</p>
+  <p class="rec" id="recBox"></p>
+
+  <div class="console">
+    <span class="lab">渠道（模拟渠道菜单选择结果）：</span>
+    <span id="chPills"></span>
+    <span class="lab" style="margin-left:auto">语言</span>
+    <span id="langPills"></span>
+  </div>
+
+  <div class="modal">
+    <div class="m-hd"><h3>接入渠道</h3><div class="sub" id="modalSub"></div></div>
+    <div class="m-bd" id="stage"></div>
+    <div class="m-ft" id="stageFoot"></div>
+  </div>
+
+  <div class="state"><div class="stateHead">当前状态（每次点击 / 变体切换后重渲染）</div>
+    <div class="stateBody"><div class="kv" id="kvBox"></div><div><pre id="jsonBox"></pre>
+    <div class="note">⬆ 完整 relevant state：variant / channel / page / qr(attempt·submitted·计时) / manual(脱敏·单飞·结果) / verdicts。变体切换更新 URL ?variant=（可分享、可回退）。←/→ 键也可切换（输入框聚焦时不拦截）。</div></div></div>
+  </div>
+
+  <div class="verdict"><table>
+    <tr><th style="width:130px">变体</th><th style="width:220px">裁定（采用 / 淘汰 / 待改）</th><th>理由（淘汰必填）</th></tr>
+    <tbody id="verdictBody"></tbody>
+  </table>
+  <div class="note" style="padding:0 12px 12px">verdict 为内存态：裁定后把本表结论复制回 issue #68 留痕，用户点头才 close（T3 验收要求）。输入含 <code>fail</code> 的手动值会模拟提交失败，用于走查“失败留表单可重试 + 脱敏回显”。</div></div>
+
+  <div class="note">假设与开放问题：① exactKeys 在原型中靠“只渲染已知键”构造性满足，真实现需另做键归一（trim+大小写/全半角）再判多余键；② <code>confirm()</code> 二次确认仅为原型替身，真实现走 dsh-im 弹窗文案；③ R1（submitted 真语义）未定，原型按 T2 字面“submitted 后切页不 cancel”演示；④ QR 为占位，真机为 provision 下发 + qrcode 库本地生成。</div>
+</div>
+
+<div class="switcher" role="navigation" aria-label="原型变体切换（非设计本身）">
+  <button id="prevBtn" title="上一个变体">←</button>
+  <span id="swLabel">A</span>
+  <span class="dots"><button data-v="A" title="A 向导步骤式"></button><button data-v="B" title="B 标签页式"></button><button data-v="C" title="C 单页展开式"></button></span>
+  <button id="nextBtn" title="下一个变体">→</button>
+</div>
+
+<script>
+'use strict';
+/* ===== 原型状态（内存态，无持久化；页面只是壳）===== */
+var VARIANTS = ['A','B','C'];
+var NAMES = { A:'A — 向导步骤式（推荐）', B:'B — 标签页式', C:'C — 单页展开式' };
+var CHANNELS = {
+  feishu: { label:'飞书', en:'Feishu', modes:['qr','manual'],
+    fields:[{k:'appId',max:256},{k:'appSecret',max:1024,pw:1}], hint:'' },
+  wechat: { label:'微信', en:'WeChat', modes:['qr'], fields:[], hint:'' },
+  slack:  { label:'Slack', en:'Slack', modes:['manual'],
+    fields:[{k:'botToken',max:4096,pw:1,re:'^xoxb-[A-Za-z0-9-]{16,}$'},{k:'appToken',max:4096,pw:1,re:'^xapp-[A-Za-z0-9-]{16,}$'}],
+    hint:'前置：请先在 Slack 侧导入 Manifest（仅提示行，不做硬门，失败靠公开码兜底）。' }
+};
+var COPY = {
+  zh: { choiceTitle:'选择接入方式', choiceSub:function(n,l){return '为「'+n+'」创建'+l+'机器人，请选择方式';},
+    choiceQr:'扫码创建', choiceQrSub:'手机扫码，最快', choiceManual:'手动填写', choiceManualSub:'填 AppKey/Secret 接入',
+    manualTitle:function(l){return '手动填写'+l+'信息';}, manualSubmit:'提交并接入', back:'返回选择', changeCh:'换渠道',
+    fail:function(m){return '接入失败：'+m;}, done:'已接入并绑定工作区', menu:'选择渠道', cancel:'取消', regen:'换一个二维码', openIn:function(l){return '在 '+l+' 中打开';} },
+  en: { choiceTitle:'Choose a connection method', choiceSub:function(n,l){return 'To create a '+l+' bot for "'+n+'", choose how to proceed';},
+    choiceQr:'Create by scanning', choiceQrSub:'Fastest, scan on phone', choiceManual:'Enter manually', choiceManualSub:'Enter AppKey / secret',
+    manualTitle:function(l){return 'Enter '+l+' details manually';}, manualSubmit:'Submit and connect', back:'Back to options', changeCh:'Change channel',
+    fail:function(m){return 'Connection failed: '+m;}, done:'Connected and bound to workspace', menu:'Choose a channel', cancel:'Cancel', regen:'Get a new QR code', openIn:function(l){return 'Open in '+l;} }
+};
+var AGENT = '小帅';
+function qs(name){ try{ return new URL(location.href).searchParams.get(name); }catch(e){ return null; } }
+var S = {
+  variant: VARIANTS.indexOf(qs('variant')) >= 0 ? qs('variant') : 'A',
+  channel: 'feishu', lang: 'zh',
+  page: 'choice', tab: 'qr',           // A: menu|choice|qr|manual|done；B: menu|main|done；C: main|done
+  qr: { attempt: 0, submitted: false, remain: 120, running: false },
+  manual: { vals: {}, errs: {}, submitting: false, failMsg: null, snap: null },
+  toast: '', lastChanged: '初始就绪',
+  verdicts: { A:{v:'',reason:''}, B:{v:'',reason:''}, C:{v:'',reason:''} }
+};
+function ch(){ return CHANNELS[S.channel]; }
+function t(){ return COPY[S.lang]; }
+function isDual(){ return ch().modes.length === 2; }
+function maskSecret(v){ v = String(v||''); if (v.length < 8) return '••••'; return '•••'+v.slice(-4); }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function $(id){ return document.getElementById(id); }
+
+/* ===== QR mock 计时（单 interval；tick 只刷扫码区 DOM，不重渲染整页以免打断输入）===== */
+var DUR = 120, tickId = null;
+function ensureTick(){
+  if (tickId) return;
+  tickId = setInterval(function(){
+    if (!S.qr.running) return;
+    S.qr.remain = Math.max(0, S.qr.remain - 0.5);
+    var tel = $('qrTimer'), bar = $('qrBar');
+    if (tel) tel.textContent = qrTimerText();
+    if (bar) bar.style.width = Math.round(S.qr.remain / DUR * 100) + '%';
+    if (S.qr.remain <= 0){ S.qr.running = false; }
+  }, 500);
+}
+function qrTimerText(){
+  var s = Math.ceil(S.qr.remain);
+  return (S.lang === 'zh' ? '二维码有效时间 ' : 'QR valid for ') + s + 's' + (S.qr.remain <= 0 ? (S.lang === 'zh' ? '（已失效）' : ' (expired)') : '');
+}
+function startQr(why){
+  S.qr.attempt += 1; S.qr.submitted = false; S.qr.remain = DUR; S.qr.running = true;
+  ensureTick(); say(why || ('生成二维码 attempt-' + S.qr.attempt));
+}
+function stopQr(){ S.qr.running = false; }
+/* T2 切页语义：未 submitted 切走才 provision.cancel；submitted 后切页不 cancel（原型用二次确认替身） */
+function leaveQr(go){
+  if (!S.qr.running && !S.qr.submitted){ go(); return; }
+  if (!S.qr.submitted){
+    stopQr(); S.qr.attempt = 0;
+    S.toast = S.lang === 'zh' ? '已取消本轮扫码（provision.cancel 语义）' : 'QR attempt cancelled (provision.cancel)';
+    go();
+  } else {
+    var ok = true;
+    try{ ok = confirm(S.lang === 'zh' ? '已扫码提交，切走不再 cancel，仍要切换吗？' : 'Already submitted; leaving will NOT cancel. Continue?'); }catch(e){}
+    if (ok){ stopQr(); S.toast = S.lang === 'zh' ? '已切换（submitted 快照保留，未 cancel）' : 'Switched (submitted snapshot kept, not cancelled)'; go(); }
+  }
+}
+function say(msg){ S.lastChanged = msg; }
+
+/* ===== 动作 ===== */
+function setChannel(id, why){
+  S.channel = id; S.manual = { vals:{}, errs:{}, submitting:false, failMsg:null, snap:null };
+  stopQr(); S.qr = { attempt:0, submitted:false, remain:DUR, running:false };
+  var dual = CHANNELS[id].modes.length === 2;
+  S.tab = dual ? (CHANNELS[id].modes.indexOf(S.tab) >= 0 ? S.tab : 'qr') : CHANNELS[id].modes[0];
+  if (S.variant === 'A') S.page = dual ? 'choice' : (CHANNELS[id].modes[0] === 'qr' ? 'qr' : 'manual');
+  else if (S.variant === 'B'){ S.page = 'main'; }
+  else S.page = 'main';
+  if (S.variant === 'A' && (S.page === 'qr')) startQr();
+  if (S.variant === 'B' && S.tab === 'qr') startQr();
+  if (S.variant === 'C' && (dual ? S.tab === 'qr' : CHANNELS[id].modes[0] === 'qr')) startQr();
+  say(why || ('切换渠道 → ' + CHANNELS[id].label + (dual ? '（双支持：进二选一）' : '（单支持：一步直达，跳过二选一）')));
+  renderAll();
+}
+function gotoPage(p, why){
+  if (S.page === 'qr' || (S.variant === 'B' && S.page === 'main' && S.tab === 'qr' && S.qr.running)){
+    leaveQr(function(){ gotoPageRaw(p); say(why); renderAll(); });
+    renderState(); return;
+  }
+  gotoPageRaw(p); say(why); renderAll();
+}
+function gotoPageRaw(p){
+  S.page = p;
+  if (p === 'qr') startQr();
+  if (p === 'choice' || p === 'menu') stopQr();
+}
+function switchTab(tab, why){
+  if (tab === S.tab) return;
+  leaveQr(function(){ S.tab = tab; if (tab === 'qr') startQr(); say(why); renderAll(); });
+  renderState();
+}
+function simSubmit(){
+  S.qr.submitted = true;
+  say('模拟对方已扫码提交（submitted=true）：此时切走不再 cancel'); renderAll();
+}
+function qrCancel(){
+  stopQr(); S.qr.attempt = 0; S.qr.submitted = false;
+  S.toast = S.lang === 'zh' ? '已取消（计时/轮询已停，attempt 已 cancel）' : 'Cancelled (timers stopped, attempt cancelled)';
+  if (S.variant === 'A') S.page = isDual() ? 'choice' : 'menu';
+  else if (S.variant === 'B') S.page = 'menu';
+  say('扫码页取消 → ' + (isDual() ? '回二选一' : '回渠道菜单')); renderAll();
+}
+function validate(){
+  var errs = {}, vals = S.manual.vals, ok = true;
+  ch().fields.forEach(function(f){
+    var v = (vals[f.k] || '').trim();
+    if (!v){ errs[f.k] = S.lang === 'zh' ? '不能为空' : 'Required'; ok = false; return; }
+    if (v.length > f.max){ errs[f.k] = (S.lang === 'zh' ? '超长（≤' : 'Too long (≤') + f.max + ')'; ok = false; return; }
+    if (f.re && !(new RegExp(f.re).test(v))){ errs[f.k] = (S.lang === 'zh' ? '格式不对（应形如 ' : 'Bad format (like ') + f.re + ')'; ok = false; }
+  });
+  S.manual.errs = errs; return ok;
+}
+function manualSubmit(){
+  if (S.manual.submitting) return;                       // 单飞
+  if (!validate()){ say('手动校验未过（trim 非空 + 长度 + 正则，留表单改）'); renderAll(); return; }
+  S.manual.submitting = true; S.manual.failMsg = null; say('手动提交中（8s 超时内单飞，按钮已禁用）'); renderAll();
+  var snapshot = JSON.parse(JSON.stringify(S.manual.vals));
+  setTimeout(function(){
+    S.manual.submitting = false;
+    var bad = Object.keys(snapshot).some(function(k){ return /fail/i.test(snapshot[k]); });
+    if (bad){
+      var shown = {};
+      ch().fields.forEach(function(f){ shown[f.k] = f.pw ? maskSecret(snapshot[f.k]) : snapshot[f.k]; });
+      S.manual.failMsg = t().fail('invalid-credentials（mock）') + ' ｜ ' + JSON.stringify(shown);
+      say('手动提交失败：留表单可改可重试（脱敏回显见失败条）'); renderAll();
+    } else {
+      var snap = {};
+      ch().fields.forEach(function(f){ snap[f.k] = f.pw ? 'configured:true' : snapshot[f.k]; });
+      S.manual.snap = snap; S.page = 'done';
+      S.toast = t().done; say('手动提交成功：走 commitBinding 同链路（mock），终态已接入并绑定工作区'); renderAll();
+    }
+  }, 900);
+}
+function setVariant(v, why){
+  if (S.variant === v) return;
+  stopQr(); S.qr = { attempt:0, submitted:false, remain:DUR, running:false };
+  S.manual = { vals:{}, errs:{}, submitting:false, failMsg:null, snap:null };
+  S.variant = v;
+  var dual = isDual();
+  if (v === 'A'){ S.page = 'menu'; }
+  else if (v === 'B'){ S.page = 'menu'; S.tab = ch().modes[0]; }
+  else { S.page = 'main'; if (dual && ch().modes[0] === 'qr') startQr(); if (!dual && ch().modes[0] === 'qr') startQr(); }
+  say(why || ('切换变体 → ' + v));
+  syncUrl(); renderAll();
+}
+function syncUrl(){ try{ var u = new URL(location.href); u.searchParams.set('variant', S.variant); history.replaceState(null, '', u); }catch(e){} }
+
+/* ===== 渲染：三个结构性不同的变体 ===== */
+function qrBlock(){
+  var L = ch().label;
+  return '<div class="qr-frame">QR 占位<br>attempt-' + (S.qr.attempt || '—') + (S.qr.submitted ? '<br>submitted ✓' : '') + '</div>'
+    + '<div class="qr-timer" id="qrTimer">' + esc(qrTimerText()) + '</div>'
+    + '<div class="qr-progress"><span id="qrBar" style="width:' + Math.round(S.qr.remain / DUR * 100) + '%"></span></div>'
+    + '<div class="qr-msg">' + esc(S.lang === 'zh' ? '扫码只会新增一个机器人，已接入的机器人不受影响' : 'Scanning only adds one bot; existing bots are unaffected') + '</div>'
+    + '<ol class="how"><li>' + esc((S.lang === 'zh' ? '打开 ' : 'Open ') + L + (S.lang === 'zh' ? ' 移动端扫一扫' : ' app and scan')) + '</li>'
+    + '<li>' + esc(S.lang === 'zh' ? '核对应用名称与权限范围后确认创建' : 'Confirm the app name and scopes') + '</li>'
+    + '<li>' + esc(S.lang === 'zh' ? '保持本页打开，等待新机器人长连接就绪' : 'Keep this page open until the new bot is ready') + '</li></ol>'
+    + '<div class="btnrow"><button class="btn" data-act="openUrl">' + esc(t().openIn(L)) + '</button>'
+    + '<button class="btn ghost" data-act="regen">' + esc(t().regen) + '</button>'
+    + '<button class="btn ghost" data-act="simSubmit">' + esc(S.lang === 'zh' ? '模拟对方已扫码提交' : 'Simulate submitted') + '</button>'
+    + '<button class="btn ghost" data-act="qrCancel">' + esc(t().cancel) + '</button></div>';
+}
+function manualBlock(){
+  var h = '';
+  if (ch().hint) h += '<div class="hint">' + esc(ch().hint) + '</div>';
+  ch().fields.forEach(function(f){
+    var e = S.manual.errs[f.k] || '';
+    h += '<label class="field">' + esc(f.k) + '（≤' + f.max + (f.re ? '，格式 ' + f.re : '') + '）'
+      + '<input data-field="' + esc(f.k) + '" type="' + (f.pw ? 'password' : 'text') + '" placeholder="' + esc(f.pw ? '••••（FORBIDDEN 零回显）' : f.k) + '" value="' + esc(S.manual.vals[f.k] || '') + '">'
+      + '<span class="err">' + esc(e) + '</span></label>';
+  });
+  if (S.manual.failMsg) h += '<div class="banner-fail">' + esc(S.manual.failMsg) + '</div>';
+  h += '<div class="btnrow"><button class="btn primary" data-act="manualSubmit" ' + (S.manual.submitting ? 'disabled' : '') + '>'
+    + esc(S.manual.submitting ? (S.lang === 'zh' ? '提交中…' : 'Submitting…') : t().manualSubmit) + '</button></div>';
+  return h;
+}
+function menuBlock(){
+  var h = '<p class="q">' + esc(S.lang === 'zh' ? '先选渠道（对应渠道菜单），弹窗内再按能力矩阵路由：' : 'Pick a channel first (mirrors the channel menu), then route by capability matrix:') + '</p><div class="btnrow">';
+  Object.keys(CHANNELS).forEach(function(id){
+    var c = CHANNELS[id], tag = c.modes.length === 2 ? (S.lang === 'zh' ? '双支持' : 'both') : (c.modes[0] === 'qr' ? (S.lang === 'zh' ? '仅扫码' : 'scan only') : (S.lang === 'zh' ? '仅手动' : 'manual only'));
+    h += '<button class="btn' + (id === S.channel ? ' primary' : '') + '" data-ch="' + id + '">' + esc(c.label) + ' · ' + esc(tag) + '</button>';
+  });
+  return h + '</div>';
+}
+function doneBlock(){
+  return '<div class="banner-ok">✓ ' + esc(t().done) + '<br><span style="font-size:11px">' + esc(JSON.stringify(S.manual.snap || { bot: 'bot-xxx', via: S.page })) + '</span></div>'
+    + '<div class="btnrow"><button class="btn ghost" data-act="toMenu">' + esc(t().changeCh) + '</button></div>';
+}
+function footFor(buttons){
+  // buttons: array of [act, label, kind]
+  var h = '';
+  buttons.forEach(function(b){ h += '<button class="btn ' + (b[2] || '') + '" data-act="' + b[0] + '">' + esc(b[1]) + '</button>'; });
+  h += '<span style="flex:1"></span><button class="btn ghost" data-act="toMenu">' + esc(t().changeCh) + '</button>';
+  return h;
+}
+function renderStage(){
+  var st = $('stage'), ft = $('stageFoot');
+  $('modalSub').textContent = t().choiceSub(AGENT, ch().label) + ' · ' + (isDual() ? (S.lang === 'zh' ? '双支持' : 'both supported') : (S.lang === 'zh' ? '单支持（已跳过二选一）' : 'single mode (choice skipped)'));
+  if (S.variant === 'A'){
+    var stepIdx = S.page === 'menu' ? 0 : (S.page === 'choice' ? 1 : (S.page === 'done' ? 3 : 2));
+    var steps = '<div class="steps-bar"><span class="st' + (stepIdx === 0 ? ' on' : '') + '">① ' + esc(S.lang === 'zh' ? '选渠道' : 'Channel') + '</span>→'
+      + '<span class="st' + (stepIdx === 1 ? ' on' : '') + (isDual() ? '' : ' skip') + '">② ' + esc(t().choiceTitle) + (isDual() ? '' : esc(S.lang === 'zh' ? '（已跳过）' : ' (skipped)')) + '</span>→'
+      + '<span class="st' + (stepIdx === 2 ? ' on' : '') + '">③ ' + esc(S.lang === 'zh' ? '扫码 / 填写' : 'Scan / Fill') + '</span>→'
+      + '<span class="st' + (stepIdx === 3 ? ' on' : '') + '">④ ' + esc(S.lang === 'zh' ? '完成' : 'Done') + '</span></div>';
+    if (S.page === 'menu'){ st.innerHTML = steps + menuBlock(); ft.innerHTML = ''; }
+    else if (S.page === 'choice'){
+      st.innerHTML = steps + '<div class="choice-cards">'
+        + '<button class="choice" data-act="goQr"><b>📷 ' + esc(t().choiceQr) + '</b><small>' + esc(t().choiceQrSub) + '</small></button>'
+        + '<button class="choice" data-act="goManual"><b>✍️ ' + esc(t().choiceManual) + '</b><small>' + esc(t().choiceManualSub) + '</small></button></div>';
+      ft.innerHTML = footFor([]);
+    }
+    else if (S.page === 'qr'){ st.innerHTML = steps + qrBlock(); ft.innerHTML = footFor([['goChoice', t().back, 'ghost']]); }
+    else if (S.page === 'manual'){ st.innerHTML = steps + '<h4 style="margin:0 0 10px">' + esc(t().manualTitle(ch().label)) + '</h4>' + manualBlock(); ft.innerHTML = footFor([['goChoice', t().back, 'ghost']]); }
+    else { st.innerHTML = steps + doneBlock(); ft.innerHTML = ''; }
+  } else if (S.variant === 'B'){
+    if (S.page === 'menu'){ st.innerHTML = menuBlock(); ft.innerHTML = ''; }
+    else if (S.page === 'done'){ st.innerHTML = doneBlock(); ft.innerHTML = ''; }
+    else {
+      var tabs = '';
+      if (isDual()){
+        tabs = '<div class="tabs"><button data-act="tabQr" class="' + (S.tab === 'qr' ? 'on' : '') + '">📷 ' + esc(t().choiceQr) + '</button>'
+          + '<button data-act="tabManual" class="' + (S.tab === 'manual' ? 'on' : '') + '">✍️ ' + esc(t().choiceManual) + '</button></div>';
+      } else {
+        tabs = '<div class="hint">' + esc(S.lang === 'zh' ? '单支持渠道：只有' + (S.tab === 'qr' ? '扫码' : '手动') + '一页（标签已锁定），可换渠道。' : 'Single-mode channel: only one tab, locked.') + '</div>';
+      }
+      st.innerHTML = tabs + (S.tab === 'qr' ? qrBlock() : '<h4 style="margin:0 0 10px">' + esc(t().manualTitle(ch().label)) + '</h4>' + manualBlock());
+      ft.innerHTML = footFor([['qrCancelB', t().cancel, 'ghost']]);
+    }
+  } else {
+    if (S.page === 'done'){ st.innerHTML = doneBlock(); ft.innerHTML = ''; }
+    else {
+      var h = '<div class="radio-row">';
+      Object.keys(CHANNELS).forEach(function(id){
+        h += '<label class="' + (id === S.channel ? 'on' : '') + '"><input type="radio" name="ch" data-chradio="' + id + '"' + (id === S.channel ? ' checked' : '') + '><span><b>' + esc(CHANNELS[id].label) + '</b><br><small>' + esc(CHANNELS[id].modes.length === 2 ? (S.lang === 'zh' ? '双支持' : 'both') : (CHANNELS[id].modes[0] === 'qr' ? (S.lang === 'zh' ? '仅扫码' : 'scan only') : (S.lang === 'zh' ? '仅手动' : 'manual only'))) + '</small></span></label>';
+      });
+      h += '</div>';
+      if (isDual()){
+        h += '<div class="radio-row"><label class="' + (S.tab === 'qr' ? 'on' : '') + '"><input type="radio" name="mode" data-moderadio="qr"' + (S.tab === 'qr' ? ' checked' : '') + '><span><b>📷 ' + esc(t().choiceQr) + '</b></span></label>'
+          + '<label class="' + (S.tab === 'manual' ? 'on' : '') + '"><input type="radio" name="mode" data-moderadio="manual"' + (S.tab === 'manual' ? ' checked' : '') + '><span><b>✍️ ' + esc(t().choiceManual) + '</b></span></label></div>';
+        h += '<div class="sect' + (S.tab === 'qr' ? '' : ' fold') + '"><h4>📷 ' + esc(t().choiceQr) + (S.tab === 'qr' ? '' : esc(S.lang === 'zh' ? '（已折叠）' : ' (collapsed)')) + '</h4>' + (S.tab === 'qr' ? qrBlock() : '') + '</div>';
+        h += '<div class="sect' + (S.tab === 'manual' ? '' : ' fold') + '"><h4>✍️ ' + esc(t().manualTitle(ch().label)) + (S.tab === 'manual' ? '' : esc(S.lang === 'zh' ? '（已折叠）' : ' (collapsed)')) + '</h4>' + (S.tab === 'manual' ? manualBlock() : '') + '</div>';
+      } else {
+        h += S.tab === 'qr' || ch().modes[0] === 'qr'
+          ? '<div class="sect"><h4>📷 ' + esc(t().choiceQr) + esc(S.lang === 'zh' ? '（单支持直达）' : ' (direct)') + '</h4>' + qrBlock() + '</div>'
+          : '<div class="sect"><h4>✍️ ' + esc(t().manualTitle(ch().label)) + esc(S.lang === 'zh' ? '（单支持直达）' : ' (direct)') + '</h4>' + manualBlock() + '</div>';
+      }
+      st.innerHTML = h;
+      ft.innerHTML = '<button class="btn ghost" data-act="qrCancelC">' + esc(t().cancel) + '</button>';
+    }
+  }
+  bindStage();
+}
+function bindStage(){
+  var st = $('stage'), ft = $('stageFoot');
+  [st, ft].forEach(function(root){
+    root.querySelectorAll('[data-act]').forEach(function(el){
+      el.onclick = function(){ act(el.getAttribute('data-act')); };
+    });
+    root.querySelectorAll('[data-ch]').forEach(function(el){
+      el.onclick = function(){ setChannel(el.getAttribute('data-ch')); };
+    });
+    root.querySelectorAll('[data-chradio]').forEach(function(el){
+      el.onchange = function(){ if (el.checked) setChannel(el.getAttribute('data-chradio'), 'C 变体行内换渠道 → ' + CHANNELS[el.getAttribute('data-chradio')].label); };
+    });
+    root.querySelectorAll('[data-moderadio]').forEach(function(el){
+      el.onchange = function(){
+        if (!el.checked) return;
+        var m = el.getAttribute('data-moderadio');
+        if (m === 'qr'){ if (S.tab !== 'qr'){ S.tab = 'qr'; startQr('C 变体行内展开扫码'); renderAll(); } }
+        else { leaveQr(function(){ S.tab = 'manual'; say('C 变体行内展开手动（纯本地切换）'); renderAll(); }); renderState(); }
+      };
+    });
+    root.querySelectorAll('[data-field]').forEach(function(el){
+      el.oninput = function(){ S.manual.vals[el.getAttribute('data-field')] = el.value; };  // 打字不重渲染，不丢焦点
+    });
+  });
+}
+function act(a){
+  if (a === 'goQr') gotoPage('qr', '二选一 → 扫码');
+  else if (a === 'goManual') gotoPage('manual', '二选一 → 手动（纯本地切页，无 cancel）');
+  else if (a === 'goChoice') gotoPage('choice', '返回选择');
+  else if (a === 'tabQr') switchTab('qr', '标签切到扫码');
+  else if (a === 'tabManual') switchTab('manual', '标签切到手动（纯本地）');
+  else if (a === 'regen') startQr('换一个二维码（旧 attempt 已 cancel，新 attempt 生效）');
+  else if (a === 'simSubmit') simSubmit();
+  else if (a === 'qrCancel' || a === 'qrCancelB' || a === 'qrCancelC') qrCancel();
+  else if (a === 'manualSubmit') manualSubmit();
+  else if (a === 'openUrl') { S.toast = S.lang === 'zh' ? '（mock）在新窗口打开 verificationUrl' : '(mock) open verificationUrl'; say('点击“在 XX 中打开”（mock，未真跳）'); }
+  else if (a === 'toMenu'){ stopQr(); S.qr = { attempt:0, submitted:false, remain:DUR, running:false }; S.manual.failMsg = null; S.page = (S.variant === 'C' ? 'main' : 'menu'); S.tab = ch().modes[0]; say('换渠道 → ' + (S.variant === 'C' ? '回行内渠道选择' : '回渠道菜单')); }
+  else return;
+  renderAll();
+}
+
+/* ===== 控制条 / 状态外显 / verdict ===== */
+function renderConsole(){
+  var cp = $('chPills'); cp.innerHTML = '';
+  Object.keys(CHANNELS).forEach(function(id){
+    var b = document.createElement('button');
+    b.className = 'pill' + (id === S.channel ? ' on' : ''); b.textContent = CHANNELS[id].label;
+    b.onclick = function(){ setChannel(id); };
+    cp.appendChild(b);
+  });
+  var lp = $('langPills'); lp.innerHTML = '';
+  ['zh','en'].forEach(function(l){
+    var b = document.createElement('button');
+    b.className = 'pill' + (l === S.lang ? ' on' : ''); b.textContent = l === 'zh' ? '中文' : 'EN';
+    b.onclick = function(){ S.lang = l; say('语言 → ' + l); renderAll(); };
+    lp.appendChild(b);
+  });
+}
+function renderState(){
+  var rows = [
+    ['变体', '?variant=' + S.variant + '（' + NAMES[S.variant] + '）'],
+    ['渠道', S.channel + '（' + ch().label + '）·' + (isDual() ? '双支持' : '单支持→直达')],
+    ['Agent', AGENT], ['语言', S.lang],
+    ['页面', S.page + (S.variant !== 'A' ? ' / tab=' + S.tab : '')],
+    ['QR', 'attempt-' + (S.qr.attempt || '—') + ' · submitted=' + S.qr.submitted + ' · 计时=' + (S.qr.running ? '跑(' + Math.ceil(S.qr.remain) + 's)' : '停')],
+    ['手动', ch().fields.length ? ('单飞=' + S.manual.submitting + ' · 结果=' + (S.page === 'done' ? '成功' : (S.manual.failMsg ? '失败留表单' : '—')) + ' · 快照=' + JSON.stringify(S.manual.snap || S.manual.vals)) : '该渠道无手动（已隐藏）'],
+    ['toast', S.toast || '—'],
+    ['verdict', 'A:' + (S.verdicts.A.v || '未裁') + ' B:' + (S.verdicts.B.v || '未裁') + ' C:' + (S.verdicts.C.v || '未裁')],
+    ['最近变化', S.lastChanged]
+  ];
+  $('kvBox').innerHTML = rows.map(function(r){ return '<div><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
+  var state = { variant: S.variant, channel: S.channel, dual: isDual(), page: S.page, tab: S.tab,
+    qr: { attempt: S.qr.attempt, submitted: S.qr.submitted, running: S.qr.running },
+    manual: { submitting: S.manual.submitting, errs: S.manual.errs, fail: !!S.manual.failMsg, snap: S.manual.snap },
+    verdicts: S.verdicts, lastChanged: S.lastChanged };
+  $('jsonBox').textContent = JSON.stringify(state, null, 1);
+  $('swLabel').textContent = S.variant + ' — ' + NAMES[S.variant].slice(4);
+  document.querySelectorAll('.switcher .dots button').forEach(function(d){ d.classList.toggle('on', d.dataset.v === S.variant); });
+  $('varTitle').textContent = '双模式接入 · ' + NAMES[S.variant];
+  $('recBox').innerHTML = '第一性原理推荐：<b>A 向导步骤式</b>——P1 复用（扫码页整体成为一步，不动 renderQr/poll）＋ P3 取消语义可显式加锁（submitted 锁返回＋二次确认）＋单支持跳步零感知＋“等 vs 填”两种节奏分离。B 切换最快但 submitted 语义藏得深；C 一览全但等/填堆叠易晕。请亲手翻三个变体后逐项留 verdict（可偷 bits：如“B 的头 ＋ A 的身”）。';
+}
+function renderVerdicts(){
+  var tb = $('verdictBody'); tb.innerHTML = '';
+  VARIANTS.forEach(function(v){
+    var tr = document.createElement('tr');
+    var td0 = document.createElement('td'); td0.innerHTML = '<b>' + esc(NAMES[v]) + '</b>'; tr.appendChild(td0);
+    var td1 = document.createElement('td');
+    ['', '采用', '淘汰', '待改'].forEach(function(opt){
+      var lab = document.createElement('label'); lab.style.marginRight = '10px';
+      var r = document.createElement('input'); r.type = 'radio'; r.name = 'vd-' + v; r.value = opt; r.checked = S.verdicts[v].v === opt;
+      r.onchange = function(){ S.verdicts[v].v = opt; say('verdict ' + v + ' → ' + (opt || '未裁')); renderState(); };
+      lab.appendChild(r); lab.appendChild(document.createTextNode(opt === '' ? '未裁' : ' ' + opt));
+      td1.appendChild(lab);
+    });
+    tr.appendChild(td1);
+    var td2 = document.createElement('td');
+    var inp = document.createElement('input'); inp.type = 'text'; inp.placeholder = '理由（淘汰必填，可写“要 B 的头 + A 的身”这类偷 bits 结论）'; inp.value = S.verdicts[v].reason;
+    inp.onchange = function(){ S.verdicts[v].reason = inp.value; say('verdict ' + v + ' 理由更新'); renderState(); };
+    td2.appendChild(inp); tr.appendChild(td2);
+    tb.appendChild(tr);
+  });
+}
+function renderAll(){ renderConsole(); renderStage(); renderState(); }
+
+/* ===== 切换器 ===== */
+$('prevBtn').onclick = function(){ setVariant(VARIANTS[(VARIANTS.indexOf(S.variant) + 2) % 3], '底部切换 ◀'); };
+$('nextBtn').onclick = function(){ setVariant(VARIANTS[(VARIANTS.indexOf(S.variant) + 1) % 3], '底部切换 ▶'); };
+document.querySelectorAll('.switcher .dots button').forEach(function(d){ d.onclick = function(){ setVariant(d.dataset.v, '底部圆点 → ' + d.dataset.v); }; });
+document.addEventListener('keydown', function(e){
+  var tag = (e.target && e.target.tagName) || '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target && e.target.isContentEditable)) return;
+  if (e.key === 'ArrowLeft') setVariant(VARIANTS[(VARIANTS.indexOf(S.variant) + 2) % 3], '键盘 ←');
+  if (e.key === 'ArrowRight') setVariant(VARIANTS[(VARIANTS.indexOf(S.variant) + 1) % 3], '键盘 →');
+});
+
+/* init：按隐藏规则首屏路由（飞书默认双支持→二选一） */
+(function init(){
+  S.page = S.variant === 'A' ? 'choice' : 'main';
+  S.tab = 'qr';
+  renderConsole(); renderStage(); renderVerdicts(); renderState();
+})();
+</script>
+</body>
+</html>
