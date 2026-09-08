@@ -8,6 +8,7 @@ import type { BotSnap } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
 import { FILTERS, FILTER_LABEL, countsOf, passFilter, resolveResultKey, resolveWorkspaceKey, segLabel, type FilterId } from './model'
+import { ensureCollapseBtn } from './collapse-all'
 import { ensureHeaderBtn, nextFilter, removeHeaderBtns, resolveHeader } from './header-btn'
 
 import { GROUP_SEL, RESULT_SEL, clearTips, hideRootsFor, restoreAll, setHidden, textOf } from './dom-scope'
@@ -98,10 +99,12 @@ function ensureStrip(container: Element, gen: number): void {
       })
       stripSeg = seg
       strip.appendChild(seg.el)
+      try { ensureCollapseBtn(strip) } catch { /* 收起钮失败不影响三段 */ }
       stripOwner = gen
     }
     if (stripOwner !== gen) stripOwner = gen
     if (strip.parentNode !== container) container.insertBefore(strip, container.firstChild)
+    try { ensureCollapseBtn(strip) } catch { /* 复用条带补钮 */ }
     try { stripSeg?.setValue(currentFilter); stripSeg?.relayout() } catch { /* 首绘布局失败下次再试 */ }
   } catch { /* 建条失败就无条带（fail-closed 条带，行保持全显） */ }
 }

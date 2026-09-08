@@ -2,9 +2,9 @@
  * 深色窄栏做实：轨道实色 + 滑块抬起 + 数字降级，避免裸文本感。
  * 自带干粮：--af-* 变量域只在设置面板树下存在，左栏里必须自己定义（同 theme.ts 取值）。 */
 export const CSS = [
-  '.left-filter-strip{position:sticky;top:0;z-index:5;box-sizing:border-box;width:100%;max-width:360px;margin:0 auto 2px;padding:6px 0 8px;overflow:hidden;background:var(--dsw-specific-sidebar-fill,transparent);--af-accent:var(--dsw-alias-brand-primary,#0a84ff);--af-primary:var(--dsw-alias-label-primary,#1c1c1e);--af-secondary:var(--dsw-alias-label-secondary,#6e6e73);--af-tertiary:var(--dsw-alias-label-tertiary,#98989d);--af-bg:var(--dsw-alias-bg-base,#ffffff);--af-surface:color-mix(in srgb,var(--dsw-alias-label-primary,#1c1c1e) 6%,var(--dsw-alias-bg-base,#ffffff));--af-surface-2:color-mix(in srgb,var(--dsw-alias-label-primary,#1c1c1e) 11%,var(--dsw-alias-bg-base,#ffffff));--af-hairline:color-mix(in srgb,var(--dsw-alias-label-primary,#1c1c1e) 12%,transparent);--af-hairline-strong:color-mix(in srgb,var(--dsw-alias-label-primary,#1c1c1e) 22%,transparent);}',
+  '.left-filter-strip{position:sticky;top:0;z-index:5;box-sizing:border-box;width:100%;max-width:360px;margin:0 auto 2px;padding:6px 0 8px;overflow:hidden;display:flex;align-items:center;gap:6px;background:var(--dsw-specific-sidebar-fill,transparent);--af-accent:var(--dsw-alias-brand-primary,#0a84ff);--af-primary:var(--dsw-alias-label-primary,#1c1c1e);--af-secondary:var(--dsw-alias-label-secondary,#6e6e73);--af-tertiary:var(--dsw-alias-label-tertiary,#98989d);--af-bg:var(--dsw-alias-bg-base,#ffffff);--af-surface:color-mix(in srgb,var(--dsw-alias-label-primary,#1c1c1e) 6%,var(--dsw-alias-bg-base,#ffffff));--af-surface-2:color-mix(in srgb,var(--dsw-alias-label-primary,#1c1c1e) 11%,var(--dsw-alias-bg-base,#ffffff));--af-hairline:color-mix(in srgb,var(--dsw-alias-label-primary,#1c1c1e) 12%,transparent);--af-hairline-strong:color-mix(in srgb,var(--dsw-alias-label-primary,#1c1c1e) 22%,transparent);}',
   '.left-filter-strip *{box-sizing:border-box;}',
-  '.left-filter-strip .af-seg{display:flex;width:100%;min-width:0;gap:2px;padding:2px;background:transparent;border:none;border-radius:9px;box-shadow:none;}',
+  '.left-filter-strip .af-seg{display:flex;flex:1 1 auto;width:auto;min-width:0;gap:2px;padding:2px;background:transparent;border:none;border-radius:9px;box-shadow:none;}',
   '.left-filter-strip .af-seg-thumb{background:color-mix(in srgb, var(--af-primary) 14%, var(--af-bg));border-radius:7px;border:none;box-shadow:0 1px 2px rgba(0,0,0,.18);}',
   '.left-filter-strip .af-seg-item{flex:1 1 0;min-width:0;font-size:12px;font-weight:600;padding:5px 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--af-secondary);}',
   '.left-filter-strip .af-seg-item.active{color:var(--af-primary);font-weight:700;}',
@@ -15,4 +15,7 @@ export const CSS = [
   '.left-filter-hbtn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.06));color:var(--dsw-alias-label-primary,#1c1c1e);}',
   '.left-filter-hbtn.on{background:color-mix(in srgb,var(--dsw-alias-brand-primary,#0a84ff) 16%,transparent);color:var(--dsw-alias-brand-primary,#0a84ff);}',
   '.left-filter-hbtn svg{width:14px;height:14px;display:block;}',
+  '.left-filter-collapse{flex:none;width:26px;height:26px;padding:0;border:none;border-radius:7px;background:transparent;color:var(--af-tertiary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}',
+  '.left-filter-collapse:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.06));color:var(--af-primary);}',
+  '.left-filter-collapse svg{width:14px;height:14px;display:block;}',
 ].join('\n')

@@ -16,6 +16,8 @@ const ENTRIES = [
   join(FEAT, 'styles.ts'),
   join(FEAT, 'manifest.ts'),
   join(FEAT, 'header-btn.ts'),
+  join(FEAT, 'collapse-all.ts'),
+  join(FEAT, 'dom-scope.ts'),
   join(REPO, 'src', 'features', 'index.ts'),
   join(REPO, 'src', 'client', 'ui', 'segmented.ts'),
   join(REPO, 'src', 'client', 'dom.ts'),
@@ -46,6 +48,7 @@ const req = createRequire(join(tmp, 'run.cjs'));
 const model: any = req('./features/left-filter/model.js');
 const view: any = req('./features/left-filter/view.js');
 const headerBtn: any = req('./features/left-filter/header-btn.js');
+const collapseAll: any = req('./features/left-filter/collapse-all.js');
 const dom: any = req('./client/dom.js');
 const styles: any = req('./features/left-filter/styles.js');
 const registry: any = req('./features/index.js');
@@ -552,4 +555,84 @@ test('view：空提示（分组全藏时出现，恢复时消失）', () => {
   const gone = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-empty'));
   assert.ok(!gone, '恢复后空提示消失');
   dispose();
+});
+
+/* ---- #64 一键收起 ---- */
+
+test('collapse-all：只收可见展开组（藏起/已收/血统不动）', () => {
+  groupRows = []; resultRows = [];
+  const container = stubNode('div');
+  const sec1 = sectionWith('小帅', container);
+  const sec2 = sectionWith('某个空组', container);
+  const g1 = groupRows[0];
+  const g2 = groupRows[1];
+  // 已收起的保持不动
+  g2.setAttribute('aria-expanded', 'false');
+  // 血统树（主面板）永不动
+  const lineage = stubNode('div');
+  lineage.setAttribute('role', 'treeitem');
+  lineage.setAttribute('aria-expanded', 'true');
+  lineage.setAttribute('aria-level', '2');
+  lineage._text = '血统父节点';
+  container.appendChild(lineage);
+  const clicked: any[] = [];
+  (g1 as any).click = () => { clicked.push(g1); g1.setAttribute('aria-expanded', 'false'); };
+  (g2 as any).click = () => { clicked.push(g2); };
+  (lineage as any).click = () => { clicked.push(lineage); };
+  assert.equal(collapseAll.isCollapseTarget(g1), true, '可见展开组是目标');
+  assert.equal(collapseAll.isCollapseTarget(g2), false, '已收起不动');
+  assert.equal(collapseAll.isCollapseTarget(lineage), false, '血统永不动');
+  assert.equal(collapseAll.isHiddenByFilter(g1), false);
+  // 藏起 sec2 后 g2 更不是目标（已收起 + 被藏，双重排除）
+  (sec2 as any).setAttribute('data-left-filter', 'hidden');
+  assert.equal(collapseAll.isHiddenByFilter(g2), true, '被筛选藏起即不可见');
+  assert.equal(collapseAll.isCollapseTarget(g2), false);
+  const targets = collapseAll.collectCollapseTargets(container);
+  assert.deepEqual(targets, [g1], '快照只含可见展开组');
+  const n = collapseAll.collapseGroups(targets, container);
+  assert.equal(n, 1);
+  assert.deepEqual(clicked, [g1], '只对可见组触发一次原生点击');
+  assert.equal(lineage.getAttribute('aria-expanded'), 'true', '血统 untouched');
+  void sec1;
+});
+
+test('view：收起钮随条带同行挂载 + 点击只收可见组 + 卸载无残留', () => {
+  groupRows = []; resultRows = [];
+  const container = stubNode('div');
+  sectionWith('小帅', container);
+  sectionWith('xinghuo', container);
+  sectionWith('某个空组', container);
+  let snapFn: any = null;
+  const dispose = view.mountLeftFilter({ subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; } });
+  snapFn({ bots, failed: [], updatedAt: 21 });
+  const strip = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-strip'));
+  assert.ok(strip, '条带有');
+  const collapseBtn = strip.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('left-filter-collapse'));
+  assert.ok(collapseBtn, '收起钮与三段同一条带');
+  assert.equal(collapseBtn.attrs.title, '一键收起当前可见分组');
+  assert.equal(collapseBtn.attrs['aria-label'], '一键收起当前可见分组');
+  assert.match(String((collapseBtn as any).innerHTML ?? ''), /circle/, 'G 方案圈箭头图标（无文本，含义走 tooltip）');
+  // 三段仍在同一行
+  const seg = strip.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('af-seg'));
+  assert.ok(seg, '三段仍在');
+  // 切到有助理：无助理组被藏；此时点收起只收两组可见
+  segButton(strip, 'bound').fire('click');
+  const clicked: any[] = [];
+  for (const g of groupRows) (g as any).click = () => { clicked.push(g); };
+  collapseBtn.fire('click');
+  assert.equal(clicked.length, 2, '只收可见两组，藏起的不动：' + clicked.length);
+  for (const g of clicked) assert.equal(collapseAll.isHiddenByFilter(g), false);
+  // 计数不动（收起不改变筛选计数）
+  assert.ok(segLabels(strip).includes('bound=有助理 2'), '收起不改计数：' + segLabels(strip));
+  dispose();
+  assert.equal(container.children.includes(strip), false, '卸载摘除条带');
+  assert.equal(strip.parentNode, null, '条带已离树（收起钮随条带同灭）');
+  assert.equal((collapseBtn as any).parentNode, strip, '收起钮仍在离树条带内，未泄漏到文档');
+});
+
+test('styles：收起钮命名空间 + 条带同行不溢出（flex）', () => {
+  assert.match(styles.CSS, /.left-filter-collapse/);
+  assert.match(styles.CSS, /display:flex/);
+  const afDefs = styles.CSS.split('\n').filter((l: string) => l.trim().startsWith('.af-'));
+  assert.equal(afDefs.length, 0, '不得定义 .af-*');
 });
