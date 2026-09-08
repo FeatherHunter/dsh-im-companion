@@ -15,7 +15,7 @@ export function apply(ctx: any, config: any = {}) {
 
   const CHANNEL = '/im-companion'
   try {
-    const dispose = ctx.connection.rpc.handle(CHANNEL, createAgentFleetHandler(store, { dshHome }))
+    const dispose = ctx.connection.rpc.handle(CHANNEL, createAgentFleetHandler(store))
     ctx.effect(() => () => dispose(), 'dsh-im-companion: rpc channel cleanup')
   } catch (error: any) {
     // 路由注册表是宿主共享单例；重装配（live patch reload / 回滚重放）时

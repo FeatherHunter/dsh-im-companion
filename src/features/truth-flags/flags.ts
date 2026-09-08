@@ -32,16 +32,17 @@ export interface FlagsInput {
   titleHit: boolean;
 }
 
-import { classifyKind } from '../../client/data/session-kind';
+function normKind(raw: string): string {
+  return String(raw ?? '').trim().toLowerCase();
+}
 
 /** 主函数：六路结论冻结（优先级即书写顺序）。tip 只写状态+原因中文，不拼任何时间。 */
 export function flagsForSession(input: FlagsInput): SessFlag {
-  var cls = classifyKind(input.kind);
-  var is402 = cls.is402;
-  var isAborted = cls.isAborted;
-  var isDoneKind = cls.isDoneKind;
-  /* isKnown/isUnknown 与旧语义逐字等价：'' | 402 | aborted | done 为已知（含 error 归未知红）。 */
-  var isKnown = cls.isEmpty || is402 || isAborted || isDoneKind;
+  var kind = normKind(input.kind);
+  var is402 = kind.indexOf('402') >= 0;
+  var isAborted = kind.indexOf('abort') >= 0;
+  var isDoneKind = kind === 'completed' || kind === 'transient';
+  var isKnown = kind === '' || is402 || isAborted || isDoneKind;
   var isUnknown = !isKnown;
 
   // 无标题默认无色，兜底以后再说。
