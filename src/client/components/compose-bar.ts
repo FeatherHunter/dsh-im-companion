@@ -16,7 +16,13 @@ export interface ComposeBarOpts {
 }
 
 const NO_HOME = ''
-const HOME_PLACEHOLDER = '尚未选择工作区'
+const HOME_PLACEHOLDER = '必须选择工作区，否则无法创建'
+
+/** classList 加减（单测桩 toggle 不支持 force 位，直写 add/remove 两边一致）。 */
+function mark(el: HTMLElement, cls: string, on: boolean): void {
+  if (on) el.classList.add(cls)
+  else el.classList.remove(cls)
+}
 
 export function makeComposeBar(onCreate: (name: string, workspace: string) => void, opts: ComposeBarOpts): ComposeBar {
   const input = h('input', { type: 'text', placeholder: '输入名称，如「小帅」', 'aria-label': '新的 Agent 名称' })
@@ -56,7 +62,9 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => vo
   })
   /* 双行：单行 5 元素在窄栏必挤折行（视觉回归）；行类新增，.af-compose 本体不动（dir-picker 复用）。 */
   const rowName = h('div', { className: 'af-compose-row' }, input, create, cancel)
-  const rowHome = h('div', { className: 'af-compose-row' }, pick, homeLabel)
+  /* 选家行：必填徽＋空态整行高亮（不选建不出，必须一眼看到）。 */
+  const required = h('span', { className: 'af-required', title: '不选工作区无法创建' }, '必填')
+  const rowHome = h('div', { className: 'af-compose-row' }, required, pick, homeLabel)
   const el = h('div', { className: 'af-compose af-compose--create', style: { display: 'none' } }, rowName, rowHome)
 
   input.addEventListener('keydown', (e: KeyboardEvent) => {
@@ -65,11 +73,13 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => vo
   })
   input.addEventListener('input', () => paint())
 
-  /** 名与家齐了创建才可用（置灰是主防线，onClick 内复核是底线）。 */
+  /** 名与家齐了创建才可用（置灰是主防线，onClick 内复核是底线）；空家时整行高亮催选。 */
   function paint(): void {
     create.disabled = !(input.value.trim() && home)
     homeLabel.textContent = home || HOME_PLACEHOLDER
     homeLabel.title = home || HOME_PLACEHOLDER
+    mark(rowHome, 'af-compose-row--attention', !home)
+    mark(homeLabel, 'af-compose-home--empty', !home)
   }
 
   function setVisible(v: boolean): void {

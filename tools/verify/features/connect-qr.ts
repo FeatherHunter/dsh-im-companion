@@ -544,6 +544,10 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   /* 双行布局：容器挂新类、两行各就其位（单行 5 元素窄栏必挤折行）。 */
   assert.ok((bar.el as any).classList.contains('af-compose--create'), '创建表单应走双行容器');
   assert.equal((bar.el as any).querySelectorAll('.af-compose-row').length, 2, '名字行与选家行应分开');
+  /* 选家醒目：必填徽＋空态整行高亮（不选建不出，必须一眼看到）。 */
+  assert.ok(((bar.el as any).textContent ?? '').includes('必填'), '应有必填徽');
+  const homeRow = (bar.el as any).querySelectorAll('.af-compose-row')[1];
+  assert.ok(homeRow.classList.contains('af-compose-row--attention'), '空家时选家行应高亮');
   assert.equal(byText('创建').disabled, true, '未选家时创建应置灰');
   byText('创建').dispatchEvent({ type: 'click' });
   assert.equal(seen.length, 0, '未选家不得提交');
@@ -551,13 +555,14 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   byText('选择工作区').dispatchEvent({ type: 'click' });
   await new Promise((r) => setTimeout(r, 20));
   assert.ok(((bar.el as any).textContent ?? '').includes('xiaoshuai'), '应回显所选之家');
+  assert.ok(!homeRow.classList.contains('af-compose-row--attention'), '选家后高亮应撤');
   assert.ok(!byText('创建').disabled, '选家后创建应可用');
   byText('创建').dispatchEvent({ type: 'click' });
   assert.deepEqual(seen, [['小帅', 'D:\\agents\\xiaoshuai']]);
   byText('取消').dispatchEvent({ type: 'click' });
   bar.setVisible(true);
   assert.equal(byText('创建').disabled, true, '取消后重开不得复用旧家');
-  assert.ok(((bar.el as any).textContent ?? '').includes('尚未选择工作区'), '取消后重开应回占位');
+  assert.ok(((bar.el as any).textContent ?? '').includes('必须选择工作区，否则无法创建'), '取消后重开应回醒目占位');
 });
 
 test('#62 agent-row：无家接入置灰、有家可用', () => {

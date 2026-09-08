@@ -59,6 +59,11 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
 .af-compose--create .af-btn { white-space: nowrap; flex: none; }
 .af-compose-home { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--af-secondary); }
 
+/* #62 选家醒目：不选建不出——必填徽＋空态整行高亮＋空态警告色；只新增类 */
+.af-required { flex: none; font-size: 11px; font-weight: 700; white-space: nowrap; color: var(--af-danger); background: color-mix(in srgb, var(--af-danger) 12%, transparent); border: 1px solid color-mix(in srgb, var(--af-danger) 35%, transparent); border-radius: 999px; padding: 2px 8px; }
+.af-compose-row--attention { border: 1px dashed color-mix(in srgb, var(--af-danger) 45%, transparent); border-radius: 9px; padding: 6px 8px; background: color-mix(in srgb, var(--af-danger) 6%, transparent); }
+.af-compose-home--empty { color: var(--af-danger); font-weight: 600; }
+
 `;
 
 /** 安装首屏赢家样式（幂等，热重载安全）；返回清理函数，面板卸载时调用。 */
