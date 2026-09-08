@@ -13,9 +13,18 @@ Your star means the world to me.
 
 [![Version](https://img.shields.io/npm/v/dsh-im-companion?label=Version)](https://www.npmjs.com/package/dsh-im-companion) [![Downloads](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.npmjs.org%2Fdownloads%2Fpoint%2Flast-month%2Fdsh-im-companion&query=%24.downloads&label=Downloads&suffix=/mo&color=brightgreen)](https://www.npmjs.com/package/dsh-im-companion) [![Updated](https://img.shields.io/github/last-commit/FeatherHunter/dsh-im-companion?label=Updated&color=FE7D37)](https://github.com/FeatherHunter/dsh-im-companion/commits/master) [![License](https://img.shields.io/badge/License-MIT-lightgrey.svg)](../LICENSE) [![Upstream](https://img.shields.io/badge/Upstream-dsh--im-3370ff)](https://github.com/xmanrui/dsh-im) [![Welcome](https://img.shields.io/badge/Contributions-brightgreen.svg)](https://github.com/FeatherHunter/dsh-im-companion/issues)
 
+<table>
+<tr>
+<td align="center" valign="top" width="50%">
 <strong>👇 Workspaces with assistants, at a glance.</strong>
-
-<img src="../assets/工作区-有助理的工作区一目了然-深色.png" width="300" alt="Left workspace rail: all, with-assistant, without-assistant, online lights">
+<br><img src="../assets/工作区-有助理的工作区一目了然-深色.png" width="300" alt="Left workspace rail: all, with-assistant, without-assistant, online lights">
+</td>
+<td align="center" valign="top" width="50%">
+<strong>👇 Blue: running, orange: needs your review, red: error.</strong>
+<br><img src="../assets/工作区增强-显示工作区红色状态-内部也有执行中的会话.png" width="300" alt="Red rail bar with a failing session inside">
+</td>
+</tr>
+</table>
 
 **One minute to install (dsh-im first, then the companion).**
 
@@ -126,17 +135,22 @@ dsh-im owns connecting; dsh-im-companion adds capabilities through the concepts 
 
 <img src="../assets/舰队雷达-矩阵总览-深色.png" width="720" alt="Fleet radar matrix overview">
 
-<strong>👇 Blue: running, orange: needs your review, red: error.</strong>
+<strong>👇 Session states at a glance (DSH enhanced).</strong>
 
-<img src="../assets/工作区增强-显示工作区红色状态-内部也有执行中的会话.png" width="340" alt="Red rail bar with a failing session inside">
-
+<div align="center">
+<table>
+<tr>
+<td align="center" valign="top" width="50%">
 <strong>👇 A blue bar means a session is running. Open the workspace and you'll know which one.</strong>
-
-<img src="../assets/会话状态-工作区-执行中.png" width="340" alt="Blue rail bars with running sessions">
-
+<br><img src="../assets/会话状态-工作区-执行中.png" width="330" alt="Blue rail bars with running sessions">
+</td>
+<td align="center" valign="top" width="50%">
 <strong>👇 An orange bar means a message is waiting for you. It goes away once opened.</strong>
-
-<img src="../assets/工作区增强-轻松看到待用户确认的消息.png" width="340" alt="Orange rail bar with a waiting message">
+<br><img src="../assets/工作区增强-轻松看到待用户确认的消息.png" width="330" alt="Orange rail bar with a waiting message">
+</td>
+</tr>
+</table>
+</div>
 
 <div align="center">
 <table>

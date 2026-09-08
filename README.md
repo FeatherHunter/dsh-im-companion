@@ -13,9 +13,18 @@
 
 [![版本](https://img.shields.io/npm/v/dsh-im-companion?label=版本)](https://www.npmjs.com/package/dsh-im-companion) [![下载量](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fapi.npmjs.org%2Fdownloads%2Fpoint%2Flast-month%2Fdsh-im-companion&query=%24.downloads&label=下载量&suffix=/月&color=brightgreen)](https://www.npmjs.com/package/dsh-im-companion) [![最近更新](https://img.shields.io/github/last-commit/FeatherHunter/dsh-im-companion?label=最近更新&color=FE7D37)](https://github.com/FeatherHunter/dsh-im-companion/commits/master) [![许可证](https://img.shields.io/badge/许可证-MIT-lightgrey.svg)](LICENSE) [![上游本体](https://img.shields.io/badge/上游-dsh--im-3370ff)](https://github.com/xmanrui/dsh-im) [![期待你参与](https://img.shields.io/badge/期待你参与-brightgreen.svg)](https://github.com/FeatherHunter/dsh-im-companion/issues)
 
+<table>
+<tr>
+<td align="center" valign="top" width="50%">
 <strong>👇 有助理的工作区，一目了然。</strong>
-
-<img src="assets/工作区-有助理的工作区一目了然-深色.png" width="300" alt="左栏工作区：全部、有助理、无助理，在线绿灯">
+<br><img src="assets/工作区-有助理的工作区一目了然-深色.png" width="300" alt="左栏工作区：全部、有助理、无助理，在线绿灯">
+</td>
+<td align="center" valign="top" width="50%">
+<strong>👇 蓝：在执行，橙：需人工查看，红：异常情况。</strong>
+<br><img src="assets/工作区增强-显示工作区红色状态-内部也有执行中的会话.png" width="300" alt="工作区红色竖条，组内有异常会话">
+</td>
+</tr>
+</table>
 
 **装它，1 分钟（先装 dsh-im，再装辅助）。**
 
@@ -126,17 +135,22 @@ dsh-im 掌管接入，dsh-im-companion 以助理和家的概念增强能力。
 
 <img src="assets/舰队雷达-矩阵总览-深色.png" width="720" alt="舰队雷达矩阵总览">
 
-<strong>👇 蓝：在执行，橙：需人工查看，红：异常情况。</strong>
+<strong>👇 会话状态一目了然（DSH增强）。</strong>
 
-<img src="assets/工作区增强-显示工作区红色状态-内部也有执行中的会话.png" width="340" alt="工作区红色竖条，组内有异常会话">
-
+<div align="center">
+<table>
+<tr>
+<td align="center" valign="top" width="50%">
 <strong>👇 蓝条代表有会话在执行。点开工作区，一眼知道是哪一个。</strong>
-
-<img src="assets/会话状态-工作区-执行中.png" width="340" alt="工作区蓝色竖条，组内有执行中会话">
-
+<br><img src="assets/会话状态-工作区-执行中.png" width="330" alt="工作区蓝色竖条，组内有执行中会话">
+</td>
+<td align="center" valign="top" width="50%">
 <strong>👇 橙条代表有消息等你确认。点开后自动熄灭。</strong>
-
-<img src="assets/工作区增强-轻松看到待用户确认的消息.png" width="340" alt="工作区橙色竖条，有待确认消息">
+<br><img src="assets/工作区增强-轻松看到待用户确认的消息.png" width="330" alt="工作区橙色竖条，有待确认消息">
+</td>
+</tr>
+</table>
+</div>
 
 <div align="center">
 <table>
