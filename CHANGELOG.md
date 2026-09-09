@@ -1,5 +1,22 @@
 # CHANGELOG
 
+## v0.1.5 — 2026-09-09
+
+主题：dsh-im 4.17.1 管理 RPC 改道兼容（#77 双传输）——接入向导、舰队列表与在线徽标全线恢复。
+
+提炼：
+
+- package.json / package-lock.json 0.1.4 → 0.1.5；README 中英文版本锁同步到 0.1.5。
+- 双传输适配（#77 T5）：渠道管理 RPC 优先打新载体 `/api` + `dsh-im<channel>` + `{ method, payload }`（dsh-im 4.17.1 起），仅传输 reject 回退旧前缀直调（≤4.17.0）；`ok:false` 与 Abort 永不回退；per-channel 方向记忆，环境升级方向回正。接入向导（扫码 `provision.begin` / 手动 `bot.bind-credentials`）、舰队列表、在线徽标、详情抽屉经同一 `RpcCall` 零改动受益。
+- 旧 `extractRpc` 冻结保留：回滚 = 调用点切回旧函数即复原。
+- 对应提交：见 GitHub Release v0.1.5 附件与提交历史。
+
+验证与影响：
+
+- `npm run check` 全绿（build/typecheck/verify/guard；guard 101 文件 max≤300）；`rpc-dual-transport` 11/11 PASS。
+- 从 tag v0.1.5 独立 worktree 重打，`lib/client.js` SHA256 `213393C3…`，与活体验收包逐字节一致。
+- 无新增契约通道；共享层 Added-only（`rpc.ts` 只新增导出 + 两处调用点 opt-in）。
+
 ## v0.1.4 — 2026-09-08
 
 主题：接入双模式（扫码/手动二选一，按渠道能力隐藏）落地；一键收起与串门搬家入口随包；Wayfinder Map #65 收尾关闭。
