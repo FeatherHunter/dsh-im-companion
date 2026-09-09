@@ -21,6 +21,8 @@ import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir
 
 /* #56：构建注入的插件版本（tsdown define __PLUGIN_VERSION__，package.json 唯一真相）。 */
 declare const __PLUGIN_VERSION__: string | undefined
+/* #78：构建注入的 dsh-im 兼容信息（tsdown define __DSH_IM_COMPAT__，package.json.dshImCompat 唯一真相）。 */
+declare const __DSH_IM_COMPAT__: { verified?: string; range?: string } | undefined
 
 function pluginVersion(): string {
   try {
@@ -29,6 +31,17 @@ function pluginVersion(): string {
     /* 无注入环境（单测直引源码）回退空串，调用方隐藏版本位 */
   }
   return ''
+}
+
+/** #78 已验证 dsh-im 版本（无注入环境回退空，chip 隐藏；绝不硬编码版本号）。 */
+function pluginCompat(): { verified: string; range: string } {
+  try {
+    const c = typeof __DSH_IM_COMPAT__ === 'object' && __DSH_IM_COMPAT__ !== null ? __DSH_IM_COMPAT__ : undefined
+    if (c) return { verified: String(c.verified ?? ''), range: String(c.range ?? '') }
+  } catch {
+    /* 同上 */
+  }
+  return { verified: '', range: '' }
 }
 
 export function FleetPanel(ctx: unknown): HTMLElement {
@@ -44,8 +57,11 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   const titleMeta = h('div', { className: 'af-title-meta' }, '')
   titleMeta.hidden = true
   const plusBtn = makeIconButton({ iconName: 'plus', label: copy.plus, title: copy.plus })
-  /* #56 右上组（对标 deck SettingsPage：版本小字可点跳仓库 + Star/Issue 双按钮；右组 margin-left:auto，窄窗换行）。 */
+  /* #56 右上组（对标 deck SettingsPage：版本小字可点跳仓库 + Star/Issue 双按钮）。
+   * #78 版本组：自家版本带品牌名（IM Companion vX）+ 兼容标记（兼容 dsh-im X）同行成组，
+   * 两个版本号各自带标签，用户一眼分得清。面板内容宽实测约 548px（见 first-view-styles 顶部单行约束）。 */
   const ver = pluginVersion()
+  const compat = pluginCompat()
   const verLink = h('a', {
     className: 'af-version',
     href: copy.starHref,
@@ -53,8 +69,20 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     rel: 'noopener',
     title: copy.versionTitle(ver),
     'aria-label': copy.versionTitle(ver),
-  }, ver)
+  }, copy.versionLabel(ver))
   verLink.hidden = ver === ''
+  const compatNote = compat.verified ? copy.compatTitle(compat.verified, compat.range) : ''
+  const compatChip = compat.verified
+    ? h('a', {
+        className: 'af-compat',
+        href: copy.compatHref,
+        target: '_blank',
+        rel: 'noopener',
+        title: compatNote,
+        'aria-label': compatNote,
+      }, copy.compatChip(compat.verified))
+    : null
+  const verBox = h('div', { className: 'af-verbox' }, verLink, compatChip)
   /* P2 引流星标：ghost 虚线风，新开页跳 companion 仓库点 Star（右上角，＋原位）。 */
   const starLink = h('a', {
     className: 'af-icon-btn af-star',
@@ -72,8 +100,8 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     title: copy.feedbackTitle,
     'aria-label': copy.feedbackTitle,
   }, icon('feedback', 18))
-  const hdRight = h('div', { className: 'af-hd-right' }, verLink, starLink, feedbackLink)
-  const hd = h('div', { className: 'af-hd' }, h('div', null, title, sub, titleMeta), hdRight)
+  const hdRight = h('div', { className: 'af-hd-right' }, verBox, starLink, feedbackLink)
+  const hd = h('div', { className: 'af-hd' }, h('div', { className: 'af-hd-left' }, title, sub, titleMeta), hdRight)
 
   const search = makeSearchField((v) => {
     data.state.query = v

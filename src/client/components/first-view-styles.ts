@@ -42,16 +42,26 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
 .af-promo-item span { color: var(--af-secondary); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .af-promo-item i { color: var(--af-accent); font-style: normal; }
 
-/* #56 右上组（对标 deck dsws-cfg-head：右组 margin-left:auto 推右，窄窗换行；版本小字 11px  caption 色可点）。 */
-.af-hd { flex-wrap: wrap; }
-.af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; }
+/* #56 右上组（对标 deck dsws-cfg-head：右组 margin-left:auto 推右；版本小字 11px caption 色可点）。
+ * #78 顶部必须单行（用户裁定）：.af-hd 不换行，右组 flex:none 不压缩，左块 min-width:0 先让位
+ * （标题/副标 ellipsis 兜底），宽度再紧也不会把右组挤到第二行。 */
+.af-hd { flex-wrap: nowrap; }
+.af-hd-left { min-width: 0; }
+.af-hd-left .af-title, .af-hd-left .af-title-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex: none; }
 
 /* 工具栏单行不断行：4 按钮与搜索/分段同行（搜索可压到 0，按钮 32px 不换行不缩小；theme 本体不动）。 */
 .af-toolbar { flex-wrap: nowrap; }
 .af-toolbar .af-search { min-width: 0; }
 .af-toolbar .af-icon-btn { width: 32px; height: 32px; border-radius: 10px; flex: none; }
-.af-version { font-size: 11px; line-height: 16px; color: var(--af-tertiary); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.af-version:hover { color: var(--af-secondary); text-decoration: underline; }
+.af-version { font-size: 11px; line-height: 16px; font-weight: 600; color: var(--af-secondary); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.af-version:hover { color: var(--af-primary); text-decoration: underline; }
+
+/* #78 版本组：版本号 + 上游兼容标记（dsh-im X）同行；chip 只放版本号本身，
+ * 「已验证」口径走悬停——宽度够窄，顶部才保得住单行。 */
+.af-verbox { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.af-compat { font-size: 11px; line-height: 16px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--af-hairline-strong); background: var(--af-surface); color: var(--af-secondary); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.af-compat:hover { color: var(--af-primary); border-color: var(--af-accent); background: color-mix(in srgb, var(--af-accent) 8%, transparent); }
 
 @media (prefers-reduced-motion: reduce) {
   .af-row .af-actions .af-btn, .af-row .af-actions .af-more-btn { transition: none; transform: none; }

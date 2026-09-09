@@ -119,6 +119,9 @@ const checks: [string, boolean][] = [
   ['接入按钮', text.includes('接入')],
   ['详情按钮(#26 ghost 同级)', text.includes('详情')],
   ['引流关联卡 P2(#26)', text.includes('作者其他插件')],
+  ['版本号带品牌名(#78)', text.includes('IM Companion v')],
+  ['兼容版本带标签(#78)', text.includes('兼容 dsh-im 4.17.1')],
+  ['副标带角色(#78)', text.includes('IM COMPANION · 辅助插件')],
   ['页面干净-无解释词', !text.includes('解耦') && !text.includes('试验') && !text.includes('B1 ')],
   ['显示工作区绑定', text.includes('工作区·D:')],
 ];

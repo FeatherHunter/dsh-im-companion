@@ -14,6 +14,17 @@ function pluginVersion(): string {
   }
 }
 
+/* #78：同源注入「已验证的 dsh-im 版本」（package.json.dshImCompat 唯一真相，改一处 UI 即变）。 */
+function dshImCompat(): { verified: string; range: string } {
+  try {
+    const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+    const compat = pkg?.dshImCompat ?? {}
+    return { verified: String(compat.verified ?? ''), range: String(compat.range ?? '') }
+  } catch {
+    return { verified: '', range: '' }
+  }
+}
+
 const CLIENT_EXTERNALS = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client',
   'cordis',
@@ -32,6 +43,7 @@ const clientBundle: UserConfig = {
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
     __PLUGIN_VERSION__: JSON.stringify(pluginVersion()),
+    __DSH_IM_COMPAT__: JSON.stringify(dshImCompat()),
   },
   deps: {
     neverBundle: [...CLIENT_EXTERNALS],
