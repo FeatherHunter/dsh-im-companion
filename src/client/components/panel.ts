@@ -3,6 +3,7 @@
  * #26 赢家变体（D 拼装）：标题助理 + 副标、雷达说清语义、星标 P2 + 底部关联卡；轮询 / RPC / 数据语义一律不动。 */
 import { h } from '../dom'
 import type { RpcCall } from '../data/fleet-api'
+import { dualTransportCallV2 } from '../data/rpc'
 import type { AgentView, ViewMode } from '../data/model'
 import { ADOPT_VIEW_EVENT, FLEET_VIEW_EVENT, type FleetViewDetail } from '../data/config'
 import { icon } from '../icons'
@@ -195,6 +196,7 @@ function extractRpc(ctx: unknown): RpcCall | null {
   const conn = (ctx as { connection?: { rpc?: { call?: unknown } } } | null)?.connection
   const call = conn?.rpc?.call
   if (typeof call !== 'function') return null
-  return (channel, endpoint, payload, signal) =>
-    (call as (ch: string, ep: string, p: Record<string, unknown>, s: AbortSignal) => Promise<unknown>)(channel, endpoint, payload, signal)
+  /* T5 落地（#77）：与 data/rpc 双调一，内层经 dualTransportCallV2；本副本只剩壳，签名零动。 */
+  const raw = call as (ch: string, ep: string, p: Record<string, unknown>, s: AbortSignal) => Promise<unknown>
+  return (channel, endpoint, payload, signal) => dualTransportCallV2(raw, channel, endpoint, payload, signal)
 }

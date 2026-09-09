@@ -3,7 +3,7 @@
 import * as React from 'react'
 import { installStyles } from './theme'
 import { FleetPanel } from './components/panel'
-import { extractRpc } from './data/rpc'
+import { extractRpcV2 } from './data/rpc'
 import { getSharedStream, resetSharedStream } from './data/connection-stream'
 import { createMetaStore, type MetaStore } from './data/meta'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
@@ -17,7 +17,8 @@ export function apply(ctx: any): void {
   const disposeStyles = installStyles()
 
   /* F0 特性装配：FEATURES 列表循环挂载（index 只改此列表）；单份 stream 供所有特性订阅 */
-  const rpc = extractRpc(ctx)
+  /* T5 opt-in（#77）：经 dualTransportCallV2 双传输；旧 extractRpc 冻结保留，回滚切回即复原。 */
+  const rpc = extractRpcV2(ctx)
   const stream = getSharedStream(rpc)
   let metaCache: MetaStore | null = null
   void createMetaStore(rpc).then((m) => {

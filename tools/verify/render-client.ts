@@ -79,7 +79,13 @@ const ctx = {
         totals: { configured: 1, connected: 1 },
       } };
     }
-    return { ok: false, error: { code: 'CHANNEL_NOT_CONFIGURED', message: '渠道未配置', details: {} } };
+    /* T5（#77）：旧 DSH 传输语义——未知路由传输层 reject（T1 verdict：立即拒识或 5s 超时），
+     * 而非 ok:false（ok:false 是权威答复，dualTransportCallV2 永不回退）。
+     * 本 mock 扮旧 DSH：新载体 /api 拒识 → 生产回退旧直调；自有桥 /im-companion 保持 ok:false。 */
+    if (ch === '/im-companion') {
+      return { ok: false, error: { code: 'CHANNEL_NOT_CONFIGURED', message: '渠道未配置', details: {} } };
+    }
+    throw Object.assign(new Error('old DSH mock: no route for ' + ch), { code: 'RPC_NO_ROUTE' });
   } } },
   emit() {},
 };
