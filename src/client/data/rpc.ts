@@ -1,5 +1,5 @@
 /** client 侧 connection 句柄（只读 rpc.call；轮询节拍归 connection-stream 所有）。
- * panel.ts 另有一份同名 extractRpc（在途改动）：为避免耦合暂各持一份，待其稳定后两处合一。
+ * #77 终审返工 F1：panel.ts 本地副本已删、直引本文件 extractRpcV2，两处合一完成，无循环依赖（本文件值依赖为零）。
  * T5 落地（#77）：dsh-im 管理 RPC 改道（上游 503a24a）双传输翻译收敛在本文件，
  * 调用点（fleet-api/fetchBots/healthOf/轮询）零改；回包信封语义未变，unwrap/extractBots 照旧。 */
 import type { RpcCall } from './fleet-api'
