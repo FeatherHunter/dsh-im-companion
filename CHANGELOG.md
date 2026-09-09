@@ -1,20 +1,22 @@
 # CHANGELOG
 
-## v0.1.5 — 2026-09-09
+## v0.1.6 — 2026-09-09
 
-主题：dsh-im 4.17.1 管理 RPC 改道兼容（#77 双传输）——接入向导、舰队列表与在线徽标全线恢复。
+主题：dsh-im 4.17.1 管理 RPC 改道兼容（#77 双传输）+ 面板版本兼容标记（#78）——接入向导、舰队列表与在线徽标全线恢复，版本组合一眼可自查。
 
 提炼：
 
-- package.json / package-lock.json 0.1.4 → 0.1.5；README 中英文版本锁同步到 0.1.5。
+- package.json / package-lock.json 0.1.4 → 0.1.6（0.1.5 只打过 tag、未发布，内容并入本版）；README 中英文版本锁同步到 0.1.6。
 - 双传输适配（#77 T5）：渠道管理 RPC 优先打新载体 `/api` + `dsh-im<channel>` + `{ method, payload }`（dsh-im 4.17.1 起），仅传输 reject 回退旧前缀直调（≤4.17.0）；`ok:false` 与 Abort 永不回退；per-channel 方向记忆，环境升级方向回正。接入向导（扫码 `provision.begin` / 手动 `bot.bind-credentials`）、舰队列表、在线徽标、详情抽屉经同一 `RpcCall` 零改动受益。
+- 面板版本标记（#78）：右上角并排标出自家版本 `IM Companion v0.1.6` 与 `兼容 dsh-im 4.17.1`（来源 `package.json.dshImCompat` 单点真相，构建时注入）；悬停给「已验证 + 兼容范围」，点击跳 README 兼容性；顶部硬单行（不换行、右组不压缩、左块先省略）。
+- README 中英新增「兼容性」小节（版本矩阵 + `#compat` 锚点）。
 - 旧 `extractRpc` 冻结保留：回滚 = 调用点切回旧函数即复原。
-- 对应提交：见 GitHub Release v0.1.5 附件与提交历史。
+- 对应提交：见 GitHub Release v0.1.6 附件与提交历史。
 
 验证与影响：
 
-- `npm run check` 全绿（build/typecheck/verify/guard；guard 101 文件 max≤300）；`rpc-dual-transport` 11/11 PASS。
-- 从 tag v0.1.5 独立 worktree 重打，`lib/client.js` SHA256 `213393C3…`，与活体验收包逐字节一致。
+- `npm run check` 全绿（build/typecheck/verify/guard；guard 101 文件 max≤300）；`rpc-dual-transport` 11/11、`render-client` 24/24、`first-view` 14/14。
+- tag `v0.1.5` 独立 worktree 重打 `lib/client.js` SHA256 `213393C3…`（= #77 活体验收包逐字节一致）；本版重打后本仓 / web / desktop 三方 hash 一致。
 - 无新增契约通道；共享层 Added-only（`rpc.ts` 只新增导出 + 两处调用点 opt-in）。
 
 ## v0.1.4 — 2026-09-08

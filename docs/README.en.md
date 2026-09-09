@@ -52,8 +52,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     or
 dsh plugin --profile web add dsh-im-companion
 
-# Pin a version for stability (current: 0.1.5)
-dsh plugin --profile desktop add dsh-im-companion@0.1.5 --registry https://registry.npmjs.org
+# Pin a version for stability (current: 0.1.6)
+dsh plugin --profile desktop add dsh-im-companion@0.1.6 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -82,7 +82,7 @@ then confirm the dsh-im core is in the same profile (install it first if missing
 Below uses desktop as the example; web users replace --profile desktop with --profile web:
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.1.5 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.1.6 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
@@ -104,8 +104,8 @@ dsh plugin --profile desktop remove dsh-im-companion
 
 | dsh-im-companion | dsh-im | Notes |
 | --- | --- | --- |
-| **0.1.5+** | **4.17.1** (verified) | Dual transport: 4.17.1+ uses the `/api` carrier, ≤4.17.0 falls back to the legacy route automatically |
-| 0.1.4 | ≤4.17.0 | Broken after the dsh-im 4.17.1 carrier change (HTTP 405 in the connect wizard); upgrade to 0.1.5+ |
+| **0.1.6+** | **4.17.1** (verified) | Dual transport: 4.17.1+ uses the `/api` carrier, ≤4.17.0 falls back to the legacy route automatically |
+| 0.1.4 | ≤4.17.0 | Broken after the dsh-im 4.17.1 carrier change (HTTP 405 in the connect wizard); upgrade to 0.1.6+ |
 
 Host `@deepseek-ai/dsh` 0.1.2-rc.1 verified. The panel header shows the verified dsh-im version at a glance.
 
