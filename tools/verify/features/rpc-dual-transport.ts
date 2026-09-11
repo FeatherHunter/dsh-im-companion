@@ -1,7 +1,7 @@
 // T5 落地验证（#77）：双传输翻译 + 组行 outerHTML 基线（node --test，零第三方依赖）。
 // 做法：仓库 tsc 转译真实 rpc.ts / view.ts 闭包到临时目录，再断言转译产物（与 left-badges.ts 同款）。
 // 覆盖：outerHTML 三断言（无嵌套会话行/textContent 非 concat/加前缀前后 key 稳定）
-//   + 双传输四象限（新/旧/超时/Abort）+ ok:false 永不回退 + 回得来 + 直通/delivery + 双路 contract。
+//   + 双传输四象限（新/旧/超时/Abort）+ ok:false 永不回退 + 回得来 + 自有桥/delivery 经新载体 + 双路 contract。
 // 输出：T5-PROOF 行可直接贴 #77 作证（双方输出格式）。
 import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -217,18 +217,20 @@ test('T5 recover：旧恢复后回得来（环境升级方向回正）', async (
   proof('recover', '升级后方向回正为新路');
 });
 
-test('T5 passthrough：/im-companion 自有桥直通 + delivery 翻译', async () => {
+test('T5 passthrough：/im-companion 经新载体（/api + im-companion）+ delivery 翻译', async () => {
   const seen: Seen[] = [];
   const raw = async (ch: string, ep: string, p: unknown): Promise<unknown> => {
     seen.push({ ch, ep, p });
     return { ok: true, value: {} };
   };
+  // 自有桥不再直通：host 侧已由 connection.rpc.handle（前缀路由，装配期即抛 webServer）改为
+  // connection.fetch.register（DSH 公开 /api 载体），client 侧同步经新载体翻译。
   await dualTransportCallV2(raw, '/im-companion', 'routes.list', { bots: [] }, AbortSignal.timeout(5000));
-  assert.deepEqual(seen[0], { ch: '/im-companion', ep: 'routes.list', p: { bots: [] } });
+  assert.deepEqual(seen[0], { ch: '/api', ep: 'im-companion', p: { method: 'routes.list', payload: { bots: [] } } });
   seen.length = 0;
   await dualTransportCallV2(raw, '/dsh-im-delivery', 'target.test', { botId: 'b' }, AbortSignal.timeout(5000));
   assert.deepEqual(seen[0], { ch: '/api', ep: 'dsh-im/dsh-im-delivery', p: { method: 'target.test', payload: { botId: 'b' } } });
-  proof('passthrough', '自有桥直通，delivery 经新载体');
+  proof('passthrough', '自有桥与 delivery 均经新载体');
 });
 
 test('T5 contract：冻结 extractRpc 仍旧直调一次 / extractRpcV2 走新载体一次', async () => {

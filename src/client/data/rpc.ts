@@ -14,7 +14,14 @@ type RawCall = (ch: string, ep: string, p: Record<string, unknown>, s: AbortSign
 const NEW_CARRIER_CHANNELS: ReadonlySet<string> = new Set([
   '/feishu', '/weixin', '/qq', '/slack', '/telegram', '/discord', '/whatsapp', '/dingtalk', '/wecom',
   '/wecom-app', '/office', '/dsh-im-delivery',
+  '/im-companion',
 ])
+
+/** 新载体 endpoint：dsh-im 渠道沿用 'dsh-im'+channel；自有桥 '/im-companion' 用 'im-companion'
+ *  （#80：host 侧已把自有桥改道到 connection.fetch.register，路径 /api/im-companion）。 */
+function newCarrierEndpoint(channel: string): string {
+  return channel === '/im-companion' ? 'im-companion' : 'dsh-im' + channel
+}
 
 type Direction = 'new' | 'old'
 
@@ -37,7 +44,7 @@ export async function dualTransportCallV2(
 ): Promise<unknown> {
   if (!NEW_CARRIER_CHANNELS.has(channel)) return call(channel, endpoint, payload, signal)
   const fresh = (s: AbortSignal): Promise<unknown> =>
-    call('/api', 'dsh-im' + channel, { method: endpoint, payload }, s)
+    call('/api', newCarrierEndpoint(channel), { method: endpoint, payload }, s)
   const legacy = (s: AbortSignal): Promise<unknown> => call(channel, endpoint, payload, s)
   const first: Direction = dirMemo.get(channel) ?? 'new'
   try {
