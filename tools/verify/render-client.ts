@@ -103,6 +103,10 @@ const text = (container as any).textContent as string;
 console.log('---- rendered text (first 700) ----');
 console.log(text.slice(0, 700));
 
+/* #79 宿主兼容标记：值由构建从 package.json.dshCompat 注入，故断言按真相源推导，
+ * 不在测试里再抄一份版本号（宿主换版本时这里自动跟随）。 */
+const dshCompatVerified: string = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8'))?.dshCompat?.verified ?? '';
+
 const checks: [string, boolean][] = [
   ['顶部标题 IM机器人增强(#56)', text.includes('IM机器人增强')],
   ['英文副标 IM COMPANION(#56)', text.includes('IM COMPANION')],
@@ -124,6 +128,7 @@ const checks: [string, boolean][] = [
   ['引流关联卡 P2(#26)', text.includes('作者其他插件')],
   ['版本号带品牌名(#78)', text.includes('IM Companion v')],
   ['兼容版本带标签(#78)', text.includes('兼容 dsh-im 4.17.1')],
+  ['宿主兼容标记(#79)', dshCompatVerified !== '' && text.includes('宿主 dsh ' + dshCompatVerified)],
   ['副标带角色(#78)', text.includes('IM COMPANION · 辅助插件')],
   ['页面干净-无解释词', !text.includes('解耦') && !text.includes('试验') && !text.includes('B1 ')],
   ['显示工作区绑定', text.includes('工作区·D:')],

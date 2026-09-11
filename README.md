@@ -52,8 +52,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     或者
 dsh plugin --profile web add dsh-im-companion
 
-# 锁定版本更稳（当前 0.1.6）
-dsh plugin --profile desktop add dsh-im-companion@0.1.6 --registry https://registry.npmjs.org
+# 锁定版本更稳（当前 0.1.7）
+dsh plugin --profile desktop add dsh-im-companion@0.1.7 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -82,7 +82,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.1.6 --registry https://regis
 下面以 desktop 为例，web 用户请把 --profile desktop 换成 --profile web：
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.1.6 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.1.7 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
@@ -104,10 +104,11 @@ dsh plugin --profile desktop remove dsh-im-companion
 
 | dsh-im-companion | dsh-im | 说明 |
 | --- | --- | --- |
-| **0.1.6+** | **4.17.1**（已验证） | 双传输：4.17.1+ 走 `/api` 新载体，≤4.17.0 自动回退旧路由——两边都能用 |
-| 0.1.4 | ≤4.17.0 | dsh-im 4.17.1 改道后不可用（接入向导报 HTTP 405），请升级到 0.1.6+ |
+| **0.1.7+** | **4.17.1**（已验证） | 双传输：4.17.1+ 走 `/api` 新载体，≤4.17.0 自动回退旧路由——两边都能用 |
+| 0.1.6 | 4.17.1 | **web profile 装配失败**（host 半走已退役的前缀路由，报 `cannot get property "webServer" without inject`）→ 请升级 0.1.7 |
+| 0.1.4 | ≤4.17.0 | dsh-im 4.17.1 改道后不可用（接入向导报 HTTP 405），请升级到 0.1.7 |
 
-宿主 `@deepseek-ai/dsh` 0.1.2-rc.1 已验证。面板右上角直接标出「已验证 dsh-im 版本」，升级前看一眼即可。
+宿主 `@deepseek-ai/dsh` **0.1.5-rc.2** 已验证（要求宿主提供 `connection.fetch`；更老宿主会在装配期显式报错，不静默降级）。面板右上角并列标出「已验证 dsh-im 版本」与「宿主 dsh 版本」（值来自 `package.json`，构建时注入），升级前看一眼即可。
 
 </div>
 

@@ -57,6 +57,11 @@ export interface FirstViewCopy {
   /** #78 兼容标记悬停说明：已验证版本 + 兼容范围。 */
   compatTitle: (v: string, range: string) => string
   compatHref: string
+  /** #79 宿主兼容标记：已验证的 @deepseek-ai/dsh 版本（来源 package.json.dshCompat，构建注入）。
+   * 与 dsh-im 轴并列——宿主升级同样会让插件失效（#79 即宿主侧装配失败）。 */
+  dshCompatChip: (v: string) => string
+  /** #79 宿主兼容悬停说明：已验证宿主版本 + 本插件依赖的宿主能力。 */
+  dshCompatTitle: (v: string, requires: string) => string
   promoTitle: string
   promoDeck: string
   promoDeckDesc: string
@@ -108,6 +113,9 @@ const ZH: FirstViewCopy = {
   compatTitle: (v, range) => '本插件已在 dsh-im ' + v + ' 上验收；兼容范围 ' + range
     + '（4.17.1+ 走 /api 新载体，旧版自动回退旧路由）。点开看兼容性说明。',
   compatHref: 'https://github.com/FeatherHunter/dsh-im-companion#compat',
+  dshCompatChip: (v) => '宿主 dsh ' + v,
+  dshCompatTitle: (v, requires) => '本插件已在 @deepseek-ai/dsh ' + v + ' 上验收；要求宿主提供 '
+    + requires + '（DSH 公开 /api 载体；更老的宿主会在装配期显式报错，不静默降级）。点开看兼容性说明。',
   promoTitle: '作者其他插件',
   promoDeck: 'dsh-mattpocock-skills-deck',
   promoDeckDesc: 'Mattpocock SKILLS 在DSH中增强插件。开发伴侣☕️。',
@@ -156,6 +164,9 @@ const EN: FirstViewCopy = {
   compatTitle: (v, range) => 'Verified against dsh-im ' + v + '; compatible with ' + range
     + ' (4.17.1+ uses the /api carrier, older falls back automatically). Open the compatibility notes.',
   compatHref: 'https://github.com/FeatherHunter/dsh-im-companion/blob/master/docs/README.en.md#compat',
+  dshCompatChip: (v) => 'host dsh ' + v,
+  dshCompatTitle: (v, requires) => 'Verified against @deepseek-ai/dsh ' + v + '; the host must provide '
+    + requires + ' (the public /api carrier; older hosts fail loudly at assembly). Open the compatibility notes.',
   promoTitle: 'Related projects',
   promoDeck: 'dsh-mattpocock-skills-deck',
   promoDeckDesc: 'Agent skills method deck',

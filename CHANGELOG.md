@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## v0.1.7 — 2026-09-11
+
+主题：**web profile 装配失败修复**（#79 host 半改道 DSH 公开 `/api` 载体）+ 工具链可移植（#80）+ 记录同步（#81）。
+
+**兼容宿主 `@deepseek-ai/dsh` 0.1.5-rc.2（已验证）；要求宿主提供 `connection.fetch`，更老宿主装配期显式报错、不静默降级。**
+
+提炼：
+
+- package.json / package-lock.json 0.1.6 → 0.1.7；README 中英版本锁与兼容矩阵同步到 0.1.7。
+- **宿主兼容声明（新）**：`package.json.dshCompat = { verified: "0.1.5-rc.2", requires: "connection.fetch" }` 为单点真相，构建时注入 → 面板右上角在 dsh-im 轴旁再标一枚「宿主 dsh 0.1.5-rc.2」，悬停给「已验证 + 依赖的宿主能力」，点击跳 README 兼容性。宿主是**会打破插件**的那条轴（#79 即宿主侧装配失败），故与 dsh-im 轴并列标出。
+- **修复（#79）**：host 半从 `ctx.connection.rpc.handle('/im-companion')`（前缀路由）改到 `ctx.connection.fetch.register({ path: '/api/im-companion', methods: ['POST'], requestBody: 'buffered' })`。前缀路由注册的最后一步是 `owner.webServer.register(route)`，而那个 Context 是 connection 服务自己的（无 `webServer` 注入）→ 装配期必抛 `cannot get property "webServer" without inject`，整个插件被 loader 丢弃。`inject` 保持只声明 `connection`（补 `webServer` 声明无效，已实测推翻）。决策、根因出处与证伪条件见 `docs/adr/0002`。
+- **工具链（#80）**：verify 脚本去掉全部机器路径硬编码——react 走模块解析（本仓 devDependencies），产物按仓库根解析；`npm run check` 恢复整链全绿（此前 verify 首步即 `MODULE_NOT_FOUND` 即断）。顺带堵掉 harness 构建默认清空 `outDir` 会静默删除同目录手写脚本（`tools/preview/welcome-panels.ts`）的坑。
+- **记录（#81）**：契约 §3 增「host 入口（载体）」行、CONTEXT 术语表 Contract 行改述、`src/index.ts` 注释与日志（改说真路径 `fetch route /api/im-companion`）、preview mock 补新载体翻译（两代都认）。
+- 回归钉：`tools/verify/host-entry.ts` 6 断言（新增「方法守卫 405」与「重装配退让只 warn 不抛不重复注册」）；`render-client` 新增「宿主兼容标记」断言（按 `package.json` 推导，测试里不抄版本号）。
+
+验证与影响：
+
+- `npm run check` 全绿（build / typecheck / verify 17/17 / guard 101 文件 ≤300 行）。
+- 运行中宿主实测：`POST /api/im-companion` 的 ping / meta / fs / activity → **200 且回真实数据**；对照未注册路径 → **404**；旧前缀 `/im-companion/ping` → **405**（已退役）；六个边界与异常分支行为不变。
+- 三方 bundle hash 一致（本仓 = web 挂载 = desktop 挂载）：`lib/index.js` `F2F72C536331147B`、`lib/client.js` `40A6A01FE71FFEDE`。
+- **0.1.6 在 web profile 不可用**（宿主半装配失败）；web 用户请升级到 0.1.7。
+- 无新增契约通道；共享层只新增（`rpc.ts` 既有行为改为随载体迁移，理由见 ADR-0002）。
+
 ## v0.1.6 — 2026-09-09
 
 主题：dsh-im 4.17.1 管理 RPC 改道兼容（#77 双传输）+ 面板版本兼容标记（#78）——接入向导、舰队列表与在线徽标全线恢复，版本组合一眼可自查。

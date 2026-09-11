@@ -95,6 +95,19 @@ test("#78 版本组文案：两个版本号各自带标签（一眼分得清谁�
   assert.ok(en.compatHref.indexOf("#compat") >= 0);
 });
 
+test("#79 宿主兼容标记：与 dsh-im 轴并列，各带产品名与悬停口径", () => {
+  const zh = copy.firstViewCopy("zh");
+  assert.equal(zh.dshCompatChip("0.1.5-rc.2"), "宿主 dsh 0.1.5-rc.2",
+    "宿主标记必须带「宿主 dsh」前缀——否则与 dsh-im 轴看起来是同一件事");
+  const title = zh.dshCompatTitle("0.1.5-rc.2", "connection.fetch");
+  assert.ok(title.indexOf("已在 @deepseek-ai/dsh 0.1.5-rc.2") >= 0, "悬停须含已验证宿主口径");
+  assert.ok(title.indexOf("connection.fetch") >= 0, "悬停须写明依赖的宿主能力");
+  assert.ok(zh.compatHref.indexOf("#compat") >= 0, "宿主标记同跳兼容性锚点");
+  const en = copy.firstViewCopy("en");
+  assert.equal(en.dshCompatChip("0.1.5-rc.2"), "host dsh 0.1.5-rc.2");
+  assert.ok(en.dshCompatTitle("0.1.5-rc.2", "connection.fetch").indexOf("Verified against @deepseek-ai/dsh 0.1.5-rc.2") >= 0);
+});
+
 test("#78 顶部单行硬约束：.af-hd 不换行 + 右组不压缩 + 左块先让位", () => {
   const css: string = styles.FIRST_VIEW_CSS;
   assert.ok(css.indexOf(".af-hd { flex-wrap: nowrap; }") >= 0, "顶部禁止换行（用户裁定：不许变 2 行）");

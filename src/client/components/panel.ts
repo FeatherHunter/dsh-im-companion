@@ -23,6 +23,9 @@ import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir
 declare const __PLUGIN_VERSION__: string | undefined
 /* #78：构建注入的 dsh-im 兼容信息（tsdown define __DSH_IM_COMPAT__，package.json.dshImCompat 唯一真相）。 */
 declare const __DSH_IM_COMPAT__: { verified?: string; range?: string } | undefined
+/* #79：构建注入的宿主（@deepseek-ai/dsh）兼容信息（tsdown define __DSH_COMPAT__，package.json.dshCompat 唯一真相）。
+ * 宿主是**会打破插件**的那条轴（#79 就是宿主侧装配失败），故与 dsh-im 轴并列标出。 */
+declare const __DSH_COMPAT__: { verified?: string; requires?: string } | undefined
 
 function pluginVersion(): string {
   try {
@@ -42,6 +45,17 @@ function pluginCompat(): { verified: string; range: string } {
     /* 同上 */
   }
   return { verified: '', range: '' }
+}
+
+/** #79 已验证宿主版本（无注入环境回退空，chip 隐藏；绝不硬编码版本号）。 */
+function hostCompat(): { verified: string; requires: string } {
+  try {
+    const c = typeof __DSH_COMPAT__ === 'object' && __DSH_COMPAT__ !== null ? __DSH_COMPAT__ : undefined
+    if (c) return { verified: String(c.verified ?? ''), requires: String(c.requires ?? '') }
+  } catch {
+    /* 同上 */
+  }
+  return { verified: '', requires: '' }
 }
 
 export function FleetPanel(ctx: unknown): HTMLElement {
@@ -82,7 +96,20 @@ export function FleetPanel(ctx: unknown): HTMLElement {
         'aria-label': compatNote,
       }, copy.compatChip(compat.verified))
     : null
-  const verBox = h('div', { className: 'af-verbox' }, verLink, compatChip)
+  /* #79 宿主兼容标记：与 dsh-im 标记并列（两条轴都会让插件失效），点击同跳 README 兼容性小节。 */
+  const host = hostCompat()
+  const hostNote = host.verified ? copy.dshCompatTitle(host.verified, host.requires) : ''
+  const hostChip = host.verified
+    ? h('a', {
+        className: 'af-compat',
+        href: copy.compatHref,
+        target: '_blank',
+        rel: 'noopener',
+        title: hostNote,
+        'aria-label': hostNote,
+      }, copy.dshCompatChip(host.verified))
+    : null
+  const verBox = h('div', { className: 'af-verbox' }, verLink, compatChip, hostChip)
   /* P2 引流星标：ghost 虚线风，新开页跳 companion 仓库点 Star（右上角，＋原位）。 */
   const starLink = h('a', {
     className: 'af-icon-btn af-star',

@@ -14,15 +14,16 @@ function pluginVersion(): string {
   }
 }
 
-/* #78：同源注入「已验证的 dsh-im 版本」（package.json.dshImCompat 唯一真相，改一处 UI 即变）。 */
-function dshImCompat(): { verified: string; range: string } {
+/* #78/#79：同源注入兼容信息（package.json 的 dshImCompat / dshCompat 是唯一真相，改一处 UI 即变）。
+ * 字段名由调用处给定，缺字段回空串 —— 面板据此隐藏对应的兼容标记，绝不硬编码版本号。 */
+function compatField(key: string, fields: readonly string[]): Record<string, string> {
+  let raw: Record<string, unknown> = {}
   try {
-    const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
-    const compat = pkg?.dshImCompat ?? {}
-    return { verified: String(compat.verified ?? ''), range: String(compat.range ?? '') }
+    raw = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))?.[key] ?? {}
   } catch {
-    return { verified: '', range: '' }
+    /* 读不到 package.json（异常环境）：全部回空串，UI 隐藏标记 */
   }
+  return Object.fromEntries(fields.map((f) => [f, String(raw[f] ?? '')]))
 }
 
 const CLIENT_EXTERNALS = [
@@ -43,7 +44,8 @@ const clientBundle: UserConfig = {
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
     __PLUGIN_VERSION__: JSON.stringify(pluginVersion()),
-    __DSH_IM_COMPAT__: JSON.stringify(dshImCompat()),
+    __DSH_IM_COMPAT__: JSON.stringify(compatField('dshImCompat', ['verified', 'range'])),
+    __DSH_COMPAT__: JSON.stringify(compatField('dshCompat', ['verified', 'requires'])),
   },
   deps: {
     neverBundle: [...CLIENT_EXTERNALS],

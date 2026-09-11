@@ -1,9 +1,13 @@
 {
   "name": "dsh-im-companion",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "dshImCompat": {
     "verified": "4.17.1",
     "range": ">=4.17.1 || <=4.17.0"
+  },
+  "dshCompat": {
+    "verified": "0.1.5-rc.2",
+    "requires": "connection.fetch"
   },
   "description": "dsh-im-companion：以助理和家的概念增强 dsh-im——哪个工作区有助理在管、在不在线尽收眼底，搬家拖一下就行。",
   "private": false,
