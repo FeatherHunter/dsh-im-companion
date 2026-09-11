@@ -5,7 +5,7 @@ import { AgentMetaStore } from './host/meta-store.js'
 import { createAgentFleetHandler } from './host/rpc.js'
 
 export const name = 'dsh-im-companion'
-// #80：迁移到 DSH 公开的 /api 载体后，不再需要 webServer。
+// #79：迁移到 DSH 公开的 /api 载体后，不再需要 webServer。
 // 旧写法 ctx.connection.rpc.handle() 会以 connection 服务自身的 Context 去调
 // webServer.register(...) 注册前缀路由，而那个 Context 没有 webServer 注入 → 装配期必抛
 // cannot get property "webServer" without inject。

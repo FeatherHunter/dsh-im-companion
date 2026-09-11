@@ -10,7 +10,8 @@ type RawCall = (ch: string, ep: string, p: Record<string, unknown>, s: AbortSign
  * 9 状态渠道 + wecom-app（上游 WECOM_APP_RPC_CHANNEL='/wecom-app'，wecomAppRpcCall 经新载体）
  * + office（上游 OFFICE_RPC_CHANNEL='/office'）+ /dsh-im-delivery（DELIVERY_RPC_CHANNEL，
  * 新 endpoint 'dsh-im/dsh-im-delivery'，header-overlay.ts 经同一 RpcCall 有真实调用点）。
- * '/im-companion' 自有桥（routes.list/activity/meta）不在表内，直通不动。 */
+ * '/im-companion' 自有桥（routes.list/activity/meta）自 #79 起并入本表：host 半已改道
+ * connection.fetch.register（路径 /api/im-companion），旧前缀路由退役，故 endpoint 取 'im-companion'。 */
 const NEW_CARRIER_CHANNELS: ReadonlySet<string> = new Set([
   '/feishu', '/weixin', '/qq', '/slack', '/telegram', '/discord', '/whatsapp', '/dingtalk', '/wecom',
   '/wecom-app', '/office', '/dsh-im-delivery',
@@ -18,7 +19,7 @@ const NEW_CARRIER_CHANNELS: ReadonlySet<string> = new Set([
 ])
 
 /** 新载体 endpoint：dsh-im 渠道沿用 'dsh-im'+channel；自有桥 '/im-companion' 用 'im-companion'
- *  （#80：host 侧已把自有桥改道到 connection.fetch.register，路径 /api/im-companion）。 */
+ *  （#79：host 侧已把自有桥改道到 connection.fetch.register，路径 /api/im-companion）。 */
 function newCarrierEndpoint(channel: string): string {
   return channel === '/im-companion' ? 'im-companion' : 'dsh-im' + channel
 }

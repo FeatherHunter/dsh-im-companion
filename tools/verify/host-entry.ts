@@ -1,4 +1,4 @@
-// #80 验证：host 半改走 DSH 公开 /api 载体（connection.fetch.register），不再用 rpc.handle。
+// #79 验证：host 半改走 DSH 公开 /api 载体（connection.fetch.register），不再用 rpc.handle。
 //
 // 线上故障（DSH Desktop，web profile）：
 //   Error: failed to apply loader entry dsh-im-companion (dsh-im-companion):
@@ -68,7 +68,7 @@ function makeCtx(
         }
         const connection: Record<string, unknown> = {
           // 旧入口保留只为证明「不再被调用」：一旦被调用即抛，测试立刻失败。
-          rpc: { handle: () => { throw new Error('rpc.handle must not be used anymore (#80)'); } },
+          rpc: { handle: () => { throw new Error('rpc.handle must not be used anymore (#79)'); } },
         };
         if (withFetch) {
           connection.fetch = {
@@ -90,8 +90,8 @@ test('inject 只声明 connection（不再需要 webServer）', () => {
   assert.ok(Array.isArray(host.inject), 'inject 必须是数组');
   assert.ok(host.inject.includes('connection'), 'inject 必须含 connection');
   assert.ok(!host.inject.includes('webServer'),
-    'inject 不应再含 webServer：#80 已改走 connection.fetch.register，抛错的 Context 不是本插件的 ctx');
-  console.log('#80-PROOF inject=' + JSON.stringify(host.inject) + ' PASS');
+    'inject 不应再含 webServer：#79 已改走 connection.fetch.register，抛错的 Context 不是本插件的 ctx');
+  console.log('#79-PROOF inject=' + JSON.stringify(host.inject) + ' PASS');
 });
 
 test('装配通过，并经 fetch.register 注册 /api/im-companion', () => {
@@ -100,7 +100,7 @@ test('装配通过，并经 fetch.register 注册 /api/im-companion', () => {
   assert.ok(routes.some((r) => r.path === '/api/im-companion'),
     '应经 connection.fetch.register 注册 /api/im-companion');
   assert.equal(routes[0]?.requestBody, 'buffered', 'requestBody 应为 buffered');
-  console.log('#80-PROOF apply-ok routes=' + JSON.stringify(routes.map((r) => r.path)) + ' PASS');
+  console.log('#79-PROOF apply-ok routes=' + JSON.stringify(routes.map((r) => r.path)) + ' PASS');
 });
 
 test('路由 fetch 说 DSH 信封：client-request → server-response + result', async () => {
@@ -121,11 +121,11 @@ test('路由 fetch 说 DSH 信封：client-request → server-response + result'
   assert.equal(body.type, 'server-response', '回包必须是 server-response 信封');
   assert.equal(body.rpcId, 'x1', 'rpcId 必须原样回带');
   assert.equal(body.result?.ok, true, 'ping 应回 ok:true 信封');
-  console.log('#80-PROOF envelope=' + JSON.stringify(body).slice(0, 140) + ' PASS');
+  console.log('#79-PROOF envelope=' + JSON.stringify(body).slice(0, 140) + ' PASS');
 });
 
 test('回归钉：宿主不提供 fetch.register 时装配必须失败（证明测试盯着新载体）', () => {
   const { ctx } = makeCtx(host.inject, { withFetch: false });
   assert.throws(() => host.apply(ctx, { dshHome: tmpHome }));
-  console.log('#80-PROOF missing-fetch-register-fails PASS');
+  console.log('#79-PROOF missing-fetch-register-fails PASS');
 });
