@@ -1,12 +1,15 @@
 // Real-React verification for dsh-im-companion lib/client.js（TypeScript，Node 直跑）
+// 不写死任何机器路径：产物按仓库根解析，react 走模块解析（本仓 devDependency）——
+// 别的开发者 clone 后 npm install 即可直接跑，换机器 / 换目录 / 换用户名都不受影响。
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
 import vm from 'node:vm';
 import { createDocument, El } from './dom-shim.ts';
 
-const BASE = 'D:/0Tools/DSH Desktop/resources/app.asar.unpacked/node_modules';
+const REPO = process.cwd(); // npm run verify 自仓库根起跑（与其余 verify 脚本同一约定）
 const req = createRequire(import.meta.url);
-const code = readFileSync('D:/dsh-plugin/dsh-im-companion/lib/client.js', 'utf8');
+const code = readFileSync(join(REPO, 'lib', 'client.js'), 'utf8');
 
 const doc = createDocument();
 const win = {
@@ -22,8 +25,8 @@ for (const name of ['HTMLElement','HTMLIFrameElement','HTMLInputElement','HTMLTe
 (globalThis as any).document = doc;
 try { (globalThis as any).navigator = win.navigator; } catch { /* read-only */ }
 
-const React = req(BASE + '/react');
-const ReactDOMClient = req(BASE + '/react-dom/client');
+const React = req('react'); // 本仓 devDependency（package.json）
+const ReactDOMClient = req('react-dom/client');
 
 let loaded: { id: string; exports: any } | null = null;
 (win as any).__ModuleLoader__ = {

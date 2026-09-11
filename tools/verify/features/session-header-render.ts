@@ -1,16 +1,15 @@
 // SessionHeader 真机前渲染验证：对构建产物 lib/client.js 跑 Real-React，断言 Header 槽位三态。
 // settings.section 不碰（render-client.ts 覆盖）；本文件只覆盖新增的 header.utilities 注册。
+// 不写死任何机器路径：产物按仓库根解析，react 走模块解析（本仓 devDependency）。
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { join } from 'node:path';
 import vm from 'node:vm';
 import { createDocument, El } from '../dom-shim.ts';
 
-const REPO = process.cwd();
-const UNPACKED = process.env.DSH_DESKTOP_UNPACKED ?? 'D:/0Tools/DSH Desktop/resources/app.asar.unpacked';
-const BASE = UNPACKED + '/node_modules';
+const REPO = process.cwd(); // npm run verify 自仓库根起跑（与其余 verify 脚本同一约定）
 const req = createRequire(import.meta.url);
-import { join as joinPath } from 'node:path';
-const code = readFileSync(joinPath(REPO, 'lib/client.js'), 'utf8');
+const code = readFileSync(join(REPO, 'lib/client.js'), 'utf8');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const W2 = 'D:\\agents\\dsh-im';
@@ -31,8 +30,8 @@ for (const name of ['HTMLElement','HTMLIFrameElement','HTMLInputElement','HTMLTe
 (globalThis as any).document = doc;
 try { (globalThis as any).navigator = win.navigator; } catch { /* read-only */ }
 
-const React = req(BASE + '/react');
-const ReactDOMClient = req(BASE + '/react-dom/client');
+const React = req('react'); // 本仓 devDependency（package.json）
+const ReactDOMClient = req('react-dom/client');
 
 let loaded: { id: string; exports: any } | null = null;
 (win as any).__ModuleLoader__ = {
@@ -41,7 +40,7 @@ let loaded: { id: string; exports: any } | null = null;
       if (name === 'react') return React;
       if (name === 'react-dom') return ReactDOMClient;
       if (name === 'react-dom/client') return ReactDOMClient;
-      if (name === 'react/jsx-runtime') return req(BASE + '/react/jsx-runtime');
+      if (name === 'react/jsx-runtime') return req('react/jsx-runtime');
       throw new Error('unexpected require ' + name);
     }) as any };
   },
