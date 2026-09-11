@@ -5,3 +5,5 @@ lib/
 %TEMP%/
 .scratch/
 .dsh-vision-router/
+
+.wizard-release.env
