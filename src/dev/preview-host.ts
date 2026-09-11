@@ -68,7 +68,18 @@ function fakeCtx(): unknown {
     },
     connection: {
       rpc: {
-        call: async (ch: string, endpoint: string, payload: Record<string, unknown> | undefined) => {
+        call: async (ch0: string, endpoint0: string, payload0: Record<string, unknown> | undefined) => {
+          // 新载体（#77 渠道 / #79 自有桥）：client 现在发 call('/api', 'im-companion' | 'dsh-im<channel>',
+          // { method, payload })。这里翻译回旧形态，两代都认 —— 否则 mock 会静默回「未配置」，
+          // 让人以为预览坏了（本 harness 目前未接线到 preview.html，见 #81）。
+          let ch = ch0, endpoint = endpoint0, payload = payload0;
+          if (ch === '/api') {
+            const inner = payload as { method?: string; payload?: Record<string, unknown> } | undefined;
+            if (endpoint === 'im-companion') ch = '/im-companion';
+            else if (endpoint.startsWith('dsh-im/')) ch = endpoint.slice('dsh-im'.length);
+            endpoint = String(inner?.method ?? '');
+            payload = inner?.payload;
+          }
           if (ch === '/im-companion') {
             if (endpoint === 'fs.defaultRoot') return { ok: true, value: { path: 'C:\\' } }
             if (endpoint === 'fs.roots') return { ok: true, value: { roots: ['C:\\', 'D:\\'] } }

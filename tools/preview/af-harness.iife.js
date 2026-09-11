@@ -10295,7 +10295,15 @@
 					return () => {};
 				}
 			},
-			connection: { rpc: { call: async (ch, endpoint, payload) => {
+			connection: { rpc: { call: async (ch0, endpoint0, payload0) => {
+				let ch = ch0, endpoint = endpoint0, payload = payload0;
+				if (ch === "/api") {
+					const inner = payload;
+					if (endpoint === "im-companion") ch = "/im-companion";
+					else if (endpoint.startsWith("dsh-im/")) ch = endpoint.slice(6);
+					endpoint = String(inner?.method ?? "");
+					payload = inner?.payload;
+				}
 				if (ch === "/im-companion") {
 					if (endpoint === "fs.defaultRoot") return {
 						ok: true,

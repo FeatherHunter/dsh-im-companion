@@ -19,7 +19,7 @@
 | **黄（待看／待选）** | 等用户查看（官方绿点完成提醒／warning 等审批）或等用户弹窗选择（approval 未决）；橙色竖条，不闪。 |
 | **首屏** | 设置-IM机器人增强第一眼面板整体（FleetPanel：标题栏 + 工具栏 + 新建条 + 主体列表 + 加载 / 空 / 错误态）。 |
 | **Feature（功能模块）** | 一个票=一个功能=一个自包含开发单元（src/features/<feature>/），可独立 session 开发；模块间只经契约交互。 |
-| **Contract（契约）** | 模块间唯一交互面：共享包导出接口（theme/ui 原语/data 层）、挂载点（slot/左栏 DOM）、host 桥端点前缀（/im-companion 下按功能隔离）。 |
+| **Contract（契约）** | 模块间唯一交互面：共享包导出接口（theme/ui 原语/data 层）、挂载点（slot/左栏 DOM）、host 桥端点（自有桥经 DSH 公开 `/api` 载体注册，路径 `/api/im-companion`，按功能命名 `im-companion.<feature>.<action>`；载体沿革见 ADR-0002）。 |
 | **红线（300 行）** | 任何源文件 ≤300 行；lib/* 为构建产物豁免；由 T0 守卫脚本机械执行。 |
 | **Map** | Wayfinder 的目的地索引 issue，本文档对应的规划图谱。 |
 

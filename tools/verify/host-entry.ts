@@ -14,7 +14,10 @@
 //   ① inject 只声明 connection（不再需要 webServer）；
 //   ② apply 通过 connection.fetch.register 注册 /api/im-companion；
 //   ③ 该路由的 fetch 说 DSH 信封：client-request → server-response + result；
-//   ④ 回归钉：宿主不提供 fetch.register 时 apply 必须失败 —— 证明本测试真的盯着新载体。
+//   ④ 方法守卫：handler 自身只答 POST（不依赖宿主派发实现）；
+//   ⑤ 重装配退让：宿主报 already registered 时不抛、只 warn 且不注册；
+//   ⑥ 回归钉：宿主不提供 fetch.register 时 apply 必须失败 —— 证明本测试真的盯着新载体。
+// 决策记录：docs/adr/0002（载体迁移 + 首版 webServer 假设为何作废）。
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -47,12 +50,13 @@ type FetchRoute = { path: string; methods?: string[]; requestBody?: string; fetc
 /** 复刻宿主的 cordis 声明守卫 + connection 服务面（新载体 = fetch.register）。 */
 function makeCtx(
   declared: readonly string[],
-  opts: { withFetch?: boolean } = {},
-): { ctx: any; routes: FetchRoute[] } {
-  const { withFetch = true } = opts;
+  opts: { withFetch?: boolean; registerError?: string } = {},
+): { ctx: any; routes: FetchRoute[]; warns: string[] } {
+  const { withFetch = true, registerError } = opts;
   const routes: FetchRoute[] = [];
+  const warns: string[] = [];
   const raw: Record<string, unknown> = {
-    logger: { info: () => {}, warn: () => {} },
+    logger: { info: () => {}, warn: (m?: unknown) => { warns.push(String(m)); } },
     effect: (fn: () => unknown) => { const d = fn(); return () => { if (typeof d === 'function') d(); }; },
     provide: () => {},
   };
@@ -73,6 +77,8 @@ function makeCtx(
         if (withFetch) {
           connection.fetch = {
             register: (options: FetchRoute) => {
+              // 宿主重复注册时的原话（registerFetchRoute）
+              if (registerError !== undefined) throw new Error(registerError);
               routes.push(options);
               return () => { const i = routes.indexOf(options); if (i >= 0) routes.splice(i, 1); };
             },
@@ -83,7 +89,7 @@ function makeCtx(
       return Reflect.get(target, prop, receiver);
     },
   });
-  return { ctx, routes };
+  return { ctx, routes, warns };
 }
 
 test('inject 只声明 connection（不再需要 webServer）', () => {
@@ -122,6 +128,26 @@ test('路由 fetch 说 DSH 信封：client-request → server-response + result'
   assert.equal(body.rpcId, 'x1', 'rpcId 必须原样回带');
   assert.equal(body.result?.ok, true, 'ping 应回 ok:true 信封');
   console.log('#79-PROOF envelope=' + JSON.stringify(body).slice(0, 140) + ' PASS');
+});
+
+test('方法守卫：handler 自身只答 POST（不依赖宿主派发实现）', async () => {
+  const { ctx, routes } = makeCtx(host.inject);
+  host.apply(ctx, { dshHome: tmpHome });
+  const route = routes.find((r) => r.path === '/api/im-companion');
+  assert.ok(route, '路由必须已注册');
+  const res = await route!.fetch({ method: 'GET' });
+  assert.equal(res.status, 405, '非 POST 必须被 handler 自己挡下（405）');
+  console.log('#79-PROOF method-guard PASS');
+});
+
+test('重装配退让：宿主报 already registered 时只 warn、不抛、不重复注册', () => {
+  const { ctx, routes, warns } = makeCtx(host.inject, {
+    registerError: 'connection: exact Fetch route "/api/im-companion" is already registered',
+  });
+  assert.doesNotThrow(() => host.apply(ctx, { dshHome: tmpHome }), '退让分支必须吞掉重复注册错误');
+  assert.equal(routes.length, 0, '退让时本实例不应注册任何路由');
+  assert.ok(warns.some((w) => w.includes('already registered')), '应留一条 warn 说明退让原因');
+  console.log('#79-PROOF yield-on-duplicate PASS');
 });
 
 test('回归钉：宿主不提供 fetch.register 时装配必须失败（证明测试盯着新载体）', () => {

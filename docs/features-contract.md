@@ -45,6 +45,7 @@ export interface FeatureManifest {
 | ui/* | 只加新原语文件；改既有原语需 F0 评审（单 PR） |
 | data/connection-stream.ts / bindings.ts | B1 首建；其余功能只读其导出 |
 | host/rpc.ts | 只追加 case；端点命名 `im-companion.<feature>.<action>` |
+| host 入口 `src/index.ts`（载体） | 自有桥**只**经 `connection.fetch.register` 挂到 DSH 公开 `/api` 载体（路径 `/api/im-companion`）；**禁止** `connection.rpc.handle`——前缀路由会以 connection 服务自身的 Context 取 `webServer`，装配期即抛 `cannot get property "webServer" without inject`（沿革与证据见 ADR-0002） |
 | client/index.ts | 只改 FEATURES 列表（每功能一行） |
 | A1 私有（components/panel.ts、connect-flow.ts、row-actions.ts 等） | 禁止被 feature 直接引用；触碰走单 PR（C1a/E2 入口按 R5 建议由 B3 胶囊承载或单 PR 改） |
 
