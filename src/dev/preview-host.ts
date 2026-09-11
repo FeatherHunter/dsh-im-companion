@@ -24,25 +24,25 @@ function fakeCtx(): unknown {
   type MockBot = { botId: string; ws: string; st: string; name?: string }
   const MOCK: Record<string, { color: string; bots: MockBot[] }> = {
     feishu: { color: '#3370ff', bots: [
-      { botId: 'bf1', ws: 'D:\\3DeepSeekHarness\\agents\\xiaoshuai', st: 'healthy' },
-      { botId: 'bf2', ws: 'D:\\3DeepSeekHarness\\agents\\xinghuo', st: 'offline' },
-      { botId: 'bf3', ws: 'D:\\3DeepSeekHarness\\agents\\xiaoyan', st: 'degraded' },
-      { botId: 'bf4', ws: 'D:\\3DeepSeekHarness\\agents\\shujucangkuguanliyuan', st: 'healthy' },
+      { botId: 'bf1', ws: 'D:\\agents\\xiaoshuai', st: 'healthy' },
+      { botId: 'bf2', ws: 'D:\\agents\\xinghuo', st: 'offline' },
+      { botId: 'bf3', ws: 'D:\\agents\\xiaoyan', st: 'degraded' },
+      { botId: 'bf4', ws: 'D:\\agents\\shujucangkuguanliyuan', st: 'healthy' },
     ] },
     weixin: { color: '#07c160', bots: [
-      { botId: 'bw1', ws: 'D:\\3DeepSeekHarness\\agents\\wechat', st: 'healthy' },
-      { botId: 'bw2', ws: 'D:\\3DeepSeekHarness\\agents\\xiaoshuai', st: 'healthy' },
+      { botId: 'bw1', ws: 'D:\\agents\\wechat', st: 'healthy' },
+      { botId: 'bw2', ws: 'D:\\agents\\xiaoshuai', st: 'healthy' },
     ] },
     qq: { color: '#12b7f5', bots: [
       { botId: 'bq1', ws: '', st: 'offline', name: 'QQ机器人' },
-      { botId: 'bq2', ws: 'D:\\3DeepSeekHarness\\agents\\xiaoshuai', st: 'healthy' },
+      { botId: 'bq2', ws: 'D:\\agents\\xiaoshuai', st: 'healthy' },
     ] },
-    slack: { color: '#4a154b', bots: [{ botId: 'bs1', ws: 'D:\\3DeepSeekHarness\\agents\\xinghuo', st: 'healthy' }] },
-    telegram: { color: '#2aabee', bots: [{ botId: 'bt1', ws: 'D:\\3DeepSeekHarness\\agents\\xiaosun', st: 'offline' }] },
-    discord: { color: '#5865f2', bots: [{ botId: 'bd1', ws: 'D:\\3DeepSeekHarness\\agents\\xiaowan', st: 'checking' }] },
-    whatsapp: { color: '#25d366', bots: [{ botId: 'bwa1', ws: 'D:\\3DeepSeekHarness\\agents\\xiaoyan', st: 'healthy' }] },
-    dingtalk: { color: '#0091ff', bots: [{ botId: 'bdd1', ws: 'D:\\3DeepSeekHarness\\agents\\xiaozhuo', st: 'healthy' }] },
-    wecom: { color: '#2e7cf6', bots: [{ botId: 'bwc1', ws: 'D:\\3DeepSeekHarness\\agents\\xiaoshuai', st: 'healthy' }] },
+    slack: { color: '#4a154b', bots: [{ botId: 'bs1', ws: 'D:\\agents\\xinghuo', st: 'healthy' }] },
+    telegram: { color: '#2aabee', bots: [{ botId: 'bt1', ws: 'D:\\agents\\xiaosun', st: 'offline' }] },
+    discord: { color: '#5865f2', bots: [{ botId: 'bd1', ws: 'D:\\agents\\xiaowan', st: 'checking' }] },
+    whatsapp: { color: '#25d366', bots: [{ botId: 'bwa1', ws: 'D:\\agents\\xiaoyan', st: 'healthy' }] },
+    dingtalk: { color: '#0091ff', bots: [{ botId: 'bdd1', ws: 'D:\\agents\\xiaozhuo', st: 'healthy' }] },
+    wecom: { color: '#2e7cf6', bots: [{ botId: 'bwc1', ws: 'D:\\agents\\xiaoshuai', st: 'healthy' }] },
   }
   const snap = (bots: MockBot[], color: string) => ({
     ok: true,
@@ -75,7 +75,7 @@ function fakeCtx(): unknown {
             if (endpoint === 'fs.list') {
               const dir = String(payload?.path ?? '')
               const entries = dir === 'C:\\'
-                ? [{ name: '3DeepSeekHarness', path: 'C:\\3DeepSeekHarness' }, { name: 'dsh-plugin', path: 'C:\\dsh-plugin' }, { name: 'Users', path: 'C:\\Users' }]
+                ? [{ name: 'agents', path: 'C:\\agents' }, { name: 'projects', path: 'C:\\projects' }, { name: 'Users', path: 'C:\\Users' }]
                 : ['xiaoshuai', 'xinghuo', 'xiaoyan', 'wechat', 'xiaosun'].map((n: string) => ({ name: n, path: dir + '\\' + n }))
               return { ok: true, value: { path: dir, parent: dir === 'C:\\' ? null : 'C:\\', entries } }
             }

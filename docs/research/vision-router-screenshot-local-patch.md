@@ -7,7 +7,7 @@
 
 ## 改动位置（均在已安装包内，非本仓库代码）
 
-文件：`C:\Users\辰辰洋洋\.dsh\profiles\desktop\node_modules\dsh-vision-router\index.js`（v2.1.3）
+文件：`%USERPROFILE%\.dsh\profiles\desktop\node_modules\dsh-vision-router\index.js`（v2.1.3）
 
 1. import 区新增一行（约 L46）：
    `import { buildPerMonitorWindowsScreenshotScript } from './lib/windows-screenshot-dpi-compat.js'`

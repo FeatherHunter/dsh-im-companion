@@ -63,11 +63,11 @@ const ctx = {
       return { ok: true, value: {
         schemaVersion: 2, revision: 3, state: 'connected',
         bots: [
-          { botId: 'bot_aaaa', workspace: 'D:\\3DeepSeekHarness\\agents\\xiaoshuai', connected: true,
+          { botId: 'bot_aaaa', workspace: 'D:\\agents\\xiaoshuai', connected: true,
             health: { status: 'healthy', summary: '长连接运行正常', lastCheckedAt: 1 } },
-          { botId: 'bot_bbbb', workspace: 'D:\\3DeepSeekHarness\\agents\\xiaoshuai', connected: true,
+          { botId: 'bot_bbbb', workspace: 'D:\\agents\\xiaoshuai', connected: true,
             health: { status: 'healthy', summary: '长连接运行正常', lastCheckedAt: 2 } },
-          { botId: 'bot_cccc', workspace: 'D:\\3DeepSeekHarness\\agents\\xinghuo', connected: false,
+          { botId: 'bot_cccc', workspace: 'D:\\agents\\xinghuo', connected: false,
             health: { status: 'offline', summary: '尚未连接', lastCheckedAt: 3 } },
         ],
         totals: { configured: 3, connected: 2 },
@@ -76,7 +76,7 @@ const ctx = {
     if (ch === '/weixin') {
       return { ok: true, value: {
         bots: [
-          { botId: 'wx_1111', workspace: 'D:\\3DeepSeekHarness\\agents\\wechat', connected: true,
+          { botId: 'wx_1111', workspace: 'D:\\agents\\wechat', connected: true,
             health: { status: 'healthy', summary: '长连接运行正常', lastCheckedAt: 4 } },
         ],
         totals: { configured: 1, connected: 1 },

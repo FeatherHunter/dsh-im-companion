@@ -10161,22 +10161,22 @@
 				bots: [
 					{
 						botId: "bf1",
-						ws: "D:\\3DeepSeekHarness\\agents\\xiaoshuai",
+						ws: "D:\\agents\\xiaoshuai",
 						st: "healthy"
 					},
 					{
 						botId: "bf2",
-						ws: "D:\\3DeepSeekHarness\\agents\\xinghuo",
+						ws: "D:\\agents\\xinghuo",
 						st: "offline"
 					},
 					{
 						botId: "bf3",
-						ws: "D:\\3DeepSeekHarness\\agents\\xiaoyan",
+						ws: "D:\\agents\\xiaoyan",
 						st: "degraded"
 					},
 					{
 						botId: "bf4",
-						ws: "D:\\3DeepSeekHarness\\agents\\shujucangkuguanliyuan",
+						ws: "D:\\agents\\shujucangkuguanliyuan",
 						st: "healthy"
 					}
 				]
@@ -10185,11 +10185,11 @@
 				color: "#07c160",
 				bots: [{
 					botId: "bw1",
-					ws: "D:\\3DeepSeekHarness\\agents\\wechat",
+					ws: "D:\\agents\\wechat",
 					st: "healthy"
 				}, {
 					botId: "bw2",
-					ws: "D:\\3DeepSeekHarness\\agents\\xiaoshuai",
+					ws: "D:\\agents\\xiaoshuai",
 					st: "healthy"
 				}]
 			},
@@ -10202,7 +10202,7 @@
 					name: "QQ机器人"
 				}, {
 					botId: "bq2",
-					ws: "D:\\3DeepSeekHarness\\agents\\xiaoshuai",
+					ws: "D:\\agents\\xiaoshuai",
 					st: "healthy"
 				}]
 			},
@@ -10210,7 +10210,7 @@
 				color: "#4a154b",
 				bots: [{
 					botId: "bs1",
-					ws: "D:\\3DeepSeekHarness\\agents\\xinghuo",
+					ws: "D:\\agents\\xinghuo",
 					st: "healthy"
 				}]
 			},
@@ -10218,7 +10218,7 @@
 				color: "#2aabee",
 				bots: [{
 					botId: "bt1",
-					ws: "D:\\3DeepSeekHarness\\agents\\xiaosun",
+					ws: "D:\\agents\\xiaosun",
 					st: "offline"
 				}]
 			},
@@ -10226,7 +10226,7 @@
 				color: "#5865f2",
 				bots: [{
 					botId: "bd1",
-					ws: "D:\\3DeepSeekHarness\\agents\\xiaowan",
+					ws: "D:\\agents\\xiaowan",
 					st: "checking"
 				}]
 			},
@@ -10234,7 +10234,7 @@
 				color: "#25d366",
 				bots: [{
 					botId: "bwa1",
-					ws: "D:\\3DeepSeekHarness\\agents\\xiaoyan",
+					ws: "D:\\agents\\xiaoyan",
 					st: "healthy"
 				}]
 			},
@@ -10242,7 +10242,7 @@
 				color: "#0091ff",
 				bots: [{
 					botId: "bdd1",
-					ws: "D:\\3DeepSeekHarness\\agents\\xiaozhuo",
+					ws: "D:\\agents\\xiaozhuo",
 					st: "healthy"
 				}]
 			},
@@ -10250,7 +10250,7 @@
 				color: "#2e7cf6",
 				bots: [{
 					botId: "bwc1",
-					ws: "D:\\3DeepSeekHarness\\agents\\xiaoshuai",
+					ws: "D:\\agents\\xiaoshuai",
 					st: "healthy"
 				}]
 			}
@@ -10301,16 +10301,20 @@
 						ok: true,
 						value: { path: "C:\\" }
 					};
+					if (endpoint === "fs.roots") return {
+						ok: true,
+						value: { roots: ["C:\\", "D:\\"] }
+					};
 					if (endpoint === "fs.list") {
 						const dir = String(payload?.path ?? "");
 						const entries = dir === "C:\\" ? [
 							{
-								name: "3DeepSeekHarness",
-								path: "C:\\3DeepSeekHarness"
+								name: "agents",
+								path: "C:\\agents"
 							},
 							{
-								name: "dsh-plugin",
-								path: "C:\\dsh-plugin"
+								name: "projects",
+								path: "C:\\projects"
 							},
 							{
 								name: "Users",
