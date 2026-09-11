@@ -195,6 +195,8 @@ cd "$ROOT" || exit 1
 ENV_FILE=".wizard-release.env"
 VER="$(node -p "require('./package.json').version" 2>/dev/null || true)"
 TAG="v${VER}"
+# 断点续跑：发布已成功、只差复核/打标/Release 时，用 WIZARD_FROM=4 直接续跑。
+FROM="${WIZARD_FROM:-1}"
 
 banner "dsh-im-companion npm 发布向导 · ${TAG}"
 
@@ -210,181 +212,201 @@ chk() {
 }
 
 # ── Stage 1：发布前体检（全自动）─────────────────────────────────────────────
-stage "1/6 发布前体检（自动）"
-say "工作区 / 分支同步 / 版本三处一致 / 检查全链 / 公开物审计 —— 全自动跑，你只等结果。"
-note "版本：${TAG}（取自 package.json）"
+if (( FROM <= 1 )); then
+  stage "1/6 发布前体检（自动）"
+  say "工作区 / 分支同步 / 版本三处一致 / 检查全链 / 公开物审计 —— 全自动跑，你只等结果。"
+  note "版本：${TAG}（取自 package.json）"
 
-chk "工作区干净（git status 无输出）" test -z "$(git status --porcelain)"
-chk "HEAD 与 origin/master 同步" test "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)"
-chk "package.json 与 package-lock.json 版本一致" test "$VER" = "$(node -p "require('./package-lock.json').version")"
-chk "CHANGELOG 有 ${TAG} 条目" grep -q "^## ${TAG}" CHANGELOG.md
-chk "host 半是 fetch.register 版（非 rpc.handle）" grep -q "connection.fetch.register" lib/index.js
-chk "client 半含宿主兼容标记" grep -q "宿主 dsh " lib/client.js
+  chk "工作区干净（git status 无输出）" test -z "$(git status --porcelain)"
+  chk "HEAD 与 origin/master 同步" test "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)"
+  chk "package.json 与 package-lock.json 版本一致" test "$VER" = "$(node -p "require('./package-lock.json').version")"
+  chk "CHANGELOG 有 ${TAG} 条目" grep -q "^## ${TAG}" CHANGELOG.md
+  chk "host 半是 fetch.register 版（非 rpc.handle）" grep -q "connection.fetch.register" lib/index.js
+  chk "client 半含宿主兼容标记" grep -q "宿主 dsh " lib/client.js
 
-if [[ "${WIZARD_SKIP_CHECK:-0}" = "1" ]]; then
-  warn "WIZARD_SKIP_CHECK=1：跳过 npm run check（不推荐）"
-else
-  say "跑 npm run check（build → typecheck → verify → guard），约 1 分钟…"
-  if npm run check >/tmp/wizard-check.log 2>&1; then
-    printf '  %s✓%s npm run check 全链通过\n' "$GREEN" "$RESET"
+  if [[ "${WIZARD_SKIP_CHECK:-0}" = "1" ]]; then
+    warn "WIZARD_SKIP_CHECK=1：跳过 npm run check（不推荐）"
   else
-    printf '  %s✗%s npm run check 失败（日志 /tmp/wizard-check.log 末尾 20 行）：\n' "$RED" "$RESET"
-    tail -n 20 /tmp/wizard-check.log | sed 's/^/      /'
-    FAILS=$((FAILS + 1))
+    say "跑 npm run check（build → typecheck → verify → guard），约 1 分钟…"
+    if npm run check >/tmp/wizard-check.log 2>&1; then
+      printf '  %s✓%s npm run check 全链通过\n' "$GREEN" "$RESET"
+    else
+      printf '  %s✗%s npm run check 失败（日志 /tmp/wizard-check.log 末尾 20 行）：\n' "$RED" "$RESET"
+      tail -n 20 /tmp/wizard-check.log | sed 's/^/      /'
+      FAILS=$((FAILS + 1))
+    fi
   fi
-fi
 
-say "打包并审计公开物（机器痕迹 / 内容白名单）…"
-PACKDIR="$(mktemp -d)"
-if npm pack --pack-destination "$PACKDIR" >/dev/null 2>&1; then
-  TARBALL="$(ls "$PACKDIR"/*.tgz | head -n1)"
-  mkdir -p "$PACKDIR/x" && tar -xzf "$TARBALL" -C "$PACKDIR/x"
-  if grep -rIl -E '3DeepSeekHarness|辰辰洋洋|0Tools|d:[\\/]dsh-plugin' "$PACKDIR/x/package" 2>/dev/null | grep -q .; then
-    printf '  %s✗%s 公开物里发现机器痕迹（停止）\n' "$RED" "$RESET"; FAILS=$((FAILS + 1))
+  say "打包并审计公开物（机器痕迹 / 内容白名单）…"
+  PACKDIR="$(mktemp -d)"
+  if npm pack --pack-destination "$PACKDIR" >/dev/null 2>&1; then
+    TARBALL="$(ls "$PACKDIR"/*.tgz | head -n1)"
+    mkdir -p "$PACKDIR/x" && tar -xzf "$TARBALL" -C "$PACKDIR/x"
+    if grep -rIl -E '3DeepSeekHarness|辰辰洋洋|0Tools|d:[\\/]dsh-plugin' "$PACKDIR/x/package" 2>/dev/null | grep -q .; then
+      printf '  %s✗%s 公开物里发现机器痕迹（停止）\n' "$RED" "$RESET"; FAILS=$((FAILS + 1))
+    else
+      printf '  %s✓%s 公开物无机器痕迹；内容：%s\n' "$GREEN" "$RESET" "$(cd "$PACKDIR/x/package" && ls | tr '\n' ' ')"
+    fi
   else
-    printf '  %s✓%s 公开物无机器痕迹；内容：%s\n' "$GREEN" "$RESET" "$(cd "$PACKDIR/x/package" && ls)"
+    printf '  %s✗%s npm pack 失败\n' "$RED" "$RESET"; FAILS=$((FAILS + 1)); TARBALL=""
   fi
-else
-  printf '  %s✗%s npm pack 失败\n' "$RED" "$RESET"; FAILS=$((FAILS + 1)); TARBALL=""
-fi
 
-if (( FAILS > 0 )); then
-  warn "${FAILS} 项未通过 —— 先修好再发，别硬推。"
-  confirm "仍然继续？" || { finish; exit 1; }
-else
-  note "全部通过，可以发。"
+  if (( FAILS > 0 )); then
+    warn "${FAILS} 项未通过 —— 先修好再发，别硬推。"
+    confirm "仍然继续？" || { finish; exit 1; }
+  else
+    note "全部通过，可以发。"
+  fi
+  write_env WIZARD_RELEASE_VERSION "$VER"
+  pause "按回车进入下一步"
 fi
-write_env WIZARD_RELEASE_VERSION "$VER"
-pause "按回车进入下一步"
 
 
 # ── Stage 2：npm 身份与版本占用（全自动）─────────────────────────────────────
-stage "2/6 npm 身份与版本占用（自动）"
-say "确认「你是包主」且「这个版本号还没被占用」。"
-WHO="$(npm whoami --registry "$NPM_REGISTRY" 2>/dev/null || true)"
-if [[ -n "$WHO" ]]; then
-  printf '  %s✓%s 已登录 npmjs：%s\n' "$GREEN" "$RESET" "$WHO"
-else
-  warn "npmjs 未登录（本机默认 registry 可能是镜像站）。浏览器里登录："
-  open_url "https://www.npmjs.com/login"
-  ask_secret WIZARD_NPM_TOKEN "如果要用 token，粘贴（留空则稍后浏览器登录）："
-  [[ -n "${WIZARD_NPM_TOKEN:-}" ]] && write_env NPM_TOKEN "$WIZARD_NPM_TOKEN"
+if (( FROM <= 2 )); then
+  stage "2/6 npm 身份与版本占用（自动）"
+  say "确认「你是包主」且「这个版本号还没被占用」。"
+  WHO="$(npm whoami --registry "$NPM_REGISTRY" 2>/dev/null || true)"
+  if [[ -n "$WHO" ]]; then
+    printf '  %s✓%s 已登录 npmjs：%s\n' "$GREEN" "$RESET" "$WHO"
+  else
+    warn "npmjs 未登录（本机默认 registry 可能是镜像站）。浏览器里登录："
+    open_url "https://www.npmjs.com/login"
+    ask_secret WIZARD_NPM_TOKEN "如果要用 token，粘贴（留空则稍后浏览器登录）："
+    [[ -n "${WIZARD_NPM_TOKEN:-}" ]] && write_env NPM_TOKEN "$WIZARD_NPM_TOKEN"
+  fi
+  OWNER="$(npm owner ls "$PKG" --registry "$NPM_REGISTRY" 2>/dev/null | head -n1 || true)"
+  if [[ -n "$OWNER" ]]; then
+    printf '  %s✓%s 包主：%s\n' "$GREEN" "$RESET" "$OWNER"
+  else
+    warn "读不到包主列表（网络或权限），继续但请留意发布报错"
+  fi
+  if npm view "${PKG}@${VER}" version --registry "$NPM_REGISTRY" >/dev/null 2>&1; then
+    printf '  %s✗%s %s@%s 已存在 —— 版本号被占用，请先 bump\n' "$RED" "$RESET" "$PKG" "$VER"
+    confirm "仍然继续？" || { finish; exit 1; }
+  else
+    printf '  %s✓%s %s@%s 未被占用（若 npm 站上显示 Validating，见阶段 4 说明）\n' "$GREEN" "$RESET" "$PKG" "$VER"
+  fi
+  pause "按回车进入发布"
 fi
-OWNER="$(npm owner ls "$PKG" --registry "$NPM_REGISTRY" 2>/dev/null | head -n1 || true)"
-if [[ -n "$OWNER" ]]; then
-  printf '  %s✓%s 包主：%s\n' "$GREEN" "$RESET" "$OWNER"
-else
-  warn "读不到包主列表（网络或权限），继续但请留意发布报错"
-fi
-if npm view "${PKG}@${VER}" version --registry "$NPM_REGISTRY" >/dev/null 2>&1; then
-  printf '  %s✗%s ${PKG}@${VER} 已存在 —— 版本号被占用，请先 bump\n' "$RED" "$RESET"
-  confirm "仍然继续？" || { finish; exit 1; }
-else
-  printf '  %s✓%s ${PKG}@${VER} 未被占用\n' "$GREEN" "$RESET"
-fi
-pause "按回车进入发布"
 
 
 # ── Stage 3：发布（唯一需要你动手的一步）─────────────────────────────────────
-stage "3/6 发布 ${PKG}@${VER}（你做浏览器授权）"
-say "接下来这一步会向 npm 发起发布，并弹出浏览器授权页。"
-step "浏览器里完成授权（扫码 / 密码 / 安全密钥），回到这个窗口等成功行。"
-warn "一次性验证码不要发给任何人，包括 AI。"
-note "发布用文件：${TARBALL:-（无，改走 npm publish 现场打包）}"
-confirm "现在发布 ${PKG}@${VER}？" || { warn "已取消发布。"; finish; exit 1; }
+if (( FROM <= 3 )); then
+  stage "3/6 发布 ${PKG}@${VER}（你做浏览器授权）"
+  say "接下来这一步会向 npm 发起发布，并弹出浏览器授权页。"
+  step "浏览器里完成授权（扫码 / 密码 / 安全密钥），回到这个窗口等成功行。"
+  warn "一次性验证码不要发给任何人，包括 AI。"
+  note "发布用文件：${TARBALL:-（无，改走 npm publish 现场打包）}"
+  confirm "现在发布 ${PKG}@${VER}？" || { warn "已取消发布。"; finish; exit 1; }
 
-set +e
-if [[ -n "${TARBALL:-}" ]]; then
-  npm publish "$TARBALL" --registry "$NPM_REGISTRY" --auth-type=web
-else
-  npm publish --registry "$NPM_REGISTRY" --auth-type=web
-fi
-PUB_RC=$?
-set -e
+  set +e
+  if [[ -n "${TARBALL:-}" ]]; then
+    npm publish "$TARBALL" --registry "$NPM_REGISTRY" --auth-type=web
+  else
+    npm publish --registry "$NPM_REGISTRY" --auth-type=web
+  fi
+  PUB_RC=$?
+  set -e
 
-if (( PUB_RC != 0 )); then
-  warn "发布未成功（退出码 ${PUB_RC}）。常见两种："
-  note "• 需要一次性验证码而不是浏览器授权 → 重跑：npm publish \"${TARBALL:-.}\" --registry $NPM_REGISTRY --otp=<6位码>"
-  note "• 网络/权限问题 → 看上面最后几行报错"
-  finish; exit 1
+  if (( PUB_RC != 0 )); then
+    warn "发布未成功（退出码 ${PUB_RC}）。常见两种："
+    note "• 需要一次性验证码而不是浏览器授权 → 重跑：npm publish \"${TARBALL:-.}\" --registry $NPM_REGISTRY --otp=<6位码>"
+    note "• 网络/权限问题 → 看上面最后几行报错"
+    finish; exit 1
+  fi
+  printf '  %s✓%s 发布命令成功返回\n' "$GREEN" "$RESET"
+  note "npm 若提示 being processed，说明进了自动审核 —— 阶段 4 会等它，不用慌。"
+  pause "按回车进入官方源复核"
 fi
-printf '  %s✓%s 发布命令成功返回\n' "$GREEN" "$RESET"
-pause "按回车进入官方源复核"
 
 
 # ── Stage 4：官方源复核（全自动）─────────────────────────────────────────────
-stage "4/6 官方源复核（自动）"
-say "轮询 registry，再把「已发布的那份 tarball」拉下来验 host 半与 client 半。"
-for i in $(seq 1 20); do
-  if npm view "${PKG}@${VER}" version --registry "$NPM_REGISTRY" >/dev/null 2>&1; then break; fi
-  note "等待 registry 同步…（${i}/20）"; sleep 3
-done
-LATEST="$(npm view "$PKG" dist-tags.latest --registry "$NPM_REGISTRY" 2>/dev/null || true)"
-PUBLISHED_URL="$(npm view "${PKG}@${VER}" dist.tarball --registry "$NPM_REGISTRY" 2>/dev/null || true)"
-printf '  %s✓%s latest = %s\n' "$GREEN" "$RESET" "${LATEST:-?}"
-printf '  %s✓%s tarball = %s\n' "$GREEN" "$RESET" "${PUBLISHED_URL:-?}"
+if (( FROM <= 4 )); then
+  stage "4/6 官方源复核（自动）"
+  say "轮询 registry，再把「已发布的那份 tarball」拉下来验 host 半与 client 半。"
+  note "npm 新版本可能先进入自动审核（npm 站显示 Validating），期间 registry 一律 404 —— 这是正常的，本阶段最多等 6 分钟。"
+  POLL_MAX=36
+  for i in $(seq 1 "$POLL_MAX"); do
+    if curl -fsS -o /dev/null "https://registry.npmjs.org/${PKG}/-/${PKG}-${VER}.tgz" 2>/dev/null; then break; fi
+    note "等待 registry 可见…（${i}/${POLL_MAX}）"; sleep 10
+  done
+  LATEST="$(npm view "$PKG" dist-tags.latest --registry "$NPM_REGISTRY" 2>/dev/null || true)"
+  PUBLISHED_URL="$(npm view "${PKG}@${VER}" dist.tarball --registry "$NPM_REGISTRY" 2>/dev/null || true)"
+  printf '  %s·%s latest = %s\n' "$GREEN" "$RESET" "${LATEST:-?}"
+  printf '  %s·%s tarball = %s\n' "$GREEN" "$RESET" "${PUBLISHED_URL:-（暂不可见）}"
 
-if [[ -n "$PUBLISHED_URL" ]]; then
-  VERIFYDIR="$(mktemp -d)"
-  if curl -fsSL "$PUBLISHED_URL" -o "$VERIFYDIR/pkg.tgz" && tar -xzf "$VERIFYDIR/pkg.tgz" -C "$VERIFYDIR"; then
-    if grep -q "connection.fetch.register" "$VERIFYDIR/package/lib/index.js"; then
-      printf '  %s✓%s 公开包的 host 半是修复版（fetch.register）\n' "$GREEN" "$RESET"
-    else
-      printf '  %s✗%s 公开包的 host 半仍是旧版（rpc.handle）—— 别关票\n' "$RED" "$RESET"
+  if [[ -n "$PUBLISHED_URL" ]]; then
+    VERIFYDIR="$(mktemp -d)"
+    if curl -fsSL "$PUBLISHED_URL" -o "$VERIFYDIR/pkg.tgz" && tar -xzf "$VERIFYDIR/pkg.tgz" -C "$VERIFYDIR"; then
+      if grep -q "connection.fetch.register" "$VERIFYDIR/package/lib/index.js"; then
+        printf '  %s✓%s 公开包的 host 半是修复版（fetch.register）\n' "$GREEN" "$RESET"
+      else
+        printf '  %s✗%s 公开包的 host 半仍是旧版（rpc.handle）—— 别关票\n' "$RED" "$RESET"
+      fi
+      if grep -q "宿主 dsh " "$VERIFYDIR/package/lib/client.js"; then
+        printf '  %s✓%s 公开包标出了宿主兼容版本\n' "$GREEN" "$RESET"
+      else
+        printf '  %s✗%s 公开包缺宿主兼容标记\n' "$RED" "$RESET"
+      fi
     fi
-    if grep -q "宿主 dsh " "$VERIFYDIR/package/lib/client.js"; then
-      printf '  %s✓%s 公开包标出了宿主兼容版本\n' "$GREEN" "$RESET"
-    else
-      printf '  %s✗%s 公开包缺宿主兼容标记\n' "$RED" "$RESET"
-    fi
+    open_url "https://www.npmjs.com/package/${PKG}"
+    pause "看懂上面的复核结果后按回车"
+  else
+    warn "等了 6 分钟仍不可见：极可能是自动审核未完成（npm 站该版本显示 Validating）。"
+    note "这时不用重发！审核通过后断点续跑即可："
+    note "    WIZARD_FROM=4 bash scripts/wizard-release.sh"
+    pause "按回车，直接跑剩下的打标与 Release（Release 不依赖 registry 可见性）"
   fi
 fi
-open_url "https://www.npmjs.com/package/${PKG}"
-pause "看懂上面的复核结果后按回车"
 
 
 # ── Stage 5：打标（全自动）───────────────────────────────────────────────────
-stage "5/6 git tag ${TAG}（自动）"
-if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
-  note "tag ${TAG} 已存在，跳过创建"
-else
-  git tag -a "$TAG" -m "${TAG} release" && printf '  %s✓%s 建了附注 tag %s\n' "$GREEN" "$RESET" "$TAG"
+if (( FROM <= 5 )); then
+  stage "5/6 git tag ${TAG}（自动）"
+  if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+    note "tag ${TAG} 已存在，跳过创建"
+  else
+    git tag -a "$TAG" -m "${TAG} release" && printf '  %s✓%s 建了附注 tag %s\n' "$GREEN" "$RESET" "$TAG"
+  fi
+  if git ls-remote --tags origin "$TAG" 2>/dev/null | grep -q "$TAG"; then
+    note "远端已有 ${TAG}"
+  else
+    git push origin "$TAG" && printf '  %s✓%s 已推送 %s\n' "$GREEN" "$RESET" "$TAG"
+  fi
+  pause "按回车进入 Release"
 fi
-if git ls-remote --tags origin "$TAG" 2>/dev/null | grep -q "$TAG"; then
-  note "远端已有 ${TAG}"
-else
-  git push origin "$TAG" && printf '  %s✓%s 已推送 ${TAG}\n' "$GREEN" "$RESET"
-fi
-pause "按回车进入 Release"
 
 
 # ── Stage 6：GitHub Release（自动）───────────────────────────────────────────
-stage "6/6 GitHub Release（自动）"
-NOTES="$(mktemp)"
-node -e '
+if (( FROM <= 6 )); then
+  stage "6/6 GitHub Release（自动）"
+  NOTES="$(mktemp)"
+  node -e '
 const fs=require("fs");const md=fs.readFileSync("CHANGELOG.md","utf8");
 const v=process.argv[1];const m=md.indexOf("## "+v);
 if(m<0){process.exit(0)}
 const next=md.indexOf("\n## ",m+1);
 fs.writeFileSync(process.argv[2],(next<0?md.slice(m):md.slice(m,next)).trim()+"\n");
 ' "$TAG" "$NOTES" || true
-if (( $(wc -c <"$NOTES") > 0 )); then
-  note "Release 正文取自 CHANGELOG 的 ${TAG} 段落（$(wc -l <"$NOTES") 行）"
-else
-  warn "CHANGELOG 里没找到 ${TAG} 段落，Release 正文会是空的"
-fi
-if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
-  note "Release $TAG 已存在，跳过"
-else
-  say "建 Release…"
-  if gh release create "$TAG" --repo "$REPO" --title "${TAG} ${PKG}" --notes-file "$NOTES"; then
-    printf '  %s✓%s Release ${TAG} 已建\n' "$GREEN" "$RESET"
+  if (( $(wc -c <"$NOTES") > 0 )); then
+    note "Release 正文取自 CHANGELOG 的 ${TAG} 段落（$(wc -l <"$NOTES") 行）"
   else
-    warn "Release 建立失败，可稍后重跑本向导（幂等）"
+    warn "CHANGELOG 里没找到 ${TAG} 段落，Release 正文会是空的"
   fi
+  if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
+    note "Release $TAG 已存在，跳过"
+  else
+    say "建 Release…"
+    if gh release create "$TAG" --repo "$REPO" --title "${TAG} ${PKG}" --notes-file "$NOTES"; then
+      printf '  %s✓%s Release %s 已建\n' "$GREEN" "$RESET" "$TAG"
+    else
+      warn "Release 建立失败，可稍后 WIZARD_FROM=6 重跑（幂等）"
+    fi
+  fi
+  open_url "https://github.com/${REPO}/releases"
+  note "市场/awesome 收录由 AI 另行处理（不在本向导内）。"
+  pause "按回车收尾"
 fi
-open_url "https://github.com/${REPO}/releases"
-note "市场/awesome 收录由 AI 另行处理（不在本向导内）。"
-pause "按回车收尾"
 
 finish
