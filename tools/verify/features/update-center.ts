@@ -38,8 +38,8 @@ const FILES = [
   'src/features/update-center/reasons.ts',
   'src/features/update-center/text.ts',
   'src/features/update-center/data.ts',
+  'src/features/update-center/markdown.ts',
   'src/features/update-center/changelog.ts',
-  'src/features/update-center/text.ts',
   'src/client/dom.ts',
   'src/host/meta-store.ts',
 ];
@@ -76,11 +76,13 @@ const okValue = (over: Record<string, unknown> = {}): any => ({
 });
 const envelope = (over: Record<string, unknown> = {}): any => ({ ok: true, value: okValue(over) });
 
-/* ---------- ① 八种 blockedReason → 中文文案（逐条；表里字符串照抄票面 §六） ----------
- * 来源：本表是**档案 §B 的镜像**（docs/research/更新系统-T4决策档案.md，「八种 blockedReason → 中文文案」那一段），
+/* ---------- ① 十三种 blockedReason → 中文文案（逐条；表里字符串照抄票面 §六） ----------
+ * 来源：前八条是**档案 §B 的镜像**（docs/research/更新系统-T4决策档案.md，「八种 blockedReason → 中文文案」那一段），
  * 逐字一致、不是可以自由改写的第二份文案源——它只是"验证时比对的期望值"，改文案的**唯一**动作是改档案 §B。
  * 因此改文案必须**三处同步**：档案 §B → src/features/update-center/reasons.ts → 本文件 REASON_TEXT；
- * 只改一处即漂移（R10 H15 抓到的正是这里：比档案多了一句「或用下面的命令覆盖安装。」而 reasons.ts 已对齐档案）。 */
+ * 只改一处即漂移（R10 H15 抓到的正是这里：比档案多了一句「或用下面的命令覆盖安装。」而 reasons.ts 已对齐档案）。
+ * 后五条（T10 真机补录，2026-09-12）：更新包 `dist/host.js` 的 known 码表共 13 条，档案 §B 当时只覆盖 8 条；
+ * 真机点安装回 `check-expired` 却落到「未知的安装阻塞」兜底，故补齐——档案侧同日在 §7 追加了「补录」小节。 */
 const REASON_TEXT: Record<string, string> = {
   'unknown-profile': '认不出当前的使用范围，请把使用范围名或目录修好后再看更新。',
   'source-install': '当前是从源码安装的，想走更新请先按版本号重装一次。',
@@ -90,23 +92,30 @@ const REASON_TEXT: Record<string, string> = {
   'registry-conflict': '使用范围的清单里那一行不是版本号，改成版本号后重试。',
   'incompatible-node': '新版要求更高的 Node，请先升级 Node 到 22 或更高再检查。',
   'recovery-required': '上次安装被打断，请重新点一次安装；一直出现就按更新包文档排错。',
+  'check-expired': '检查结果已过期（或缺请求凭证），请重新检查后再安装。',
+  'update-busy': '另一次安装还在进行中，稍等片刻再试。',
+  'check-failed': '检查更新失败（网络或官方源暂时不可达），请稍后重试。',
+  'invalid-release': '官方源上的版本信息不完整，这一版暂时装不了。',
+  'install-failed': '安装没成功，请重试；一直失败就用下面的手工命令。',
 };
-test('T8-1 八种 blockedReason 逐条译成票面文案（unknown-profile/source-install 不给命令）', () => {
-  assert.equal(Object.keys(reasons.REASONS).length, 8, '原因表必须恰好八条');
+/** 给不出可用命令的六种（档案 §B 两条 + 补录四条）：补救动作是"重新检查/稍等/等网络"，不是重装命令。 */
+const NO_COMMAND = ['unknown-profile', 'source-install', 'check-expired', 'update-busy', 'check-failed', 'invalid-release'];
+test('T8-1 十三种 blockedReason 逐条译成票面文案（六种不给命令）', () => {
+  assert.equal(Object.keys(reasons.REASONS).length, 13, '原因表必须恰好十三条（＝包 known 码表全集）');
   for (const [key, text] of Object.entries(REASON_TEXT)) {
     assert.equal(reasons.reasonText(key), text, key + ' 文案');
-    const noCmd = key === 'unknown-profile' || key === 'source-install';
-    assert.equal(reasons.noCommandOf(key), noCmd, key + ' 是否属「不给命令」两态');
+    assert.equal(reasons.noCommandOf(key), NO_COMMAND.includes(key), key + ' 是否属「不给命令」态');
   }
   assert.equal(reasons.noCommandOf('registry-conflict'), false, 'registry-conflict 无赋值路径但保留为给命令态（防御性设计）');
+  assert.equal(reasons.noCommandOf('install-failed'), false, 'install-failed 正是"给手工命令"那一态');
   assert.match(reasons.reasonText('nobody-knows'), /nobody-knows/, '未知 token 照原样露出，不谎报「未知错误」');
-  // 六态优先级：pending-restart 归「待重启」，其余七种归「装不了」
+  // 六态优先级：pending-restart 归「待重启」，其余十二种归「装不了」
   for (const key of Object.keys(REASON_TEXT)) {
     const res = phone.decodePhone(envelope({ snapshot: { blockedReason: key } }));
     const want = key === 'pending-restart' ? 'restart' : 'blocked';
     assert.equal(data.deriveState(res, false), want, key + ' → ' + want);
   }
-  proof('reasons', '8 条文案逐条一致 + 六态归位（pending-restart→restart）');
+  proof('reasons', '13 条文案逐条一致 + 六态归位（pending-restart→restart）');
 });
 
 /* ---------- ② 两个信封都能解构（成功 + 失败通道同名 token） ---------- */
@@ -234,6 +243,13 @@ test('T8-4b 每拍只发一发 status（不叠加）；dispose 清干净；安�
   const seq = st.calls.slice(-2).map((c) => c.endpoint);
   assert.deepEqual(seq, [consts.UPD_CHECK, consts.UPD_INSTALL], '无 receipt ⇒ 先复检再装');
   assert.equal(st.calls[st.calls.length - 1].payload.checkId, 'c2', '用新 receipt 装');
+  /* T10 真机回归（2026-09-12）：更新包 `dist/service.js:299` 要 `validRequestId(requestId)`（非空串），
+   * 漏传一律抛 `check-expired` ⇒ 面板永远装不了任何版本。此处锁死"必须带非空 requestId"这条契约。 */
+  const rid = st.calls[st.calls.length - 1].payload.requestId;
+  assert.equal(typeof rid, 'string', 'install 必须带 requestId（漏传 = 包判 check-expired）');
+  assert.ok(String(rid).trim().length >= 1 && String(rid).trim().length <= 128, 'requestId 必须落在包的长度闸内');
+  const rid1 = st.calls[st.calls.length - 2].payload.requestId;
+  assert.notEqual(String(rid1), String(rid), '每次点安装发新凭证（幂等键不该跨次复用）');
   st.state.job = JOB('installing');
   await store.readStatus();
   assert.equal(timer.live(), 1, '又进安装态 ⇒ 重新开表');

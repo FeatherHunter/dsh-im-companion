@@ -9,6 +9,11 @@ import { INTERVALS } from './text'
 /** 轮询周期：包常量自带下限（UPD_POLL 不得低于 UPD_POLL_MIN），这里按同一条口径夹一次。 */
 const POLL_MS = Math.max(UPD_POLL, UPD_POLL_MIN)
 
+/** 每次点安装发一个新请求凭证（更新包的幂等键；缺它包一律判 `check-expired`，见 install() 注释）。 */
+function newRequestId(): string {
+  return 'req-' + String(Date.now()) + '-' + String(Math.floor(Math.random() * 1000000))
+}
+
 export interface UpdatePrefs {
   autoCheckEnabled: boolean
   intervalHours: number
@@ -139,7 +144,10 @@ export function createUpdateStore(ctx: UpdateCtx, deps: { timer: TimerPort; now?
       checkId = fresh.ok && typeof fresh.receipt?.checkId === 'string' ? fresh.receipt.checkId : null
     }
     if (checkId === null) return res ?? { ok: false, token: null, message: null }
-    return call(UPD_INSTALL, { checkId })
+    /* T10 真机揪出的**必修项**：更新包 `dist/service.js:299` 要求 `validRequestId(requestId)`（非空串），
+     * 缺它就一律抛 `check-expired` —— 面板会永远装不了任何版本。这里每次点安装发一个新凭证
+     * （包拿它当幂等键：同 requestId 重复提交直接回既有 job，这正是"重试同一次安装"要的语义）。 */
+    return call(UPD_INSTALL, { checkId, requestId: newRequestId() })
   }
   async function setPrefs(patch: Partial<UpdatePrefs>): Promise<void> {
     prefs = {

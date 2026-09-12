@@ -5,6 +5,7 @@
  * 网络失败 → `已发布 v<X.Y.Z>，暂时取不到更新说明`。**禁止**写「你没有网络」（离线与跨域失败在 JS 层同形、不可细分）。 */
 import { h } from '../../client/dom'
 import { UPD_CHANGELOG_TIMEOUT, UPD_CHANGELOG_URLS } from './constants'
+import { notesList } from './markdown'
 
 export type NotesState = 'ok' | 'empty' | 'unavailable'
 export interface NotesResult { state: NotesState; items: string[] }
@@ -121,12 +122,8 @@ export function openChangelog(opts: { version: string | null; deps?: NotesDeps }
   void fetchNotes(version, opts.deps).then((out) => {
     if (closed) return
     if (out.state !== 'ok') { body.textContent = notesMessage(version, out.state); return }
-    const list = h('ul', { className: 'update-center-notes' })
-    for (const item of out.items) {
-      const li = h('li')
-      li.textContent = item
-      list.appendChild(li)
-    }
+    const list = notesList(out.items)
+    if (list === null) { body.textContent = notesMessage(version, 'empty'); return }
     body.replaceChildren(list)
   }).catch(() => {
     if (!closed) body.textContent = notesMessage(version, 'unavailable')

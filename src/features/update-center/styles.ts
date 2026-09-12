@@ -59,4 +59,12 @@ export const CSS = `
 .update-center-dialog-body { font-size: 12.5px; color: var(--dsw-alias-label-secondary,#6e6e73); }
 .update-center-dialog-foot { display: flex; justify-content: flex-end; }
 .update-center-notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+/* 顶部单按钮行（owner 2026-09-12：按钮在左、状态在右；覆盖 actions 的右浮动默认） */
+.update-center-actions-lead { margin-left: 0; }
+/* 行内 Markdown 渲染件（markdown.ts 产出） */
+.update-center-notes li b { color: var(--dsw-alias-label-primary,#1c1c1e); font-weight: 600; }
+.update-center-note-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px;
+  background: color-mix(in srgb, var(--dsw-alias-label-primary,#1c1c1e) 9%, transparent); color: var(--dsw-alias-label-primary,#1c1c1e);
+  padding: 1px 5px; border-radius: 5px; }
+.update-center-note-link { color: var(--dsw-alias-brand-primary,#0a84ff); text-decoration: none; }
 `;

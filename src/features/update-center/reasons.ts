@@ -1,4 +1,4 @@
-/** update-center 阻塞原因层（DOM-free）：八种「装不了」的中文文案 + 手工命令门。
+/** update-center 阻塞原因层（DOM-free）：更新包 known 码表（13 条）的中文文案 + 手工命令门。
  * 注：`registry-conflict` 在更新包产物中**无赋值路径、实际不可达**——保留它是防御性设计
  * （上游将来若赋此值，本仓照译不误；这里不因「测不到」就删掉一条表项）。 */
 import type { PhoneResult, UpdateFailure } from './phone'
@@ -13,6 +13,15 @@ export const REASONS: Record<string, ReasonSpec> = {
   'registry-conflict': { text: '使用范围的清单里那一行不是版本号，改成版本号后重试。', command: true },
   'incompatible-node': { text: '新版要求更高的 Node，请先升级 Node 到 22 或更高再检查。', command: true },
   'recovery-required': { text: '上次安装被打断，请重新点一次安装；一直出现就按更新包文档排错。', command: true },
+  /* ↓ 下面五条来自更新包 `dist/host.js` 的 known 码表（共 13 条）中、档案 §B 当时未覆盖的部分。
+   * 起因：T10 真机「点安装」失败，reason=`check-expired`，而表里没有它 ⇒ 落到「未知的安装阻塞」兜底，用户看不懂。
+   * `check-expired` 是更新包的**泛化码**：既表示「检查快照过期」，也表示「请求凭证（requestId）不合法」，
+   * 故文案只讲面板能自救的那一面（重新检查），不复述包的内部语义。 */
+  'check-expired': { text: '检查结果已过期（或缺请求凭证），请重新检查后再安装。', command: false },
+  'update-busy': { text: '另一次安装还在进行中，稍等片刻再试。', command: false },
+  'check-failed': { text: '检查更新失败（网络或官方源暂时不可达），请稍后重试。', command: false },
+  'invalid-release': { text: '官方源上的版本信息不完整，这一版暂时装不了。', command: false },
+  'install-failed': { text: '安装没成功，请重试；一直失败就用下面的手工命令。', command: true },
 }
 /** 认不出的原因码照原样露出来（宁可见到生 token，也不谎报「未知错误」）。 */
 export function reasonText(reason: string | null): string {

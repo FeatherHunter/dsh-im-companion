@@ -179,7 +179,9 @@ export function FleetPanel(ctx: unknown): HTMLElement {
    * 故面板每次渲染都产出这个稳定 id，T8 可在 mount 末尾用 document.getElementById('imc-update-center')
    * **主动认领**已存在的容器——id 就是那个认领把手，删了 T8 只能靠猜。 */
   const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host' })
-  const root = h('div', { className: 'af-root' }, hd, toolbar, compose.el, body, updateCenterHost, promo)
+  /* owner 2026-09-12 裁定：更新中心挪到**页头/工具栏之后、撰写条之前**（原来在列表之后、推广卡之前）。
+   * 只挪这一个空容器节点，不改类名、不改 id、不引特性 import、不改任何行为——A1 对本特性仍是零感知。 */
+  const root = h('div', { className: 'af-root' }, hd, toolbar, updateCenterHost, compose.el, body, promo)
 
   emitUpdateCenterHost(updateCenterHost)
 
