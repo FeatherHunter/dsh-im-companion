@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>原型 v3：更新中心配平与成块（两版对比）</title>
+<style>
+  :root{
+    --dsw-alias-bg-base:#1c1c1e; --dsw-alias-bg-elevated:#232326;
+    --dsw-alias-label-primary:#f5f5f7; --dsw-alias-label-secondary:#a1a1a6; --dsw-alias-label-tertiary:#8e8e93;
+    --dsw-alias-brand-primary:#0a84ff; --dsw-alias-state-warn-primary:#ff9f0a; --dsw-alias-state-success-primary:#30d158;
+    --line:color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+    --line-soft:color-mix(in srgb, var(--dsw-alias-label-primary) 7%, transparent);
+  }
+  body{margin:0;padding:22px;background:#111113;color:var(--dsw-alias-label-primary);
+       font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;font-size:13px}
+  h1{font-size:15px;margin:0 0 4px}
+  .note{color:var(--dsw-alias-label-tertiary);font-size:12px;margin:0 0 16px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  .colhead{font-size:13px;font-weight:600;margin:0 0 2px}
+  .colsub{font-size:11.5px;color:var(--dsw-alias-label-tertiary);margin:0 0 8px;line-height:1.5}
+  .panel{background:var(--dsw-alias-bg-base);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:14px}
+
+  /* 块：动作行 + 设置行 合成一个连续的块（轻分隔、非硬线） */
+  .ucblock{border:1px solid var(--line-soft);border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,0));padding:0 12px}
+  .ucrow{display:flex;align-items:center;gap:10px;min-height:46px}
+  .ucrow + .ucrow{border-top:1px solid var(--line-soft)}
+  .ucstatus{display:flex;align-items:baseline;gap:8px;min-width:0}
+  .ucdot{color:var(--dsw-alias-label-tertiary)}
+  .uc-main{font-weight:500;white-space:nowrap}
+  .uc-meta{font-size:12px;color:var(--dsw-alias-label-tertiary);white-space:nowrap}
+  .uc-btn{height:30px;padding:0 12px;border-radius:10px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;
+    border:1px solid var(--line);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}
+  .uc-btn.primary{background:var(--dsw-alias-brand-primary);border-color:transparent;color:#fff;font-weight:500}
+  .uc-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+  .uc-switch{display:flex;align-items:center;gap:8px}
+  .uc-track{position:relative;width:34px;height:20px;flex:none;border-radius:10px;border:1px solid var(--line);
+    background:color-mix(in srgb, var(--dsw-alias-label-primary) 11%, var(--dsw-alias-bg-base))}
+  .uc-track.on{background:var(--dsw-alias-state-success-primary);border-color:transparent}
+  .uc-track.on.brand{background:var(--dsw-alias-brand-primary)}
+  .uc-track.on.muted{background:color-mix(in srgb, var(--dsw-alias-state-success-primary) 62%, #555)}
+  .uc-knob{position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.28)}
+  .uc-track.on .uc-knob{left:15px}
+  .uc-select{height:28px;padding:0 6px;border-radius:8px;font:inherit;font-size:12px;color:var(--dsw-alias-label-primary);
+    background:var(--dsw-alias-bg-base);border:1px solid var(--line)}
+  .uc-banner{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;font-weight:500;font-size:12.5px;
+    color:var(--dsw-alias-state-warn-primary);background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 13%, var(--dsw-alias-bg-base));
+    border:1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary) 35%, transparent);margin:12px 0 0}
+  .capsule{display:flex;gap:6px;font-size:11px;justify-content:space-between;align-items:center}
+  .cap{padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dsw-alias-label-secondary)}
+  .cap.self{background:rgba(191,90,242,.18);border-color:transparent;color:#e0aaff}
+  .seg{display:flex;gap:6px}
+  .seg span{padding:3px 10px;border-radius:999px;border:1px solid var(--line);font-size:11.5px;color:var(--dsw-alias-label-secondary)}
+  .seg span.on{background:color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);color:var(--dsw-alias-label-primary)}
+  .hintbar{margin-top:18px;border:1px solid var(--line-soft);border-radius:12px;padding:12px 14px;background:var(--dsw-alias-bg-elevated)}
+  .hintbar h3{margin:0 0 8px;font-size:13px}
+  table{border-collapse:collapse;font-size:12px;width:100%}
+  td,th{padding:5px 8px;border-bottom:1px solid var(--line-soft);text-align:left;vertical-align:top}
+  th{color:var(--dsw-alias-label-tertiary);font-weight:600}
+  .old{color:#ff9f9f}
+  .new{color:#8fe3a8}
+  .swrow{display:flex;gap:22px;align-items:center;margin-top:10px}
+  .swrow div{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dsw-alias-label-secondary)}
+</style>
+</head>
+<body>
+  <h1>原型 v3：更新中心 —— 配平 + 成块 + 文案修复（两版对比）</h1>
+  <p class="note">
+    两版的共同改动：① 两行合成<b>一个块</b>（轻分隔，不再是夹在工具栏下的孤儿行）；② 状态句里<b>去掉重复的版本号</b>（顶部胶囊已有）；
+    ③ 主状态与元信息<b>用中点分层</b>、元信息更淡；④ 修文案 bug（<span class="old">0 分钟后</span> → <span class="new">马上</span>；不再谎报"尚未检查"）。<br>
+    区别只在<b>动作按钮的位置</b>：A 版是「左状态 · 右动作」，B 版是「左动作 · 右状态」。
+  </p>
+
+  <div class="grid">
+    <!-- 变体 A -->
+    <div>
+      <p class="colhead">A 版 · 左状态 · 右动作</p>
+      <p class="colsub">回到传统设置行形态：读起来从左到右，按钮落在右边收口。</p>
+      <div class="panel">
+        <div class="capsule"><b>IM 机器人增强</b>
+          <div class="seg"><span class="cap self">v0.1.10</span><span class="cap">dsh-im 4.17.1</span><span class="cap">dsh 0.1.5-rc.2</span></div>
+        </div>
+        <div class="ucblock">
+          <div class="ucrow">
+            <div class="ucstatus">
+              <span class="uc-main">已是最新</span><span class="ucdot">·</span>
+              <span class="uc-meta">最近检查 刚刚</span>
+            </div>
+            <div class="uc-right"><button class="uc-btn">检查更新</button></div>
+          </div>
+          <div class="ucrow">
+            <div class="uc-switch"><span class="uc-track on brand"><span class="uc-knob"></span></span><span>自动检查更新</span></div>
+            <select class="uc-select"><option>24 小时（默认）</option></select>
+            <div class="uc-right"><span class="uc-meta">下次检查 明天 22:40</span></div>
+          </div>
+        </div>
+
+        <div class="ucblock">
+          <div class="ucrow">
+            <div class="ucstatus"><span class="uc-main">有新版本 0.1.11</span></div>
+            <div class="uc-right"><button class="uc-btn">检查更新</button></div>
+          </div>
+        </div>
+
+        <div class="ucblock">
+          <div class="ucrow">
+            <div class="ucstatus"><span class="uc-main">待重启</span><span class="ucdot">·</span><span class="uc-meta">0.1.11 已装好</span></div>
+            <div class="uc-right"><button class="uc-btn">检查更新</button></div>
+          </div>
+          <div class="uc-banner">⚠️ 新版 0.1.11 已装好，重启宿主后生效（这不是失败）</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 变体 B -->
+    <div>
+      <p class="colhead">B 版 · 左动作 · 右状态</p>
+      <p class="colsub">按钮最靠前（最好找），状态文字右对齐收口，右侧不再空一大片。</p>
+      <div class="panel">
+        <div class="capsule"><b>IM 机器人增强</b>
+          <div class="seg"><span class="cap self">v0.1.10</span><span class="cap">dsh-im 4.17.1</span><span class="cap">dsh 0.1.5-rc.2</span></div>
+        </div>
+        <div class="ucblock">
+          <div class="ucrow">
+            <button class="uc-btn">检查更新</button>
+            <div class="ucstatus uc-right">
+              <span class="uc-main">已是最新</span><span class="ucdot">·</span>
+              <span class="uc-meta">最近检查 刚刚</span>
+            </div>
+          </div>
+          <div class="ucrow">
+            <div class="uc-switch"><span class="uc-track on brand"><span class="uc-knob"></span></span><span>自动检查更新</span></div>
+            <select class="uc-select"><option>24 小时（默认）</option></select>
+            <div class="uc-right"><span class="uc-meta">下次检查 明天 22:40</span></div>
+          </div>
+        </div>
+
+        <div class="ucblock">
+          <div class="ucrow">
+            <button class="uc-btn">检查更新</button>
+            <div class="ucstatus uc-right"><span class="uc-main">有新版本 0.1.11</span></div>
+          </div>
+        </div>
+
+        <div class="ucblock">
+          <div class="ucrow">
+            <button class="uc-btn">检查更新</button>
+            <div class="ucstatus uc-right"><span class="uc-main">待重启</span><span class="ucdot">·</span><span class="uc-meta">0.1.11 已装好</span></div>
+          </div>
+          <div class="uc-banner">⚠️ 新版 0.1.11 已装好，重启宿主后生效（这不是失败）</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="hintbar">
+    <h3>两版共用的文案修复（对照）</h3>
+    <table>
+      <tr><th>位置</th><th>现在（丑的来源之一）</th><th>改成</th></tr>
+      <tr><td>下次检查</td><td class="old">下次检查：0 分钟后（剩余 &lt;30 秒被四舍五入成 0）</td><td class="new">下次检查 马上 / 明天 22:40</td></tr>
+      <tr><td>最近检查</td><td class="old">最近检查：尚未检查（刷新后必然这么显示，和「已是最新」打架）</td><td class="new">宿主排程存在时不再谎报；本次会话未查过就不显示这一句</td></tr>
+      <tr><td>版本号</td><td class="old">已是最新 v0.1.10（顶部胶囊已有一个 v0.1.10）</td><td class="new">已是最新（版本号只在顶部胶囊出现一次）</td></tr>
+    </table>
+    <h3 style="margin-top:14px">开关配色（三选一）</h3>
+    <div class="swrow">
+      <div><span class="uc-track on"><span class="uc-knob"></span></span>现在的 Apple 绿（最跳）</div>
+      <div><span class="uc-track on brand"><span class="uc-knob"></span></span>品牌蓝（与按钮同源，推荐）</div>
+      <div><span class="uc-track on muted"><span class="uc-knob"></span></span>降饱和绿（保留"开=绿"语义）</div>
+    </div>
+  </div>
+</body>
+</html>

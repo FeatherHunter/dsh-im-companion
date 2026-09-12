@@ -30,7 +30,7 @@ export function buildSettings(store: UpdateStore, hd: SettingsHandlers): HTMLEle
   const res = store.result()
   const next = res !== null && res.ok && res.autoCheck ? res.autoCheck.nextCheckAt : null
   const nextText = h('span', { className: 'update-center-next' + (off ? ' update-center-greyed' : '') },
-    '下次检查：' + (off ? '—' : nextCheckText(next, Date.now())))
+    '下次检查 ' + (off ? '—' : nextCheckText(next, Date.now())))
   return h('div', { className: 'update-center-settings' },
     h('div', { className: 'update-center-switch' }, track, h('span', { className: 'update-center-switch-label' }, '自动检查更新')),
     select,

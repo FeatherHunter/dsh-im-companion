@@ -10,7 +10,8 @@ export function intervalLabel(hours: number): string {
 export function nextCheckText(nextCheckAt: number | null, now: number): string {
   if (nextCheckAt === null) return '暂不可知'
   const ms = nextCheckAt - now
-  if (ms <= 0) return '马上'
+  /* 剩余不足 30 秒不再四舍五入成「0 分钟后」（宿主首查排在启动后 60 秒，刷新页面常撞进这个窗口）。 */
+  if (ms <= 30000) return '马上'
   const min = Math.round(ms / 60000)
   if (min < 60) return min + ' 分钟后'
   const hours = Math.round(min / 60)

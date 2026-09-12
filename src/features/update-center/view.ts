@@ -45,23 +45,33 @@ function buildBanner(state: UiState, snap: UpdateSnapshot | null): HTMLElement |
     span('update-center-banner-text', '新版本 ' + v(target) + ' 已装好，重启宿主后生效'))
 }
 
-/** 一行状态：只说"现在什么情况"，细节（原因/说明/命令）全在弹窗里。 */
+/** 一行状态：主状态 + 中点 + 元信息（元信息更淡；版本号不与顶部胶囊重复）。 */
 function statusNodes(state: UiState, snap: UpdateSnapshot | null, store: UpdateStore): HTMLElement[] {
-  const running = v(snap?.runningVersion ?? null)
+  const dot = (): HTMLSpanElement => span('update-center-dot', '·')
   if (state === 'installing') {
     const target = snap?.job?.targetVersion ?? snap?.latestVersion ?? null
     const txt = snap?.job?.state === 'verifying' ? '正在校验 ' + v(target) + '…' : '正在安装 ' + v(target) + '…'
     return [span('update-center-status', txt), span('update-center-spin', '')]
   }
-  if (state === 'restart') return [span('update-center-muted', '待重启')]
+  if (state === 'restart') {
+    return [span('update-center-status', '待重启'), dot(),
+      span('update-center-meta', v(snap?.latestVersion ?? snap?.installedVersion ?? null) + ' 已装好')]
+  }
   if (state === 'blocked') {
-    return [span('update-center-status', '装不了'), span('update-center-muted', reasonText(blockedOf(store)))]
+    return [span('update-center-status', '装不了'), dot(), span('update-center-meta', reasonText(blockedOf(store)))]
   }
   if (state === 'update') return [span('update-center-status', '有新版本 ' + v(snap?.latestVersion ?? null))]
-  if (state === 'failed') return [span('update-center-muted', '自动检查暂时不可用，可手动检查')]
-  if (state === 'unavailable') return [span('update-center-muted', '暂时查不到更新状态')]
-  return [span('update-center-muted', '已是最新 ' + running),
-    span('update-center-hint', '最近检查：' + lastCheckText(store.lastCheckAt(), Date.now()))]
+  if (state === 'failed') return [span('update-center-meta', '自动检查暂时不可用，可手动检查')]
+  if (state === 'unavailable') return [span('update-center-meta', '暂时查不到更新状态')]
+  /* latest：主状态只说"已是最新"（版本号在顶部胶囊里）；「最近检查」只在本会话真的查过时才出现——
+   * checkedAt 是会话内的，刷新即归零，若无条件显示就会与"已是最新"并列成自相矛盾的一句。 */
+  const out = [span('update-center-status', '已是最新')]
+  const at = store.lastCheckAt()
+  if (at !== null) {
+    out.push(dot())
+    out.push(span('update-center-meta', '最近检查 ' + lastCheckText(at, Date.now())))
+  }
+  return out
 }
 function blockedOf(store: UpdateStore): string | null {
   const res = store.result()
@@ -126,12 +136,15 @@ export function mountUpdateCenter(ctx: FeatureCtx): () => void {
       openNotes: (version) => { openChangelog({ version }) },
     }
     mount(host, h('div', { className: 'update-center-root' }, [
-      buildBanner(state, snap),
-      h('div', { className: 'update-center-main' },
-        h('div', { className: 'update-center-actions update-center-actions-lead' }, buildCheckButton(hd, busy)),
-        h('div', { className: 'update-center-text' }, statusNodes(state, snap, s))),
-      buildFailLine(state, s, hd),
-      buildSettings(s, hd),
+      /* 一个块（owner 2026-09-12 原型 v3 A 版）：动作行与设置行同一容器、轻分隔，不再夹在工具栏下当孤儿行。 */
+      h('div', { className: 'update-center-block' }, [
+        buildBanner(state, snap),
+        h('div', { className: 'update-center-row' },
+          h('div', { className: 'update-center-status-line' }, statusNodes(state, snap, s)),
+          h('div', { className: 'update-center-row-actions' }, buildCheckButton(hd, busy))),
+        buildFailLine(state, s, hd),
+        buildSettings(s, hd),
+      ]),
     ]))
   }
 

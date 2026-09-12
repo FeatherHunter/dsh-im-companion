@@ -278,6 +278,19 @@ test('T8-5 manual 为空/失败信封 ⇒ 不给命令；非空 ⇒ 原样刷新
   proof('manual-gate', '空 ⇒ null（含失败信封）/ 非空 ⇒ 本次值');
 });
 
+/* ---------- ⑤-b 相对时间文案（T10 真机：刷新后常显示「下次检查：0 分钟后」） ---------- */
+test('T10-1 nextCheckText：剩余不足 30 秒说「马上」，不再四舍五入成「0 分钟后」', () => {
+  const now = 1000000;
+  assert.equal(text.nextCheckText(now + 3000, now), '马上', '剩余 3 秒 ⇒ 马上（旧实现输出「0 分钟后」）');
+  assert.equal(text.nextCheckText(now + 29000, now), '马上', '剩余 29 秒 ⇒ 马上');
+  assert.equal(text.nextCheckText(now + 60000, now), '1 分钟后');
+  assert.equal(text.nextCheckText(now + 3600000, now), '1 小时后');
+  assert.equal(text.nextCheckText(null, now), '暂不可知');
+  assert.equal(text.lastCheckText(null, now), '尚未检查', '文案层照旧；显示与否由视图按会话态决定');
+  assert.equal(text.lastCheckText(now - 5000, now), '刚刚');
+  proof('next-check-text', '不足 30 秒 ⇒ 马上（回归 T10 真机「0 分钟后」）');
+});
+
 /* ---------- ⑥ 版本说明解析（行首 ^## 锚；破折号两种；三态文案） ---------- */
 test('T8-6 切节锚行首、容忍 U+2014/ASCII-、\r 容忍；三态文案唯一出口', () => {
   const md = ['# 变更日志', '', '## 0.1.9 — 2026-09-08', '', '- 新增更新中心', '- 修复：拥挤', '', '## 0.1.8 - 2026-09-01', '- 旧条目', ''].join('\r\n');
