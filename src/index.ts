@@ -10,7 +10,15 @@ export const name = 'dsh-im-companion'
 // 旧写法 ctx.connection.rpc.handle() 会以 connection 服务自身的 Context 去调 webServer.register(...)
 // 注册前缀路由，而那个 Context 没有 webServer 注入 → 装配期必抛 cannot get property "webServer" without inject；
 // 实测：给本插件加 webServer 声明【无效】，抛错的 Context 不是本插件的 ctx。修法与证据见 docs/adr/0002。
-export const inject = ['connection']
+//
+// `timer` 也是**必需**注入（2026-09-12 冷启动事故）：`ctx.interval` / `ctx.timeout` 不是普通属性，
+// 而是 cordis-plugin-timer 在自己装配时用 `ctx.mixin('timer', [...])` 注册的 **accessor**——
+// 读它 = 走代理去解析 `timer` 服务（cordis 4.0.2 `lib/index.js:883` getTarget → `ctx[source]`），
+// 本 fiber 没注入 ⇒ 直接抛 `cannot get property "timer" without inject`，**可选链 `ctx?.interval` 拦不住**
+// （异常发生在属性读取那一刻，回头看 update.ts 的 ctxTimerPort 降级判空永远到不了）。
+// 只走热重载看不见这个坑：让位分支（路由 already registered）在 update.start() 之前早退；
+// 冷启动（重启 DSH）才走到 update.start() → 抛错 → 整个 plugin tree 装配失败。
+export const inject = ['connection', 'timer']
 
 /** 自有桥端点名（信封 method 字段）与它在 /api 载体上的路径：单点定义，避免两处字面量漂移。 */
 const ENDPOINT = 'im-companion'

@@ -17,6 +17,9 @@
 //   ④ 方法守卫：handler 自身只答 POST（不依赖宿主派发实现）；
 //   ⑤ 重装配退让：宿主报 already registered 时不抛、只 warn 且不注册；
 //   ⑥ 回归钉：宿主不提供 fetch.register 时 apply 必须失败 —— 证明本测试真的盯着新载体。
+//   ⑦ 回归钉（2026-09-12 冷启动事故）：mock ctx 复刻 cordis 的 timer accessor 语义 —— 没注入 timer 时
+//      读 ctx.interval / ctx.timeout 直接抛 `cannot get property "timer" without inject`，
+//      于是「装配期真排了受管定时器」这条被断言钉住，而不是靠一个恰好不做声明检查的假 ctx 蒙混过关。
 // 决策记录：docs/adr/0002（载体迁移 + 首版 webServer 假设为何作废）。
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -49,15 +52,20 @@ after(() => {
 });
 
 type FetchRoute = { path: string; methods?: string[]; requestBody?: string; fetch: (req: any) => Promise<any> };
+type ScheduledTimer = { kind: 'interval' | 'timeout'; ms: number };
 
-/** 复刻宿主的 cordis 声明守卫 + connection 服务面（新载体 = fetch.register）。 */
+/** 复刻宿主的 cordis 声明守卫 + connection 服务面（新载体 = fetch.register）。
+ *  `interval` / `timeout` 按 cordis-plugin-timer 的真身复刻：它们是 `ctx.mixin('timer', [...])` 注册的
+ *  **accessor**，读属性 = 去解析 `timer` 服务；本 fiber 没注入 ⇒ 抛错文案里是【服务名 timer】，
+ *  与属性名无关（cordis 4.0.2 lib/index.js:883 getTarget → ctx[source]）。 */
 function makeCtx(
   declared: readonly string[],
   opts: { withFetch?: boolean; registerError?: string } = {},
-): { ctx: any; routes: FetchRoute[]; warns: string[] } {
+): { ctx: any; routes: FetchRoute[]; warns: string[]; timers: ScheduledTimer[] } {
   const { withFetch = true, registerError } = opts;
   const routes: FetchRoute[] = [];
   const warns: string[] = [];
+  const timers: ScheduledTimer[] = [];
   const raw: Record<string, unknown> = {
     logger: { info: () => {}, warn: (m?: unknown) => { warns.push(String(m)); } },
     effect: (fn: () => unknown) => { const d = fn(); return () => { if (typeof d === 'function') d(); }; },
@@ -65,6 +73,16 @@ function makeCtx(
   };
   const ctx: any = new Proxy(raw, {
     get(target, prop, receiver) {
+      if (prop === 'interval' || prop === 'timeout') {
+        // 生产文案逐字同款：属性读在即抛，可选链 ctx?.interval 拦不住。
+        if (!declared.includes('timer')) {
+          throw new Error('cannot get property "timer" without inject');
+        }
+        return (_cb: () => void, ms: number) => {
+          timers.push({ kind: prop as ScheduledTimer['kind'], ms });
+          return () => {};
+        };
+      }
       if (prop === 'webServer' || prop === 'connection') {
         if (!declared.includes(prop)) {
           // 与宿主装配失败逐字同款文案（cordis 声明检查）
@@ -92,7 +110,7 @@ function makeCtx(
       return Reflect.get(target, prop, receiver);
     },
   });
-  return { ctx, routes, warns };
+  return { ctx, routes, warns, timers };
 }
 
 test('inject 只声明 connection（不再需要 webServer）', () => {
@@ -101,6 +119,21 @@ test('inject 只声明 connection（不再需要 webServer）', () => {
   assert.ok(!host.inject.includes('webServer'),
     'inject 不应再含 webServer：#79 已改走 connection.fetch.register，抛错的 Context 不是本插件的 ctx');
   console.log('#79-PROOF inject=' + JSON.stringify(host.inject) + ' PASS');
+});
+
+test('inject 含 timer：冷启动装配真排受管定时器（24h 档位 + 60s 首查）', async () => {
+  assert.ok(host.inject.includes('timer'),
+    'inject 必须含 timer：ctx.interval/ctx.timeout 是 cordis accessor，缺注入 = 装配期抛 cannot get property "timer" without inject');
+  const { ctx, timers, warns } = makeCtx(host.inject);
+  host.apply(ctx, { dshHome: tmpHome });
+  // start() 的定时器排在 store.load() 落定之后（异步续跑），等一拍
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const armed = timers.map((t) => t.kind + ':' + t.ms).sort();
+  assert.deepEqual(armed, ['interval:86400000', 'timeout:60000'],
+    '冷启动应排「24h 档位周期 + 60s 首查」两条受管定时器');
+  assert.equal(warns.filter((w) => w.includes('宿主没有受管定时器服务')).length, 0,
+    '有 timer 服务时不应走「没有受管定时器」降级分支');
+  console.log('#79-PROOF timer-inject armed=' + JSON.stringify(armed) + ' PASS');
 });
 
 test('装配通过，并经 fetch.register 注册 /api/im-companion', () => {
