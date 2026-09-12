@@ -8,8 +8,9 @@ import { feature as welcomeBanner } from './welcome-banner/manifest'
 import { feature as fleetRadar } from './fleet-radar/manifest'
 import { feature as sessionHeader } from './session-header/manifest'
 import { feature as designPreview } from './design-preview/manifest'
+import { feature as updateCenter } from './update-center/manifest'
 import type { FeatureManifest } from './protocol'
 
-export const FEATURES: FeatureManifest[] = [detailDrawer, leftBadges, leftFilter, adopt, presence, welcomeBanner, fleetRadar, sessionHeader, designPreview].sort((a, b) => a.order - b.order)
+export const FEATURES: FeatureManifest[] = [detailDrawer, leftBadges, leftFilter, adopt, presence, welcomeBanner, fleetRadar, sessionHeader, designPreview, updateCenter].sort((a, b) => a.order - b.order)
 
 export type { FeatureCtx, FeatureManifest, FeatureSlot, SlotTarget, SlotsService } from './protocol'
