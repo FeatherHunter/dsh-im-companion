@@ -3,6 +3,7 @@ import { homedir } from 'node:os'
 import path from 'node:path'
 import { AgentMetaStore } from './host/meta-store.js'
 import { createAgentFleetHandler } from './host/rpc.js'
+import { createUpdateHostBridge } from './host/update.js'
 
 export const name = 'dsh-im-companion'
 // 载体：DSH 公开的 /api（connection.fetch.register），故 inject 只需 connection。
@@ -21,7 +22,10 @@ export function apply(ctx: any, config: any = {}) {
   const store = new AgentMetaStore(path.join(dshHome, 'integrations', 'dsh-im-companion', 'meta.json'))
   void store.load()
 
-  const handler = createAgentFleetHandler(store)
+  // 更新系统接线（T7 #90）：`update` 是**提供函数**，让位分支上它一直是 null ⇒ 那个实例不建更新能力、
+  // 不长定时器、不碰宿主存储（票面 §F.2）。这里只交出函数，实现等让位分支过了才建。
+  let update: ReturnType<typeof createUpdateHostBridge> | null = null
+  const handler = createAgentFleetHandler(store, { update: () => update })
   const reply = (rpcId: string, result: unknown): Response =>
     Response.json({ type: 'server-response', rpcId, result })
   try {
@@ -58,6 +62,11 @@ export function apply(ctx: any, config: any = {}) {
     }
     throw error
   }
+
+  // 让位分支之后才建更新系统：构造期零副作用，定时器在 `start()` 里才起（票面硬要求，见 src/host/update.ts 头注）。
+  update = createUpdateHostBridge({ ctx, store, logger, dshHome })
+  ctx.effect(() => () => update?.dispose(), 'dsh-im-companion: update auto-check cleanup')
+  update.start()
 
   try {
     ctx.provide?.('agentFleet', { version: '0.0.2', meta: store })

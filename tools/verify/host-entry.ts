@@ -20,7 +20,7 @@
 // 决策记录：docs/adr/0002（载体迁移 + 首版 webServer 假设为何作废）。
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -38,6 +38,9 @@ try {
   process.exit(1);
 }
 writeFileSync(join(tmp, 'package.json'), '{"type": "module"}\n');
+// T7 #90 起 host 半有裸模块依赖（src/host/update.ts 按包真身 `import 'dsh-plugin-update'`），
+// 而临时目录不在本仓 node_modules 的解析链上 → 挂一条 junction 指回本仓（同 rpc-dual-transport.ts 的做法）。
+try { symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction'); } catch { /* 已存在跳过 */ }
 const host: any = await import(pathToFileURL(join(tmp, 'index.js')).href);
 const tmpHome = mkdtempSync(join(tmpdir(), 'host-entry-home-'));
 after(() => {

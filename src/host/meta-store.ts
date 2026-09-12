@@ -12,6 +12,14 @@ export interface CtxEnhance {
   level: string
 }
 
+/** 自动检查偏好（T4 §G.3，形状定死）：开关 + 档位。默认值**只在本文件定义一处**，面板不得再写一份。
+ *  开关名取 `autoCheckEnabled` 而非 `autoCheck`：回包里那个 `autoCheck` 是运行期状态对象（`{failing,…}`），
+ *  两条通道同名不同物会让读代码的人绊一下（编排者裁定 2026-09-12）。 */
+export interface UpdatePrefs {
+  autoCheckEnabled: boolean
+  intervalHours: number
+}
+
 export interface AgentMetaDoc {
   version: 1
   names: Record<string, string>
@@ -22,9 +30,30 @@ export interface AgentMetaDoc {
   ctxEnhance: Record<string, CtxEnhance>
   /** E4 P 进门记忆（工作区全路径 → true；旧 meta.json 缺字段时读方兜底 {}）。 */
   welcomed: Record<string, boolean>
+  /** 更新中心自动检查偏好（T7 #90 追加；旧 meta.json 缺字段时读方兜底默认值，不是 undefined）。 */
+  update: UpdatePrefs
 }
 
-const EMPTY: AgentMetaDoc = { version: 1, names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: {} }
+/** 档位取值集合（6/12/24 小时、每周）；非法值由 `materialize` 折回默认，写入方（`meta.update.set`）另报 bad-request。 */
+export const UPDATE_INTERVAL_HOURS: readonly number[] = [6, 12, 24, 168]
+/** 默认值单点：`{ autoCheckEnabled: true, intervalHours: 24 }`（T4 §G.3 与基线⑦）。 */
+export const DEFAULT_UPDATE_PREFS: UpdatePrefs = { autoCheckEnabled: true, intervalHours: 24 }
+
+/** 档位校验：`{6,12,24,168}` 之内才算合法（`meta.update.set` 用它决定是否回 bad-request）。 */
+export function isUpdateIntervalHours(value: unknown): value is number {
+  return typeof value === 'number' && UPDATE_INTERVAL_HOURS.includes(value)
+}
+
+/** 把盘上读到的任意形状折成合法偏好：字段缺失/非法一律落默认值（旧 meta.json 无 `update` 段即走这条）。 */
+export function normalizeUpdatePrefs(input: unknown): UpdatePrefs {
+  const row = (input && typeof input === 'object' ? input : {}) as { autoCheckEnabled?: unknown; intervalHours?: unknown }
+  return {
+    autoCheckEnabled: typeof row.autoCheckEnabled === 'boolean' ? row.autoCheckEnabled : DEFAULT_UPDATE_PREFS.autoCheckEnabled,
+    intervalHours: isUpdateIntervalHours(row.intervalHours) ? row.intervalHours : DEFAULT_UPDATE_PREFS.intervalHours,
+  }
+}
+
+const EMPTY: AgentMetaDoc = { version: 1, names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: {}, update: { ...DEFAULT_UPDATE_PREFS } }
 
 function sanitizeString(value: unknown, max = 512): string {
   if (typeof value !== 'string') return ''
@@ -52,6 +81,7 @@ export class AgentMetaStore {
       presets: { ...this.doc.presets },
       ctxEnhance: Object.fromEntries(Object.entries(this.doc.ctxEnhance).map(([k, v]) => [k, { ...v }])),
       welcomed: { ...this.doc.welcomed },
+      update: { ...this.doc.update },
     }
   }
 
@@ -67,6 +97,7 @@ export class AgentMetaStore {
           presets: cleanRecord(parsed.presets),
           ctxEnhance: cleanCtxRecord(parsed.ctxEnhance),
           welcomed: cleanWelcomedRecord(parsed.welcomed),
+          update: normalizeUpdatePrefs(parsed.update),
           locals: Array.isArray(parsed.locals)
             ? parsed.locals
                 .filter((l) => l && typeof l.name === 'string')
@@ -172,6 +203,20 @@ export class AgentMetaStore {
     if (!k) return
     if (seen === true) this.doc.welcomed[k] = true
     else delete this.doc.welcomed[k]
+    await this.persist()
+  }
+
+  /** 读当前自动检查偏好（同步：调度器与 `meta.get` 都用它；缺省即默认值，见 `normalizeUpdatePrefs`）。 */
+  updatePrefs(): UpdatePrefs {
+    return { ...this.doc.update }
+  }
+
+  /** 写自动检查偏好（T4 §G.1/§G.3）：非法值静默不动（与 `setPreset`/`setCtx` 同风格），
+   *  调用方（`meta.update.set`）在写前已用 `isUpdateIntervalHours` 判过并回 bad-request。 */
+  async setUpdate(input: { autoCheckEnabled?: unknown; intervalHours?: unknown }): Promise<void> {
+    await this.load()
+    if (typeof input?.autoCheckEnabled !== 'boolean' || !isUpdateIntervalHours(input.intervalHours)) return
+    this.doc.update = { autoCheckEnabled: input.autoCheckEnabled, intervalHours: input.intervalHours }
     await this.persist()
   }
 }
