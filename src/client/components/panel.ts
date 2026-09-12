@@ -5,7 +5,7 @@ import { h } from '../dom'
 import type { RpcCall } from '../data/fleet-api'
 import { extractRpcV2 as extractRpc } from '../data/rpc'
 import type { AgentView, ViewMode } from '../data/model'
-import { ADOPT_VIEW_EVENT, FLEET_VIEW_EVENT, type FleetViewDetail } from '../data/config'
+import { ADOPT_VIEW_EVENT, FLEET_VIEW_EVENT, UPDATE_CENTER_HOST_EVENT, type FleetViewDetail, type UpdateCenterHostDetail } from '../data/config'
 import { icon } from '../icons'
 import { makeIconButton } from '../ui/button'
 import { makeSearchField } from '../ui/field'
@@ -173,7 +173,15 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     promoItem(copy.promoDeck, copy.promoDeckDesc, 'https://github.com/FeatherHunter/dsh-mattpocock-skills-deck'),
     promoItem(copy.promoPal, copy.promoPalDesc, 'https://github.com/FeatherHunter/dsh-opencode-palette'),
   )
-  const root = h('div', { className: 'af-root' }, hd, toolbar, compose.el, body, promo)
+  /* T6（#89）更新中心挂载点：A1 只暴露一个空容器 + 广播（不引 update-center 特性，T8 自挂自管）；空 div 零高零间距。
+   * 类名走契约 §6 前缀约定（<feature>-*，故 update-center-host）。
+   * id 必须保留（R8 P0-b）：该事件**无重放**，热重载 / 事件顺序倒置时会漏掉 {host}；
+   * 故面板每次渲染都产出这个稳定 id，T8 可在 mount 末尾用 document.getElementById('imc-update-center')
+   * **主动认领**已存在的容器——id 就是那个认领把手，删了 T8 只能靠猜。 */
+  const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host' })
+  const root = h('div', { className: 'af-root' }, hd, toolbar, compose.el, body, updateCenterHost, promo)
+
+  emitUpdateCenterHost(updateCenterHost)
 
   /* ---------- 模块接线 ---------- */
   const rowCallbacks = (): RowCallbacks => ({
@@ -208,6 +216,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   /* ---------- 生命周期（#17：轮询归共享 stream，面板只订阅 + dispose 退订） ---------- */
   void data.load()
   ;(root as unknown as { __afDispose?: () => void }).__afDispose = () => {
+    emitUpdateCenterHost(null)
     try {
       data.dispose()
     } catch {
@@ -229,6 +238,17 @@ function promoItem(name: string, desc: string, href: string): HTMLAnchorElement 
     target: '_blank',
     rel: 'noopener',
   }, h('b', null, name), h('span', null, desc), h('i', null, '›'))
+}
+
+/* T6（#89）挂载点：事件名单点真相在 data/config.ts（feature 只读该导出，不引本私有文件）；
+ * detail.host 非空＝可挂载容器（面板骨架建好即广播），host＝null＝面板已卸载，特性须回收（退订／清定时器／清 DOM）；
+ * detail 形状见 UpdateCenterHostDetail（config.ts），与 FLEET_VIEW_EVENT 处同款写法给 CustomEvent 带上类型参数。 */
+function emitUpdateCenterHost(host: HTMLElement | null): void {
+  try {
+    if (typeof window !== 'undefined' && typeof window.CustomEvent === 'function') {
+      window.dispatchEvent(new window.CustomEvent<UpdateCenterHostDetail>(UPDATE_CENTER_HOST_EVENT, { detail: { host } }))
+    }
+  } catch { /* 派发失败不影响面板 */ }
 }
 
 function emitFleetView(view: FleetViewDetail['view']): void {

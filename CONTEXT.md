@@ -22,11 +22,20 @@
 | **Contract（契约）** | 模块间唯一交互面：共享包导出接口（theme/ui 原语/data 层）、挂载点（slot/左栏 DOM）、host 桥端点（自有桥经 DSH 公开 `/api` 载体注册，路径 `/api/im-companion`，按功能命名 `im-companion.<feature>.<action>`；载体沿革见 ADR-0002）。 |
 | **红线（300 行）** | 任何源文件 ≤300 行；lib/* 为构建产物豁免；由 T0 守卫脚本机械执行。 |
 | **Map** | Wayfinder 的目的地索引 issue，本文档对应的规划图谱。 |
+| **电话（Phone）** | 宿主对外提供的方法，由更新包按「前缀 + 点 + 动作名」拼出；本仓冻结点 `imc.updateStatus` / `imc.updateCheck` / `imc.updateInstall`。是 host 桥端点的特例，见 Boundaries 的记录式说明。 |
+| **落盘（Persist）** | 宿主统一写本地文件的动作（更新包 `state.json` / `install.lock` / `before.json` 三件）。与「真值」无涉，不得互换使用。 |
+| **更新包（Update Package）** | 装着更新系统的那个 npm 包 `dsh-plugin-update@0.1.1`；本仓是集成方，只 pin 不改。 |
+| **更新系统（Update System）** | 更新功能本身（引擎、对外接口、文档），由更新包提供。 |
+| **更新中心（Update Center）** | 本仓新增的面板区块（设置-IM机器人增强内），承载检查更新 / 装更新 / 兜底命令 / 待重启横幅 / 版本说明。新词，勿与上述四个混用。 |
+| **使用范围（Profile）** | DSH 的 profile（web / desktop），更新包里叫「使用范围」；**不是 Workspace（工作区）**，两者不可互译。 |
 
 ## Boundaries
 
 - 本上下文仅覆盖 companion 辅助插件（`dsh-im-companion`），不含 `dsh-im` 上游实现。
 - 术语 “托管” 禁用，一律使用 “绑定”。
+- 「渠道」仅指 IM 渠道类型（见 Channel 行）；更新系统的下载源叫「官方源」（更新包 `registryUrl`，默认 `https://registry.npmjs.org/`），不得称渠道。
+- 电话名 `imc.updateStatus` / `imc.updateCheck` / `imc.updateInstall` **不是豁免** Contract 行的 `im-companion.<feature>.<action>` 命名法，而是命名法对它**物理不可达**：更新包 `buildPhoneNames(prefix)` 只产 `<前缀>.<动作>`，且前缀禁含点/斜杠/空白，只能是 `imc` 这类单段。故按事实记录：电话名 = 载体内 `<前缀>.<动作>`，与既有端点 `meta.get` / `routes.list` 同形，载体 `/api/im-companion` 已提供 `im-companion` 那一段。
+- 「使用范围」是 Profile（web / desktop），「工作区」是 Workspace（左侧工作区单元），两者禁互译。
 
 ## Open Questions
 

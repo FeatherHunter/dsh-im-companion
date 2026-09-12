@@ -45,6 +45,7 @@ export interface FeatureManifest {
 | ui/* | 只加新原语文件；改既有原语需 F0 评审（单 PR） |
 | data/connection-stream.ts / bindings.ts | B1 首建；其余功能只读其导出 |
 | host/rpc.ts | 只追加 case；端点命名 `im-companion.<feature>.<action>` |
+| 电话名（`host/rpc.ts` 端点的既有形态 · added-only · T7 #90，契约先行 §9） | 更新包 `buildPhoneNames(prefix)` 只产 `<前缀>.<动作>`，且前缀禁含点/斜杠/空白 ⇒ 本行上一行的三段式命名法对电话名**物理不可达**；本仓按包原样注册 `imc.updateStatus` / `imc.updateCheck` / `imc.updateInstall` 三个端点，既有 `meta.get` / `routes.list` 同为该形态（载体 `/api/im-companion` 已提供 `im-companion` 那一段）。与 `CONTEXT.md` Boundaries 的记录式说明同源——**是按事实记录，不是豁免**。 |
 | host 入口 `src/index.ts`（载体） | 自有桥**只**经 `connection.fetch.register` 挂到 DSH 公开 `/api` 载体（路径 `/api/im-companion`）；**禁止** `connection.rpc.handle`——前缀路由会以 connection 服务自身的 Context 取 `webServer`，装配期即抛 `cannot get property "webServer" without inject`（沿革与证据见 ADR-0002） |
 | client/index.ts | 只改 FEATURES 列表（每功能一行） |
 | A1 私有（components/panel.ts、connect-flow.ts、row-actions.ts 等） | 禁止被 feature 直接引用；触碰走单 PR（C1a/E2 入口按 R5 建议由 B3 胶囊承载或单 PR 改） |
@@ -56,6 +57,9 @@ export interface FeatureManifest {
 - **单份轮询**：connection-stream 是唯一轮询源（15s + 手动刷新广播），feature 经 `subscribe(fn)` 读快照；不新开第二份轮询。
 - **host 元数据**：RpcMetaStore 单实例（host meta.json 权威），feature 只经 FeatureCtx.meta。
 - **写路径**：一律 dsh-im 渠道 RPC 或 host 桥端点；写后立刷（触发 stream.refresh()）。
+- **面板 status 轮询的许可（added-only · T4 #87，契约先行 §9）**：更新中心的面板可自写 status 轮询，但仅限三条同时成立——① **上游规定**：更新包 README §3 明确要求面板自写 `setInterval(readStatus, UPD_POLL)`（上游只给常量与口径，`dsh-plugin-update` 包内零轮询）；② **状态机限定**：只在 `job.state ∈ {installing, verifying}` 期间开 1s 表，终态/离开即 `clearInterval`，客户端侧至多一个 update 定时器；③ **非同一数据源**：更新状态走本仓自有桥 `/api/im-companion`，与 15s 的 connection-stream 不同源、物理上搭不上车。三条之外的常开轮询仍属违约。
+- **Added-only 定性（同上 · 非契约变更）**：「`AgentMetaDoc` 追加 `update` 字段 + `host/rpc.ts` 追加一个 `meta.update.set` case」落在 §3 明列的**共享层 Added-only 许可**内（只加导出 / 只追加 case），**不属于契约变更**；只有上面那条轮询许可才是需要先行记录的协议追加。
+- **事件制通道（added-only · T6 #89，契约先行 §9）**：本仓 A1（面板等私有组件）与 feature 之间**存在既成的 window 事件通道**——事件名统一 `dsh-im-companion:*`，**常量单点声明在共享层 `src/client/data/config.ts` 并导出**，A1 派发、feature 监听（feature 只读该导出，不引 A1 私有文件）。既有先例 6 个常量：`OPEN_DRAWER_EVENT` / `FLEET_VIEW_EVENT` / `ADOPT_VIEW_EVENT` / `OPEN_AGENT_EVENT` / `SEND_TEST_EVENT` / `SESSION_VIEWED_EVENT`（后三者单点声明在 `data/bindings.ts` 与 `data/header-overlay.ts`，同为共享层导出）。**本次新增语义**：`UPDATE_CENTER_HOST_EVENT`（detail 形状 `UpdateCenterHostDetail`）是该通道**首次传递「活的 DOM 元素引用」**（`host: HTMLElement | null`：非空＝可挂载容器，`null`＝面板已卸载、特性须回收）。**已知债务（记录事实，不写成「豁免」）**：该通道**不在**「rpc / subscribe / meta / slots」四种契约通道白名单内（AGENTS.md 解耦九律 §1③）；要把「传递 DOM 的挂载点」收进 `slots`，需扩 `SlotTarget` 闭集（`protocol.ts`）与装配层，属更大范围改动，**本票不做**。附带事实：该事件**无重放**，热重载 / 事件顺序倒置时会漏掉 `{host}`，故容器保留稳定 `id="imc-update-center"`，供 T8 在 mount 末尾 `document.getElementById` **主动认领**。
 
 ## 5. 红线口径（300 行/文件）
 
@@ -81,6 +85,7 @@ A 线：B1（bindings/overlay 奠基）→ B2 ∥ E1；B 线：B3 ∥ C1b ∥ E4
 - 预览 harness：mock 数据按功能模块注册（`src/dev/features/<id>-mock.ts`），preview-host 只做装配。
 - 守卫脚本：按功能归属（guard/boundaries 为契约层工具，功能自检脚本放 `<feature>/tools/`）。
 - 依赖边界：feature 开发产物之间同样禁止 import 耦合（由评审把关，不设自动检查——见 §10）。
+- 装配点夹具的必要追加（added-only · T7 #90）：`tools/verify/host-entry.ts` 给临时宿主目录挂一条 `node_modules` junction 指回本仓。原因：T7 起 host 半首次引入**包真身**依赖（`src/host/update.ts` 按裸模块名 `import 'dsh-plugin-update'`），而该验证器把 `src/` 转译到 `%TEMP%`，那里不在本仓 `node_modules` 解析链上（实测：去掉这条 junction 即 `ERR_MODULE_NOT_FOUND: Cannot find package 'dsh-plugin-update' imported from ...\host\update.js`）。属"夹具追加"而非"改他人分区"：既有断言一字未改。T7 自己的验证器 `tools/verify/features/update-host.ts` 同样自带这条 junction（其 25-26 行）。
 
 ## 9. 合并协议（并发正确性）
 

@@ -31,6 +31,17 @@ export const FLEET_VIEW_EVENT = 'dsh-im-companion:fleet-view'
 /** 串门搬家开窗事件名（A1 工具栏按钮派发，adopt 特性监听自开面板；FLEET_VIEW_EVENT 同款事件制）。 */
 export const ADOPT_VIEW_EVENT = 'dsh-im-companion:adopt-view'
 
+/** 更新中心挂载点事件名（T6 #89）：detail = UpdateCenterHostDetail（见下）；
+ * A1 面板骨架建好即派发 host（可挂载的空容器元素），面板卸载即派发 host=null；
+ * update-center 特性监听后自挂自管、收到 null 即回收（退订／清定时器／清 DOM）——FLEET_VIEW_EVENT 同款事件制，feature 只读此导出，不引 A1 私有文件。 */
+export const UPDATE_CENTER_HOST_EVENT = 'dsh-im-companion:update-center-host'
+
+/** UPDATE_CENTER_HOST_EVENT 的 detail：host 非空＝可挂载容器（面板骨架已建好，可安全 appendChild）；
+ * host＝null＝面板已卸载，特性须回收（退订／清定时器／清 DOM），不得再引用旧容器。 */
+export interface UpdateCenterHostDetail {
+  host: HTMLElement | null
+}
+
 export interface FleetViewDetail {
   view: 'list' | 'radar'
 }
