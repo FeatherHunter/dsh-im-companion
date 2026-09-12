@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>更新中心 · 静态原型</title>
+<style>
+:root{
+  --af-accent: var(--dsw-alias-brand-primary,#0a84ff);
+  --af-primary: var(--dsw-alias-label-primary,#1c1c1e);
+  --af-secondary: var(--dsw-alias-label-secondary,#6e6e73);
+  --af-tertiary: var(--dsw-alias-label-tertiary,#98989d);
+  --af-bg: var(--dsw-alias-bg-base,#ffffff);
+  --af-surface: color-mix(in srgb, var(--dsw-alias-label-primary,#1c1c1e) 6%, var(--dsw-alias-bg-base,#ffffff));
+  --af-surface-2: color-mix(in srgb, var(--dsw-alias-label-primary,#1c1c1e) 11%, var(--dsw-alias-bg-base,#ffffff));
+  --af-hairline: color-mix(in srgb, var(--dsw-alias-label-primary,#1c1c1e) 12%, transparent);
+  --af-success: var(--dsw-alias-state-success-primary,#30d158);
+  --af-warn: var(--dsw-alias-state-warn-primary,#ff9f0a);
+  --af-danger: var(--dsw-alias-state-error-primary,#ff453a);
+}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 16px 64px;background:var(--af-bg);color:var(--af-primary);font-size:13px;line-height:1.5;
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Noto Sans SC","Segoe UI",Roboto,sans-serif;
+  -webkit-font-smoothing:antialiased}
+.uc-page{max-width:780px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.uc-btn{height:32px;padding:0 12px;border-radius:12px;border:1px solid var(--af-hairline);background:var(--af-surface);
+  color:var(--af-primary);font-size:13px;font-family:inherit;cursor:pointer;white-space:nowrap}
+.uc-btn:hover{background:var(--af-surface-2)}
+.uc-btn.uc-primary{background:var(--af-accent);border-color:transparent;color:#fff;font-weight:500}
+.uc-btn.uc-primary:hover{filter:brightness(1.06)}
+.uc-btn:disabled{opacity:.45;cursor:not-allowed}
+.uc-muted{color:var(--af-secondary)}
+.uc-hint{color:var(--af-tertiary);font-size:12px}
+.uc-console{border:1px dashed var(--af-hairline);border-radius:12px;padding:12px 14px;background:var(--af-surface);display:flex;flex-direction:column;gap:8px}
+.uc-console-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.uc-console-badge{font-size:12px;font-weight:600;color:var(--af-warn);border:1px solid var(--af-warn);border-radius:6px;padding:1px 6px}
+.uc-console-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.uc-console-label{width:34px;color:var(--af-tertiary);font-size:12px;flex:none}
+.uc-chip{height:26px;padding:0 10px;border-radius:8px;border:1px solid var(--af-hairline);background:var(--af-bg);
+  color:var(--af-secondary);font-size:12px;font-family:inherit;cursor:pointer}
+.uc-chip:hover{color:var(--af-primary)}
+.uc-chip[aria-pressed="true"]{background:var(--af-accent);border-color:transparent;color:#fff;font-weight:500}
+.uc-panel{border:1px solid var(--af-hairline);border-radius:12px;overflow:hidden}
+.uc-panel-head{display:flex;align-items:baseline;gap:8px;padding:12px 16px;border-bottom:1px solid var(--af-hairline);background:var(--af-surface)}
+.uc-panel-title{font-size:14px;font-weight:600}
+.uc-panel-sub{font-size:12px;color:var(--af-tertiary)}
+.uc-panel-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.uc-block{height:52px;border-radius:12px;background:var(--af-surface);display:flex;align-items:center;justify-content:center;
+  color:var(--af-tertiary);font-size:12px}
+.uc-panel-foot{padding:9px 16px;border-top:1px solid var(--af-hairline);background:var(--af-surface);color:var(--af-tertiary);font-size:11px}
+.uc-banner{display:flex;align-items:center;gap:8px;border-radius:12px;padding:9px 12px;font-size:13px;font-weight:500;
+  color:var(--af-warn);background:color-mix(in srgb,var(--af-warn) 13%,var(--af-bg));border:1px solid color-mix(in srgb,var(--af-warn) 35%,transparent)}
+.uc-code{position:relative;background:var(--af-surface);border:1px solid var(--af-hairline);border-radius:12px;padding:22px 10px 9px}
+.uc-code code{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.6;
+  color:var(--af-secondary);word-break:break-all;user-select:all}
+.uc-code .uc-copy{position:absolute;top:6px;right:6px}
+.uc-switch{display:flex;align-items:center;gap:8px;font-size:13px}
+.uc-track{width:34px;height:20px;border-radius:10px;background:var(--af-surface-2);border:1px solid var(--af-hairline);
+  position:relative;cursor:pointer;flex:none;padding:0}
+.uc-track[aria-pressed="true"]{background:var(--af-success);border-color:transparent}
+.uc-knob{position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .12s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.28)}
+.uc-track[aria-pressed="true"] .uc-knob{left:15px}
+.uc-select{height:28px;border-radius:8px;border:1px solid var(--af-hairline);background:var(--af-bg);color:var(--af-primary);
+  font-family:inherit;font-size:12px;padding:0 6px}
+.uc-select:disabled{color:var(--af-tertiary);opacity:.6}
+.uc-a{border:1px solid var(--af-hairline);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.uc-a-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.uc-a-text{flex:1 1 260px;min-width:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.uc-a-status{font-size:13px;font-weight:500}
+.uc-a-actions{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.uc-a-detail,.uc-card-detail{display:flex;flex-direction:column;gap:8px;padding-top:8px;border-top:1px solid var(--af-hairline)}
+.uc-card{border:1px solid var(--af-hairline);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:10px;background:var(--af-bg)}
+.uc-card-head{display:flex;align-items:center;gap:7px}
+.uc-card-icon{font-size:14px;line-height:1}
+.uc-card-title{font-size:13.5px;font-weight:600}
+.uc-card-body{display:flex;flex-direction:column;gap:9px}
+.uc-versions{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--af-secondary);flex-wrap:wrap}
+.uc-versions b{color:var(--af-primary);font-weight:500}
+.uc-section{background:var(--af-surface);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;gap:7px}
+.uc-section-title{font-size:12px;font-weight:600;color:var(--af-secondary)}
+.uc-report{margin:0;padding-left:18px;font-size:12.5px;color:var(--af-secondary);display:flex;flex-direction:column;gap:3px}
+.uc-settings{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--af-hairline)}
+.uc-settings .uc-next{margin-left:auto}
+.uc-bar{height:5px;border-radius:3px;background:var(--af-surface-2);overflow:hidden}
+.uc-bar i{display:block;height:100%;border-radius:3px;background:var(--af-accent);width:38%;transition:width .3s ease}
+.uc-spin{display:inline-block;width:11px;height:11px;border:2px solid var(--af-hairline);border-top-color:var(--af-accent);
+  border-radius:50%;animation:uc-rot .8s linear infinite;vertical-align:-1px}
+@keyframes uc-rot{to{transform:rotate(360deg)}}
+.uc-dialog{position:fixed;inset:0;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+.uc-dialog-card{background:var(--af-bg);border-radius:12px;max-width:420px;width:100%;padding:16px;display:flex;flex-direction:column;gap:10px;
+  border:1px solid var(--af-hairline)}
+.uc-dialog-title{font-size:14px;font-weight:600}
+.uc-dialog-foot{display:flex;justify-content:flex-end;gap:8px;padding-top:2px}
+.uc-card .uc-a-actions{margin-left:0}
+</style>
+</head>
+<body>
+<div class="uc-page">
+  <section class="uc-console">
+    <div class="uc-console-head">
+      <span class="uc-console-badge">原型控制台 · 仅供评审</span>
+      <span class="uc-hint">六态 × 两变体 × 版本说明对话框 × 设置行</span>
+    </div>
+    <div class="uc-console-row"><span class="uc-console-label">变体</span>
+      <button class="uc-chip" data-variant="A">变体 A · 紧凑行内</button>
+      <button class="uc-chip" data-variant="B">变体 B · 状态卡</button>
+    </div>
+    <div class="uc-console-row"><span class="uc-console-label">状态</span>
+      <button class="uc-chip" data-status="latest">已是最新</button>
+      <button class="uc-chip" data-status="update">有新版可装</button>
+      <button class="uc-chip" data-status="blocked">装不了</button>
+      <button class="uc-chip" data-status="installing">安装中</button>
+      <button class="uc-chip" data-status="restart">待重启</button>
+      <button class="uc-chip" data-status="failed">检查失败</button>
+    </div>
+    <div class="uc-console-row"><span class="uc-console-label">其它</span>
+      <button class="uc-chip" data-action="dialog">弹出：版本说明</button>
+      <button class="uc-chip" data-action="reset">重置</button>
+    </div>
+  </section>
+
+  <section class="uc-panel">
+    <header class="uc-panel-head">
+      <span class="uc-panel-title">IM机器人增强</span>
+      <span class="uc-panel-sub">设置 · 客户端插件</span>
+    </header>
+    <div class="uc-panel-body">
+      <div class="uc-block">（既有区块占位）</div>
+      <div class="uc-block">（既有区块占位）</div>
+      <div id="app"></div>
+    </div>
+    <footer class="uc-panel-foot">由 dsh-im-companion 提供 · 本原型仅用于评审，不代表最终实现</footer>
+  </section>
+</div>
+<script>
+const S={variant:'A',status:'latest',sub:'installing',reason:'invalid-installation',auto:true,interval:24,dialog:false,detail:false,lastCheck:'刚刚'};
+const V='v0.1.8',NV='v0.1.9';
+const CMD='dsh plugin --profile web add --save-exact dsh-im-companion@0.1.9 --registry=https://registry.npmjs.org/';
+const REASONS=[
+ {id:'unknown-profile',text:'认不出当前的使用范围，请把使用范围名或目录修好后再看更新。',cmd:false},
+ {id:'source-install',text:'当前是从源码安装的，想走更新请先按版本号重装一次。',cmd:false},
+ {id:'invalid-installation',text:'已安装的包不完整，请用下面的命令重装当前版本后再检查。',cmd:true},
+ {id:'installation-changed',text:'运行中的版本与磁盘上装好的版本不一致；重启宿主后即生效。',cmd:true},
+ {id:'pending-restart',text:'新版已装好，重启宿主后生效（这不是失败）。',cmd:true},
+ {id:'registry-conflict',text:'使用范围的清单里那一行不是版本号，改成版本号后重试，或用下面的命令覆盖安装。',cmd:true},
+ {id:'incompatible-node',text:'新版要求更高的 Node，请先升级 Node 到 22 或更高再检查。',cmd:true},
+ {id:'recovery-required',text:'上次安装被打断，请重新点一次安装；一直出现就按更新包文档排错。',cmd:true}
+];
+const NOTES=['新增更新中心：可在设置面板内检查并安装新版本','修复：设置面板顶部拥挤问题','改进：检查失败时的提示更克制，不再遮挡设置项','内部：更新检查改走官方源，减少一次多余请求'];
+const INTERVALS=[['6','6 小时'],['12','12 小时'],['24','24 小时（默认）'],['168','每周']];
+const NEXT={6:'6 小时后',12:'12 小时后',24:'24 小时后',168:'下周一'};
+const reason=()=>REASONS.filter(r=>r.id===S.reason)[0]||REASONS[0];
+const btn=(label,cls,action,dis)=>'<button class="uc-btn '+(cls||'')+'" data-action="'+action+'"'+(dis?' disabled':'')+'>'+label+'</button>';
+const notesList=()=>'<ul class="uc-report">'+NOTES.map(n=>'<li>'+n+'</li>').join('')+'</ul>';
+const commandBlock=()=>'<div class="uc-code"><button class="uc-btn uc-copy" data-action="copy">复制</button><code>'+CMD+'</code></div>';
+const reasonSelect=()=>'<label class="uc-switch uc-hint">原因 <select class="uc-select" data-role="reason">'+
+  REASONS.map(r=>'<option value="'+r.id+'"'+(r.id===S.reason?' selected':'')+'>'+r.id+'</option>').join('')+'</select></label>';
+const banner=()=>S.status!=='restart'?'':'<div class="uc-banner"><span>⚠️</span><span>新版本 '+NV+' 已装好，重启宿主后生效</span></div>';
+function statusLine(){
+  const r=reason();
+  if(S.status==='latest')return '<span class="uc-a-status">已是最新版本（'+V+'）</span><span class="uc-hint">最近检查：'+S.lastCheck+'</span>';
+  if(S.status==='update')return '<span class="uc-a-status">有新版本 '+NV+' 可安装</span>';
+  if(S.status==='blocked')return '<span class="uc-a-status">装不了</span><span class="uc-muted">'+r.text+'</span>';
+  if(S.status==='installing')return '<span class="uc-a-status">'+(S.sub==='verifying'?'正在校验 '+NV+'…':'正在安装 '+NV+'…')+'</span><span class="uc-spin"></span>';
+  if(S.status==='restart')return '<span class="uc-a-status">已装好 '+NV+'，等待重启</span><span class="uc-hint">当前运行 '+V+'</span>';
+  return '<span class="uc-muted">自动检查暂时不可用，可手动检查</span>';
+}
+function actionsHtml(){
+  if(S.status==='latest')return btn('检查更新','','check');
+  if(S.status==='update')return btn('安装 '+NV,'uc-primary','install')+btn('查看更新说明','','dialog');
+  if(S.status==='blocked')return btn('重新检查','','check');
+  if(S.status==='installing')return btn('安装中…','uc-primary','none',true);
+  if(S.status==='restart')return btn('查看更新说明','','dialog');
+  return btn('重试','','retry');
+}
+function detailHtml(){
+  if(S.status==='blocked'){const r=reason();
+    return reasonSelect()+(r.cmd?commandBlock():'<div class="uc-hint">此情况无法给出可用的重装命令</div>');}
+  if(S.status==='failed')return '';
+  if(S.status==='latest')return '<div class="uc-hint">最近检查：'+S.lastCheck+' · 自动检查每 '+intervalLabel()+'一次</div>';
+  if(S.status==='installing')return '<div class="uc-bar"><i style="width:'+(S.sub==='verifying'?'96%':'46%')+'"></i></div>'+
+    '<div class="uc-section-title">'+NV+' 更新说明</div>'+notesList();
+  return '<div class="uc-section-title">'+NV+' 更新说明</div>'+notesList();
+}
+function intervalLabel(){const v=INTERVALS.filter(i=>i[0]===String(S.interval))[0];return v?v[1]:'24 小时';}
+function settingsRow(){
+  const off=!S.auto;
+  return '<div class="uc-settings">'+
+    '<div class="uc-switch"><button class="uc-track" data-action="toggle" aria-pressed="'+S.auto+'" aria-label="自动检查更新"><span class="uc-knob"></span></button><span>自动检查更新</span></div>'+
+    '<select class="uc-select" data-role="interval"'+(off?' disabled':'')+'>'+
+      INTERVALS.map(i=>'<option value="'+i[0]+'"'+(String(S.interval)===i[0]?' selected':'')+'>'+i[1]+'</option>').join('')+'</select>'+
+    '<span class="uc-next uc-hint'+(off?' uc-greyed':'')+'">下次检查：'+(NEXT[S.interval]||'24 小时后')+'</span>'+
+    (off?'<span class="uc-hint">自动检查已关闭</span>':'')+
+  '</div>';
+}
+function dialogHtml(){
+  return '<div class="uc-dialog"><div class="uc-dialog-card">'+
+    '<div class="uc-dialog-title">'+NV+' · 更新说明</div>'+notesList()+
+    '<div class="uc-hint">安装后需重启宿主生效；'+NV+' 不含破坏性变更。</div>'+
+    '<div class="uc-dialog-foot"><button class="uc-btn" data-action="close-dialog">关闭</button></div>'+
+  '</div></div>';
+}
+function variantA(){
+  const det=S.detail?detailHtml():'';
+  return '<div class="uc-a">'+banner()+
+    '<div class="uc-a-main"><div class="uc-a-text">'+statusLine()+'</div>'+
+      '<div class="uc-a-actions">'+actionsHtml()+
+        (S.status==='failed'?'':'<button class="uc-btn" data-action="detail">'+(S.detail?'收起详情':'详情')+'</button>')+
+      '</div></div>'+
+    (det?'<div class="uc-a-detail">'+det+'</div>':'')+
+    settingsRow()+'</div>';
+}
+function variantB(){
+  const det=detailHtml();
+  return '<div class="uc-card">'+banner()+
+    '<div class="uc-card-head"><span class="uc-card-icon">⬆️</span><span class="uc-card-title">更新中心</span></div>'+
+    '<div class="uc-card-body">'+
+      '<div class="uc-a-text">'+statusLine()+'</div>'+
+      (S.status==='failed'?'':'<div class="uc-versions"><span>当前版本 <b>'+V+'</b></span><span>→</span><span>已发布 <b>'+NV+'</b></span></div>')+
+      '<div class="uc-a-actions">'+actionsHtml()+'</div>'+
+      (det?'<div class="uc-card-detail">'+det+'</div>':'')+
+      settingsRow()+
+    '</div></div>';
+}
+function syncConsole(){
+  document.querySelectorAll('.uc-chip[data-variant]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.variant===S.variant)));
+  document.querySelectorAll('.uc-chip[data-status]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.status===S.status)));
+  let row=document.getElementById('subRow');
+  if(!row){
+    row=document.createElement('div');
+    row.id='subRow';row.className='uc-console-row';
+    row.innerHTML='<span class="uc-console-label">子态</span>'+
+      '<button class="uc-chip" data-sub="installing">installing</button><button class="uc-chip" data-sub="verifying">verifying</button>';
+    document.querySelector('.uc-console').appendChild(row);
+  }
+  row.style.display=(S.status==='installing')?'':'none';
+  row.querySelectorAll('[data-sub]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.sub===S.sub)));
+}
+function render(){
+  document.getElementById('app').innerHTML=(S.variant==='B')?variantB():variantA();
+  document.getElementById('modal').innerHTML=S.dialog?dialogHtml():'';
+  syncConsole();
+}
+function selectCode(code){
+  try{const r=document.createRange();r.selectNodeContents(code);const s=window.getSelection();s.removeAllRanges();s.addRange(r);}
+  catch(err){/* 原型：选中失败不影响评审 */}
+}
+function copyCmd(el){
+  const code=el.parentElement.querySelector('code');
+  selectCode(code);
+  try{
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(code.textContent).catch(()=>{});}
+  }catch(err){/* 剪贴板不可用，已改为选中文本 */}
+  el.textContent='已复制';
+}
+document.addEventListener('click',e=>{
+  const el=e.target.closest?e.target.closest('[data-variant],[data-status],[data-sub],[data-action]'):null;
+  if(!el)return;
+  if(el.dataset.variant){S.variant=el.dataset.variant;S.detail=false;}
+  else if(el.dataset.status){S.status=el.dataset.status;S.detail=false;}
+  else if(el.dataset.sub){S.sub=el.dataset.sub;}
+  else switch(el.dataset.action){
+    case 'dialog':S.dialog=true;break;
+    case 'close-dialog':S.dialog=false;break;
+    case 'detail':S.detail=!S.detail;break;
+    case 'toggle':S.auto=!S.auto;break;
+    case 'check':S.status='latest';S.lastCheck='刚刚';break;
+    case 'retry':S.status='update';S.lastCheck='刚刚';break;
+    case 'install':S.status='installing';S.sub='installing';break;
+    case 'copy':copyCmd(el);break;
+    case 'reset':Object.assign(S,{variant:'A',status:'latest',sub:'installing',reason:'invalid-installation',
+      auto:true,interval:24,dialog:false,detail:false,lastCheck:'刚刚'});break;
+  }
+  render();
+});
+document.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.dataset.role==='reason')S.reason=t.value;
+  else if(t.dataset.role==='interval')S.interval=parseInt(t.value,10)||24;
+  render();
+});
+(function init(){
+  const modal=document.createElement('div');
+  modal.id='modal';
+  document.body.appendChild(modal);
+  render();
+})();
+</script>
+</body>
+</html>
