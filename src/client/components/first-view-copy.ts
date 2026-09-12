@@ -21,7 +21,6 @@ export function firstViewLang(doc?: unknown): FirstViewLang {
 
 export interface FirstViewCopy {
   title: string
-  sub: string
   byAgent: (n: number) => string
   byChannel: (n: number) => string
   updatedTip: (t: string) => string
@@ -49,16 +48,16 @@ export interface FirstViewCopy {
   feedbackTitle: string
   feedbackHref: string
   versionTitle: (v: string) => string
-  /** #78 自家版本展示：两个版本号并列时必须带自家品牌名，用户一眼分得清哪个是谁的。 */
-  versionLabel: (v: string) => string
-  /** #78 上游兼容标记：兼容的 dsh-im 版本（来源 package.json.dshImCompat，构建注入）。
-   * 「兼容」二字直接进 chip——用户一眼看出这是「我们兼容哪个 dsh-im」，而不是又一个自家版本号。 */
+  /** #82 自家版本胶囊（紫）：文案只留版本号——品牌名进悬停，宽度让给标题。
+   * 身份由胶囊颜色承载（紫=自家 / 蓝白=上游 dsh-im / 黑白=宿主），见 first-view-styles。 */
   compatChip: (v: string) => string
-  /** #78 兼容标记悬停说明：已验证版本 + 兼容范围。 */
+  /** #78 上游兼容标记：兼容的 dsh-im 版本（来源 package.json.dshImCompat，构建注入）。
+   * #82 改：去「兼容」前缀（颜色即身份），悬停仍写全「已在 dsh-im X 上验收」口径。 */
   compatTitle: (v: string, range: string) => string
   compatHref: string
   /** #79 宿主兼容标记：已验证的 @deepseek-ai/dsh 版本（来源 package.json.dshCompat，构建注入）。
-   * 与 dsh-im 轴并列——宿主升级同样会让插件失效（#79 即宿主侧装配失败）。 */
+   * 与 dsh-im 轴并列——宿主升级同样会让插件失效（#79 即宿主侧装配失败）。
+   * #82 改：去「宿主」前缀（黑白色胶囊即宿主身份）。 */
   dshCompatChip: (v: string) => string
   /** #79 宿主兼容悬停说明：已验证宿主版本 + 本插件依赖的宿主能力。 */
   dshCompatTitle: (v: string, requires: string) => string
@@ -83,7 +82,6 @@ export interface FirstViewStates {
 
 const ZH: FirstViewCopy = {
   title: 'IM机器人增强',
-  sub: 'IM COMPANION · 辅助插件',
   byAgent: (n) => '按助理 (' + n + ')',
   byChannel: (n) => '按渠道 (' + n + ')',
   updatedTip: (t) => (t ? '更新于 ' + t + '（标题计数行已收起：助理 / 渠道数看分段）' : '助理 / 渠道数看分段'),
@@ -108,12 +106,11 @@ const ZH: FirstViewCopy = {
   feedbackTitle: '反馈问题',
   feedbackHref: 'https://github.com/FeatherHunter/dsh-im-companion/issues/new',
   versionTitle: (v) => 'dsh-im-companion ' + v + '（点跳 GitHub 仓库首页）',
-  versionLabel: (v) => 'IM Companion ' + v,
-  compatChip: (v) => '兼容 dsh-im ' + v,
+  compatChip: (v) => 'dsh-im ' + v,
   compatTitle: (v, range) => '本插件已在 dsh-im ' + v + ' 上验收；兼容范围 ' + range
     + '（4.17.1+ 走 /api 新载体，旧版自动回退旧路由）。点开看兼容性说明。',
   compatHref: 'https://github.com/FeatherHunter/dsh-im-companion#compat',
-  dshCompatChip: (v) => '宿主 dsh ' + v,
+  dshCompatChip: (v) => 'dsh ' + v,
   dshCompatTitle: (v, requires) => '本插件已在 @deepseek-ai/dsh ' + v + ' 上验收；要求宿主提供 '
     + requires + '（DSH 公开 /api 载体；更老的宿主会在装配期显式报错，不静默降级）。点开看兼容性说明。',
   promoTitle: '作者其他插件',
@@ -134,7 +131,6 @@ const ZH: FirstViewCopy = {
 
 const EN: FirstViewCopy = {
   title: 'IM Companion',
-  sub: 'IM机器人增强 · dsh-im plugin',
   byAgent: (n) => 'By Assistants (' + n + ')',
   byChannel: (n) => 'By Channels (' + n + ')',
   updatedTip: (t) => (t ? 'Updated ' + t + ' (title counts folded into seg labels)' : 'See seg labels for counts'),
@@ -159,12 +155,11 @@ const EN: FirstViewCopy = {
   feedbackTitle: 'Report an issue',
   feedbackHref: 'https://github.com/FeatherHunter/dsh-im-companion/issues/new',
   versionTitle: (v) => 'dsh-im-companion ' + v + ' (open repo on GitHub)',
-  versionLabel: (v) => 'IM Companion ' + v,
-  compatChip: (v) => 'compatible dsh-im ' + v,
+  compatChip: (v) => 'dsh-im ' + v,
   compatTitle: (v, range) => 'Verified against dsh-im ' + v + '; compatible with ' + range
     + ' (4.17.1+ uses the /api carrier, older falls back automatically). Open the compatibility notes.',
   compatHref: 'https://github.com/FeatherHunter/dsh-im-companion/blob/master/docs/README.en.md#compat',
-  dshCompatChip: (v) => 'host dsh ' + v,
+  dshCompatChip: (v) => 'dsh ' + v,
   dshCompatTitle: (v, requires) => 'Verified against @deepseek-ai/dsh ' + v + '; the host must provide '
     + requires + ' (the public /api carrier; older hosts fail loudly at assembly). Open the compatibility notes.',
   promoTitle: 'Related projects',

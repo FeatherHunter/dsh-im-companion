@@ -67,7 +67,6 @@ test("莫兰迪兜底只染 Xiao 系（自定义头像走 img 层，本函数只
 test("中文文案 = 赢家口径（增强标题 / 按助理 / 按渠道 / ghost 同级）", () => {
   const zh = copy.firstViewCopy("zh");
   assert.equal(zh.title, "IM机器人增强");
-  assert.equal(zh.sub, "IM COMPANION · 辅助插件");
   assert.equal(zh.byAgent(12), "按助理 (12)");
   assert.equal(zh.byChannel(2), "按渠道 (2)");
   assert.ok(zh.updatedTip("11:26:13").indexOf("11:26:13") >= 0);
@@ -81,40 +80,58 @@ test("中文文案 = 赢家口径（增强标题 / 按助理 / 按渠道 / ghost
   assert.equal(zh.promoPal, "dsh-opencode-palette");
 });
 
-test("#78 版本组文案：两个版本号各自带标签（一眼分得清谁是谁）", () => {
+test("#82 三色胶囊文案：颜色即身份，胶囊只留轴名 + 版本号（前缀进悬停）", () => {
   const zh = copy.firstViewCopy("zh");
-  assert.equal(zh.versionLabel("v0.1.5"), "IM Companion v0.1.5", "自家版本必须带品牌名");
-  assert.equal(zh.compatChip("4.17.1"), "兼容 dsh-im 4.17.1", "兼容版本必须带「兼容」二字 + 产品名");
+  assert.equal(zh.versionTitle("v0.1.5").indexOf("dsh-im-companion v0.1.5"), 0,
+    "自家版本胶囊文案去品牌名，品牌名必须落在悬停/aria-label 里");
+  assert.equal(zh.compatChip("4.17.1"), "dsh-im 4.17.1", "上游胶囊去「兼容」前缀（紫/蓝白/黑白即身份）");
   assert.ok(zh.compatTitle("4.17.1", ">=4.17.1 || <=4.17.0").indexOf("已在 dsh-im 4.17.1") >= 0, "悬停说明须含已验证口径");
   assert.ok(zh.compatTitle("4.17.1", ">=4.17.1 || <=4.17.0").indexOf(">=") >= 0, "悬停说明须含兼容范围");
   assert.ok(zh.compatHref.indexOf("dsh-im-companion") >= 0 && zh.compatHref.indexOf("#compat") >= 0, "兼容标记须跳兼容性说明锚点");
   const en = copy.firstViewCopy("en");
-  assert.equal(en.versionLabel("v0.1.5"), "IM Companion v0.1.5");
-  assert.equal(en.compatChip("4.17.1"), "compatible dsh-im 4.17.1");
+  assert.equal(en.versionTitle("v0.1.5").indexOf("dsh-im-companion v0.1.5"), 0);
+  assert.equal(en.compatChip("4.17.1"), "dsh-im 4.17.1");
   assert.ok(en.compatTitle("4.17.1", ">=4.17.1 || <=4.17.0").indexOf("Verified against dsh-im 4.17.1") >= 0);
   assert.ok(en.compatHref.indexOf("#compat") >= 0);
 });
 
-test("#79 宿主兼容标记：与 dsh-im 轴并列，各带产品名与悬停口径", () => {
+test("#79 宿主兼容标记：与 dsh-im 轴并列，各带轴名与悬停口径", () => {
   const zh = copy.firstViewCopy("zh");
-  assert.equal(zh.dshCompatChip("0.1.5-rc.2"), "宿主 dsh 0.1.5-rc.2",
-    "宿主标记必须带「宿主 dsh」前缀——否则与 dsh-im 轴看起来是同一件事");
+  assert.equal(zh.dshCompatChip("0.1.5-rc.2"), "dsh 0.1.5-rc.2",
+    "宿主胶囊去「宿主」前缀，但必须保留 dsh 轴名——否则与 dsh-im 轴混成同一个版本号");
   const title = zh.dshCompatTitle("0.1.5-rc.2", "connection.fetch");
   assert.ok(title.indexOf("已在 @deepseek-ai/dsh 0.1.5-rc.2") >= 0, "悬停须含已验证宿主口径");
   assert.ok(title.indexOf("connection.fetch") >= 0, "悬停须写明依赖的宿主能力");
   assert.ok(zh.compatHref.indexOf("#compat") >= 0, "宿主标记同跳兼容性锚点");
   const en = copy.firstViewCopy("en");
-  assert.equal(en.dshCompatChip("0.1.5-rc.2"), "host dsh 0.1.5-rc.2");
+  assert.equal(en.dshCompatChip("0.1.5-rc.2"), "dsh 0.1.5-rc.2");
   assert.ok(en.dshCompatTitle("0.1.5-rc.2", "connection.fetch").indexOf("Verified against @deepseek-ai/dsh 0.1.5-rc.2") >= 0);
+});
+
+test("#82 顶部宽度预算：胶囊文案纯 ASCII + 10px 字号（省略号零容忍的机械代理）", () => {
+  const zh = copy.firstViewCopy("zh");
+  const en = copy.firstViewCopy("en");
+  for (const c of [zh, en]) {
+    for (const text of [c.compatChip("4.17.1"), c.dshCompatChip("0.1.5-rc.2"), "v0.1.7"]) {
+      assert.ok(/^[\x20-\x7e]+$/.test(text), "胶囊文案必须纯 ASCII（宽度可预测）：" + text);
+      assert.ok(text.length <= 16, "胶囊文案必须短（≤16 字符）：" + text);
+    }
+  }
+  const css: string = styles.FIRST_VIEW_CSS;
+  assert.ok(css.indexOf(".af-cap {") >= 0 && css.indexOf("font-size: 10px") >= 0, "胶囊 10px（548px 单行预算：中 497 / 英 522）");
+  assert.equal(css.indexOf(".af-title-sub"), -1, "副标已删（#82），样式不得回潮");
 });
 
 test("#78 顶部单行硬约束：.af-hd 不换行 + 右组不压缩 + 左块先让位", () => {
   const css: string = styles.FIRST_VIEW_CSS;
   assert.ok(css.indexOf(".af-hd { flex-wrap: nowrap; }") >= 0, "顶部禁止换行（用户裁定：不许变 2 行）");
-  assert.ok(css.indexOf(".af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex: none; }") >= 0, "右组 flex:none 不压缩");
+  assert.ok(css.indexOf(".af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }") >= 0, "右组 flex:none 不压缩（#82 间隙收到 6px）");
   assert.ok(css.indexOf(".af-hd-left { min-width: 0; }") >= 0, "左块 min-width:0 先让位");
   assert.ok(css.indexOf(".af-hd-left .af-title") >= 0 && css.indexOf("text-overflow: ellipsis") >= 0, "左块 ellipsis 兜底");
-  assert.ok(css.indexOf(".af-verbox") >= 0 && css.indexOf(".af-compat") >= 0, "版本组样式必须存在");
+  assert.ok(css.indexOf(".af-verbox") >= 0, "版本组样式必须存在");
+  for (const cls of [".af-cap--self", ".af-cap--im", ".af-cap--host"]) {
+    assert.ok(css.indexOf(cls) >= 0, "三色胶囊缺失：" + cls);
+  }
 });
 
 test("英文文案成套（实现侧以 key 提供两套，不做切换器）", () => {
@@ -139,7 +156,7 @@ test("语言跟随 documentElement.lang（en 开头即英文）", () => {
 test("样式命名空间与关键规则（新增类 only，既有零改动）", () => {
   const css: string = styles.FIRST_VIEW_CSS;
   assert.equal(styles.FIRST_VIEW_STYLE_ID, "first-view");
-  for (const cls of [".af-title-sub", ".af-tap", ".af-av-m0", ".af-av-m3", ".af-star", ".af-promo", ".af-promo-item", ".af-verbox", ".af-compat"]) {
+  for (const cls of [".af-cap--self", ".af-cap--im", ".af-cap--host", ".af-tap", ".af-av-m0", ".af-av-m3", ".af-star", ".af-promo", ".af-promo-item", ".af-verbox", ".af-cap"]) {
     assert.ok(css.indexOf(cls) >= 0, "赢家样式缺失：" + cls);
   }
   assert.ok(css.indexOf(":focus-within") >= 0, "键盘 focus-within 显现必须存在");

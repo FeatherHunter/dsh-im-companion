@@ -5,8 +5,7 @@ import { installFeatureStyles } from '../theme'
 
 export const FIRST_VIEW_STYLE_ID = 'first-view'
 
-export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副标（计数行已收起，计数看分段后缀） */
-.af-title-sub { margin-top: 2px; font-size: 13px; font-weight: 400; letter-spacing: .14em; color: var(--af-tertiary); }
+export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小字副标已删——548px 单行塞不下，让位给标题与版本胶囊） */
 
 /* B 悬停统一：平时只留状态，整行 hover / 行内聚焦 / 触屏点行才出按钮组 */
 .af-row .af-actions .af-btn, .af-row .af-actions .af-more-btn {
@@ -42,26 +41,32 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题 + 英文小字副�
 .af-promo-item span { color: var(--af-secondary); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .af-promo-item i { color: var(--af-accent); font-style: normal; }
 
-/* #56 右上组（对标 deck dsws-cfg-head：右组 margin-left:auto 推右；版本小字 11px caption 色可点）。
+/* #56 右上组（对标 deck dsws-cfg-head：右组 margin-left:auto 推右；版本组 11px→10px 胶囊可点）。
  * #78 顶部必须单行（用户裁定）：.af-hd 不换行，右组 flex:none 不压缩，左块 min-width:0 先让位
- * （标题/副标 ellipsis 兜底），宽度再紧也不会把右组挤到第二行。 */
+ * （标题 ellipsis 兜底），宽度再紧也不会把右组挤到第二行。
+ * #82 用户重申：仍不许换行，极窄时宁可出省略号。 */
 .af-hd { flex-wrap: nowrap; }
 .af-hd-left { min-width: 0; }
-.af-hd-left .af-title, .af-hd-left .af-title-sub { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; flex: none; }
+.af-hd-left .af-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* #82 右组收紧：间隙 8→6、右上按钮 36→32（与工具栏同尺寸）——548px 下单行余量才够英文界面 */
+.af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
+.af-hd-right .af-icon-btn { width: 32px; height: 32px; border-radius: 10px; flex: none; }
 
 /* 工具栏单行不断行：4 按钮与搜索/分段同行（搜索可压到 0，按钮 32px 不换行不缩小；theme 本体不动）。 */
 .af-toolbar { flex-wrap: nowrap; }
 .af-toolbar .af-search { min-width: 0; }
 .af-toolbar .af-icon-btn { width: 32px; height: 32px; border-radius: 10px; flex: none; }
-.af-version { font-size: 11px; line-height: 16px; font-weight: 600; color: var(--af-secondary); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.af-version:hover { color: var(--af-primary); text-decoration: underline; }
 
-/* #78 版本组：版本号 + 上游兼容标记（dsh-im X）同行；chip 只放版本号本身，
- * 「已验证」口径走悬停——宽度够窄，顶部才保得住单行。 */
+/* #82 三色版本胶囊（用户裁定：颜色即身份，文案只留轴名 + 版本号）：
+ * 紫 = 本插件 / 蓝白 = 兼容的 dsh-im / 黑白 = 宿主 dsh（DeepSeek 黑白风）。
+ * 色相固定（紫 #8b5cf6、上游蓝 #3370ff——与 icons.ts 渠道品牌色同源先例），
+ * 明度与主题前景色混合 → 深浅两套主题都读得清；宿主走单色别名，天然跟随主题。 */
 .af-verbox { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
-.af-compat { font-size: 11px; line-height: 16px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--af-hairline-strong); background: var(--af-surface); color: var(--af-secondary); text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.af-compat:hover { color: var(--af-primary); border-color: var(--af-accent); background: color-mix(in srgb, var(--af-accent) 8%, transparent); }
+.af-cap { display: inline-flex; align-items: center; font-size: 10px; line-height: 15px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid transparent; text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.af-cap--self { color: color-mix(in srgb, #8b5cf6 62%, var(--af-primary)); background: color-mix(in srgb, #8b5cf6 16%, transparent); border-color: color-mix(in srgb, #8b5cf6 45%, transparent); }
+.af-cap--im { color: color-mix(in srgb, #3370ff 62%, var(--af-primary)); background: color-mix(in srgb, #3370ff 14%, transparent); border-color: color-mix(in srgb, #3370ff 42%, transparent); }
+.af-cap--host { color: color-mix(in srgb, #8e8e93 58%, var(--af-primary)); background: color-mix(in srgb, #8e8e93 14%, transparent); border-color: color-mix(in srgb, #8e8e93 46%, transparent); }
+.af-cap:hover { border-color: currentColor; }
 
 @media (prefers-reduced-motion: reduce) {
   .af-row .af-actions .af-btn, .af-row .af-actions .af-more-btn { transition: none; transform: none; }

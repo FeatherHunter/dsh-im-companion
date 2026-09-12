@@ -66,29 +66,31 @@ export function FleetPanel(ctx: unknown): HTMLElement {
 
   /* ---------- 静态骨架 ---------- */
   const title = h('h1', { className: 'af-title' }, copy.title)
-  const sub = h('div', { className: 'af-title-sub' }, copy.sub)
+  /* #82：副标（IM COMPANION · 辅助插件）整行删除——548px 宽实测单行塞不下，让位给标题与三色版本胶囊。 */
   /* D 标题不独占行：计数行收起（计数看分段后缀），元素保留隐藏位供 body 兼容。 */
   const titleMeta = h('div', { className: 'af-title-meta' }, '')
   titleMeta.hidden = true
   const plusBtn = makeIconButton({ iconName: 'plus', label: copy.plus, title: copy.plus })
   /* #56 右上组（对标 deck SettingsPage：版本小字可点跳仓库 + Star/Issue 双按钮）。
-   * #78 版本组：自家版本带品牌名（IM Companion vX）+ 兼容标记（兼容 dsh-im X）同行成组，
-   * 两个版本号各自带标签，用户一眼分得清。面板内容宽实测约 548px（见 first-view-styles 顶部单行约束）。 */
+   * #78 版本组：自家版本 + 兼容标记（dsh-im）同行成组；
+   * #82 改「三色胶囊」——颜色即身份（用户裁定）：紫=自家 / 蓝白=兼容的 dsh-im / 黑白=宿主 dsh，
+   * 文案只留轴名 + 版本号（前缀「兼容 / 宿主 / IM Companion」进悬停）。
+   * 宽度实测（548px 内容宽）：中 497px / 英 522px，余量 ≥26px → 顶部单行零省略。 */
   const ver = pluginVersion()
   const compat = pluginCompat()
   const verLink = h('a', {
-    className: 'af-version',
+    className: 'af-cap af-cap--self',
     href: copy.starHref,
     target: '_blank',
     rel: 'noopener',
     title: copy.versionTitle(ver),
     'aria-label': copy.versionTitle(ver),
-  }, copy.versionLabel(ver))
+  }, ver)
   verLink.hidden = ver === ''
   const compatNote = compat.verified ? copy.compatTitle(compat.verified, compat.range) : ''
   const compatChip = compat.verified
     ? h('a', {
-        className: 'af-compat',
+        className: 'af-cap af-cap--im',
         href: copy.compatHref,
         target: '_blank',
         rel: 'noopener',
@@ -101,7 +103,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   const hostNote = host.verified ? copy.dshCompatTitle(host.verified, host.requires) : ''
   const hostChip = host.verified
     ? h('a', {
-        className: 'af-compat',
+        className: 'af-cap af-cap--host',
         href: copy.compatHref,
         target: '_blank',
         rel: 'noopener',
@@ -128,7 +130,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     'aria-label': copy.feedbackTitle,
   }, icon('feedback', 18))
   const hdRight = h('div', { className: 'af-hd-right' }, verBox, starLink, feedbackLink)
-  const hd = h('div', { className: 'af-hd' }, h('div', { className: 'af-hd-left' }, title, sub, titleMeta), hdRight)
+  const hd = h('div', { className: 'af-hd' }, h('div', { className: 'af-hd-left' }, title, titleMeta), hdRight)
 
   const search = makeSearchField((v) => {
     data.state.query = v
