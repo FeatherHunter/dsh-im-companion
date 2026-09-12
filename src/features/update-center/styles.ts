@@ -19,7 +19,7 @@ export const CSS = `
 .update-center-btn:disabled { opacity: .45; cursor: not-allowed; }
 .update-center-primary { background: var(--dsw-alias-brand-primary,#0a84ff); border-color: transparent; color: #fff; font-weight: 500; }
 .update-center-primary:hover { filter: brightness(1.06); }
-.update-center-link { border-color: transparent; background: transparent; color: var(--dsw-alias-label-secondary,#6e6e73); padding: 0 8px; }
+.update-center-link { border-color: transparent; background: transparent; color: var(--dsw-alias-label-secondary,#6e6e73); padding: 0 10px; }
 .update-center-link:hover { background: transparent; color: var(--dsw-alias-brand-primary,#0a84ff); }
 .update-center-fail { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--dsw-alias-label-tertiary,#98989d); }
 .update-center-detail { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--dsw-alias-label-primary,#1c1c1e) 12%, transparent); }
@@ -58,7 +58,7 @@ export const CSS = `
   box-shadow: 0 24px 64px rgba(0,0,0,.28); font-size: 13px; line-height: 1.5; }
 .update-center-dialog-title { font-size: 14px; font-weight: 600; }
 .update-center-dialog-body { font-size: 12.5px; color: var(--dsw-alias-label-secondary,#6e6e73); }
-.update-center-dialog-foot { display: flex; justify-content: flex-end; }
+.update-center-dialog-foot { display: flex; justify-content: flex-end; align-items: center; gap: 10px; }
 .update-center-notes { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
 /* 块 + 行（owner 2026-09-12 原型 v3 A 版）：动作行「左状态 · 右动作」，设置行同块内以轻线分隔 */
 .update-center-block { border: 1px solid color-mix(in srgb, var(--dsw-alias-label-primary,#1c1c1e) 7%, transparent); border-radius: 12px;

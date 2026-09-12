@@ -1,5 +1,18 @@
 # CHANGELOG
 
+## v0.1.14 — 2026-09-12
+
+主题：**弹窗底部按钮间距**——owner 反馈：两个按钮贴得太近。
+
+改动：
+
+- `.update-center-dialog-foot` 补 `gap: 10px` 与 `align-items: center`（原实现只有 `justify-content: flex-end`，两个按钮直接相邻）。
+- 弹窗底部的次要按钮（`update-center-link`）水平内边距 8px → 10px，与主按钮同高对齐。
+
+验证与影响：
+
+- `npm run check` 全链通过；无契约通道改动、无共享层改动。
+
 ## v0.1.13 — 2026-09-12
 
 主题：**真机复验靶子（二）**——与 0.1.12 无功能差异，只为让「面板里点安装」这一步有新版可装。
