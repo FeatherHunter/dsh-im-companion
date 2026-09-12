@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>原型 v2：一个「检查更新」按钮 + 弹窗（仿 dsh-im）</title>
+<style>
+  :root{
+    --dsw-alias-bg-base:#1c1c1e; --dsw-alias-bg-elevated:#2c2c2e;
+    --dsw-alias-label-primary:#f5f5f7; --dsw-alias-label-secondary:#a1a1a6; --dsw-alias-label-tertiary:#8e8e93;
+    --dsw-alias-brand-primary:#0a84ff; --dsw-alias-state-warn-primary:#ff9f0a; --dsw-alias-state-success-primary:#30d158;
+    --line:color-mix(in srgb, var(--dsw-alias-label-primary) 12%, transparent);
+  }
+  body{margin:0;padding:22px;background:#111113;color:var(--dsw-alias-label-primary);
+       font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;font-size:13px}
+  h1{font-size:15px;margin:0 0 4px}
+  .proto-note{color:var(--dsw-alias-label-tertiary);font-size:12px;margin:0 0 16px;line-height:1.6}
+  .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+  .col-head{font-size:13px;font-weight:600;margin:0 0 8px}
+  .sub{font-size:11.5px;color:var(--dsw-alias-label-tertiary);margin:6px 0 4px}
+
+  .panel{background:var(--dsw-alias-bg-base);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:12px}
+  .panel-title{display:flex;align-items:center;gap:8px;justify-content:space-between}
+  .panel-title b{font-size:14px}
+  .capsule{display:flex;gap:6px;font-size:11px}
+  .cap{padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--dsw-alias-label-secondary)}
+  .cap.self{background:rgba(191,90,242,.18);border-color:transparent;color:#e0aaff}
+  .cap.im{background:rgba(10,132,255,.16);border-color:transparent;color:#7cc0ff}
+  .cap.dsh{background:color-mix(in srgb, var(--dsw-alias-label-primary) 10%, transparent);border-color:transparent;color:var(--dsw-alias-label-secondary)}
+  .blk{border:1px solid var(--line);border-radius:12px;padding:10px 12px;color:var(--dsw-alias-label-tertiary);font-size:12px;background:var(--dsw-alias-bg-elevated)}
+
+  /* 真实 update-center-* 样式（节选自 styles.ts） */
+  .update-center-root{display:flex;flex-direction:column;gap:8px;padding:2px 0 4px;font-size:13px;line-height:1.5}
+  .update-center-banner{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;font-weight:500;
+    color:var(--dsw-alias-state-warn-primary);background:color-mix(in srgb, var(--dsw-alias-state-warn-primary) 13%, var(--dsw-alias-bg-base));
+    border:1px solid color-mix(in srgb, var(--dsw-alias-state-warn-primary) 35%, transparent)}
+  .update-center-main{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0}
+  .update-center-text{flex:1 1 200px;min-width:0;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .update-center-status{font-weight:500}
+  .update-center-hint,.update-center-note{font-size:12px;color:var(--dsw-alias-label-tertiary)}
+  .update-center-muted{color:var(--dsw-alias-label-secondary)}
+  .update-center-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-left:auto}
+  .update-center-btn{height:30px;padding:0 12px;border-radius:12px;font:inherit;font-size:13px;cursor:pointer;white-space:nowrap;
+    border:1px solid var(--line);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary)}
+  .update-center-primary{background:var(--dsw-alias-brand-primary);border-color:transparent;color:#fff;font-weight:500}
+  .update-center-link{border-color:transparent;background:transparent;color:var(--dsw-alias-label-secondary);padding:0 8px}
+  .update-center-settings{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-top:8px;border-top:1px solid var(--line)}
+  .update-center-track{position:relative;width:34px;height:20px;flex:none;border-radius:10px;border:1px solid var(--line);
+    background:color-mix(in srgb, var(--dsw-alias-label-primary) 11%, var(--dsw-alias-bg-base))}
+  .update-center-track.on{background:var(--dsw-alias-state-success-primary);border-color:transparent}
+  .update-center-knob{position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.28)}
+  .update-center-track.on .update-center-knob{left:15px}
+  .update-center-select{height:28px;padding:0 6px;border-radius:8px;font:inherit;font-size:12px;color:var(--dsw-alias-label-primary);
+    background:var(--dsw-alias-bg-base);border:1px solid var(--line)}
+  .update-center-next{font-size:12px;color:var(--dsw-alias-label-tertiary);margin-left:auto}
+  .update-center-spin{display:inline-block;width:11px;height:11px;border-radius:50%;vertical-align:-1px;
+    border:2px solid var(--line);border-top-color:var(--dsw-alias-brand-primary);animation:rot .8s linear infinite}
+  @keyframes rot{to{transform:rotate(360deg)}}
+  .update-center-bar{height:5px;border-radius:3px;background:color-mix(in srgb, var(--dsw-alias-label-primary) 11%, var(--dsw-alias-bg-base));overflow:hidden}
+  .update-center-bar-in{display:block;height:100%;width:38%;border-radius:3px;background:var(--dsw-alias-brand-primary)}
+
+  /* 弹窗（styles.ts 既有） */
+  .update-center-dialog{width:100%;max-width:440px;padding:16px;border-radius:12px;display:flex;flex-direction:column;gap:10px;
+    background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);border:1px solid var(--line);box-shadow:0 24px 64px rgba(0,0,0,.28)}
+  .update-center-dialog-title{font-size:14px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .update-center-dialog-body{font-size:12.5px;color:var(--dsw-alias-label-secondary)}
+  .update-center-dialog-foot{display:flex;justify-content:flex-end;gap:6px}
+  .update-center-versions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .update-center-section-title{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary)}
+  .update-center-notes{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+  .update-center-notes li{font-size:12.5px;color:var(--dsw-alias-label-secondary)}
+  .update-center-notes code{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;background:color-mix(in srgb,var(--dsw-alias-label-primary) 9%,transparent);padding:1px 5px;border-radius:5px}
+  .update-center-notes b{color:var(--dsw-alias-label-primary)}
+  .update-center-cmd{position:relative;background:color-mix(in srgb, var(--dsw-alias-label-primary) 6%, var(--dsw-alias-bg-base));border:1px solid var(--line);border-radius:12px;padding:26px 10px 9px}
+  .update-center-code{display:block;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11.5px;line-height:1.6;color:var(--dsw-alias-label-secondary);word-break:break-all}
+  .update-center-copy{position:absolute;top:6px;right:6px;height:24px;font-size:12px;padding:0 10px}
+  .dlgwrap{display:flex;flex-direction:column;gap:14px}
+  .dlgcap{font-size:11px;color:var(--dsw-alias-label-tertiary);margin:0 0 -6px}
+  .hero{outline:2px dashed color-mix(in srgb, var(--dsw-alias-brand-primary) 65%, transparent);outline-offset:3px;border-radius:14px;padding:6px 12px;
+    background:color-mix(in srgb, var(--dsw-alias-brand-primary) 7%, transparent)}
+  .hero-tag{font-size:11px;color:#7cc0ff;margin:2px 0 0}
+</style>
+</head>
+<body>
+  <h1>原型 v2：一个「检查更新」按钮 + 弹窗（仿 dsh-im 的检查更新）</h1>
+  <p class="proto-note">
+    虚线框 = 这一节在面板里所在位置（排到最上）。节内只有<b>一个按钮</b>：<b>检查更新</b>（dsh-im 同款描边按钮、同款「点了就出弹窗」的交互）。<br>
+    自动检查开关 / 间隔档位按你的要求<b>留在原位置</b>。弹窗复用现有 <code>update-center-dialog</code> 样式。
+  </p>
+
+  <div class="grid">
+    <!-- 左：面板顶部 -->
+    <div>
+      <p class="col-head">面板顶部（三种状态）</p>
+
+      <div class="panel">
+        <div class="panel-title"><b>IM Companion</b>
+          <div class="capsule"><span class="cap self">v0.1.8</span><span class="cap im">dsh-im 4.17.1</span><span class="cap dsh">dsh 0.1.5-rc.2</span></div>
+        </div>
+
+        <div class="hero">
+          <p class="hero-tag">▲ 置顶：一个按钮 + 一行状态</p>
+          <div class="update-center-root">
+            <div class="update-center-main">
+              <button class="update-center-btn">检查更新</button>
+              <div class="update-center-text"><span class="update-center-status">有新版本 0.1.9</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="blk">自动检查 · 开关 / 间隔档位 / 下次检查（留在原处）</div>
+        <div class="blk">徽标与显示 · 其它设置（留在原处）</div>
+      </div>
+
+      <p class="sub">同一位置的其它状态</p>
+      <div class="panel">
+        <div class="update-center-root">
+          <div class="update-center-main"><button class="update-center-btn">检查更新</button>
+            <div class="update-center-text"><span class="update-center-muted">已是最新 0.1.9</span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="update-center-root">
+          <div class="update-center-banner"><span>⚠️</span><span>新版 0.1.9 已装好，重启宿主后生效（这不是失败）</span></div>
+          <div class="update-center-main"><button class="update-center-btn">检查更新</button>
+            <div class="update-center-text"><span class="update-center-muted">待重启</span></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="update-center-root">
+          <div class="update-center-main"><button class="update-center-btn">检查更新</button>
+            <div class="update-center-text"><span class="update-center-hint">自动检查暂时不可用，可手动检查</span></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右：弹窗 -->
+    <div>
+      <p class="col-head">点「检查更新」之后的弹窗</p>
+      <div class="dlgwrap">
+
+        <p class="dlgcap">① 查到新版</p>
+        <div class="update-center-dialog">
+          <div class="update-center-dialog-title"><span>发现新版本 0.1.9</span><span class="update-center-link">✕</span></div>
+          <div class="update-center-versions">
+            <span class="update-center-note">当前 0.1.8</span><span class="update-center-hint">→</span><span class="update-center-status">新版 0.1.9</span>
+          </div>
+          <div class="update-center-section-title">更新说明</div>
+          <ul class="update-center-notes">
+            <li><b>更新系统真机验收版</b>——版本号推进，用于跑通「发现新版 → 一键安装 → 待重启提示」全链。</li>
+            <li><code>package.json</code> 0.1.8 → 0.1.9；无功能性代码变更。</li>
+            <li>说明源取 GitHub 上的 CHANGELOG，缺节会走降级文案。</li>
+          </ul>
+          <div class="update-center-dialog-foot">
+            <button class="update-center-btn update-center-link">稍后</button>
+            <button class="update-center-btn update-center-primary">安装 0.1.9</button>
+          </div>
+        </div>
+
+        <p class="dlgcap">② 已是最新</p>
+        <div class="update-center-dialog">
+          <div class="update-center-dialog-title"><span>已是最新版本</span><span class="update-center-link">✕</span></div>
+          <div class="update-center-dialog-body">当前 0.1.9，官方源上没有更新的版本。下次自动检查：明天 21:17。</div>
+          <div class="update-center-dialog-foot"><button class="update-center-btn update-center-primary">知道了</button></div>
+        </div>
+
+        <p class="dlgcap">③ 安装中</p>
+        <div class="update-center-dialog">
+          <div class="update-center-dialog-title"><span>正在安装 0.1.9…</span></div>
+          <div class="update-center-bar"><i class="update-center-bar-in"></i></div>
+          <div class="update-center-dialog-body">安装完成后需要重启宿主才会生效。</div>
+          <div class="update-center-dialog-foot"><button class="update-center-btn" disabled>安装中…</button></div>
+        </div>
+
+        <p class="dlgcap">④ 装不了（含手工兜底命令）</p>
+        <div class="update-center-dialog">
+          <div class="update-center-dialog-title"><span>装不了</span><span class="update-center-link">收起详情</span></div>
+          <div class="update-center-dialog-body">检查结果已过期，请重新检查后再安装。</div>
+          <div class="update-center-cmd"><button class="update-center-btn update-center-copy">复制</button>
+            <code class="update-center-code">dsh plugin --profile web add --save-exact dsh-im-companion@0.1.9 --registry=https://registry.npmjs.org</code>
+          </div>
+          <div class="update-center-dialog-foot"><button class="update-center-btn">重新检查</button></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>
