@@ -25,7 +25,7 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 * Host: `lib/index.js`（空壳）
 * Client: `lib/client.js`（React IM机器人增强，`slots.inject('settings.section', order 22)`）
 * 预览：`preview.html` (`python -m http.server 8788`)
-* 挂载：`desktop` + `web` 双 profile（Junction + bundles；**两边同时生效**——用户走 web profile，desktop 记录同样适用）
+* 挂载：`desktop` + `web` 双 profile，但**两侧生效方式不同，别再当「两边同时生效」**——`web`：`…\.dsh\profiles\web\node_modules\dsh-im-companion` 是指向本仓的 **Junction** ⇒ 本仓 `lib/` 一改即时生效；`desktop`：是**真实的 npm 安装目录**（依赖声明 `^0.1.2`，文件是指向 pnpm store 的硬链接）⇒ **本仓重建 `lib/` 后 desktop 侧不会自动跟着变**，要 desktop 也生效必须去该 profile 重新安装或同步。核对方法：重建 `lib/` 后**两侧都比对 `lib/client.js` 的 hash** 与本仓是否一致（desktop 侧不一致＝未同步，别只看 web 侧）。
 * 生效门（每次 `lib/` 重打后必走）：对两边 `node_modules/dsh-im-companion/lib/client.js` 验 hash 与本仓一致 → 页面 Ctrl+F5（或热重载插件）；`dsh web` 若起过老进程先杀掉重起（14:55 坑：老进程不 serve 新 bundle）。验收前新旧只认 hash 是否一致（徽标悬停本来就带“最后检测时间”，不拿它判断新旧）。
 * 热更新优先（用户裁定 2026-09-04：DSH 支持动态加载）——改完重打 `lib/` 后刷新页面（Ctrl+F5）或热重载插件验证即可；**无必要绝不让用户重启 DSH**（重启是最后手段，仅 host/loader/装配结构动了且热重载吃不下时才提）
 * **发布**：`bash scripts/wizard-release.sh`（自驱发布向导：发布前体检 → npm 身份/版本占用 → **发布〔唯一人工步：浏览器授权〕** → 官方源复核 → git tag → GitHub Release）。幂等，断点续跑用 `WIZARD_FROM=<阶段号>`。宿主版本与 dsh-im 兼容版本单点真相在 `package.json` 的 `dshCompat` / `dshImCompat`（构建注入面板）。npm 新版本可能先进自动审核（npm 站显示 `Validating`，期间 registry 404 属正常，**别重发**）

@@ -45,7 +45,7 @@ export interface FeatureManifest {
 | ui/* | 只加新原语文件；改既有原语需 F0 评审（单 PR） |
 | data/connection-stream.ts / bindings.ts | B1 首建；其余功能只读其导出 |
 | host/rpc.ts | 只追加 case；端点命名 `im-companion.<feature>.<action>` |
-| 电话名（`host/rpc.ts` 端点的既有形态 · added-only · T7 #90，契约先行 §9） | 更新包 `buildPhoneNames(prefix)` 只产 `<前缀>.<动作>`，且前缀禁含点/斜杠/空白 ⇒ 本行上一行的三段式命名法对电话名**物理不可达**；本仓按包原样注册 `imc.updateStatus` / `imc.updateCheck` / `imc.updateInstall` 三个端点，既有 `meta.get` / `routes.list` 同为该形态（载体 `/api/im-companion` 已提供 `im-companion` 那一段）。与 `CONTEXT.md` Boundaries 的记录式说明同源——**是按事实记录，不是豁免**。 |
+| 电话名（`host/rpc.ts` 端点的既有形态 · added-only · T7 #90，契约先行 §9） | 端点命名法见上表 **`host/rpc.ts`** 行（三段式 `im-companion.<feature>.<action>`，约束自有桥新端点）。三个电话名是**既有形态**：本仓按更新包原样注册 `imc.updateStatus` / `imc.updateCheck` / `imc.updateInstall`，形态为两段式 `<前缀>.<动作>`。判据与理由**单点定义在 `CONTEXT.md` Glossary 的「电话（Phone）」词条**，此处不重复论证。 |
 | host 入口 `src/index.ts`（载体） | 自有桥**只**经 `connection.fetch.register` 挂到 DSH 公开 `/api` 载体（路径 `/api/im-companion`）；**禁止** `connection.rpc.handle`——前缀路由会以 connection 服务自身的 Context 取 `webServer`，装配期即抛 `cannot get property "webServer" without inject`（沿革与证据见 ADR-0002） |
 | client/index.ts | 只改 FEATURES 列表（每功能一行） |
 | A1 私有（components/panel.ts、connect-flow.ts、row-actions.ts 等） | 禁止被 feature 直接引用；触碰走单 PR（C1a/E2 入口按 R5 建议由 B3 胶囊承载或单 PR 改） |
@@ -69,7 +69,7 @@ export interface FeatureManifest {
 
 ## 6. 验证与验收
 
-- 每功能自验证：`tools/verify/features/<id>.ts` 或分区断言；共享层改动跑 verify 全链（现 14 项，以 package.json 为准）+ 功能断言。
+- 每功能自验证：`tools/verify/features/<id>.ts` 或分区断言；共享层改动跑 verify 全链（**项数以 `package.json` 的 `scripts.verify` 为准，不在文档里写死数字**——历史上此处写死的数字曾漂移（14→17→18→19），故改为指针）+ 功能断言。
 > 溯源（2026-09-08 #41 收尾）：原“既有 17 项”为旧数，实测 chain 14 项；改述以 package.json 为准，防止漏跑误判。
 - 真机验收：功能票按地图 Notes 逐卡验收（重启 → 截图 → 用户确认）。
 
