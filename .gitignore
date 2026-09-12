@@ -7,3 +7,4 @@ lib/
 .dsh-vision-router/
 
 .wizard-release.env
+.tmp-wayfinder/
