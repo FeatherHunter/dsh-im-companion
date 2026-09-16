@@ -58,7 +58,14 @@ export function siblingSessions(row: Element): Element[] {
   return out
 }
 
-/** 本组独占的最小祖先：上行直到“子树含 ≥2 组行”的父级，停在其子（即我们这条线）。
+/** 官方列表容器（dsh-client-ui-workspace 真身：treeBody > list[role="tree"]）。
+ * #94 单组树：只判「父级 ≥2 组行」时，全场只有 1 组 ⇒ 一路爬到应用根 ⇒ 条带被容器验货判死。 */
+const LIST_ROLE = 'tree'
+export function isListContainer(el: Element | null | undefined): boolean {
+  try { return !!el && (el as Element).getAttribute?.('role') === LIST_ROLE } catch { return false }
+}
+
+/** 本组独占的最小祖先：上行直到“子树含 ≥2 组行”**或**官方列表容器（role="tree"）的父级，停在其子（即我们这条线）。
  * 若组行之父已含多组（扁平列表），返回组行 + 后续会话兄弟。 */
 export function hideRootsFor(row: Element): Element[] {
   let node: Element = row
@@ -71,7 +78,7 @@ export function hideRootsFor(row: Element): Element[] {
       if (pt === 'body' || pt === 'html') return [node]
       let n = -1
       try { n = p.querySelectorAll(GROUP_SEL).length } catch { return [node] }
-      if (n >= 2) break
+      if (n >= 2 || isListContainer(p)) break
       node = p
     }
   } catch { return [node] }

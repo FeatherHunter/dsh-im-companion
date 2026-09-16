@@ -116,6 +116,9 @@ const stubNode: any = (tag: string) => {
     attrs: {} as Record<string, string>, listeners: {} as Record<string, any[]>, _text: '',
     classList: { toggle() {}, add() {}, remove() {}, contains() { return false; } },
     offsetLeft: 0, offsetWidth: 10,
+    width: 0,
+    /** #94：布局宽度（默认 0 = 无布局环境，宽度项照旧跳过；需要时由用例显式赋 width）。 */
+    getBoundingClientRect() { return { width: n.width, height: 1, top: 0, left: 0, right: n.width, bottom: 1 }; },
     get firstChild() { return n.children[0] ?? null; },
     get textContent(): string {
       return n._text + n.children.map((c: any) => (c.nodeType === 3 ? c.text : (typeof c.textContent === 'string' ? c.textContent : ''))).join('');
@@ -635,4 +638,40 @@ test('styles：收起钮命名空间 + 条带同行不溢出（flex）', () => {
   assert.match(styles.CSS, /display:flex/);
   const afDefs = styles.CSS.split('\n').filter((l: string) => l.trim().startsWith('.af-'));
   assert.equal(afDefs.length, 0, '不得定义 .af-*');
+});
+
+/* ---- #94 单组树：容器结构兜底（真机同名结构 body > #root > shell > rail > treeBody > list[role=tree] + 真实宽度） ---- */
+
+test('#94 单组树：条带仍锚在 role="tree" 列表里，且藏的是组而不是整页', () => {
+  groupRows = []; resultRows = [];
+  const root = stubNode('div'); root.width = 1600;
+  const shell = stubNode('div'); shell.width = 1600;
+  const rail = stubNode('div'); rail.width = 271;
+  const header = stubNode('div'); header.width = 271;
+  for (const label of ['搜索', '排序']) { const b = stubNode('button'); b._text = label; header.appendChild(b); }
+  const treeBody = stubNode('div'); treeBody.width = 271;
+  const list = stubNode('div'); list.setAttribute('role', 'tree'); list.width = 271;
+  const sec = stubNode('div'); sec.width = 271;
+  const row = stubNode('div');
+  row.setAttribute('role', 'treeitem'); row.setAttribute('aria-expanded', 'true'); row._text = '单工作区'; row.width = 271;
+  groupRows.push(row);
+  sec.appendChild(row);
+  const sess = stubNode('div'); sess.setAttribute('role', 'treeitem'); sess._text = '会话一'; sess.width = 271;
+  sec.appendChild(sess);
+  list.appendChild(sec); treeBody.appendChild(list);
+  rail.appendChild(header); rail.appendChild(treeBody);
+  shell.appendChild(rail); root.appendChild(shell); docStub.body.appendChild(root);
+  let snapFn: any = null;
+  const dispose = view.mountLeftFilter({ subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; } });
+  snapFn({ bots: [], failed: [], updatedAt: 21, catalogs: {} });
+  const strip = list.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-strip'));
+  assert.ok(strip, '#94：单组时条带必须仍在官方列表容器里（不许被 380px 宽度门静默摘掉）');
+  const hbtn = header.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-hbtn'));
+  assert.ok(hbtn, '头栏漏斗照常');
+  // 切到有助理：无 bots ⇒ 唯一组不匹配 ⇒ 只许藏该组，绝不许把 #root 藏成空白页
+  segButton(strip, 'bound').fire('click');
+  assert.equal((sec as any).style.display, 'none', '不匹配的组被藏');
+  assert.notEqual((root as any).style.display, 'none', '#94：应用根绝不能被当成隐藏根（否则整页空白）');
+  assert.equal(root.getAttribute('data-left-filter'), null, '#94：隐藏标记也不许落在应用根上');
+  dispose();
 });

@@ -11,7 +11,7 @@ import { FILTERS, FILTER_LABEL, countsOf, passFilter, resolveResultKey, resolveW
 import { ensureCollapseBtn } from './collapse-all'
 import { ensureHeaderBtn, nextFilter, removeHeaderBtns, resolveHeader } from './header-btn'
 
-import { GROUP_SEL, RESULT_SEL, clearTips, hideRootsFor, restoreAll, setHidden, textOf } from './dom-scope'
+import { GROUP_SEL, RESULT_SEL, clearTips, hideRootsFor, isListContainer, restoreAll, setHidden, textOf } from './dom-scope'
 const STRIP_CLASS = 'left-filter-strip'
 const EMPTY_CLASS = 'left-filter-empty'
 let lastReasonSig = ''
@@ -111,6 +111,23 @@ function ensureStrip(container: Element, gen: number): void {
 
 let latestBots: BotSnap[] = []
 
+/* #94 单组树修正：只有 1 个分组时 hideRootsFor 会爬到应用根，容器验货（380px 宽度门）必判死 ⇒ 条带静默消失。
+ * 官方真列表容器是 role="tree" 那个节点（dsh-client-ui-workspace: treeBody > list[role=tree]）：
+ * 结构可信即认，不再让绝对宽度尺子否掉真身。 */
+function listAncestorOf(seed: Element | null): Element | null {
+  let node: Element | null = seed
+  for (let i = 0; i < 12 && node; i++) {
+    if (isListContainer(node)) return node
+    try { node = node.parentElement } catch { return null }
+  }
+  return null
+}
+
+function containerOk(el: Element | null | undefined): boolean {
+  if (isListContainer(el)) return true
+  try { return isPlausibleListContainer(el) } catch { return false }
+}
+
 function paint(bots: BotSnap[], gen: number): void {
   if (!genAlive(gen)) return
   if (typeof document === 'undefined') return
@@ -148,6 +165,12 @@ function paint(bots: BotSnap[], gen: number): void {
   let validContainer = okParent(firstRoots.length > 0 ? firstRoots[0].parentElement : null)
     ?? (results.length > 0 ? okParent(results[0].parentElement) : null)
   if (!validContainer && firstRoots.length > 0) validContainer = okParent(firstRoots[0])
+  /* #94：容器落到应用根（单组树）时改用官方列表容器；结构可信优先于宽度启发式。 */
+  if (!containerOk(validContainer)) {
+    const seed = groups.length > 0 ? groups[0] : results.length > 0 ? results[0] : validContainer
+    const structural = listAncestorOf(seed)
+    if (structural && structural !== validContainer) validContainer = structural
+  }
   /* 头锚优先：从行种子找头栏（行比容器稳定；容器首装时易取大，行才是真身）。
    * 头钮挂载不依赖条带验货——头钮常在，条带可藏（2026-09-07 真机回归：验货失败早退曾连带摘掉漏斗）。 */
   const seedForHeader = groups.length > 0 ? groups[0] : results.length > 0 ? results[0] : validContainer
@@ -159,7 +182,7 @@ function paint(bots: BotSnap[], gen: number): void {
   }
   /* 第三步验货：容器混入行外原生按钮或超宽即猜大了→条带 fail-closed（摘条带、还原），但头钮照常挂。 */
   try {
-    if (validContainer && !isPlausibleListContainer(validContainer)) {
+    if (validContainer && !containerOk(validContainer)) {
       if (sig === lastSig && validContainer === lastContainer) return
       lastSig = sig
       if (lastContainer && lastContainer !== validContainer) removeHint(lastContainer)
@@ -233,7 +256,7 @@ export function mountLeftFilter(ctx: FeatureCtx): () => void {
   let observer: MutationObserver | undefined
   latestBots = []
   pendingGen = myGen
-  info('已挂载（整组藏显 + 搜索 AND，等 stream 首轮快照）')
+  info('已挂载（整组藏显 + 搜索 AND + #94 容器结构兜底 v2，等 stream 首轮快照）')
   let unsub: (() => void) | null = null
   try {
     unsub = ctx.subscribe((_snap: StreamSnapshot) => {
