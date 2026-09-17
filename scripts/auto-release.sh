@@ -177,6 +177,15 @@ while true; do
   if [[ "${BUF,,}" == *"press enter"* ]]; then
     answer ""; continue
   fi
+  # Dead/stale registry token: npm publish cannot start a browser flow by
+  # itself (it needs a TTY for that). Surface a LOUD pointer instead of
+  # failing cryptically: one `npm login` in a real terminal, scan once,
+  # token persists in ~/.npmrc, re-run from stage 3.
+  if [[ "$BUF" == *"ENEEDAUTH"* || "$BUF" == *"authorize this machine"* ]]; then
+    printf '\n  !!! NPM TOKEN DEAD/MISSING -- publish cannot browser-auth from here.\n'
+    printf '  Run in a REAL terminal (TTY): npm login --registry https://registry.npmjs.org --auth-type=web\n'
+    printf '  Scan once, then re-run: WIZARD_FROM=3 bash scripts/auto-release.sh\n\n'
+  fi
 done
 
 RC=0; wait "$WIZPID" || RC=$?
