@@ -40,6 +40,7 @@ const FILES = [
   'src/features/update-center/data.ts',
   'src/features/update-center/markdown.ts',
   'src/features/update-center/changelog.ts',
+  'src/features/update-center/dialog.ts',
   'src/client/dom.ts',
   'src/host/meta-store.ts',
 ];
@@ -62,6 +63,7 @@ const data: any = await mod('features/update-center/data.js');
 const phone: any = await mod('features/update-center/phone.js');
 const reasons: any = await mod('features/update-center/reasons.js');
 const log: any = await mod('features/update-center/changelog.js');
+const dialog: any = await mod('features/update-center/dialog.js');
 const consts: any = await mod('features/update-center/constants.js');
 const text: any = await mod('features/update-center/text.js');
 const hostMeta: any = await mod('host/meta-store.js');
@@ -336,6 +338,43 @@ test('T8-7 七态判定表逐条：installing / restart / blocked / update / fai
   assert.equal(data.deriveState(S({ autoCheck: { failing: false, lastFailureAt: 1, nextCheckAt: null } }), false),
     'latest', 'failing:false（有失败史但已恢复）不算失败');
   proof('state-table', '七态逐条命中（busy > restart > blocked > update > failed > unavailable > latest）');
+});
+
+/* ---------- ⑮ 安装失败不再静默翻回"发现新版本"（#96） ----------
+ * 真机形态：安装失败，版本未动，无 blockedReason，但 canInstall 照旧 true。
+ * 旧行为落 update（悄悄回到"发现新版本"，零解释）；新行为扶正 job.message 为
+ * token ⇒ 落 blocked（"装不了"+原因+手工命令+重试安装按钮）。 */
+test('T8-15 failed/interrupted job + 可装 ⇒ blocked（原因来自 job.message）+ 重试入口；空白 message 保持原行为', () => {
+  const failedSnap = (msg: unknown): any => ({
+    runningVersion: '0.1.15', installedVersion: '0.1.15', latestVersion: '0.1.16',
+    canInstall: true, blockedReason: null,
+    job: { id: 'j9', state: 'failed', targetVersion: '0.1.16', message: msg, requestId: 'r9' },
+  });
+  const failed = phone.decodePhone(envelope({ snapshot: failedSnap('install-failed') }));
+  assert.equal(phone.blockedTokenOf(failed), 'install-failed', 'failed job 的 message 扶正为 token');
+  assert.equal(data.deriveState(failed, false), 'blocked', '不再悄悄落回 update');
+  assert.equal(reasons.reasonText('install-failed'), REASON_TEXT['install-failed'], '装不了页有话说');
+  assert.equal(reasons.noCommandOf('install-failed'), false, '给手工命令');
+  assert.equal(dialog.wantsInstallRetry(failed.snapshot, 'install-failed'), true, '重试入口开');
+  // interrupted 同理（宿主重启恢复）：message recovery-required（文案本就有"重新点一次安装"）
+  const interSnap: any = { ...failedSnap('recovery-required') };
+  interSnap.job = { id: 'j9', state: 'interrupted', targetVersion: '0.1.16', message: 'recovery-required', requestId: 'r9' };
+  const inter = phone.decodePhone(envelope({ snapshot: interSnap }));
+  assert.equal(phone.blockedTokenOf(inter), 'recovery-required', 'interrupted 的 message 同样扶正');
+  assert.equal(data.deriveState(inter, false), 'blocked');
+  assert.equal(dialog.wantsInstallRetry(inter.snapshot, 'recovery-required'), true);
+  // 快照兜底：token 为空但 job 已死 ⇒ 同样给重试入口（deriveState 那侧以 token 为准）
+  assert.equal(dialog.wantsInstallRetry(failed.snapshot, null), true, '快照里有 failed job 即给重试');
+  assert.equal(dialog.wantsInstallRetry({ job: null } as any, 'source-install'), false, '普通阻塞不给重试安装');
+  assert.equal(dialog.wantsInstallRetry({ job: { state: 'installing' } } as any, null), false, '安装中不给重试');
+  assert.equal(dialog.wantsInstallRetry(null, null), false, '空快照不给重试');
+  // 边界不动：message 空白 ⇒ 照旧（不得落 blocked，避免"装不了+空白原因"；T8-8 窄缝 B）
+  const blankMsg = phone.decodePhone(envelope({ snapshot: failedSnap('   ') }));
+  assert.equal(phone.blockedTokenOf(blankMsg), null, '空白 message 不算原因');
+  assert.equal(data.deriveState(blankMsg, false), 'update', '无原因时保持原行为（可装 ⇒ update）');
+  // 边界不动：failed job 但不可装 ⇒ 仍 latest（旧 T8-7 语义，message 为 null 时）
+  assert.equal(data.deriveState(S({ snapshot: { job: JOB('failed') } }), false), 'latest');
+  proof('failed-visible', '失败任务可装 ⇒ blocked+原因+重试入口；空白 message/不可装边界不动');
 });
 
 /* ---------- ⑧ 「断桥绝不说谎」：查不到 ≠ 已是最新（R10 抓到的 P0，没断言就会静默回归） ---------- */

@@ -128,7 +128,17 @@ export function nextCheckAtOf(res: PhoneResult | null): number | null {
  *  两条通道都过 asToken ⇒ 纯空白的 blockedReason 也不算原因（快照通道的 `'   '` 同样会渲染出空白原因行）。 */
 export function blockedTokenOf(res: PhoneResult | null): string | null {
   if (res === null) return null
-  return asToken(res.ok ? res.snapshot.blockedReason : res.token)
+  const main = asToken(res.ok ? res.snapshot.blockedReason : res.token)
+  if (main !== null) return main
+  // 静默失败兜底（#96）：成功回包里任务已死（failed/interrupted）、安装未变更、
+  // blockedReason 为空时，快照"看起来可装"，状态机会悄悄画回"发现新版本"。
+  // 此时 job.message 就是原因代号（failed→install-failed、interrupted→recovery-required，
+  // 两张文案 reasons.ts 本来就有），把它扶正为 token ⇒ 落"装不了"而不是静默。
+  // 空白 message 照旧不算原因（窄缝 B 不动）；失败信封走上面的主通道，这里只处理成功信封。
+  if (!res.ok) return null
+  const job = res.snapshot.job
+  if (job === null || (job.state !== 'failed' && job.state !== 'interrupted')) return null
+  return asToken(job.message)
 }
 /** 装/校验中的 job 状态（1s 轮询开表的唯一判据）。 */
 export const BUSY_STATES = ['installing', 'verifying']

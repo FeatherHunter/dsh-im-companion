@@ -109,7 +109,15 @@ function fillNotes(slot: HTMLElement, version: string | null, items: string[] | 
   slot.replaceChildren(list)
 }
 
-function footOf(state: UiState, snap: UpdateSnapshot | null, hd: DialogHandlers, close: () => void): HTMLElement {
+/** install-failed 系阻塞给"重试安装"入口（#96）：失败任务不清除旧 job，
+ *  不给重试入口会把用户困在"装不了"里（检查只会原样带回同一个 failed job）。 */
+export function wantsInstallRetry(snap: UpdateSnapshot | null, token: string | null): boolean {
+  if (token === 'install-failed' || token === 'recovery-required') return true
+  const js = snap?.job?.state ?? null
+  return js === 'failed' || js === 'interrupted'
+}
+
+function footOf(state: UiState, snap: UpdateSnapshot | null, hd: DialogHandlers, close: () => void, store: UpdateStore): HTMLElement {
   const foot = h('div', { className: 'update-center-dialog-foot' })
   if (state === 'installing') { foot.appendChild(button('安装中…', 'update-center-primary', true)); return foot }
   if (state === 'update') {
@@ -127,6 +135,13 @@ function footOf(state: UiState, snap: UpdateSnapshot | null, hd: DialogHandlers,
     foot.appendChild(notes); foot.appendChild(ok); return foot
   }
   if (state === 'blocked' || state === 'failed' || state === 'unavailable') {
+    if (state === 'blocked' && wantsInstallRetry(snap, blockedOf(store))) {
+      const later = button('稍后', 'update-center-link')
+      later.addEventListener('click', close)
+      const retry = button('重试安装', 'update-center-primary')
+      retry.addEventListener('click', hd.install)
+      foot.appendChild(later); foot.appendChild(retry); return foot
+    }
     const again = button('重新检查', 'update-center-secondary')
     again.addEventListener('click', hd.check)
     foot.appendChild(again); return foot
@@ -198,7 +213,7 @@ export function openCheckDialog(store: UpdateStore, hd: DialogHandlers): () => v
     const vline = versionLine(state, snap)
     if (vline !== null) card.appendChild(vline)
     card.appendChild(bodyOf(state, snap, store, hd, repaint))
-    card.appendChild(footOf(state, snap, hd, close))
+    card.appendChild(footOf(state, snap, hd, close, store))
   }
   const unsub = store.subscribe(repaint)
   repaint()
