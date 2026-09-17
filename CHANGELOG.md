@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.1.17 — 2026-09-17
+
+主题：**更新中心「装不了」不再无声无息**（#96）——安装失败后既不静默翻回"发现新版本"，也不再把人困在没有出口的状态里。
+
+改动：
+
+- `src/features/update-center/phone.ts`：`blockedTokenOf` 在**成功信封**里补兜底——任务已死（`failed` / `interrupted`）但 `blockedReason` 为空时，用 `job.message` 作原因代号扶正为 token（`failed→install-failed`、`interrupted→recovery-required`，文案沿用 `reasons.ts`）。原先这种情况快照"看起来可装"，状态机会悄悄画回"发现新版本"。
+- `src/features/update-center/dialog.ts`：新增 `wantsInstallRetry`，`install-failed` / `recovery-required` 等阻塞态给「重试安装 + 稍后」而不是只有「重新检查」（失败任务不清除旧 job，只给检查会把用户困在"装不了"里）。
+- `tools/verify/features/update-center.ts`：补 39 行断言覆盖上述两条。
+
+验证与影响：
+
+- `npm run check` 全链通过；无契约通道改动、无共享层改动。
+
 ## v0.1.16 — 2026-09-17
 
 主题：**dsh-im 兼容声明 4.17.1 → 4.21.1**（#95）——面板胶囊/悬停/README 同步，上游载体规则复核无变化。
