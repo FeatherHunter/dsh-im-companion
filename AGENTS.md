@@ -29,6 +29,8 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 * 生效门（每次 `lib/` 重打后必走）：对两边 `node_modules/dsh-im-companion/lib/client.js` 验 hash 与本仓一致 → 页面 Ctrl+F5（或热重载插件）；`dsh web` 若起过老进程先杀掉重起（14:55 坑：老进程不 serve 新 bundle）。验收前新旧只认 hash 是否一致（徽标悬停本来就带“最后检测时间”，不拿它判断新旧）。
 * 热更新优先（用户裁定 2026-09-04：DSH 支持动态加载）——改完重打 `lib/` 后刷新页面（Ctrl+F5）或热重载插件验证即可；**无必要绝不让用户重启 DSH**（重启是最后手段，仅 host/loader/装配结构动了且热重载吃不下时才提）
 * **发布**：`bash scripts/wizard-release.sh`（自驱发布向导：发布前体检 → npm 身份/版本占用 → **发布〔唯一人工步：浏览器授权〕** → 官方源复核 → git tag → GitHub Release）。幂等，断点续跑用 `WIZARD_FROM=<阶段号>`。全自动驾驶：`bash scripts/auto-release.sh`（接管全部 y/N+回车，扫码步自动弹浏览器；前置要求 Windows 侧 `npm run check` 全绿+版本已 bump）。宿主版本与 dsh-im 兼容版本单点真相在 `package.json` 的 `dshCompat` / `dshImCompat`（构建注入面板）。npm 新版本可能先进自动审核（npm 站显示 `Validating`，期间 registry 404 属正常，**别重发**）
+* **发布宿主与 auto-release 的坑（2026-09-17 实证，发 0.1.17）**：宿主用 **Git for Windows bash**（`C:\Program Files\Git\bin\bash.exe`，Windows 侧 node/npm，登录态在 Windows 的 `~/.npmrc`；WSL 那边的 npm 默认指镜像站、且没有 `gh`，**别用它发**）。调 `bash -lc` 会踩 `.bashrc`（UTF-16 带 BOM ⇒ `$'\377\376alias'` 报错），用 `--noprofile --norc`。**`auto-release.sh` 在 agent 侧边栏终端里会卡在阶段 1 的「按回车进入下一步」**（FIFO 驱动循环没读到 gate，wizard 与 driver 对着等；实测 2 分钟无进展）⇒ 别等它，直接跑 `wizard-release.sh` **由 agent 驱动**：`terminal_wait_for` 盯标记 → 每个「按回车」`terminal_send("")`、每个 `[y/N]` 送 `y`；npm 打印 `Authenticate your account at: https://www.npmjs.com/auth/cli/...` 时用 `Start-Process <url>` 替用户开浏览器，再送回车。阶段 4 复核要等最多 6 分钟（`等待 registry 可见…`），是正常的。
+* **发布日志只认公开物**：发布完成后**拉 tarball 自己验**（`npm pack <pkg>@<ver> --registry=https://registry.npmjs.org` → 查 `package/lib/client.js` 里的本次改动标记），别只看向导自报的 ✓。
 
 ## Labels required (GitHub)
 
