@@ -171,6 +171,12 @@ while true; do
   if [[ "$BUF" == *"$PAT_PAUSE"* || "$BUF" == *"Ready to start?"* || "$BUF" == *"$PAT_PASTE"* ]]; then
     answer ""; continue
   fi
+  # npm's own post-browser gate ("press ENTER to continue"): same semantics
+  # as a pause -- the human finished the browser part, move on. (An empty
+  # answer to a code prompt fails safe: the publish simply aborts.)
+  if [[ "${BUF,,}" == *"press enter"* ]]; then
+    answer ""; continue
+  fi
 done
 
 RC=0; wait "$WIZPID" || RC=$?
