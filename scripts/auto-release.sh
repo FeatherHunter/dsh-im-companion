@@ -61,12 +61,14 @@ NPM_REGISTRY="https://registry.npmjs.org"
 WIZARD="${AUTO_RELEASE_WIZARD:-scripts/wizard-release.sh}"
 VER="$(node -p "require('./package.json').version")"
 
-# -- Preflight: occupied version stops here (agent bumps first) --
-if npm view "${PKG}@${VER}" version --registry "$NPM_REGISTRY" >/dev/null 2>&1; then
+# -- Preflight: occupied version stops here (agent bumps first).
+# Skipped on resume (WIZARD_FROM>1): after a good publish the version IS
+# taken, and stages 4-6 (verify/tag/Release) must still run. --
+if [[ "${WIZARD_FROM:-1}" -le 1 ]] && npm view "${PKG}@${VER}" version --registry "$NPM_REGISTRY" >/dev/null 2>&1; then
   echo "ABORT: ${PKG}@${VER} already taken -- bump first (no auto-bump here)" >&2
   exit 1
 fi
-echo "OK: ${PKG}@${VER} free, autopilot engaged"
+echo "OK: ${PKG}@${VER} free-or-resume, autopilot engaged"
 
 # -- Browser opener probe (WSL -> Windows landing page) --
 OPENER=""
