@@ -97,22 +97,22 @@ test("#82 三色胶囊文案：颜色即身份，胶囊只留轴名 + 版本号�
 
 test("#79 宿主兼容标记：与 dsh-im 轴并列，各带轴名与悬停口径", () => {
   const zh = copy.firstViewCopy("zh");
-  assert.equal(zh.dshCompatChip("0.1.5-rc.2"), "dsh 0.1.5-rc.2",
+  assert.equal(zh.dshCompatChip("0.2.0-rc.2"), "dsh 0.2.0-rc.2",
     "宿主胶囊去「宿主」前缀，但必须保留 dsh 轴名——否则与 dsh-im 轴混成同一个版本号");
-  const title = zh.dshCompatTitle("0.1.5-rc.2", "connection.fetch");
-  assert.ok(title.indexOf("已在 @deepseek-ai/dsh 0.1.5-rc.2") >= 0, "悬停须含已验证宿主口径");
+  const title = zh.dshCompatTitle("0.2.0-rc.2", "connection.fetch");
+  assert.ok(title.indexOf("已在 @deepseek-ai/dsh 0.2.0-rc.2") >= 0, "悬停须含已验证宿主口径");
   assert.ok(title.indexOf("connection.fetch") >= 0, "悬停须写明依赖的宿主能力");
   assert.ok(zh.compatHref.indexOf("#compat") >= 0, "宿主标记同跳兼容性锚点");
   const en = copy.firstViewCopy("en");
-  assert.equal(en.dshCompatChip("0.1.5-rc.2"), "dsh 0.1.5-rc.2");
-  assert.ok(en.dshCompatTitle("0.1.5-rc.2", "connection.fetch").indexOf("Verified against @deepseek-ai/dsh 0.1.5-rc.2") >= 0);
+  assert.equal(en.dshCompatChip("0.2.0-rc.2"), "dsh 0.2.0-rc.2");
+  assert.ok(en.dshCompatTitle("0.2.0-rc.2", "connection.fetch").indexOf("Verified against @deepseek-ai/dsh 0.2.0-rc.2") >= 0);
 });
 
 test("#82 顶部宽度预算：胶囊文案纯 ASCII + 10px 字号（省略号零容忍的机械代理）", () => {
   const zh = copy.firstViewCopy("zh");
   const en = copy.firstViewCopy("en");
   for (const c of [zh, en]) {
-    for (const text of [c.compatChip("4.17.1"), c.dshCompatChip("0.1.5-rc.2"), "v0.1.7"]) {
+    for (const text of [c.compatChip("4.17.1"), c.dshCompatChip("0.2.0-rc.2"), "v0.1.7"]) {
       assert.ok(/^[\x20-\x7e]+$/.test(text), "胶囊文案必须纯 ASCII（宽度可预测）：" + text);
       assert.ok(text.length <= 16, "胶囊文案必须短（≤16 字符）：" + text);
     }

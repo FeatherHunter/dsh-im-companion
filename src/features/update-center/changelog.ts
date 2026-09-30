@@ -17,7 +17,7 @@ export function headingVersion(line: string): string | null {
 export interface VersionKey { core: string; tail: string }
 /** 预发后缀词表：只认这些标签（`rc.2`/`beta.1`…）——标题里的日期尾巴（`— 2026-09-08`）绝不误判成后缀。 */
 const PRE_TAGS = '(?:alpha|beta|pre|preview|next|dev|rc)'
-/** 版本键 = 三段核心号 + 归一化预发后缀（`0.1.5-rc.2` ⇒ core `0.1.5` / tail `rc.2`；`0.1.5` ⇒ tail 空串）。
+/** 版本键 = 三段核心号 + 归一化预发后缀（`0.2.0-rc.2` ⇒ core `0.2.0` / tail `rc.2`；`0.2.0` ⇒ tail 空串）。
  * 切节时按**两者一起**比对：带 `-rc.N` 的目标能命中自己的预发节，稳定版也不会去顶替预发节（反之亦然）。 */
 export function versionKey(raw: string): VersionKey | null {
   const s = String(raw).replace(/[[\]]/g, ' ').replace(/^#+\s*/, '').replace(/^[vV]/, '').trim()

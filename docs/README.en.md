@@ -109,7 +109,7 @@ dsh plugin --profile desktop remove dsh-im-companion
 | 0.1.6 | 4.17.1 | **Fails to assemble in a web profile** (the host half used the retired prefix route: `cannot get property "webServer" without inject`) → upgrade to 0.1.7 |
 | 0.1.4 | ≤4.17.0 | Broken after the dsh-im 4.17.1 carrier change (HTTP 405 in the connect wizard); upgrade to 0.1.7 |
 
-Host `@deepseek-ai/dsh` **0.1.5-rc.2** verified (the host must provide `connection.fetch`; older hosts fail loudly at assembly rather than degrading silently). The panel header shows three version capsules side by side, where the colour carries the identity: purple = this plugin's own version, blue-white = the compatible `dsh-im` version (`dsh-im 4.21.1`), black-white = the verified host `dsh` version (`dsh 0.1.5-rc.2`); each capsule keeps only the axis name + version number, and the full wording lives on hover (values come from `package.json`, injected at build time).
+Host `@deepseek-ai/dsh` **0.2.0-rc.2** verified (**0.2.1 pairs with exactly this host version**; the host must provide `connection.fetch`; older hosts fail loudly at assembly rather than degrading silently). The panel header shows three version capsules side by side, where the colour carries the identity: purple = this plugin's own version, blue-white = the compatible `dsh-im` version (`dsh-im 4.21.1`), black-white = the verified host `dsh` version (`dsh 0.2.0-rc.2`); each capsule keeps only the axis name + version number, and the full wording lives on hover (values come from `package.json`, injected at build time).
 
 </div>
 
