@@ -25,12 +25,17 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 * Host: `lib/index.js`（空壳）
 * Client: `lib/client.js`（React IM机器人增强，`slots.inject('settings.section', order 22)`）
 * 预览：`preview.html` (`python -m http.server 8788`)
-* 挂载：`desktop` + `web` 双 profile，但**两侧生效方式不同，别再当「两边同时生效」**——`web`：`…\.dsh\profiles\web\node_modules\dsh-im-companion` 是指向本仓的 **Junction** ⇒ 本仓 `lib/` 一改即时生效；`desktop`：是**真实的 npm 安装目录**（依赖声明 `^0.1.2`，文件是指向 pnpm store 的硬链接）⇒ **本仓重建 `lib/` 后 desktop 侧不会自动跟着变**，要 desktop 也生效必须去该 profile 重新安装或同步。核对方法：重建 `lib/` 后**两侧都比对 `lib/client.js` 的 hash** 与本仓是否一致（desktop 侧不一致＝未同步，别只看 web 侧）。
+* 挂载：`desktop` + `web` 双 profile，**两侧都是「按版本号安装」的真目录**（2026-09-30 实测：`~/.dsh/profiles/{web,desktop}/node_modules/dsh-im-companion` 均为 real-dir、均为 0.1.17；T10 起 owner 裁定 web 不再改回 `link:`）⇒ **本仓重建 `lib/` 后两侧都不会自动跟着变**，要让改动生效必须去对应 profile 重新装该版本（开发态临时挂 Junction 才即时生效）。核对方法：重建 `lib/` 后**两侧都比对 `lib/client.js` 的 hash** 与本仓是否一致（不一致＝未同步，别只看一侧）。
 * 生效门（每次 `lib/` 重打后必走）：对两边 `node_modules/dsh-im-companion/lib/client.js` 验 hash 与本仓一致 → 页面 Ctrl+F5（或热重载插件）；`dsh web` 若起过老进程先杀掉重起（14:55 坑：老进程不 serve 新 bundle）。验收前新旧只认 hash 是否一致（徽标悬停本来就带“最后检测时间”，不拿它判断新旧）。
 * 热更新优先（用户裁定 2026-09-04：DSH 支持动态加载）——改完重打 `lib/` 后刷新页面（Ctrl+F5）或热重载插件验证即可；**无必要绝不让用户重启 DSH**（重启是最后手段，仅 host/loader/装配结构动了且热重载吃不下时才提）
 * **发布**：`bash scripts/wizard-release.sh`（自驱发布向导：发布前体检 → npm 身份/版本占用 → **发布〔唯一人工步：浏览器授权〕** → 官方源复核 → git tag → GitHub Release）。幂等，断点续跑用 `WIZARD_FROM=<阶段号>`。全自动驾驶：`bash scripts/auto-release.sh`（接管全部 y/N+回车，扫码步自动弹浏览器；前置要求 Windows 侧 `npm run check` 全绿+版本已 bump）。宿主版本与 dsh-im 兼容版本单点真相在 `package.json` 的 `dshCompat` / `dshImCompat`（构建注入面板）。npm 新版本可能先进自动审核（npm 站显示 `Validating`，期间 registry 404 属正常，**别重发**）
 * **发布宿主与 auto-release 的坑（2026-09-17 实证，发 0.1.17）**：宿主用 **Git for Windows bash**（`C:\Program Files\Git\bin\bash.exe`，Windows 侧 node/npm，登录态在 Windows 的 `~/.npmrc`；WSL 那边的 npm 默认指镜像站、且没有 `gh`，**别用它发**）。调 `bash -lc` 会踩 `.bashrc`（UTF-16 带 BOM ⇒ `$'\377\376alias'` 报错），用 `--noprofile --norc`。**`auto-release.sh` 在 agent 侧边栏终端里会卡在阶段 1 的「按回车进入下一步」**（FIFO 驱动循环没读到 gate，wizard 与 driver 对着等；实测 2 分钟无进展）⇒ 别等它，直接跑 `wizard-release.sh` **由 agent 驱动**：`terminal_wait_for` 盯标记 → 每个「按回车」`terminal_send("")`、每个 `[y/N]` 送 `y`；npm 打印 `Authenticate your account at: https://www.npmjs.com/auth/cli/...` 时用 `Start-Process <url>` 替用户开浏览器，再送回车。阶段 4 复核要等最多 6 分钟（`等待 registry 可见…`），是正常的。
 * **发布日志只认公开物**：发布完成后**拉 tarball 自己验**（`npm pack <pkg>@<ver> --registry=https://registry.npmjs.org` → 查 `package/lib/client.js` 里的本次改动标记），别只看向导自报的 ✓。
+* **更新包（`dsh-plugin-update`）升级 = 改 pin 一行，但必须让发布侧自动跟随**（#99）：更新包是本插件的**运行期依赖**，用户装到的更新系统版本 = 我们发布那一版清单里 pin 的版本（包不会自更新，Node 也没有"import 最新版"这回事）。故：
+  - **发布前比对**：`npm run check:update-pkg`（查**官方源** `latest` vs 本仓 pin；落后 exit 1）。`wizard-release.sh` 阶段 1 已内置这一步（落后 ⇒ ✗ 并打印修法）；确实要带旧版发用 `WIZARD_SKIP_UPDATE_PKG=1` 显式跳过。
+  - **升级动作**：`npm run sync:update-pkg` = 装 latest（`--save-exact`，官方源）+ 重生成派生常量；跑完 `npm run check`，提交（`package.json` / `package-lock.json` / `src/features/update-center/derived.ts`）再发布。
+  - **常量不再手抄**：`src/features/update-center/derived.ts` 由 `scripts/gen-update-constants.mjs` 从**已安装的那个包**派生（电话名宿主侧/客户端侧交叉核对，不一致直接报错）；`npm run build` 自带比对 ⇒ 改了 pin 忘重生成 = 构建直接红。
+  - **解耦基线（0.2.0）**：宿主侧**不传** `runningVersion` / `profileDir` / `readInstalled`——包自己按包名解析目标包并反推使用范围；只传 `homeDir`（那是取值，保证更新落盘与本仓 `meta.json` 同源）。`src/host/update-reader.ts` / `update-paths.ts` 已整体删除（0.2.0 原生接管），**别再长回来**。
 
 ## Labels required (GitHub)
 

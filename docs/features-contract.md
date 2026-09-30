@@ -85,7 +85,8 @@ A 线：B1（bindings/overlay 奠基）→ B2 ∥ E1；B 线：B3 ∥ C1b ∥ E4
 - 预览 harness：mock 数据按功能模块注册（`src/dev/features/<id>-mock.ts`），preview-host 只做装配。
 - 守卫脚本：按功能归属（guard/boundaries 为契约层工具，功能自检脚本放 `<feature>/tools/`）。
 - 依赖边界：feature 开发产物之间同样禁止 import 耦合（由评审把关，不设自动检查——见 §10）。
-- 装配点夹具的必要追加（added-only · T7 #90）：`tools/verify/host-entry.ts` 给临时宿主目录挂一条 `node_modules` junction 指回本仓。原因：T7 起 host 半首次引入**包真身**依赖（`src/host/update.ts` 按裸模块名 `import 'dsh-plugin-update'`），而该验证器把 `src/` 转译到 `%TEMP%`，那里不在本仓 `node_modules` 解析链上（实测：去掉这条 junction 即 `ERR_MODULE_NOT_FOUND: Cannot find package 'dsh-plugin-update' imported from ...\host\update.js`）。属"夹具追加"而非"改他人分区"：既有断言一字未改。T7 自己的验证器 `tools/verify/features/update-host.ts` 同样自带这条 junction（其 25-26 行）。
+- 装配点夹具的必要追加（added-only · T7 #90）：`tools/verify/host-entry.ts` 给临时宿主目录挂一条 `node_modules` junction 指回本仓。原因：T7 起 host 半首次引入**包真身**依赖（`src/host/update.ts` 按裸模块名 `import 'dsh-plugin-update'`），而该验证器把 `src/` 转译到 `%TEMP%`，那里不在本仓 `node_modules` 解析链上（实测：去掉这条 junction 即 `ERR_MODULE_NOT_FOUND: Cannot find package 'dsh-plugin-update' imported from ...\host\update.js`）。属"夹具追加"而非"改他人分区"：既有断言一字未改。T7 自己的验证器 `tools/verify/features/update-host.ts` 当时同样自带这条 junction（其 25-26 行；#99 起该验证器改为真布局夹具，见下一条）。
+- 夹具改为真布局的必要追加（added-only · #99）：`tools/verify/features/update-host.ts` 的夹具从「假盘 fs 端口」改成**临时目录里的真使用范围**——`<FIXTURE>/profiles/web/node_modules/dsh-im-companion`（真目录 + 真 package.json/入口文件），更新包**真拷贝**进该范围的 `node_modules`，转译产物的 `node_modules` 只挂一条 junction 指回那份拷贝。两条硬理由：① `dsh-plugin-update@0.2.0` 把「插件装在哪、跑的是哪版、合法性、安装指纹」全收进包内并直接读真盘，原先那个 `readerFs` 假盘端口**不再有插口**；② 更新包必须是**真拷贝**而不是 junction——Node 按 realpath 解析模块，junction 会让包内 `import.meta.url` 落回本仓，包就"看不见"这个假使用范围（实测会回 `unknown-profile`）。属"夹具换取数方式"而非"改断言"：三通电话 / 六字段 / 源安装 / 调度器 / 装配点各条断言一条未删，另加一条 T7-0「零解析类 override 也能解析出使用范围与版本」。
 
 ## 9. 合并协议（并发正确性）
 

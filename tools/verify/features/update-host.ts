@@ -1,12 +1,21 @@
-// T7 #90 验证（更新系统宿主侧）：三通电话信封 + 自有读取器降级 + 自动检查调度器 + autoCheck 运行期状态。
+// T7 #90 验证（更新系统宿主侧）· **#99 起按 dsh-plugin-update@0.2.0 重写**。
+// 覆盖：三通电话信封 + 包字段原样 + 自动检查调度器 + autoCheck 运行期状态 + 装配点顺序保证。
 //
-// 做法与 host-entry.ts 同款：用仓库 tsconfig 把 src/index.ts（连带 src/host）转译到临时目录，再 import 产物跑**真实现**。
-// 外部世界只经注入缝截断，不 mock 被测逻辑：
-//   假盘 fs（`readerFs`）→ 真 `readUpdateEnv`；假 npm 源（`readerOverrides.fetchImpl`）→ 真 check 流程；
-//   假时钟 + 假定时器端口（`now` / `timer`）→ 真调度器。真装机（spawn 子进程）不在 verify 内触发。
+// 为什么整份重写（与前版最大的分别）：
+//   0.1.x 时本仓自持 `update-reader.ts` / `update-paths.ts`，靠 `readerOverrides.{runningVersion,profileDir,readInstalled}`
+//   把「插件装在哪、跑的是哪版」喂进去，验证器喂的是**假盘 fs 端口**。0.2.0 把这些收进包内并按**包名**解析目标包
+//   ⇒ 假 fs 端口这条路没了（包直接读真盘）。现在改用**真盘真布局**夹具：
+//     ① 在临时目录造一个 DSH 使用范围：`<FIXTURE>/profiles/web/{package.json, node_modules/dsh-im-companion/**}`；
+//     ② 把更新包**真拷贝**进该范围的 `node_modules`（见下：必须真拷贝，不能 junction）；
+//     ③ 转译产物的 `node_modules/dsh-plugin-update` 只挂一条 junction 指向那份拷贝。
+//   于是三通电话在**生产口径（零解析类 readerOverrides）**下真跑：只有网络与时钟是假的。
+//
+//   ⚠️ 为什么必须真拷贝：Node 按 **realpath** 解析模块，junction 会让包内 `import.meta.url` 落回本仓，
+//   包就"看不见"这个假使用范围（它会解析到本仓的 package.json，再反推不出范围 ⇒ unknown-profile）。
+//   这条正是 0.2.0 按包名解析的前提，也是 T1 取证（realpath 链）在验证器里的复用。
 import test, { after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -14,6 +23,20 @@ import { execFileSync } from 'node:child_process';
 
 const REPO = process.cwd();
 const BUILD = mkdtempSync(join(tmpdir(), 't7-update-host-'));
+const FIXTURE = mkdtempSync(join(tmpdir(), 't7-update-profile-'));
+const PROFILE = join(FIXTURE, 'profiles', 'web');
+const PROFILE_MODULES = join(PROFILE, 'node_modules');
+const PLUGIN_DIR = join(PROFILE_MODULES, 'dsh-im-companion');
+const OUTSIDE_DIR = join(FIXTURE, 'elsewhere', 'dsh-im-companion');
+/** 更新包在夹具里的真拷贝位置（= 转译产物那条 junction 的 realpath）。 */
+const PKG_DIR = join(PROFILE_MODULES, 'dsh-plugin-update');
+
+after(() => {
+  rmSync(BUILD, { recursive: true, force: true });
+  rmSync(FIXTURE, { recursive: true, force: true });
+});
+
+/* ---------- 转译（同 host-entry.ts 范式：仓库 tsconfig 转译 src/，再 import 产物跑真实现） ---------- */
 try {
   execFileSync(process.execPath, [join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', 'tsconfig.json',
     '--outDir', BUILD, '--declarationDir', join(BUILD, 'types'), '--sourceMap', 'false'], { stdio: 'pipe' });
@@ -22,76 +45,97 @@ try {
   process.exit(1);
 }
 writeFileSync(join(BUILD, 'package.json'), '{"type": "module"}\n');
-// host 半有裸模块依赖（src/host/update.ts 按包真身 import 'dsh-plugin-update'），临时目录挂一条 junction 指回本仓。
-try { symlinkSync(join(REPO, 'node_modules'), join(BUILD, 'node_modules'), 'junction'); } catch { /* 已存在跳过 */ }
+
+/* ---------- 夹具：一个真的使用范围 + 更新包真拷贝（只链 dsh-plugin-update 一个包） ---------- */
+mkdirSync(PROFILE_MODULES, { recursive: true });
+cpSync(join(REPO, 'node_modules', 'dsh-plugin-update'), PKG_DIR, { recursive: true });
+mkdirSync(join(BUILD, 'node_modules'), { recursive: true });
+symlinkSync(PKG_DIR, join(BUILD, 'node_modules', 'dsh-plugin-update'), 'junction');
+
+/** 删夹具里的插件目录：**先判链接再删**（junction 用 unlink，绝不递归跟随到目标去）。 */
+function clearPluginDir(): void {
+  try {
+    if (lstatSync(PLUGIN_DIR).isSymbolicLink()) unlinkSync(PLUGIN_DIR);
+    else rmSync(PLUGIN_DIR, { recursive: true, force: true });
+  } catch { /* 不存在即无事 */ }
+}
+
+/** 造「按版本号装好的插件」：使用范围清单 + `node_modules/dsh-im-companion/**`（`validPackage` 三处入口都得是真文件）。 */
+function installPlugin(opts: { version?: string; spec?: string } = {}): { version: string; spec: string } {
+  const version = opts.version ?? '1.2.3';
+  const spec = opts.spec ?? version;
+  clearPluginDir();
+  mkdirSync(PLUGIN_DIR, { recursive: true });
+  writeFileSync(join(PROFILE, 'package.json'), JSON.stringify({
+    name: 'profile-web', version: '0.0.0', dependencies: { 'dsh-im-companion': spec },
+  }, null, 2));
+  writeFileSync(join(PLUGIN_DIR, 'package.json'), JSON.stringify({
+    name: 'dsh-im-companion', version, main: 'index.js',
+    exports: { '.': './index.js', './client': './client.js', './package.json': './package.json' },
+    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  }, null, 2));
+  for (const f of ['index.js', 'client.js', 'cordis.patch.yml']) writeFileSync(join(PLUGIN_DIR, f), '// fixture\n');
+  return { version, spec };
+}
+
+/** 造「实装目录越出使用范围」：范围里那条是指向范围外的 junction（realpath 落在外面）。 */
+function installPluginOutside(version = '1.2.3'): void {
+  clearPluginDir();
+  mkdirSync(OUTSIDE_DIR, { recursive: true });
+  writeFileSync(join(PROFILE, 'package.json'), JSON.stringify({
+    name: 'profile-web', version: '0.0.0', dependencies: { 'dsh-im-companion': version },
+  }, null, 2));
+  writeFileSync(join(OUTSIDE_DIR, 'package.json'), JSON.stringify({
+    name: 'dsh-im-companion', version, main: 'index.js',
+    exports: { '.': './index.js', './client': './client.js', './package.json': './package.json' },
+    dsh: { bundle: { patch: './cordis.patch.yml' } },
+  }, null, 2));
+  for (const f of ['index.js', 'client.js', 'cordis.patch.yml']) writeFileSync(join(OUTSIDE_DIR, f), '// fixture\n');
+  symlinkSync(OUTSIDE_DIR, PLUGIN_DIR, 'junction');
+}
 
 const HOST = join(BUILD, 'host');
 const load = async (name: string): Promise<any> => import(pathToFileURL(join(HOST, name)).href);
 const update: any = await load('update.js');
 const rpcMod: any = await load('rpc.js');
-const readerMod: any = await load('update-reader.js');
 const schedule: any = await load('update-schedule.js');
 const metaMod: any = await load('meta-store.js');
-// 装配点（票面 §F.2）：真跑 `src/index.ts` 的 `apply()`，而不是只直接构造桥。
 const hostEntry: any = await import(pathToFileURL(join(BUILD, 'index.js')).href);
-const pkgMod: any = await import('dsh-plugin-update'); // 与宿主产物解析到同一 realpath ⇒ 同一模块实例
+// 与转译产物**同一份真身**（同一条 junction ⇒ 同一 realpath ⇒ 同一模块实例）：否则 reset 打不到它的单例缓存。
+const pkgMod: any = await import(pathToFileURL(join(BUILD, 'node_modules', 'dsh-plugin-update', 'dist', 'host.js')).href);
 
-const FIXTURE = mkdtempSync(join(tmpdir(), 't7-fixture-'));
-after(() => {
-  rmSync(BUILD, { recursive: true, force: true });
-  rmSync(FIXTURE, { recursive: true, force: true });
-});
-// 包内共享读取器的单例键（dist/host.js:93）含 runningVersion/profileDir/homeDir，且**不含** readInstalled：
-// 每个实例一条独立 run（fakeDisk 自增目录）才是真隔离；这里再显式复位一次，双保险。
+// 包内共享读取器按 (pluginId, prefix, runningVersion, profileDir, profileName, homeDir, environmentKind, target) 缓存：
+// 每个宿主实例一条独立 home ⇒ 天然不同键；这里再显式复位一次，双保险。
 beforeEach(() => { pkgMod.__resetSharedUpdateReaderForTests(); });
 
 const proof = (id: string, detail: string): void => { console.log('T7-PROOF ' + id + ' PASS ' + detail); };
-// 假时钟只管**排定**，被触发的检查仍是真异步（包内首次建读取器会走真 fs walk-up）⇒ 等它落定必须用真定时器轮询，
-// 不能用 setImmediate（那个不等 I/O 完成，会假绿）。
+// 假时钟只管**排定**，被触发的检查仍是真异步（真 fs + 真 fetch 假件）⇒ 等它落定要用真定时器轮询，不能用 setImmediate。
 const tick = (): Promise<void> => new Promise((r) => { setTimeout(r, 5); });
-const settle = async (rounds = 6): Promise<void> => { for (let i = 0; i < rounds; i++) await tick(); };
+const settle = async (rounds = 8): Promise<void> => { for (let i = 0; i < rounds; i++) await tick(); };
 const waitFor = async (fn: () => boolean, label: string): Promise<void> => {
   for (let i = 0; i < 400; i++) { if (fn()) return; await tick(); }
   throw new Error('等待超时：' + label);
 };
 const stripAuto = (value: any): Record<string, unknown> => { const { autoCheck, ...rest } = value; return rest; };
 
-/* ---------- 假盘：<FIXTURE>/r<n>/{home/profiles/web,elsewhere} 里一份安装 + realpath 表 ---------- */
-type Disk = { homeDir: string; profileDir: string; installedDir: string; version: string; fs: any };
-let seq = 0;
-function fakeDisk(opts: { spec?: string; installedVersion?: string; outside?: boolean } = {}): Disk {
-  const n = ++seq;
-  const homeDir = join(FIXTURE, 'r' + n, 'home');
-  const profileDir = join(homeDir, 'profiles', 'web');
-  const linkDir = join(profileDir, 'node_modules', 'dsh-im-companion'); // 读取器只认这个路径
-  const installedDir = opts.outside === true
-    ? join(FIXTURE, 'r' + n, 'elsewhere', 'dsh-im-companion') // 实装目录（realpath 后）越出 <范围>/node_modules ⇒ 也算源安装
-    : linkDir;
-  const version = opts.installedVersion ?? '1.2.3';
-  const files = new Map<string, string>();
-  files.set(join(profileDir, 'package.json'), JSON.stringify({
-    name: 'profile-web', dependencies: { 'dsh-im-companion': opts.spec ?? 'link:../..' },
-  }));
-  files.set(join(installedDir, 'package.json'), JSON.stringify({
-    name: 'dsh-im-companion', version, main: 'index.js',
-    exports: { './client': './client.js' }, dsh: { bundle: { patch: './cordis.patch.yml' } },
-  }));
-  for (const f of ['index.js', 'client.js', 'cordis.patch.yml']) files.set(join(installedDir, f), '//');
-  const realpaths = new Map<string, string>([[homeDir, homeDir], [profileDir, profileDir], [linkDir, installedDir]]);
-  return {
-    homeDir, profileDir, installedDir, version,
-    fs: {
-      realpath: async (p: string) => {
-        const real = realpaths.get(p);
-        if (real !== undefined) return real;
-        // 包内入口文件：真身上就是自己（读取器按上游口径在 realpath 后复判 inside，见 update-reader.ts）。
-        if (files.has(p)) return p;
-        throw new Error('ENOENT ' + p);
-      },
-      readText: async (f: string) => { const t = files.get(f); if (t === undefined) throw new Error('ENOENT ' + f); return t; },
-      isFile: async (f: string) => files.has(f),
-    },
+/* ---------- 假 npm 源：只截断网络（形状校验仍走包的真代码：name/version/dist.tarball/dist.integrity） ---------- */
+function fakeRegistry(version = '9.9.9') {
+  const state = { calls: 0, mode: 'ok' as 'ok' | 'fail', url: '' };
+  const fetchImpl = async (url: string): Promise<any> => {
+    state.calls += 1; state.url = url;
+    if (state.mode === 'fail') throw new Error('offline（verify 假源）');
+    return {
+      ok: true, headers: { get: () => null },
+      text: async () => JSON.stringify({
+        name: 'dsh-im-companion', version,
+        dist: {
+          tarball: 'https://registry.npmjs.org/dsh-im-companion/-/dsh-im-companion-' + version + '.tgz',
+          integrity: 'sha512-' + 'A'.repeat(86) + '==',
+        },
+      }),
+    };
   };
+  return { state, fetchImpl };
 }
 
 /* ---------- 假时钟 + 假定时器端口（真调度器跑在它上面） ---------- */
@@ -125,57 +169,58 @@ function fakeClock(startAt = 1_700_000_000_000) {
   };
 }
 
-/* ---------- 假 npm 源：只截断网络，鉴权/形状校验仍走包的真代码 ---------- */
-function fakeRegistry(version = '9.9.9') {
-  const state = { calls: 0, mode: 'ok' as 'ok' | 'fail', url: '' };
-  const fetchImpl = async (url: string): Promise<any> => {
-    state.calls += 1; state.url = url;
-    if (state.mode === 'fail') throw new Error('offline（verify 假源）');
-    return {
-      ok: true, headers: { get: () => null },
-      text: async () => JSON.stringify({
-        name: 'dsh-im-companion', version,
-        dist: {
-          tarball: 'https://registry.npmjs.org/dsh-im-companion/-/dsh-im-companion-' + version + '.tgz',
-          integrity: 'sha512-' + 'A'.repeat(86) + '==',
-        },
-      }),
-    };
-  };
-  return { state, fetchImpl };
-}
-
-/* ---------- 装配：真桥 + 真 rpc 派发 + 真偏好存储（只有 fs / fetch / 时钟是假的） ---------- */
+/* ---------- 装配：真桥 + 真 rpc 派发 + 真偏好存储（只有网络 / 时钟 / home 是假的，解析全走生产口径） ---------- */
+let homeSeq = 0;
 type HostOpts = {
-  spec?: string; installedVersion?: string; outside?: boolean;
-  readJob?: () => any; disk?: Disk; registry?: any; clock?: ReturnType<typeof fakeClock>; timerAbsent?: boolean;
+  readJob?: () => any; registry?: any; clock?: ReturnType<typeof fakeClock>;
+  timerAbsent?: boolean; readerOverrides?: Record<string, unknown>; homeDir?: string;
 };
 function makeHost(opts: HostOpts = {}) {
-  const disk = opts.disk ?? fakeDisk(opts);
   const registry = opts.registry ?? fakeRegistry();
   const clock = opts.clock ?? fakeClock();
-  const store = new metaMod.AgentMetaStore(join(disk.homeDir, 'meta.json'));
+  const home = opts.homeDir ?? mkdtempSync(join(FIXTURE, 'home' + (++homeSeq) + '-'));
+  const store = new metaMod.AgentMetaStore(join(home, 'meta.json'));
   const warns: string[] = [];
   const logger = { info: (): void => {}, warn: (m: string): void => { warns.push(m); } };
-  // 假时钟还要喂给读取器：包内 check() 的 2 秒复查窗口与 receipt 有效期全走它自己的 `now` 端口，
+  // 假时钟要喂给读取器：包内 check() 的 2 秒复查窗口与 receipt 有效期全走它自己的 `now` 端口，
   // 不注入就会按**真实**时间判窗口（假时钟推进 6 小时也照样命中缓存 → 假绿/假红）。
-  const overrides: Record<string, unknown> = { fetchImpl: registry.fetchImpl, now: clock.now };
+  const overrides: Record<string, unknown> = { fetchImpl: registry.fetchImpl, now: clock.now, ...opts.readerOverrides };
   if (opts.readJob) overrides.readJob = opts.readJob;
   const bridge = update.createUpdateHostBridge({
-    ctx: {},
-    store, dshHome: disk.homeDir, profileDir: disk.profileDir, runningVersion: disk.version,
-    readerFs: disk.fs, readerOverrides: overrides,
+    ctx: {}, store, dshHome: home, readerOverrides: overrides,
     timer: opts.timerAbsent === true ? undefined : clock.port, now: clock.now, logger,
   });
   const handle = rpcMod.createAgentFleetHandler(store, { update: () => bridge });
-  return { disk, registry, clock, store, bridge, handle, warns };
+  return { home, registry, clock, store, bridge, handle, warns };
 }
 const STATUS = 'imc.updateStatus'; const CHECK = 'imc.updateCheck'; const INSTALL = 'imc.updateInstall';
 const JOB = { id: 'j1', state: 'installing', targetVersion: '1.2.3', message: null, requestId: 'r1' };
 const withJob = (opts: HostOpts = {}) => makeHost({ ...opts, readJob: async () => ({ ...JOB }) });
+
+/* ---------- ⓪ #99 解耦基线：零解析类 override，在真布局里三通电话全通 ---------- */
+test('T7-0 0.2.0 原生解析：不喂 runningVersion/profileDir/readInstalled，仍认得出使用范围与版本', async () => {
+  installPlugin({ version: '1.2.3' });
+  const h = makeHost(); // overrides 里只有 fetchImpl / now（网络与时钟），没有任何解析输入
+  const st: any = await h.handle(STATUS, {});
+  assert.equal(st.ok, true, '生产口径必须能自己解析出使用范围（0.1.x 在这里恒 unknown-profile）');
+  assert.equal(st.value.snapshot.installedVersion, '1.2.3', '磁盘版本来自真 fixture，不是本仓版本');
+  assert.equal(st.value.snapshot.runningVersion, '1.2.3', '运行版本由包按包名解析目标包得到');
+  assert.notEqual(st.value.snapshot.runningVersion, '0.1.17', '本仓版本号绝不能出现在这里（那说明解析落回了本仓）');
+  assert.equal(st.value.snapshot.blockedReason, null, '版本号安装 + 实装目录在范围内 ⇒ 无阻塞');
+  assert.equal(st.value.snapshot.canInstall, false, '还没查过新版 ⇒ 不能装');
+  assert.match(String(st.value.manual), /^dsh plugin --profile web add --save-exact dsh-im-companion@1\.2\.3 /,
+    '手工命令里的使用范围名来自反推出来的 profileDir：' + String(st.value.manual));
+  const ck: any = await h.handle(CHECK, {});
+  assert.equal(ck.ok, true, '联网查新版：' + JSON.stringify(ck));
+  assert.equal(ck.value.snapshot.latestVersion, '9.9.9', '假源给的最新版本');
+  assert.equal(h.registry.state.calls, 1, '一次 check 打一次源');
+  proof('native-resolve', '零解析 override ⇒ installedVersion/runningVersion/profileName 全对');
+});
+
 /* ---------- ① 三通电话：经 rpc.ts 端点表派发 + 本仓 RpcResult 信封 + 包字段原样 ---------- */
 test('T7-1 三通电话可经 rpc.ts 派发，回包是本仓信封且包字段一个不少', async () => {
-  const h = makeHost(); // 默认 link: 源安装 = 本机真机状态
+  installPlugin({ version: '1.2.3' });
+  const h = makeHost();
   assert.deepEqual([...update.UPDATE_ENDPOINTS], [STATUS, CHECK, INSTALL], '端点名常量 = 票面定死三通');
   assert.deepEqual(Object.keys(h.bridge.handlers).sort(), [STATUS, CHECK, INSTALL].sort(), '桥的表键必须是包给的电话名');
   for (const ep of [STATUS, CHECK]) {
@@ -194,7 +239,7 @@ test('T7-1 三通电话可经 rpc.ts 派发，回包是本仓信封且包字段�
   const failed: any = await h.handle(INSTALL, {});
   assert.equal(failed.ok, false, 'install 缺 checkId 回失败信封（不抛）');
   assert.equal(failed.value, undefined, '失败信封不带 value');
-  assert.equal(failed.error.code, 'check-expired', '白名单 token 原样透传：' + failed.error.message);
+  assert.equal(failed.error.code, 'check-expired', '原因码原样透传（包 README §5.2 的冻结词表）：' + failed.error.message);
   assert.deepEqual(failed.error.details.update, rawFail, '包原始载荷进 details.update，不吞掉');
   assert.ok(!JSON.stringify(failed).includes('autoCheck'), '失败信封里没有 autoCheck（消费方按「无失败可显示」处理）');
   const synthetic = {
@@ -204,11 +249,12 @@ test('T7-1 三通电话可经 rpc.ts 派发，回包是本仓信封且包字段�
   const wrapped: any = h.bridge.reply(synthetic);
   assert.equal(wrapped.ok, true);
   assert.deepEqual(stripAuto(wrapped.value), synthetic, 'install 成功载荷（含 receipt）原样进 value');
-  proof('endpoints', '三端点派发 + 原样字段 + 失败映射 check-expired');
+  proof('endpoints', '三端点派发 + 原样字段 + 失败码 check-expired 透传');
 });
 
 /* ---------- ② snapshot 恰好六字段 ---------- */
 test('T7-2 snapshot 恰好六字段（三通电话同源）', async () => {
+  installPlugin({ version: '1.2.3' });
   const h = withJob(); // 注入 readJob ⇒ job 字段真的非空，六字段全被走到
   const SIX = ['blockedReason', 'canInstall', 'installedVersion', 'job', 'latestVersion', 'runningVersion'];
   for (const ep of [STATUS, CHECK, INSTALL]) {
@@ -224,42 +270,39 @@ test('T7-2 snapshot 恰好六字段（三通电话同源）', async () => {
   proof('snapshot', '三通电话 snapshot 均六字段、job 非空');
 });
 
-/* ---------- ③ source-install 降级（本机真机状态：web profile 说明符就是 link:） ---------- */
+/* ---------- ③ source-install：判据全在包内（本仓不再自算） ---------- */
 test('T7-3 link: 说明符 → source-install 且 manual 为 null；版本号说明符对照给得出手工命令', async () => {
-  const envOf = (h: any): Promise<any> => readerMod.readUpdateEnv({
-    profileDir: h.disk.profileDir, runningVersion: h.disk.version, homeDir: h.disk.homeDir,
-    environmentKind: 'cli', pluginId: 'dsh-im-companion', targetPackageName: 'dsh-im-companion', fs: h.disk.fs,
-  });
-  const link = makeHost({ spec: 'link:../..' });
-  const envLink: any = await envOf(link);
-  assert.equal(envLink.sourceInstall, true, 'link: 必须落源安装');
-  assert.equal(envLink.blockedReason, 'source-install');
-  assert.equal(envLink.eligible, false);
-  assert.equal(envLink.installedVersion, '1.2.3');
-  assert.deepEqual(Object.keys(envLink).sort(), ['blockedReason', 'eligible', 'environmentKind', 'homeDir',
-    'installationKey', 'installedVersion', 'packageValid', 'profileDir', 'profileName', 'sourceInstall'],
-  '上游 env 结果对象十字段（含 environmentKind，见 update-reader.ts 头注）');
-  const st: any = await link.handle(STATUS, {});
-  assert.equal(st.value.snapshot.blockedReason, 'source-install');
-  assert.equal(st.value.snapshot.canInstall, false, '源安装恒不可一键装');
-  assert.equal(st.value.manual, null, '源安装不给手工命令（commands.js 判 sourceInstall → null）');
-  const outside: any = await makeHost({ spec: '1.2.3', outside: true }).handle(STATUS, {});
-  assert.equal(outside.value.snapshot.blockedReason, 'source-install', '实装目录越界也算源安装（第二条判据）');
+  installPlugin({ version: '1.2.3', spec: 'link:../..' });
+  const link: any = await makeHost().handle(STATUS, {});
+  assert.equal(link.value.snapshot.blockedReason, 'source-install', 'link: 必须落源安装');
+  assert.equal(link.value.snapshot.canInstall, false, '源安装恒不可一键装');
+  assert.equal(link.value.manual, null, '源安装不给手工命令（包内 manualCommand 判 sourceInstall → null）');
+  assert.equal(link.value.snapshot.installedVersion, '1.2.3', '源安装也照报磁盘版本');
+
   // 对照：同一块盘换成版本号说明符 ⇒ 不再是源安装，manual 给得出命令（证明上面那个 null 是判据产物，不是空实现）
-  const reg = makeHost({ spec: '1.2.3' });
-  const envReg: any = await envOf(reg);
-  assert.equal(envReg.sourceInstall, false);
-  assert.equal(envReg.blockedReason, null, '版本号 + 实装 = 运行版本 ⇒ 无阻塞');
-  assert.equal(envReg.eligible, true);
-  const ok: any = await reg.handle(STATUS, {});
-  assert.equal(ok.value.snapshot.blockedReason, null);
-  assert.match(String(ok.value.manual), /^dsh plugin --profile web add --save-exact dsh-im-companion@1\.2\.3 /);
-  assert.equal(ok.value.snapshot.latestVersion, null, '还没 check 过 → latestVersion 为 null');
-  proof('source-install', 'link: ⇒ source-install/manual=null；1.2.3 ⇒ ' + ok.value.manual);
+  installPlugin({ version: '1.2.3' });
+  const reg: any = await makeHost().handle(STATUS, {});
+  assert.equal(reg.value.snapshot.blockedReason, null, '版本号 + 实装 = 运行版本 ⇒ 无阻塞');
+  assert.match(String(reg.value.manual), /^dsh plugin --profile web add --save-exact dsh-im-companion@1\.2\.3 /);
+  assert.equal(reg.value.snapshot.latestVersion, null, '还没 check 过 → latestVersion 为 null');
+
+  // 实装目录越出使用范围：0.2.0 先按包名解析到它 ⇒ 反推不出范围 ⇒ **诚实失败**（README 排错第 13 条）。
+  // 注意形态：这不是快照里的 blockedReason，而是解析阶段就抛 → 三通电话整通回失败信封。
+  installPluginOutside('1.2.3');
+  const outside: any = await makeHost().handle(STATUS, {});
+  assert.equal(outside.ok, false, '范围外实装 ⇒ 认不出使用范围（0.2.0 的诚实答复）');
+  assert.equal(outside.error.code, 'unknown-profile', '失败码是包冻结词表里的 unknown-profile：' + JSON.stringify(outside.error));
+  assert.equal(outside.value, undefined, '失败信封不带 value');
+  // 集成方的口子：显式交 profileDir（本仓装配不传，只有这类越界布局才需要）⇒ 立刻变成可诊断的 source-install。
+  const patched: any = await makeHost({ readerOverrides: { profileDir: PROFILE } }).handle(STATUS, {});
+  assert.equal(patched.value.snapshot.blockedReason, 'source-install', '补上 profileDir ⇒ 判据齐全，落源安装');
+  assert.equal(patched.value.manual, null, '源安装仍不给命令');
+  proof('source-install', 'link: ⇒ source-install/manual=null；版本号 ⇒ 给命令；越界 ⇒ unknown-profile（+profileDir 口子）');
 });
 
 /* ---------- ④ 调度器（假时钟 + 假定时器） ---------- */
 test('T7-4a 默认不立刻触发，60 秒后首查一次', async () => {
+  installPlugin({ version: '1.2.3' });
   const h = makeHost();
   h.bridge.start();
   await waitFor(() => h.clock.pending() === 2, '装配排定两个定时器');
@@ -276,6 +319,7 @@ test('T7-4a 默认不立刻触发，60 秒后首查一次', async () => {
 
 test('T7-4b 档位 6/12/24/168 小时到点才触发', async () => {
   const H = 3_600_000;
+  installPlugin({ version: '1.2.3' });
   for (const hours of [6, 12, 24, 168]) {
     const h = makeHost();
     await h.store.setUpdate({ autoCheckEnabled: true, intervalHours: hours });
@@ -297,6 +341,7 @@ test('T7-4b 档位 6/12/24/168 小时到点才触发', async () => {
 });
 
 test('T7-4c 关开关：定时器被真释放，之后推进一周零触发', async () => {
+  installPlugin({ version: '1.2.3' });
   const h = makeHost();
   h.bridge.start();
   await waitFor(() => h.clock.pending() === 2, '装配排定两个定时器');
@@ -315,6 +360,7 @@ test('T7-4c 关开关：定时器被真释放，之后推进一周零触发', as
 });
 
 test('T7-4d 热重载不留双份：释放旧代后重装配，触发次数不翻倍', async () => {
+  installPlugin({ version: '1.2.3' });
   const clock = fakeClock();
   const a = makeHost({ clock });
   await a.store.setUpdate({ autoCheckEnabled: true, intervalHours: 6 });
@@ -324,7 +370,7 @@ test('T7-4d 热重载不留双份：释放旧代后重装配，触发次数不�
   await waitFor(() => a.registry.state.calls === 1, '旧代首查');
   a.bridge.dispose(); // = src/index.ts 挂的 ctx.effect 卸载释放
   assert.equal(clock.pending(), 0, '旧代释放后不得留任何在册定时器');
-  const b = makeHost({ clock, disk: a.disk, registry: a.registry }); // 同 ctx/同 home/同源 = 热重载重装配
+  const b = makeHost({ clock, registry: a.registry, homeDir: a.home }); // 同 home / 同源 = 热重载重装配
   b.bridge.start();
   await waitFor(() => clock.pending() === 2, '新代排定两个定时器');
   const base = a.registry.state.calls;
@@ -338,6 +384,7 @@ test('T7-4d 热重载不留双份：释放旧代后重装配，触发次数不�
 });
 
 test('T7-4e 定时器一律走 ctx 受管服务；没有服务时不排（不用裸 setInterval）', async () => {
+  installPlugin({ version: '1.2.3' });
   const clock = fakeClock();
   const used: string[] = [];
   const port = update.ctxTimerPort({
@@ -357,6 +404,7 @@ test('T7-4e 定时器一律走 ctx 受管服务；没有服务时不排（不用
 
 /* ---------- ⑤ autoCheck 运行期状态 ---------- */
 test('T7-5a 形状与初值：从未自动检查过 → failing=false、lastFailureAt=null，三通电话都带', async () => {
+  installPlugin({ version: '1.2.3' });
   const h = withJob();
   const view = h.bridge.autoCheck();
   assert.deepEqual(Object.keys(view).sort(), ['failing', 'lastFailureAt', 'nextCheckAt'], 'autoCheck 三字段');
@@ -375,6 +423,7 @@ test('T7-5a 形状与初值：从未自动检查过 → failing=false、lastFail
 
 test('T7-5b 自动失败 → failing=true + lastFailureAt；任一成功（手动/自动）清空且不变式成立', async () => {
   const H = 3_600_000;
+  installPlugin({ version: '1.2.3' });
   const h = makeHost();
   h.registry.state.mode = 'fail';
   h.bridge.start();
@@ -401,7 +450,7 @@ test('T7-5b 自动失败 → failing=true + lastFailureAt；任一成功（手�
 });
 
 /* ---------- ⑥ 装配点（真跑 src/index.ts 的 apply()）：票面 §F.2 断言 ---------- */
-// 前五段都只**直接构造桥**，走不到「让位分支不建定时器」这条装配期顺序保证；本段用带
+// 前六段都只**直接构造桥**，走不到「让位分支不建定时器」这条装配期顺序保证；本段用带
 // `interval` / `timeout` 的 mock ctx 真跑 `apply()`，把顺序保证升级成断言（R6 整改项 2）。
 type ManagedTimer = { kind: 'interval' | 'timeout'; ms: number; id: number; live: boolean };
 /** 受管定时器桩：只登记、不真排（回调永不自动触发），按 kind + 延迟统计在册/已释放。 */
@@ -446,47 +495,45 @@ function assemblyCtx(timers: ReturnType<typeof managedTimers>, registerError?: s
 }
 
 test('T7-6a 装配点·让位分支：宿主报 already registered ⇒ 零受管定时器在册', async () => {
+  installPlugin({ version: '1.2.3' });
   const timers = managedTimers();
   const { ctx, routes } = assemblyCtx(timers, 'connection: exact Fetch route "/api/im-companion" is already registered');
-  const home = mkdtempSync(join(tmpdir(), 't7-assembly-'));
-  try {
-    hostEntry.apply(ctx, { dshHome: home });
-    await settle();
-    assert.equal(routes.length, 0, '让位分支不得注册路由');
-    assert.equal(timers.total(), 0, '让位分支不得留任何在册句柄（§F.2：那个实例不建更新能力）');
-    assert.equal(timers.seq.length, 0, '连「排过又释放」都不该有：让位分支在 createUpdateHostBridge 之前就 return 了');
-    assert.ok(timers.warns.some((w) => w.includes('already registered')), '应留 warn：' + JSON.stringify(timers.warns));
-  } finally { rmSync(home, { recursive: true, force: true }); }
+  const home = mkdtempSync(join(FIXTURE, 'assembly-'));
+  hostEntry.apply(ctx, { dshHome: home });
+  await settle();
+  assert.equal(routes.length, 0, '让位分支不得注册路由');
+  assert.equal(timers.total(), 0, '让位分支不得留任何在册句柄（§F.2：那个实例不建更新能力）');
+  assert.equal(timers.seq.length, 0, '连「排过又释放」都不该有：让位分支在 createUpdateHostBridge 之前就 return 了');
+  assert.ok(timers.warns.some((w) => w.includes('already registered')), '应留 warn：' + JSON.stringify(timers.warns));
   proof('assembly-yield', 'already registered ⇒ 0 路由 / 0 受管定时器');
 });
 
 test('T7-6b 装配点·正常路径：恰好 2 个在册句柄；经真路由改档位后周期仍一份', async () => {
   const H = 3_600_000;
+  installPlugin({ version: '1.2.3' });
   const timers = managedTimers();
   const { ctx, routes } = assemblyCtx(timers);
-  const home = mkdtempSync(join(tmpdir(), 't7-assembly-'));
-  try {
-    hostEntry.apply(ctx, { dshHome: home });
-    assert.equal(routes.length, 1, '正常路径必须注册 /api/im-companion 路由');
-    await waitFor(() => timers.total() === 2, '装配后排定两个受管定时器');
-    assert.equal(timers.live('interval', 24 * H), 1, '周期句柄恰一份（默认档位 24h）');
-    assert.equal(timers.live('timeout', 60_000), 1, '启动首查是一次性 60s：走 ctx.timeout，不是 ctx.interval');
-    assert.equal(timers.total(), 2, '在册总数恰 2（与实现实际在册数量一致）');
-    // 面板改档位：真路由 → `meta.update.set` → 桥 `sync()` → 释放旧档位句柄 + 建新档位句柄（首查槽不动）。
-    const response = await routes[0].fetch({
-      method: 'POST',
-      json: async () => ({
-        type: 'client-request', rpcId: 'a1', method: 'im-companion',
-        payload: { method: 'meta.update.set', payload: { autoCheckEnabled: true, intervalHours: 6 } },
-      }),
-    });
-    assert.equal(response.status, 200, 'meta.update.set 必须走通装配出来的真路由');
-    await waitFor(() => timers.live('interval', 6 * H) === 1, '改档位后新档位句柄在册');
-    await settle();
-    assert.equal(timers.live('interval'), 1, '周期句柄恒一份：旧档位那一份必须先释放');
-    assert.equal(timers.total(), 2, '在册总数仍 2（周期 + 首查）');
-    assert.ok(timers.released.includes('interval:' + 24 * H + '#0'), '旧档位句柄真被 dispose：' + JSON.stringify(timers.released));
-  } finally { rmSync(home, { recursive: true, force: true }); }
+  const home = mkdtempSync(join(FIXTURE, 'assembly-'));
+  hostEntry.apply(ctx, { dshHome: home });
+  assert.equal(routes.length, 1, '正常路径必须注册 /api/im-companion 路由');
+  await waitFor(() => timers.total() === 2, '装配后排定两个受管定时器');
+  assert.equal(timers.live('interval', 24 * H), 1, '周期句柄恰一份（默认档位 24h）');
+  assert.equal(timers.live('timeout', 60_000), 1, '启动首查是一次性 60s：走 ctx.timeout，不是 ctx.interval');
+  assert.equal(timers.total(), 2, '在册总数恰 2（与实现实际在册数量一致）');
+  // 面板改档位：真路由 → `meta.update.set` → 桥 `sync()` → 释放旧档位句柄 + 建新档位句柄（首查槽不动）。
+  const response = await routes[0].fetch({
+    method: 'POST',
+    json: async () => ({
+      type: 'client-request', rpcId: 'a1', method: 'im-companion',
+      payload: { method: 'meta.update.set', payload: { autoCheckEnabled: true, intervalHours: 6 } },
+    }),
+  });
+  assert.equal(response.status, 200, 'meta.update.set 必须走通装配出来的真路由');
+  await waitFor(() => timers.live('interval', 6 * H) === 1, '改档位后新档位句柄在册');
+  await settle();
+  assert.equal(timers.live('interval'), 1, '周期句柄恒一份：旧档位那一份必须先释放');
+  assert.equal(timers.total(), 2, '在册总数仍 2（周期 + 首查）');
+  assert.ok(timers.released.includes('interval:' + 24 * H + '#0'), '旧档位句柄真被 dispose：' + JSON.stringify(timers.released));
   proof('assembly-armed', '正常装配 2 个在册句柄；改档位后仍 1 周期 + 1 首查');
 });
 

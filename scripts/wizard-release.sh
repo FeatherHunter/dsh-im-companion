@@ -220,6 +220,19 @@ if (( FROM <= 1 )); then
   say "工作区 / 分支同步 / 版本三处一致 / 检查全链 / 公开物审计 —— 全自动跑，你只等结果。"
   note "版本：${TAG}（取自 package.json）"
 
+  # 更新包上游比对（#99）：用户装到的更新系统 = 我们这一版清单里 pin 的那一版（包不会自更新）。
+  # 所以发布前必须确认 pin = 官方源 latest；落后就打印修法并计入 FAILS（末尾会拦一次让人确认）。
+  # 确实要带着旧版发（例如上游刚发的版本有已知问题），用 WIZARD_SKIP_UPDATE_PKG=1 显式跳过。
+  if [[ "${WIZARD_SKIP_UPDATE_PKG:-0}" = "1" ]]; then
+    warn "WIZARD_SKIP_UPDATE_PKG=1：跳过更新包上游比对（不推荐）"
+  elif node scripts/sync-update-pkg.mjs >/tmp/wizard-update-pkg.log 2>&1; then
+    printf '  %s✓%s %s\n' "$GREEN" "$RESET" "$(tail -n 1 /tmp/wizard-update-pkg.log)"
+  else
+    printf '  %s✗%s 更新包不是官方源最新：\n' "$RED" "$RESET"
+    sed 's/^/      /' /tmp/wizard-update-pkg.log
+    FAILS=$((FAILS + 1))
+  fi
+
   chk "工作区干净（git status 无输出）" test -z "$(git status --porcelain)"
   chk "HEAD 与 origin/master 同步" test "$(git rev-parse HEAD)" = "$(git rev-parse origin/master)"
   chk "package.json 与 package-lock.json 版本一致" test "$VER" = "$(node -p "require('./package-lock.json').version")"

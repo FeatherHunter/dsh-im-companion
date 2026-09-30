@@ -33,6 +33,7 @@ function stageFile(rel: string): void {
   writeFileSync(dst, fixed);
 }
 const FILES = [
+  'src/features/update-center/derived.ts',
   'src/features/update-center/constants.ts',
   'src/features/update-center/phone.ts',
   'src/features/update-center/reasons.ts',
@@ -260,11 +261,24 @@ test('T8-4b 每拍只发一发 status（不叠加）；dispose 清干净；安�
   proof('poll-single', '不叠加；离开即清 + dispose 清表；install 复用/复检 receipt');
 });
 
-test('T8-4c 常量冻结值（包真身核对过的五条）', () => {
+test('T8-4c 派生常量 = 真包产物，且盘上产物无漂移（#99 起交给生成器）', async () => {
+  // ① 构建期那道闸门本身：`gen-update-constants.mjs`（无 --write 即比对模式）必须绿。
+  //    它比的是「盘上的 derived.ts」与「从**已安装的**更新包重新派生的正文」逐字节是否相同 ⇒ 改了 pin 忘重生成 = 这里红。
+  execFileSync(process.execPath, [join(REPO, 'scripts', 'gen-update-constants.mjs')], { stdio: 'pipe' });
+  // ② 独立对账（**不复用生成器的代码**）：直接向真包要这五个值，两边必须一致。
+  const pkg: any = await import('dsh-plugin-update');
+  const pkgDir = join(REPO, 'node_modules', 'dsh-plugin-update');
+  const pkgVersion = JSON.parse(readFileSync(join(pkgDir, 'package.json'), 'utf8')).version;
+  // 客户端入口不被 `exports` 暴露（上游只开 `.` 与 `./package.json`），按**文件 URL** 载入——上游文档说的"构建期用"。
+  const client: any = await import(new URL('dist/client.js', pathToFileURL(join(pkgDir, 'package.json'))).href);
+  const names = pkg.buildPhoneNames('imc');
   assert.deepEqual(
     [consts.UPD_STATUS, consts.UPD_CHECK, consts.UPD_INSTALL, consts.UPD_POLL, consts.UPD_POLL_MIN],
-    ['imc.updateStatus', 'imc.updateCheck', 'imc.updateInstall', 1000, 250]);
-  proof('constants', '五个常量与 dsh-plugin-update@0.1.1 派生结果一致');
+    [names.updateStatus, names.updateCheck, names.updateInstall, client.CLIENT_POLL.defaultMs, client.CLIENT_POLL.minMs],
+    '五个常量必须与更新包真身逐条一致');
+  assert.deepEqual(client.buildClientPhoneNames('imc'), names, '包内宿主侧与客户端侧同源（生成器也做这条交叉核对）');
+  assert.equal(consts.UPD_STATUS, 'imc.updateStatus', '前缀必须仍是 imc（与 src/host/update.ts 的 UPDATE_PHONE_PREFIX 同值）');
+  proof('constants', '五个常量 = dsh-plugin-update@' + pkgVersion + ' 的真身派生值；derived.ts 无漂移');
 });
 
 /* ---------- ⑤ manual 为空绝不产出命令 ---------- */

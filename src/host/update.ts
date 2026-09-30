@@ -1,49 +1,40 @@
-/** 更新系统宿主侧（T7 #90）：接线装配 + 回包信封 + 自动检查生命周期。
+/** 更新系统宿主侧（T7 #90 接线 → #99 升 0.2.0 后**大幅解耦**）。
  *
- * 本模块是 T7 的唯一出口，做四件事：
+ * 本模块现在只做三件事，其余全归更新包：
  * ① 按包真身调 `createHostUpdate`，把 `update.handlers` 的 3 个键交给 `src/host/rpc.ts` 的端点表；
- * ② 注入 `readerOverrides.{runningVersion, profileDir, readInstalled}`——**这三样是必需件不是可选优化**，
- *    理由链见 `update-paths.ts` / `update-reader.ts` 的头注（R3 实测：不注入 ⇒ `unknown-profile`；
- *    只注入 runningVersion ⇒ `installation-changed`、`canInstall` 恒假）；
- * ③ 本仓 `RpcResult` 信封：成功把包载荷 `{ok,snapshot,manual,receipt}` **原样**放进 `value`（字段名一个不改），
+ * ② 本仓 `RpcResult` 信封：成功把包载荷 `{ok,snapshot,manual,receipt}` **原样**放进 `value`（字段名一个不改），
  *    并在**同一位置**追加 `autoCheck` 运行期状态（与包的 `manual` 同级，三通电话一套代码路径）；
- *    包失败（`{ok:false,error,errorKind}`）走本仓失败通道，错误码按显式表映射、原载荷放 `details.update` 不吞掉；
- * ④ 自动检查调度器：默认开 / 24 h 一档 / 启动后 60 s 首查，定时器一律走宿主受管定时器。
+ *    包失败（`{ok:false,error,errorKind}`）走本仓失败通道，原因码**原样透传**（包 README §5.2 冻结了这组码，
+ *    本仓不自造第二套词表，也不做恒等映射表）。
+ * ③ 自动检查调度器：默认开 / 24 h 一档 / 启动后 60 s 首查，定时器一律走宿主受管定时器。
+ *
+ * ── #99 删掉了什么（0.2.0 原生接管，别再长回来）─────────────────────────────
+ * 0.1.x 认「插件装在哪、跑的是哪版」的唯一手段是 `containingPackage(import.meta.url, 目标包名)`——
+ * 起点是**更新包自己所在的目录**，按版本号装进 profile 后目标包是它的兄弟目录 ⇒ 必然 `unknown-profile`。
+ * 当时我们为此自写了 `update-reader.ts`（194 行：清单/安装/合法性/安装指纹全流程）与 `update-paths.ts`
+ * （92 行：包根、运行版本、使用范围目录），再用 `readerOverrides.{runningVersion,profileDir,readInstalled}` 注入。
+ * **0.2.0 起包自己按包名解析目标包**（清单直解 → 入口反查 → `node_modules` 步行 → 自锚定兜底），
+ * 使用范围目录由实装路径反推（`<范围>/node_modules/<目标包>`），安装指纹与合法性判定都在包内。
+ * ⇒ 两份自持实现整体删除，装配只留 `{ ctx, logCtx }` 两个参数（README §2 第 2 步的原样接线）。
+ * 唯一保留的注入是 `readerOverrides.homeDir`：它是**取值**不是实现（本仓 `dshHome` 可被插件配置覆盖，
+ * 而包的默认值只看 `DSH_HOME` 环境变量与家目录），传它才能保证更新落盘与本仓 `meta.json` 同源。
+ * 测试缝（`readerOverrides.*`、`timer`、`now`）保留：只做注入，不含任何解析逻辑。
+ *
  * 装配顺序（票面硬要求）：让位分支（`src/index.ts` 的 already registered 早退）上**不建任何定时器**——
- * 故本模块的构造函数**零副作用**（只读盘算路径），定时器只在 `start()` 里、且在让位分支之后才起。
+ * 故本模块的构造函数**零副作用**（只建能力、不碰盘、不排定时器），定时器只在 `start()` 里起。
  */
-import { createHostUpdate, detectEnvironmentKind } from 'dsh-plugin-update'
+import { createHostUpdate } from 'dsh-plugin-update'
 import type { UpdatePrefs } from './meta-store.js'
 import type { RpcResult } from './rpc.js'
-import { TARGET_PACKAGE_NAME, ownPackage, resolveProfileDir } from './update-paths.js'
-import { nodeUpdateReaderFs, readUpdateEnv, type UpdateReaderFs } from './update-reader.js'
 import { createUpdateScheduler, type TimerPort, type UpdateScheduler } from './update-schedule.js'
 
 export const UPDATE_PLUGIN_ID = 'dsh-im-companion'
 /** 电话名前缀：包冻结 `buildPhoneNames` 的拼法为 `<前缀>.<动作>`，故前缀只能是单段（T4 §3.7）。 */
 export const UPDATE_PHONE_PREFIX = 'imc'
+/** 目标包名：要检查/安装更新的那个包就是本插件自己（包按它反推使用范围目录）。 */
+export const TARGET_PACKAGE_NAME = 'dsh-im-companion'
 /** 端点名（= 电话名，票面定死）：`rpc.ts` 的 case 标签必须与它逐字一致；verify 断言包给的电话名等于它。 */
 export const UPDATE_ENDPOINTS = ['imc.updateStatus', 'imc.updateCheck', 'imc.updateInstall'] as const
-
-/** 更新包错误码白名单（`dist/host.js:142-156` 的 13 个）→ 本仓错误码的**显式映射**。
- *  本仓既有先例是把上游冻结 token 原样当错误码用（`src/client/data/binding-commit.ts:48` 判 `workspace-bot-not-found`），
- *  故这里保持同形：已知 token 原样透传（**不吞掉**），白名单外折叠为本仓通用码 `internal`（**不自造一套**）；
- *  包的原始 token 与 `errorKind` 同时进 `message` / `details`，信息零丢失。 */
-export const UPDATE_ERROR_CODES: Record<string, string> = {
-  'check-failed': 'check-failed',
-  'invalid-release': 'invalid-release',
-  'check-expired': 'check-expired',
-  'update-busy': 'update-busy',
-  'install-failed': 'install-failed',
-  'unknown-profile': 'unknown-profile',
-  'source-install': 'source-install',
-  'invalid-installation': 'invalid-installation',
-  'installation-changed': 'installation-changed',
-  'pending-restart': 'pending-restart',
-  'incompatible-node': 'incompatible-node',
-  'registry-conflict': 'registry-conflict',
-  'recovery-required': 'recovery-required',
-}
 
 /** 偏好存取端口：`AgentMetaStore` 结构性满足它（落盘沿用 host `meta.json`，不新建文件、不碰 localStorage）。 */
 export interface UpdatePrefsStore {
@@ -57,20 +48,24 @@ export interface UpdateBridgeLogger {
   warn?(message: string): void
 }
 
+/** 包的事件日志口（README §6.11：按插件标识过滤 `host.call` / `host.call.fail` / `update.install.exec`）。
+ *  只做形状适配——包调 `fire(level, event, fields)`，本仓 logger 只有 info/warn；`fields` 是包定义的脱敏字段。 */
+export interface UpdateLogContext {
+  fire?(level: string, event: string, fields: Record<string, unknown>): void
+}
+
 export interface UpdateHostOptions {
   ctx: unknown
   store: UpdatePrefsStore
+  /** 本仓家目录（`config.dshHome` → `DSH_HOME` → `~/.dsh`）。作为**取值**交给包，保证两侧落盘同源。 */
   dshHome: string
   logger?: UpdateBridgeLogger
-  /** 显式使用范围名（缺省由 `resolveProfileDir` 认领）。 */
-  profileName?: string
-  /** ── 以下皆为测试/门禁缝，缺省即生产口径 ── */
-  runningVersion?: string
-  profileDir?: string
+  /** 事件日志口；缺省由 `logger` 拼一个（warn/error 走 warn，其余走 info）。 */
+  logCtx?: UpdateLogContext
+  /** ── 以下皆为测试/门禁缝，缺省即生产口径（不含任何解析逻辑） ── */
+  readerOverrides?: Record<string, unknown>
   timer?: TimerPort
   now?: () => number
-  readerFs?: UpdateReaderFs
-  readerOverrides?: Record<string, unknown>
   firstDelayMs?: number
   retryDelayMs?: number
 }
@@ -115,38 +110,30 @@ export function ctxTimerPort(ctx: unknown): TimerPort | null {
   }
 }
 
+/** 事件日志口缺省实现：把包的 `fire(level, event, fields)` 翻成宿主日志一行。 */
+function defaultLogContext(logger: UpdateBridgeLogger): UpdateLogContext {
+  return {
+    fire(level, event, fields) {
+      const line = event + ' ' + JSON.stringify(fields)
+      if (level === 'warn' || level === 'error') logger.warn?.(line)
+      else logger.info?.(line)
+    },
+  }
+}
+
 export function createUpdateHostBridge(options: UpdateHostOptions): UpdateHostBridge {
   const logger = options.logger ?? {}
   const now = options.now ?? ((): number => Date.now())
-  const own = ownPackage()
-  const runningVersion = options.runningVersion ?? own?.version ?? ''
-  const profileDir = options.profileDir
-    ?? resolveProfileDir({ dshHome: options.dshHome, selfDir: own?.directory ?? null, profileName: options.profileName })
-  const readerFs = options.readerFs ?? nodeUpdateReaderFs
-  const environmentKind = detectEnvironmentKind(options.ctx)
-  // 注入必须在**首次调用**就带：`dist/host.js:93` 的单例键不含 `readInstalled`，同进程内先建过读取器就吃不上
-  // （`__resetSharedUpdateReaderForTests` 只给测试）。`overrides` 在构造期定版，故首调必然带上。
-  const overrides: Record<string, unknown> = {
-    runningVersion,
-    profileDir,
-    homeDir: options.dshHome,
-    readInstalled: () => readUpdateEnv({
-      profileDir,
-      runningVersion,
-      homeDir: options.dshHome,
-      environmentKind,
-      pluginId: UPDATE_PLUGIN_ID,
-      targetPackageName: TARGET_PACKAGE_NAME,
-      fs: readerFs,
-    }),
-    ...options.readerOverrides,
-  }
-  const autoState: { failing: boolean; lastFailureAt: number | null } = { failing: false, lastFailureAt: null }
   const packageHost = createHostUpdate(
-    { ctx: options.ctx, logCtx: null, readerOverrides: overrides },
+    {
+      ctx: options.ctx,
+      logCtx: options.logCtx ?? defaultLogContext(logger),
+      readerOverrides: { homeDir: options.dshHome, ...options.readerOverrides },
+    },
     { pluginId: UPDATE_PLUGIN_ID, prefix: UPDATE_PHONE_PREFIX, targetPackageName: TARGET_PACKAGE_NAME },
   )
   const phone = packageHost.phoneNames
+  const autoState: { failing: boolean; lastFailureAt: number | null } = { failing: false, lastFailureAt: null }
   let scheduler: UpdateScheduler | null = null
   let disposed = false
 
@@ -188,12 +175,13 @@ export function createUpdateHostBridge(options: UpdateHostOptions): UpdateHostBr
     reply(pkgReply: unknown): RpcResult {
       const row = asRecord(pkgReply)
       if (row?.ok === true) return { ok: true, value: { ...row, autoCheck: autoCheckView() } }
-      const token = typeof row?.error === 'string' ? row.error : ''
+      // 原因码原样透传（包 README §5.2 的八种阻塞 + 五种失败码就是本仓词表，不再维护第二份）。
+      const token = typeof row?.error === 'string' && row.error ? row.error : 'internal'
       return {
         ok: false,
         error: {
-          code: UPDATE_ERROR_CODES[token] ?? 'internal',
-          message: token || 'internal',
+          code: token,
+          message: token,
           details: { errorKind: row?.errorKind ?? null, update: row ?? null },
         },
       }
@@ -224,7 +212,7 @@ export function createUpdateHostBridge(options: UpdateHostOptions): UpdateHostBr
       void Promise.resolve(options.store.load()).catch(() => {}).then(() => {
         if (disposed) return
         scheduler?.start(options.store.updatePrefs())
-        logger.info?.('[update] 自动检查已装配：使用范围 ' + profileDir + '，下次 ' + String(scheduler?.nextCheckAt() ?? null))
+        logger.info?.('[update] 自动检查已装配，下次 ' + String(scheduler?.nextCheckAt() ?? null))
       })
     },
     /** 显式释放：卸载 / 让位早退走它（幂等）。 */

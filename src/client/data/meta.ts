@@ -22,6 +22,8 @@ export interface AgentMetaDoc {
   ctxEnhance: Record<string, CtxEnhance>
   /** E4 P 进门记忆（工作区全路径 → true）：旧快照缺字段时读方 ?? {} 兜底（optional，零破坏）。 */
   welcomed?: Record<string, boolean>
+  /** 动效开关偏好（#98 presence 追加）：旧快照 / 旧宿主缺字段时读方一律按 false（动效开）兜底（optional，零破坏）。 */
+  motion?: { manualReduced?: boolean }
 }
 
 export const EMPTY_META: AgentMetaDoc = { names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {} }
@@ -40,6 +42,8 @@ export interface MetaStore {
   setCtx(key: string, cfg: { enabled: boolean; level: string }): Promise<void>
   /** E4 P 进门记忆写（seen=false 时清除该工作区记录，解绑重现用）。 */
   setWelcomed(workspace: string, seen: boolean): Promise<void>
+  /** #98 动效开关写（Added-only 可选：Rpc 走 host 落盘，Local 走 localStorage 镜像）。 */
+  setMotion?(manualReduced: boolean): Promise<void>
 }
 
 /** 经 host 桥调用（channel 前缀 + 信封），由 host 侧持久化到 meta.json。 */
@@ -89,6 +93,10 @@ export class RpcMetaStore implements MetaStore {
   async setWelcomed(workspace: string, seen: boolean): Promise<void> {
     await this.call('meta.welcomed.set', { workspace, seen })
   }
+  /** #98 动效开关写（Rpc 直达 host 落盘；旧宿主无此 case 时抛错由调用方吞掉）。 */
+  async setMotion(manualReduced: boolean): Promise<void> {
+    await this.call('meta.motion.set', { manualReduced })
+  }
 }
 
 /** localStorage 降级实现（兼容历史键名 af-fleet-names / af-fleet-avatars / af-fleet-agents）。 */
@@ -99,6 +107,8 @@ export class LocalMetaStore implements MetaStore {
   private readonly K_PRESETS = 'af-fleet-presets'
   private readonly K_CTX = 'af-fleet-ctx'
   private readonly K_WELCOMED = 'af-fleet-welcomed'
+  /** #98 动效开关本地镜像（host 不可用时的降级持久化；同 profile 浏览器重启仍在）。 */
+  private readonly K_MOTION = 'af-fleet-motion'
 
   constructor(private readonly storage: Storage | null) {}
 
@@ -127,7 +137,8 @@ export class LocalMetaStore implements MetaStore {
     const presets = this.readJson<Record<string, string>>(this.K_PRESETS, {})
     const ctxEnhance = this.readJson<Record<string, CtxEnhance>>(this.K_CTX, {})
     const welcomed = this.readJson<Record<string, boolean>>(this.K_WELCOMED, {})
-    return { names, avatars, locals, presets, ctxEnhance, welcomed }
+    const motion = this.readJson<{ manualReduced?: unknown }>(this.K_MOTION, {})
+    return { names, avatars, locals, presets, ctxEnhance, welcomed, motion: { manualReduced: motion?.manualReduced === true } }
   }
 
   async rename(key: string, name: string): Promise<void> {
@@ -183,6 +194,11 @@ export class LocalMetaStore implements MetaStore {
     if (seen) map[workspace] = true
     else delete map[workspace]
     this.writeJson(this.K_WELCOMED, map)
+  }
+  /** #98 动效开关本地镜像写（只有字面布尔才落盘，非法值忽略）。 */
+  async setMotion(manualReduced: boolean): Promise<void> {
+    if (typeof manualReduced !== 'boolean') return
+    this.writeJson(this.K_MOTION, { manualReduced })
   }
 }
 

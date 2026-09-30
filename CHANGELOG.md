@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## v0.2.0 — 2026-09-30
+
+主题：**更新系统升 `dsh-plugin-update@0.2.0` + 发布侧自动跟随**（#99）——用户装到/更新到的插件一定带最新更新系统；另含 presence 动效开关搬家（#98）。
+
+改动：
+
+- 更新包 pin `0.1.1 → 0.2.0`（exact，官方源）：包自己按包名解析目标包并反推使用范围，`installation-changed` 假阳性与 `unknown-profile` 根因由包原生接管。
+- 解耦：删除自持的 `src/host/update-reader.ts`（194 行）与 `src/host/update-paths.ts`（92 行）；宿主侧只传 `homeDir` 取值，不再传 `runningVersion` / `profileDir` / `readInstalled`；客户端电话名与轮询间隔不再手抄，改为构建期从已安装包派生（`scripts/gen-update-constants.mjs`，双侧交叉核对，不一致构建直接红）。
+- 发布侧三闸门：`npm run build` 前置派生比对、`npm run check:update-pkg` 比对官方源 latest、`wizard-release.sh` 阶段 1 内置（落后即 ✗）；升级动作用 `npm run sync:update-pkg`（装 latest + 重生成常量）。
+- presence（#98）：动效开关从右下角悬浮胶囊搬进左栏筛选条（收起钮左侧 14×14 绿点）；偏好经 `meta.motion.set` 落盘、读走既有 `meta.get` 快照；条带缺席 fail-closed 不画。
+
+验证与影响：
+
+- `npm run check` 全链通过；`update-host` 14 pass / `update-center` 18 pass（含零解析类 override 真布局夹具）；`sync-update-pkg` 确认 pin = 官方源 latest = 0.2.0。
+- 真机验收与 0.1.18 发布（浏览器授权）见发布记录；`gh` token 失效期间 Release 需补建。
+
 ## v0.1.17 — 2026-09-17
 
 主题：**更新中心「装不了」不再无声无息**（#96）——安装失败后既不静默翻回"发现新版本"，也不再把人困在没有出口的状态里。

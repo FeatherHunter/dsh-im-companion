@@ -1,6 +1,6 @@
 {
   "name": "dsh-im-companion",
-  "version": "0.1.17",
+  "version": "0.2.0",
   "dshImCompat": {
     "verified": "4.21.1",
     "range": ">=4.17.1 || <=4.17.0"
@@ -51,11 +51,14 @@
     "typescript": "7.0.2"
   },
   "scripts": {
-    "build": "npm run build:host && npm run build:client",
+    "build": "node scripts/gen-update-constants.mjs && npm run build:host && npm run build:client",
     "build:host": "tsc -p tsconfig.json",
     "build:client": "tsdown",
+    "gen:update-constants": "node scripts/gen-update-constants.mjs --write",
+    "check:update-pkg": "node scripts/sync-update-pkg.mjs",
+    "sync:update-pkg": "node scripts/sync-update-pkg.mjs --apply",
     "typecheck": "tsc -p tsconfig.client.json",
-    "verify": "node tools/verify/render-client.ts && node --test tools/verify/features/first-view.ts && node --test tools/verify/features/left-badges.ts && node --test tools/verify/features/detail-drawer.ts && node --test tools/verify/features/left-filter.ts && node --test tools/verify/features/adopt.ts && node --test tools/verify/features/presence.ts && node --test tools/verify/features/welcome-banner.ts && node --test tools/verify/features/fleet-radar.ts && node --test tools/verify/features/session-header-model.ts && node tools/verify/features/session-header-render.ts && node --test tools/verify/features/connect-qr.ts && node --test tools/verify/features/truth-flags.ts && node --test tools/verify/features/session-marks.ts && node --test tools/verify/features/design-preview.ts && node --test tools/verify/features/rpc-dual-transport.ts && node --test tools/verify/host-entry.ts && node --test tools/verify/features/update-host.ts && node --test tools/verify/features/update-center.ts",
+    "verify": "node tools/verify/render-client.ts && node --test tools/verify/features/first-view.ts && node --test tools/verify/features/left-badges.ts && node --test tools/verify/features/detail-drawer.ts && node --test tools/verify/features/left-filter.ts && node --test tools/verify/features/adopt.ts && node --test tools/verify/features/presence.ts && node --test tools/verify/features/presence-host.ts && node --test tools/verify/features/welcome-banner.ts && node --test tools/verify/features/fleet-radar.ts && node --test tools/verify/features/session-header-model.ts && node tools/verify/features/session-header-render.ts && node --test tools/verify/features/connect-qr.ts && node --test tools/verify/features/truth-flags.ts && node --test tools/verify/features/session-marks.ts && node --test tools/verify/features/design-preview.ts && node --test tools/verify/features/rpc-dual-transport.ts && node --test tools/verify/host-entry.ts && node --test tools/verify/features/update-host.ts && node --test tools/verify/features/update-center.ts",
     "guard": "node tools/guard/check-lines.ts",
     "check": "npm run build && npm run typecheck && npm run verify && npm run guard"
   },
@@ -74,6 +77,6 @@
     }
   },
   "dependencies": {
-    "dsh-plugin-update": "0.1.1"
+    "dsh-plugin-update": "0.2.0"
   }
 }

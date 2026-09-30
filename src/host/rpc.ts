@@ -143,6 +143,12 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           opts.update?.()?.sync()
           return ok({})
         }
+        // ── #98 追加：动效开关偏好写入（**读**走既有 `meta.get` 全量快照，不新增读端点；与 #90 同款）。
+        case 'meta.motion.set': {
+          if (typeof p.manualReduced !== 'boolean') return fail('bad-request', 'manualReduced 必须是布尔')
+          await store.setMotion({ manualReduced: p.manualReduced })
+          return ok({})
+        }
         case 'routes.list': {
           const bots = Array.isArray(p.bots) ? p.bots as { channel?: unknown; botId?: unknown }[] : null
           if (!bots) return fail('bad-request', 'bots 数组必填')

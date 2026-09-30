@@ -20,6 +20,12 @@ export interface UpdatePrefs {
   intervalHours: number
 }
 
+/** 动效开关偏好（#98 presence 追加，形状定死）：`manualReduced=true` = 用户手动关了在场感动效（左栏呼吸全停）。
+ *  与 `update` 同款：默认值只在本文件定义一处；旧 meta.json 缺 `motion` 段时由 `normalizeMotionPrefs` 折回默认。 */
+export interface MotionPrefs {
+  manualReduced: boolean
+}
+
 export interface AgentMetaDoc {
   version: 1
   names: Record<string, string>
@@ -32,6 +38,8 @@ export interface AgentMetaDoc {
   welcomed: Record<string, boolean>
   /** 更新中心自动检查偏好（T7 #90 追加；旧 meta.json 缺字段时读方兜底默认值，不是 undefined）。 */
   update: UpdatePrefs
+  /** 动效开关偏好（#98 presence 追加；同上——旧 meta.json 缺 `motion` 段时折回默认 false = 动效开）。 */
+  motion: MotionPrefs
 }
 
 /** 档位取值集合（6/12/24 小时、每周）；非法值由 `materialize` 折回默认，写入方（`meta.update.set`）另报 bad-request。 */
@@ -53,7 +61,16 @@ export function normalizeUpdatePrefs(input: unknown): UpdatePrefs {
   }
 }
 
-const EMPTY: AgentMetaDoc = { version: 1, names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: {}, update: { ...DEFAULT_UPDATE_PREFS } }
+/** 动效开关默认值单点：`{ manualReduced: false }`——没写过偏好即动效开（与搬家前行为一致）。 */
+export const DEFAULT_MOTION_PREFS: MotionPrefs = { manualReduced: false }
+
+/** 把盘上读到的任意形状折成合法偏好：**只有字面 `true` 才算「手动关」**，缺失/非法一律 false（旧 meta.json 无 `motion` 段即走这条）。 */
+export function normalizeMotionPrefs(input: unknown): MotionPrefs {
+  const row = (input && typeof input === 'object' ? input : {}) as { manualReduced?: unknown }
+  return { manualReduced: row.manualReduced === true }
+}
+
+const EMPTY: AgentMetaDoc = { version: 1, names: {}, avatars: {}, locals: [], presets: {}, ctxEnhance: {}, welcomed: {}, update: { ...DEFAULT_UPDATE_PREFS }, motion: { ...DEFAULT_MOTION_PREFS } }
 
 function sanitizeString(value: unknown, max = 512): string {
   if (typeof value !== 'string') return ''
@@ -82,6 +99,7 @@ export class AgentMetaStore {
       ctxEnhance: Object.fromEntries(Object.entries(this.doc.ctxEnhance).map(([k, v]) => [k, { ...v }])),
       welcomed: { ...this.doc.welcomed },
       update: { ...this.doc.update },
+      motion: { ...this.doc.motion },
     }
   }
 
@@ -98,6 +116,7 @@ export class AgentMetaStore {
           ctxEnhance: cleanCtxRecord(parsed.ctxEnhance),
           welcomed: cleanWelcomedRecord(parsed.welcomed),
           update: normalizeUpdatePrefs(parsed.update),
+          motion: normalizeMotionPrefs(parsed.motion),
           locals: Array.isArray(parsed.locals)
             ? parsed.locals
                 .filter((l) => l && typeof l.name === 'string')
@@ -217,6 +236,15 @@ export class AgentMetaStore {
     await this.load()
     if (typeof input?.autoCheckEnabled !== 'boolean' || !isUpdateIntervalHours(input.intervalHours)) return
     this.doc.update = { autoCheckEnabled: input.autoCheckEnabled, intervalHours: input.intervalHours }
+    await this.persist()
+  }
+
+  /** 写动效开关偏好（#98）：非法值静默不动（与 `setUpdate` 同风格），
+   *  调用方（`meta.motion.set`）在写前已判类型并回 `bad-request`。 */
+  async setMotion(input: { manualReduced?: unknown }): Promise<void> {
+    await this.load()
+    if (typeof input?.manualReduced !== 'boolean') return
+    this.doc.motion = { manualReduced: input.manualReduced }
     await this.persist()
   }
 }
