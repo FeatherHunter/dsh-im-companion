@@ -195,9 +195,6 @@ cd "$ROOT" || exit 1
 ENV_FILE=".wizard-release.env"
 VER="$(node -p "require('./package.json').version" 2>/dev/null || true)"
 TAG="v${VER}"
-# 宿主兼容版本（#79 标记）：唯一真相 = package.json.dshCompat.verified，构建时注入 client 半。
-# 检查锚「版本号」而非胶囊标签文案——胶囊文案随版式改过（#82 已去「宿主」前缀），锚文案必假报警。
-HOSTCOMPAT="$(node -p "require('./package.json').dshCompat.verified" 2>/dev/null || true)"
 # 断点续跑：发布已成功、只差复核/打标/Release 时，用 WIZARD_FROM=4 直接续跑。
 FROM="${WIZARD_FROM:-1}"
 
@@ -238,7 +235,7 @@ if (( FROM <= 1 )); then
   chk "package.json 与 package-lock.json 版本一致" test "$VER" = "$(node -p "require('./package-lock.json').version")"
   chk "CHANGELOG 有 ${TAG} 条目" grep -q "^## ${TAG}" CHANGELOG.md
   chk "host 半是 fetch.register 版（非 rpc.handle）" grep -q "connection.fetch.register" lib/index.js
-  chk "client 半含宿主兼容版本标记（dshCompat.verified=${HOSTCOMPAT:-未声明}）" grep -qF "${HOSTCOMPAT:-@NO_HOST_COMPAT_MARKER@}" lib/client.js
+  chk "client 半无宿主胶囊残留（面板宿主胶囊已删）" test "$(grep -c "af-cap--host" lib/client.js || true)" = "0"
 
   if [[ "${WIZARD_SKIP_CHECK:-0}" = "1" ]]; then
     warn "WIZARD_SKIP_CHECK=1：跳过 npm run check（不推荐）"
@@ -360,10 +357,10 @@ if (( FROM <= 4 )); then
       else
         printf '  %s✗%s 公开包的 host 半仍是旧版（rpc.handle）—— 别关票\n' "$RED" "$RESET"
       fi
-      if grep -qF "${HOSTCOMPAT:-@NO_HOST_COMPAT_MARKER@}" "$VERIFYDIR/package/lib/client.js"; then
-        printf '  %s✓%s 公开包标出了宿主兼容版本\n' "$GREEN" "$RESET"
+      if grep -q "af-cap--host" "$VERIFYDIR/package/lib/client.js"; then
+        printf '  %s✗%s 公开包 client 半还有宿主胶囊残留 —— 别关票\n' "$RED" "$RESET"
       else
-        printf '  %s✗%s 公开包缺宿主兼容标记\n' "$RED" "$RESET"
+        printf '  %s✓%s 公开包 client 半无宿主胶囊（已删干净）\n' "$GREEN" "$RESET"
       fi
     fi
     open_url "https://www.npmjs.com/package/${PKG}"

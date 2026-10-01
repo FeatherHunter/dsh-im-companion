@@ -45,7 +45,6 @@ const clientBundle: UserConfig = {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
     __PLUGIN_VERSION__: JSON.stringify(pluginVersion()),
     __DSH_IM_COMPAT__: JSON.stringify(compatField('dshImCompat', ['verified', 'range'])),
-    __DSH_COMPAT__: JSON.stringify(compatField('dshCompat', ['verified', 'requires'])),
   },
   deps: {
     neverBundle: [...CLIENT_EXTERNALS],

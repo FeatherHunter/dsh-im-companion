@@ -109,7 +109,7 @@ dsh plugin --profile desktop remove dsh-im-companion
 | 0.1.6 | 4.17.1 | **web profile 装配失败**（host 半走已退役的前缀路由，报 `cannot get property "webServer" without inject`）→ 请升级 0.1.7 |
 | 0.1.4 | ≤4.17.0 | dsh-im 4.17.1 改道后不可用（接入向导报 HTTP 405），请升级到 0.1.7 |
 
-宿主 `@deepseek-ai/dsh` **0.2.0-rc.2** 已验证（**0.2.1 配的就是这个宿主版本**；要求宿主提供 `connection.fetch`；更老宿主会在装配期显式报错，不静默降级）。面板右上角并列三枚版本胶囊，颜色即身份：紫=本插件版本号、蓝白=兼容的 `dsh-im` 版本（`dsh-im 4.21.1`）、黑白=已验证的宿主 `dsh` 版本（`dsh 0.2.0-rc.2`）；胶囊只留轴名 + 版本号，完整口径在悬停（值来自 `package.json`，构建时注入），升级前看一眼即可。
+宿主 `@deepseek-ai/dsh` **0.2.0-rc.2** 已验证（**0.2.1 配的就是这个宿主版本**；要求宿主提供 `connection.fetch`；更老宿主会在装配期显式报错，不静默降级）。面板右上角并列两枚版本胶囊，颜色即身份：紫=本插件版本号、蓝白=兼容的 `dsh-im` 版本（`dsh-im 4.21.1`）；宿主 dsh 胶囊已删（用户裁定 2026-10-01），宿主兼容口径只留本小节与市场徽章（`engines.dsh`）。胶囊只留轴名 + 版本号，完整口径在悬停（值来自 `package.json`，构建时注入），升级前看一眼即可。
 
 </div>
 

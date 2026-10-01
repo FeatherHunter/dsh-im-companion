@@ -194,9 +194,9 @@ test('回归钉：宿主不提供 fetch.register 时装配必须失败（证明�
 
 // ── 宿主要求声明（市场兼容徽章 / dshmarket）──────────────────────────────
 // 市场给每个条目挂一枚宿主兼容徽章，数据源是 npm manifest 的 `engines.dsh`；缺了它就显示
-// 「未声明宿主要求」。本仓宿主兼容的唯一真相是 package.json.dshCompat（构建注入面板，见
-// tsdown.config.ts 的 __DSH_COMPAT__），故 range 与 engines.dsh 必须同字 —— 面板说的与市场
-// 说的不能是两句话。
+// 「未声明宿主要求」。本仓宿主兼容的唯一真相是 package.json.dshCompat（市场徽章读 engines.dsh，
+// 故 range 与 engines.dsh 必须同字 —— 市场说的与真相源不能是两句话）。
+// 面板宿主胶囊已删（用户裁定 2026-10-01）：dshCompat 不再构建注入 client，面板只留自家版本 + dsh-im 两枚胶囊。
 //
 // 下界证据链（本文件上面的断言已证明 host 半依赖 connection.fetch.register）：逐版本拆
 // @deepseek-ai/dsh-client-connection 得 —— ≤0.1.1-rc.2 只有 `fetch: RpcFetch`、没有 register；
@@ -208,7 +208,7 @@ test('宿主要求：engines.dsh 与 dshCompat.range 同字，下界 = fetch.reg
   assert.equal(typeof range, 'string', 'package.json 应有 dshCompat.range（宿主要求唯一真相）');
   assert.ok(String(range).trim().length > 0, 'dshCompat.range 不能为空');
   assert.equal(pkg?.engines?.dsh, range,
-    'engines.dsh 必须与 dshCompat.range 逐字一致：市场徽章读 engines.dsh，面板读 dshCompat 的注入');
+    'engines.dsh 必须与 dshCompat.range 逐字一致：市场徽章读 engines.dsh（面板宿主胶囊已删，不再注入 client）');
   assert.ok(String(range).startsWith('>=0.1.2-alpha.2 '),
     `下界必须是 fetch.register 的引入版 0.1.2-alpha.2；小于它装配期必炸，改前先重跑版本证据。实为 ${String(range)}`);
   console.log('#79-PROOF host-requirement ' + String(range) + ' PASS');

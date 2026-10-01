@@ -103,8 +103,9 @@ const text = (container as any).textContent as string;
 console.log('---- rendered text (first 700) ----');
 console.log(text.slice(0, 700));
 
-/* #79 宿主兼容标记 / #82 三色胶囊：值由构建从 package.json 注入，故断言按真相源推导，
- * 不在测试里再抄一份版本号（宿主 / 上游换版本时这里自动跟随）。 */
+/* #82 两色胶囊：值由构建从 package.json 注入，故断言按真相源推导，
+ * 不在测试里再抄一份版本号（宿主 / 上游换版本时这里自动跟随）。
+ * 宿主胶囊已删（用户裁定 2026-10-01）：此处断言它**不在**渲染文本里。 */
 const pkg: any = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8'));
 const pluginVersion: string = pkg?.version ?? '';
 const dshImCompatVerified: string = pkg?.dshImCompat?.verified ?? '';
@@ -130,7 +131,7 @@ const checks: [string, boolean][] = [
   ['引流关联卡 P2(#26)', text.includes('作者其他插件')],
   ['自家版本胶囊 紫(#82)', pluginVersion !== '' && text.includes('v' + pluginVersion)],
   ['上游胶囊 dsh-im(#82)', dshImCompatVerified !== '' && text.includes('dsh-im ' + dshImCompatVerified)],
-  ['宿主胶囊 dsh(#82)', dshCompatVerified !== '' && text.includes('dsh ' + dshCompatVerified)],
+  ['宿主胶囊已删(2026-10-01)', dshCompatVerified === '' || !text.includes('dsh ' + dshCompatVerified)],
   ['副标已删(#82)', !text.includes('IM COMPANION · 辅助插件')],
   ['页面干净-无解释词', !text.includes('解耦') && !text.includes('试验') && !text.includes('B1 ')],
   ['显示工作区绑定', text.includes('工作区·D:')],

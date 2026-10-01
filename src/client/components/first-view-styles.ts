@@ -60,12 +60,11 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 /* #82 三色版本胶囊（用户裁定：颜色即身份，文案只留轴名 + 版本号）：
  * 紫 = 本插件 / 蓝白 = 兼容的 dsh-im / 黑白 = 宿主 dsh（DeepSeek 黑白风）。
  * 色相固定（紫 #8b5cf6、上游蓝 #3370ff——与 icons.ts 渠道品牌色同源先例），
- * 明度与主题前景色混合 → 深浅两套主题都读得清；宿主走单色别名，天然跟随主题。 */
+ * 明度与主题前景色混合 → 深浅两套主题都读得清。 */
 .af-verbox { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
 .af-cap { display: inline-flex; align-items: center; font-size: 10px; line-height: 15px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid transparent; text-decoration: none; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .af-cap--self { color: color-mix(in srgb, #8b5cf6 62%, var(--af-primary)); background: color-mix(in srgb, #8b5cf6 16%, transparent); border-color: color-mix(in srgb, #8b5cf6 45%, transparent); }
 .af-cap--im { color: color-mix(in srgb, #3370ff 62%, var(--af-primary)); background: color-mix(in srgb, #3370ff 14%, transparent); border-color: color-mix(in srgb, #3370ff 42%, transparent); }
-.af-cap--host { color: color-mix(in srgb, #8e8e93 58%, var(--af-primary)); background: color-mix(in srgb, #8e8e93 14%, transparent); border-color: color-mix(in srgb, #8e8e93 46%, transparent); }
 .af-cap:hover { border-color: currentColor; }
 
 @media (prefers-reduced-motion: reduce) {

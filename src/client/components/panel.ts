@@ -23,9 +23,6 @@ import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir
 declare const __PLUGIN_VERSION__: string | undefined
 /* #78：构建注入的 dsh-im 兼容信息（tsdown define __DSH_IM_COMPAT__，package.json.dshImCompat 唯一真相）。 */
 declare const __DSH_IM_COMPAT__: { verified?: string; range?: string } | undefined
-/* #79：构建注入的宿主（@deepseek-ai/dsh）兼容信息（tsdown define __DSH_COMPAT__，package.json.dshCompat 唯一真相）。
- * 宿主是**会打破插件**的那条轴（#79 就是宿主侧装配失败），故与 dsh-im 轴并列标出。 */
-declare const __DSH_COMPAT__: { verified?: string; requires?: string } | undefined
 
 function pluginVersion(): string {
   try {
@@ -47,17 +44,6 @@ function pluginCompat(): { verified: string; range: string } {
   return { verified: '', range: '' }
 }
 
-/** #79 已验证宿主版本（无注入环境回退空，chip 隐藏；绝不硬编码版本号）。 */
-function hostCompat(): { verified: string; requires: string } {
-  try {
-    const c = typeof __DSH_COMPAT__ === 'object' && __DSH_COMPAT__ !== null ? __DSH_COMPAT__ : undefined
-    if (c) return { verified: String(c.verified ?? ''), requires: String(c.requires ?? '') }
-  } catch {
-    /* 同上 */
-  }
-  return { verified: '', requires: '' }
-}
-
 export function FleetPanel(ctx: unknown): HTMLElement {
   const rpc: RpcCall | null = extractRpc(ctx)
   const data = createPanelData(rpc)
@@ -66,15 +52,16 @@ export function FleetPanel(ctx: unknown): HTMLElement {
 
   /* ---------- 静态骨架 ---------- */
   const title = h('h1', { className: 'af-title' }, copy.title)
-  /* #82：副标（IM COMPANION · 辅助插件）整行删除——548px 宽实测单行塞不下，让位给标题与三色版本胶囊。 */
+  /* #82：副标（IM COMPANION · 辅助插件）整行删除——548px 宽实测单行塞不下，让位给标题与两色版本胶囊。 */
   /* D 标题不独占行：计数行收起（计数看分段后缀），元素保留隐藏位供 body 兼容。 */
   const titleMeta = h('div', { className: 'af-title-meta' }, '')
   titleMeta.hidden = true
   const plusBtn = makeIconButton({ iconName: 'plus', label: copy.plus, title: copy.plus })
   /* #56 右上组（对标 deck SettingsPage：版本小字可点跳仓库 + Star/Issue 双按钮）。
    * #78 版本组：自家版本 + 兼容标记（dsh-im）同行成组；
-   * #82 改「三色胶囊」——颜色即身份（用户裁定）：紫=自家 / 蓝白=兼容的 dsh-im / 黑白=宿主 dsh，
-   * 文案只留轴名 + 版本号（前缀「兼容 / 宿主 / IM Companion」进悬停）。
+   * #82 改「两色胶囊」——颜色即身份（用户裁定）：紫=自家 / 蓝白=兼容的 dsh-im，
+   * 文案只留轴名 + 版本号（前缀「兼容 / IM Companion」进悬停）。
+   * 宿主 dsh 胶囊已删（用户裁定 2026-10-01）：宿主兼容口径只留 README 兼容性小节与市场徽章（engines.dsh），面板不再标。
    * 宽度实测（548px 内容宽）：中 497px / 英 522px，余量 ≥26px → 顶部单行零省略。 */
   const ver = pluginVersion()
   const compat = pluginCompat()
@@ -98,20 +85,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
         'aria-label': compatNote,
       }, copy.compatChip(compat.verified))
     : null
-  /* #79 宿主兼容标记：与 dsh-im 标记并列（两条轴都会让插件失效），点击同跳 README 兼容性小节。 */
-  const host = hostCompat()
-  const hostNote = host.verified ? copy.dshCompatTitle(host.verified, host.requires) : ''
-  const hostChip = host.verified
-    ? h('a', {
-        className: 'af-cap af-cap--host',
-        href: copy.compatHref,
-        target: '_blank',
-        rel: 'noopener',
-        title: hostNote,
-        'aria-label': hostNote,
-      }, copy.dshCompatChip(host.verified))
-    : null
-  const verBox = h('div', { className: 'af-verbox' }, verLink, compatChip, hostChip)
+  const verBox = h('div', { className: 'af-verbox' }, verLink, compatChip)
   /* P2 引流星标：ghost 虚线风，新开页跳 companion 仓库点 Star（右上角，＋原位）。 */
   const starLink = h('a', {
     className: 'af-icon-btn af-star',

@@ -95,24 +95,11 @@ test("#82 三色胶囊文案：颜色即身份，胶囊只留轴名 + 版本号�
   assert.ok(en.compatHref.indexOf("#compat") >= 0);
 });
 
-test("#79 宿主兼容标记：与 dsh-im 轴并列，各带轴名与悬停口径", () => {
-  const zh = copy.firstViewCopy("zh");
-  assert.equal(zh.dshCompatChip("0.2.0-rc.2"), "dsh 0.2.0-rc.2",
-    "宿主胶囊去「宿主」前缀，但必须保留 dsh 轴名——否则与 dsh-im 轴混成同一个版本号");
-  const title = zh.dshCompatTitle("0.2.0-rc.2", "connection.fetch");
-  assert.ok(title.indexOf("已在 @deepseek-ai/dsh 0.2.0-rc.2") >= 0, "悬停须含已验证宿主口径");
-  assert.ok(title.indexOf("connection.fetch") >= 0, "悬停须写明依赖的宿主能力");
-  assert.ok(zh.compatHref.indexOf("#compat") >= 0, "宿主标记同跳兼容性锚点");
-  const en = copy.firstViewCopy("en");
-  assert.equal(en.dshCompatChip("0.2.0-rc.2"), "dsh 0.2.0-rc.2");
-  assert.ok(en.dshCompatTitle("0.2.0-rc.2", "connection.fetch").indexOf("Verified against @deepseek-ai/dsh 0.2.0-rc.2") >= 0);
-});
-
 test("#82 顶部宽度预算：胶囊文案纯 ASCII + 10px 字号（省略号零容忍的机械代理）", () => {
   const zh = copy.firstViewCopy("zh");
   const en = copy.firstViewCopy("en");
   for (const c of [zh, en]) {
-    for (const text of [c.compatChip("4.17.1"), c.dshCompatChip("0.2.0-rc.2"), "v0.1.7"]) {
+    for (const text of [c.compatChip("4.17.1"), "v0.1.7"]) {
       assert.ok(/^[\x20-\x7e]+$/.test(text), "胶囊文案必须纯 ASCII（宽度可预测）：" + text);
       assert.ok(text.length <= 16, "胶囊文案必须短（≤16 字符）：" + text);
     }
@@ -129,9 +116,10 @@ test("#78 顶部单行硬约束：.af-hd 不换行 + 右组不压缩 + 左块先
   assert.ok(css.indexOf(".af-hd-left { min-width: 0; }") >= 0, "左块 min-width:0 先让位");
   assert.ok(css.indexOf(".af-hd-left .af-title") >= 0 && css.indexOf("text-overflow: ellipsis") >= 0, "左块 ellipsis 兜底");
   assert.ok(css.indexOf(".af-verbox") >= 0, "版本组样式必须存在");
-  for (const cls of [".af-cap--self", ".af-cap--im", ".af-cap--host"]) {
-    assert.ok(css.indexOf(cls) >= 0, "三色胶囊缺失：" + cls);
+  for (const cls of [".af-cap--self", ".af-cap--im"]) {
+    assert.ok(css.indexOf(cls) >= 0, "两色胶囊缺失：" + cls);
   }
+  assert.ok(css.indexOf(".af-cap--host") < 0, "宿主胶囊样式须已删（2026-10-01）");
 });
 
 test("英文文案成套（实现侧以 key 提供两套，不做切换器）", () => {
@@ -156,7 +144,7 @@ test("语言跟随 documentElement.lang（en 开头即英文）", () => {
 test("样式命名空间与关键规则（新增类 only，既有零改动）", () => {
   const css: string = styles.FIRST_VIEW_CSS;
   assert.equal(styles.FIRST_VIEW_STYLE_ID, "first-view");
-  for (const cls of [".af-cap--self", ".af-cap--im", ".af-cap--host", ".af-tap", ".af-av-m0", ".af-av-m3", ".af-star", ".af-promo", ".af-promo-item", ".af-verbox", ".af-cap"]) {
+  for (const cls of [".af-cap--self", ".af-cap--im", ".af-tap", ".af-av-m0", ".af-av-m3", ".af-star", ".af-promo", ".af-promo-item", ".af-verbox", ".af-cap"]) {
     assert.ok(css.indexOf(cls) >= 0, "赢家样式缺失：" + cls);
   }
   assert.ok(css.indexOf(":focus-within") >= 0, "键盘 focus-within 显现必须存在");
