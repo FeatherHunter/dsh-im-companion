@@ -8,3 +8,4 @@ lib/
 
 .wizard-release.env
 .tmp-wayfinder/
+.tmp-publish-token.log
