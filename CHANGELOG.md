@@ -1,5 +1,19 @@
 # CHANGELOG
 
+## v0.2.3 — 2026-10-05
+
+主题：**文档版**——把 README「能力地图」刷到 npm 页面。0.2.2 的 tarball 里 README 还是发布前那一版（npm 页仍写着「当前 0.1.8」），本版只同步文档，功能零变更。
+
+改动：
+
+- `README.md` / `docs/README.en.md`：能力地图（L0 零配置 / L1 面板可控 / L2 程序化集成 / L3 二次开发）随包发布；安装示例与兼容表版本号同步到 0.2.3。
+- 无功能代码变更：`lib/` 与 0.2.2 一致，仅 README / CHANGELOG 变动。
+
+验证与影响：
+
+- 发布门禁 `npm run check`（build ＋ typecheck ＋ verify ＋ guard）全绿。
+- tarball 自验：`package/README.md` 含「能力地图」且 `package.json` 版本为 0.2.3。
+
 ## v0.2.2 — 2026-10-02
 
 主题：**投稿门禁修复**（第三方清单 `awesome-ai-plugins` PR #571 的集中扫描，[#100](https://github.com/FeatherHunter/dsh-im-companion/issues/100)）——清掉扫描器点名的高危草稿文件、补齐两个低危缺项，让集中扫描从 73 分抬到 85 分（零严重、零高危）。另：README 增补「能力地图：四种颗粒度」，把 L0 零配置 / L1 面板可控 / L2 程序化集成 / L3 二次开发四级用法一次讲清。
