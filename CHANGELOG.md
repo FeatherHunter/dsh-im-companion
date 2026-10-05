@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## v0.2.2 — 2026-10-02
+
+主题：**投稿门禁修复**（第三方清单 `awesome-ai-plugins` PR #571 的集中扫描，[#100](https://github.com/FeatherHunter/dsh-im-companion/issues/100)）——清掉扫描器点名的高危草稿文件、补齐两个低危缺项，让集中扫描从 73 分抬到 85 分（零严重、零高危）。另：README 增补「能力地图：四种颗粒度」，把 L0 零配置 / L1 面板可控 / L2 程序化集成 / L3 二次开发四级用法一次讲清。
+
+改动：
+
+- `git rm` 两个误提交的调试草稿 `.scratch/dbg-e.cjs`、`.scratch/e2-logic-check.cjs`（含 `eval`，触发 `DANGEROUS_DYNAMIC_EXECUTION` 高危）；删前全仓 grep 确认零引用。
+- 新增 `SECURITY.md`（漏洞披露指引 + 支持版本）与 `.github/dependabot.yml`（npm + GitHub Actions，月更）。
+- 新增 `scripts/publish-token.ps1`：token 无人值守发布链（写权限探针 → `npm run check` 门禁 → 发布 → 可见性复核；受理≠可见与 E409 语义见脚本头注）。
+- `README.md` / `docs/README.en.md`：新增能力地图（四级颗粒度 ＋ 宿主桥端点清单 ＋ 契约四通道 ＋ 扩展点），安装示例与兼容表版本号同步到 0.2.2。
+
+验证与影响：
+
+- `plugin-scanner scan . --ecosystem deepseek-harness --min-score 80 --fail-on-severity high`（已跟踪树视角，等价远端）：73 → 79 → **85/100（B），零高危，exit 0**。
+- `npm run check`（build ＋ typecheck ＋ verify ＋ guard）全绿；其余 205 个已跟踪 `.scratch` 草稿与全部功能代码一字未动。
+- 已知边界：3 处 `RISKY_APPROVAL_DEFAULT`（medium，`.scratch/companion-wayfinder/` 下 3 个 md）与本地未跟踪文件噪声未处理，留待后续专项。
+- 功能行为零变更，本版消耗在门禁纪律、发布链与文档上。
+
 ## v0.2.1 — 2026-10-01
 
 主题：**宿主兼容声明升 `dsh 0.2.0-rc.2` ＋ 面板宿主胶囊删除**（用户裁定 2026-10-01；宿主口径只留 README 兼容性小节与市场徽章）＋ **升级链路测试靶子**（0.2.0 面板「检查更新 → 一键安装」拿它当目标）。

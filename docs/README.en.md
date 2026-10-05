@@ -52,8 +52,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     or
 dsh plugin --profile web add dsh-im-companion
 
-# Pin a version for stability (current: 0.1.8)
-dsh plugin --profile desktop add dsh-im-companion@0.1.8 --registry https://registry.npmjs.org
+# Pin a version for stability (current: 0.2.2)
+dsh plugin --profile desktop add dsh-im-companion@0.2.2 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -82,7 +82,7 @@ then confirm the dsh-im core is in the same profile (install it first if missing
 Below uses desktop as the example; web users replace --profile desktop with --profile web:
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.1.8 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.2.2 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
@@ -104,12 +104,13 @@ dsh plugin --profile desktop remove dsh-im-companion
 
 | dsh-im-companion | dsh-im | Notes |
 | --- | --- | --- |
+| **0.2.x** | **4.21.1** (verified) | Same transport rules as 0.1.16+; adds the update centre (panel-owned status polling, bounded by contract §4) plus two preference endpoints, `meta.motion.set` and `meta.update.set` |
 | **0.1.16+** | **4.21.1** (verified) | Dual transport unchanged: 4.17.1+ uses the `/api` carrier, ≤4.17.0 falls back to the legacy route; 4.21.1's carrier rule re-checked as identical to 4.17.1 (`dsh-im<channel>` + `{ method, payload }`) |
 | 0.1.7 – 0.1.15 | 4.17.1 (verified) | Dual transport: 4.17.1+ uses the `/api` carrier, ≤4.17.0 falls back to the legacy route automatically |
 | 0.1.6 | 4.17.1 | **Fails to assemble in a web profile** (the host half used the retired prefix route: `cannot get property "webServer" without inject`) → upgrade to 0.1.7 |
 | 0.1.4 | ≤4.17.0 | Broken after the dsh-im 4.17.1 carrier change (HTTP 405 in the connect wizard); upgrade to 0.1.7 |
 
-Host `@deepseek-ai/dsh` **0.2.0-rc.2** verified (**0.2.1 pairs with exactly this host version**; the host must provide `connection.fetch`; older hosts fail loudly at assembly rather than degrading silently). The panel header shows two version capsules side by side, where the colour carries the identity: purple = this plugin's own version, blue-white = the compatible `dsh-im` version (`dsh-im 4.21.1`); the host dsh capsule has been removed, and host compatibility lives only in this section and the market badge (`engines.dsh`). Each capsule keeps only the axis name + version number, and the full wording lives on hover (values come from `package.json`, injected at build time).
+Host `@deepseek-ai/dsh` **0.2.0-rc.2** verified (**0.2.2 pairs with exactly this host version**; the host must provide `connection.fetch`; older hosts fail loudly at assembly rather than degrading silently). The panel header shows two version capsules side by side, where the colour carries the identity: purple = this plugin's own version, blue-white = the compatible `dsh-im` version (`dsh-im 4.21.1`); the host dsh capsule has been removed, and host compatibility lives only in this section and the market badge (`engines.dsh`). Each capsule keeps only the axis name + version number, and the full wording lives on hover (values come from `package.json`, injected at build time).
 
 </div>
 
@@ -200,6 +201,103 @@ dsh-im owns connecting; dsh-im-companion adds capabilities through the concepts 
 <img src="../assets/串门-二次确认.png" width="330" alt="Move confirm dialog">
 
 </div>
+
+<h2 align="center"><sub>CAPABILITIES</sub><br>The capability map: four levels of granularity</h2>
+
+The same capabilities, layered by how deep you want to reach in: **works on install** → **click in the panel** → **call programmatically** → **build your own feature**. AI readers can jump straight to L2 / L3 for the interface list.
+
+| Level | What you want to do | Entry point | Code required? |
+| --- | --- | --- | --- |
+| **L0 zero-config** | See online states, filter, move house, install updates | Works right after install + refresh | No |
+| **L1 panel controls** | Configure presets / channel enhancement / bindings / auto-check | Settings → IM Companion | No |
+| **L2 programmatic** | Let an AI or another plugin read/write state, trigger check & install | Host bridge `POST /api/im-companion` + the four client contract channels | Call only; no repo changes |
+| **L3 extension** | Add a new feature or endpoint | `FeatureManifest` + an `rpc` case | Yes |
+
+<h3 align="center">L0 · Zero-config (there once installed)</h3>
+
+| Capability | Where | Notes |
+| --- | --- | --- |
+| Rail online badge | Every workspace row | Green = on duty, yellow = napping, grey = asleep; hover shows both transports and the last check time; unbound rows draw nothing |
+| Rail filter | Strip above the list + header funnel | All / with assistant / without assistant (with counts); the funnel cycles the three states, plus collapse-all |
+| Group row status bars | Workspace group rows and session rows | Blue = a session is running (breathing), red = error (402 / aborted / unknown), yellow = waiting on you |
+| Workspace header popup | Status dot in the session header | Assistant / channels / online state; send a test message (channel · bot · session pickers) |
+| Fleet radar | Panel toolbar "Set sail!" | Agent × channel matrix; click a cell to drill into details |
+| Update centre | Top block of the settings panel | Check / one-click install / restart-pending banner / release notes; reports "host bridge unavailable" explicitly when missing |
+| Presence animation | Green dot left of the filter strip | Click to toggle the breathing animation (on by default); the preference is persisted to the host `meta.json` and respects the OS "reduce motion" setting |
+
+<h3 align="center">L1 · Panel controls (Settings → IM Companion)</h3>
+
+| What you tune | Where | Granularity |
+| --- | --- | --- |
+| Views & search | Segmented control at the top + search box | Aggregated view (by assistant) / by-channel view |
+| Add a connection | Toolbar "New assistant" → pick a home | Two ways: **create by scanning** (one step) or **enter manually** (Slack manifest / Discord intent / Telegram proxy / WeCom Bot ID hints; secrets echo masked and never re-display) |
+| Assistant details | Click an assistant card (or a rail badge) | Conversation preset (written to the real system, effective for new sessions), context enhancement (**two per-channel switches**: group / direct), personality, workspace path (native directory picker), session route summary, channel management (unbind needs confirmation), test send |
+| Move house | Toolbar "Move house" | Drag onto another home → confirm "Rebind" → undo within 5 seconds |
+| Update preferences | Update centre | Auto-check toggle + interval 6 / 12 / 24 (default) / 168 hours |
+| Motion preference | Green dot in the filter strip | On / off |
+
+Write protection: while a channel's truth has not been read, writes are disabled with "channel truth not read yet, try later (to avoid overwriting existing config)"; destructive actions always ask twice (`click again to confirm` / `Rebind` / `Unbind`).
+
+<h3 align="center">L2 · Programmatic integration (for AIs and other plugins)</h3>
+
+**Host bridge** (the plugin's only HTTP surface, registered on DSH's public `/api` carrier):
+
+```text
+POST /api/im-companion
+request:  { "type":"client-request", "rpcId":"<your id>", "method":"im-companion",
+            "payload": { "method":"<endpoint>", "payload": { … } } }
+reply:    { "type":"server-response", "rpcId":"<same id>",
+            "result": { "ok":true, "value": … } }
+failure:  { "ok":false, "error": { "code":"bad-request", "message":"…", "details":{} } }
+```
+
+Endpoints:
+
+| Endpoint | Payload | Returns |
+| --- | --- | --- |
+| `ping` | `{}` | `{ pong }` |
+| `meta.get` | `{}` | full `AgentMetaDoc` snapshot |
+| `meta.rename` | `{ key, name }` | `{}` |
+| `meta.avatar.set` / `meta.avatar.clear` | `{ key, dataUrl }` / `{ key }` | `{}` |
+| `meta.preset.set` | `{ key, preset }` | `{}` |
+| `meta.ctx.set` | `{ key, enabled, level }` | `{}` |
+| `meta.motion.set` | `{ manualReduced: boolean }` | `{}` |
+| `meta.update.set` | `{ autoCheckEnabled: boolean, intervalHours }` (interval accepts 6 / 12 / 24 / 168 hours only) | `{}` |
+| `meta.welcomed.set` | `{ workspace, seen }` | `{}` |
+| `meta.local.add` / `meta.local.remove` | `{ name }` | `{}` |
+| `meta.local.rename` | `{ from, to }` | `{}` |
+| `meta.local.workspace` | `{ name, workspace }` | `{}` |
+| `routes.list` | `{ bots: [{ channel, botId }] }` | `{ routes, skipped }` session route summary |
+| `activity.snapshot` | `{}` | `{ entries, scannedAt }` session activity |
+| `fs.defaultRoot` / `fs.roots` | `{}` | `{ path }` / `{ roots }` |
+| `fs.list` | `{ path }` (absolute) | `{ path, parent, entries }` |
+| `imc.updateStatus` / `imc.updateCheck` | `{}` | update snapshot (`snapshot` / `manual` / `autoCheck`) |
+| `imc.updateInstall` | `{ checkId, requestId }` | install receipt |
+
+Source of truth on disk: `~/.dsh/integrations/dsh-im-companion/meta.json` (overridable via `DSH_HOME` or the plugin's `config.dshHome`); `AgentMetaDoc` fields = `names` `avatars` `locals` `presets` `ctxEnhance` `welcomed` `motion` `update`.
+
+**The four client contract channels** (when writing another plugin or feature):
+
+| Channel | What you get | Rule |
+| --- | --- | --- |
+| `rpc` | `RpcCall`, going through dsh-im channel RPC | call `refresh()` after any write |
+| `subscribe(fn)` | `StreamSnapshot = { bots, failed, updatedAt, catalogs }` | the only poller (15 s, one process-wide instance); **never open a second poll** |
+| `meta` | `MetaStore` (`loadMeta()` + writers) | the host `meta.json` is authoritative; falls back to localStorage `af-fleet-*` when the bridge is unavailable |
+| `slots` | Slots: `settings.section` (this plugin owns `id=dsh-im-companion`, `order=22`, label "IM Companion"), `workspace-rail`, `session-header`, `conversation-session` | register only; never reach into someone else's DOM |
+
+Auxiliary surfaces: `window` event prefix `dsh-im-companion:*` (the cross-component bus — **not** one of the four whitelisted channels, and it does not replay); host service export `ctx.provide('agentFleet', { version, meta })`, so other plugins can read `meta.snapshot()`.
+
+**Package exports** (after `npm i dsh-im-companion`): `.` → host entry `lib/index.js` (exports `name` / `inject` / `apply`); `./client` → the browser bundle (loaded through `__ModuleLoader__`, not a Node-importable module); `./package.json`.
+
+<h3 align="center">L3 · Extension (add a feature / an endpoint)</h3>
+
+1. A new feature = create `src/features/<id>/manifest.ts`, then add one line in `src/features/index.ts`.
+2. `FeatureManifest = { id, name, order, slots[], installStyles? }`; the feature context `FeatureCtx = { rpc, subscribe, refresh, meta, slots, get, pickDirectory? }` — features reach capabilities only through it, never the host directly and never another feature.
+3. A new endpoint = append one `case` in `src/host/rpc.ts` (named `im-companion.<feature>.<action>`); never change an existing case.
+4. Red lines and self-checks: ≤300 lines per file; the shared layer is add-only; `npm run check` (build + types + functional assertions + line guard) must be green.
+5. Contract authority: `docs/features-contract.md`; domain vocabulary: `CONTEXT.md`.
+
+Hints for AIs: to change state use `meta.*`; to read state use `meta.get` + `activity.snapshot`; to install an update use `imc.updateCheck` → `imc.updateInstall`; to add a feature go to L3.
 
 <h2 align="center"><sub>FAQ</sub><br>FAQ</h2>
 
