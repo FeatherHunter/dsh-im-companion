@@ -8,16 +8,18 @@
  *
  * 用法：
  *   node scripts/sync-update-pkg.mjs            比对（默认，只读，不联网改盘）：一致 exit 0；落后 exit 1；查不到 exit 2
- *   node scripts/sync-update-pkg.mjs --apply    落后就装 latest（--save-exact）+ 重新生成派生常量
+ *   node scripts/sync-update-pkg.mjs --apply    落后就装 latest（--save-exact，官方源）
  *   npm run check:update-pkg / npm run sync:update-pkg
  *
  * 口径：
  *   · 只认**官方源** `https://registry.npmjs.org/`（本机默认 registry 常是镜像站，会落后）。
  *   · 本仓 pin 必须是**精确版本**（无 ^/~）：范围声明会让用户环境跑到我们没测过的版本（见 docs/features-contract.md）。
- *   · `--apply` 只动 `package.json` / `package-lock.json` / `node_modules` / `derived.ts`；提交与否由人决定。
+ *   · `--apply` 只动 `package.json` / `package-lock.json` / `node_modules`；提交与否由人决定。
+ *   · 派生常量链（`gen-update-constants.mjs` / `derived.ts`）已随 T5 #110 退役（面板不再手拼电话名），
+ *     故 `--apply` 只剩「装包」一步，装完直接 `npm run check`。
  *   · 出口一律走 `process.exitCode`（不在 fetch 之后 `process.exit()`：Windows 上会撞 libuv 的 handle 断言）。
  */
-import { execFileSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -104,7 +106,7 @@ async function main() {
   if (!APPLY) {
     if (behind) {
       console.error('sync-update-pkg: 落后 —— 本仓 ' + pinned + ' < 官方源 ' + latest + '。');
-      console.error('  修法：npm run sync:update-pkg（装 latest + 重新生成派生常量），跑完 npm run check，提交后再发布。');
+      console.error('  修法：npm run sync:update-pkg（装 latest），跑完 npm run check，提交后再发布。');
     } else {
       console.error('sync-update-pkg: 本仓 ' + pinned + ' **比官方源 latest（' + latest + '）还新** —— 不自动降级，请人工确认（上游撤回？dist-tag 换了？）。');
     }
@@ -117,10 +119,15 @@ async function main() {
   }
 
   console.log('sync-update-pkg: 装 ' + PKG + '@' + latest + '（--save-exact，官方源）…');
-  execFileSync('npm', ['install', PKG + '@' + latest, '--save-exact', '--registry=' + REGISTRY], { cwd: REPO, stdio: 'inherit' });
-  console.log('sync-update-pkg: 重新生成派生常量…');
-  execFileSync(process.execPath, [join(REPO, 'scripts', 'gen-update-constants.mjs'), '--write'], { cwd: REPO, stdio: 'inherit' });
-  console.log('sync-update-pkg: 已升到 ' + latest + '。接下来：npm run check → 提交（package.json / package-lock.json / derived.ts）→ 再发布。');
+  // Windows 上 `npm` 只有 `npm.cmd`（Node 的 execFile 不做 PATHEXT 解析，直接 ENOENT）⇒ win32 走 shell。
+  // 走 execSync 单字符串而非 execFileSync(args)+shell：后者每次都会打 DEP0190 弃用警告。
+  // 命令全由本文件常量与 `^\d+\.\d+\.\d+$` 已校验的版本号拼成，无外部可控字符串，注入面为零。
+  const npmBin = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  execSync(npmBin + ' install ' + PKG + '@' + latest + ' --save-exact --registry=' + REGISTRY, {
+    cwd: REPO,
+    stdio: 'inherit',
+  });
+  console.log('sync-update-pkg: 已升到 ' + latest + '。接下来：npm run check → 提交（package.json / package-lock.json）→ 再发布。');
   return 0;
 }
 

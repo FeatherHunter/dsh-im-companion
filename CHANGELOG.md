@@ -1,5 +1,52 @@
 # CHANGELOG
 
+> 体例说明（2026-10-11）：自 0.2.8 起版本节改用 Keep-a-Changelog 子集（`## [x.y.z] - 日期` ＋ `### Added/Fixed/Changed/Security`），
+> 因为更新面板第 02 章「更新日志」按这套格式读**包内** `CHANGELOG.md`。旧节（`## vX.Y.Z — 日期` ＋ 中文小节）保留原文不动，
+> 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
+> 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
+
+## [0.2.8] - 2026-10-11
+
+主题：**更新包升到 0.13.0 ＋ 更新说明首次随包发布**。本版同时把 0.2.4–0.2.7 期间**从未提交**的工作树成果一次补记入库（那四个版本是从未进 git 的工作树直接发出去的，仓库侧无 commit / 无 tag，下面 0.2.4–0.2.7 四条是按公开 tarball 逐版复核后的补记）。
+
+### Changed
+- 依赖 `dsh-plugin-update` 由 0.10.0 升到 **0.13.0**（npm 官方源 `latest`，exact pin）：进本插件客户端产物的更新内核随之更新——0.13.0 的面板字号参数化（`themeTokens` 新增 5 个字号语义键 `panelFontSize` / `panelChapterFontSize` / `panelBannerTitleFontSize` / `panelLogFontSize` / `panelSmallFontSize`，不传零回归）；0.12.0 的日志中文分类、档案卷版式收紧、横幅副行出框、宿主样式隔离；0.11.0 的 `channel-mismatch` 阻塞原因码与「手工命令不猜版本」。本仓宿主侧与面板侧接线代码零改（本仓不传 `themeTokens`，一律走默认外观）。
+- `package.json` 的 `files` 白名单加 `CHANGELOG.md`：本版起发出去的包自带更新说明，更新面板第 02 章能读到本包自己的日志（此前包内没有这个文件，面板只能显示「作者未提供更新说明」）。
+- `README.md` / `docs/README.en.md` 安装示例版本号同步到 0.2.8；`CONTEXT.md` 的「更新包」术语行同步到 0.13.0。
+
+### Fixed
+- `scripts/sync-update-pkg.mjs`（发布前升级工具）：`--apply` 不再调用已随 T5 #110 M6 退役的 `scripts/gen-update-constants.mjs`（删链后的漏网引用，会让升级在装完包之后报 ENOENT）；同时修 Windows 上 `execFileSync('npm')` 必 ENOENT 的问题（Windows 只有 `npm.cmd`，Node 的 execFile 不做 PATHEXT 解析）——改用 `execSync` 单字符串调用，顺带消掉 DEP0190 弃用警告。
+
+## [0.2.7] - 2026-10-10
+
+主题（补记）：更新中心挂载点搬到页头右上组、⭐ 左侧（owner 2026-10-10 裁定；原「工具栏之后、撰写条之前」作废）。
+
+### Changed
+- `src/client/components/panel.ts`：`#imc-update-center` 容器改建在页头右上组，`af-hd-right` 顺序为 verBox → updateCenterHost → starLink → feedbackLink，`af-root` 回归 hd → toolbar → compose → body → promo。id / 类名 / 事件派发一律未动，A1 对特性仍零感知。
+
+## [0.2.6] - 2026-10-10
+
+主题（补记）：解信封回归修补——面板不再永远停在「正在读取更新状态…」（真机实证后定位）。
+
+### Fixed
+- `src/features/update-center/view.ts` 新增 `toPackageReply()`：把宿主 `RpcResult` 信封拆成更新包认的扁平回包（成功拆 `value`；失败从 `error.details.update` 还原包载荷；成功信封缺 `value` 落失败而不空转；已是扁平回包一律直通）。薄挂载重写时丢掉了旧自画实现的这层解码 ⇒ 包只看到 `{ok:true,value:{…}}`，快照与错误恒 null、面板永远空转。
+
+## [0.2.5] - 2026-10-09
+
+主题（补记）：更新中心交互定稿 #118 U1/U2——一颗「检查更新」按钮，点开总是完整五章 dialog。
+
+### Changed
+- 更新入口件挂载参数：`openOn` 由 `has-update` 改为 `always`（有无新版点开都有完整五章，避免「没内容」错觉），主题显式 `default`（最小可用深色，不用 archive 皮肤）。
+
+## [0.2.4] - 2026-10-09
+
+主题（补记）：T5 #110 落地——更新中心薄层化，自画 11 文件整体删除，改挂更新包自带入口件。
+
+### Changed
+- `src/features/update-center/`：删除自画 11 文件（data / phone / dialog / reasons / text / settings / changelog / markdown / styles / constants / derived），只留 `manifest.ts`（order 24 / settings.section）与 `view.ts`（薄挂载 `mountUpdateEntry`，事件制容器 `#imc-update-center` 与主动认领原样保留）。
+- 宿主侧：`src/host/update.ts` 收缩为「四电话接线 ＋ 信封翻译」；删除自建自动检查调度器（`src/host/update-schedule.ts`）与派生常量链（`scripts/gen-update-constants.mjs` / `src/features/update-center/derived.ts` / 手写 `src/host/dsh-plugin-update.d.ts`）；`src/index.ts` 的 `inject` 去掉 `timer`（不再有受管定时器）。
+- 更新包 0.2.0 → 0.10.0；新增第四通电话 `imc.updateChangelog`（电话名由包内按前缀自拼，本仓只建表）。
+
 ## v0.2.3 — 2026-10-05
 
 主题：**文档版**——把 README「能力地图」刷到 npm 页面。0.2.2 的 tarball 里 README 还是发布前那一版（npm 页仍写着「当前 0.1.8」），本版只同步文档，功能零变更。

@@ -1,104 +1,20 @@
-/** update-center 视图（owner 2026-09-12 二次裁定：仿 dsh-im —— 面板上只留**一个「检查更新」按钮** + 一行状态；
- * 点击即检查，结果**直接出弹窗**（版本 / 更新说明 / 安装 / 手工命令都在 dialog.ts 那一窗里）。
- * 自动检查开关与档位（settings.ts）按 owner 要求留在原位置。
- * 三条硬约束原样保留：P0-a mount() 不读 ctx.meta；P0-b 事件无重放 ⇒ 末尾主动认领容器；P1-c 每次 attach 重拉一次状态。 */
-import { clear, h, mount } from '../../client/dom'
+/** update-center 薄挂载层（T5 #110 M3 → #118 单按钮+dialog默认主题统修）。
+ * 只做三件事，其余全归更新包：
+ * ① 事件制挂载（UPDATE_CENTER_HOST_EVENT + #imc-update-center 主动认领，A1 零改）；
+ * ② 调包的 mountUpdateEntry（variant button，openOn always，autoCheck mount，theme default，dialog 由 open() 内置）；
+ * ③ 宿主电话桥（(name, args) => ctx.rpc('/im-companion', name, args)，超时 30s，回包经 toPackageReply 解信封后交包）。
+ * 三条硬约束原样保留：P0-a mount() 不读 ctx.meta；P0-b 事件无重放 ⇒ 末尾主动认领；P1-c 挂载即自查（包 autoCheck mount）。
+ * U1=button+always（#118：有无新版点开都有完整五章，has-update 下无事只给小字易被当“没内容”）；U2=dialog（entry.open() 内置）；主题显式 default（最小可用深色，不用 archive）。
+ */
+import { mountUpdateEntry, type UpdateEntryController } from 'dsh-plugin-update/entry'
 import { UPDATE_CENTER_HOST_EVENT, type UpdateCenterHostDetail } from '../../client/data/config'
 import type { FeatureCtx } from '../protocol'
-import { openChangelog } from './changelog'
-import { WINDOW_TIMER, createUpdateStore, type UpdateStore, type UiState } from './data'
-import { openCheckDialog } from './dialog'
-import { failingOf, snapshotOf, type UpdateSnapshot } from './phone'
-import { reasonText } from './reasons'
-import { buildSettings } from './settings'
-import { lastCheckText } from './text'
 
 const HOST_ID = 'imc-update-center'
-
-const v = (x: string | null): string => (x ? 'v' + x : '未知版本')
-const span = (cls: string, text: string): HTMLSpanElement => {
-  const node = h('span', { className: cls })
-  node.textContent = text
-  return node
-}
-const button = (label: string, cls: string, disabled = false): HTMLButtonElement => {
-  const b = h('button', { className: 'update-center-btn ' + cls, type: 'button' })
-  b.textContent = label
-  if (disabled) b.disabled = true
-  return b
-}
-
-interface Handlers {
-  check(): void
-  install(): void
-  toggle(): void
-  interval(hours: number): void
-  openNotes(version: string | null): void
-}
-
-/** 待重启横幅：常驻置顶、不可关闭（关掉弹窗后它仍在）。 */
-function buildBanner(state: UiState, snap: UpdateSnapshot | null): HTMLElement | null {
-  if (state !== 'restart') return null
-  const target = snap?.latestVersion ?? snap?.installedVersion ?? null
-  return h('div', { className: 'update-center-banner', role: 'status' },
-    span('update-center-banner-icon', '⚠️'),
-    span('update-center-banner-text', '新版本 ' + v(target) + ' 已装好，重启宿主后生效'))
-}
-
-/** 一行状态：主状态 + 中点 + 元信息（元信息更淡；版本号不与顶部胶囊重复）。 */
-function statusNodes(state: UiState, snap: UpdateSnapshot | null, store: UpdateStore): HTMLElement[] {
-  const dot = (): HTMLSpanElement => span('update-center-dot', '·')
-  if (state === 'installing') {
-    const target = snap?.job?.targetVersion ?? snap?.latestVersion ?? null
-    const txt = snap?.job?.state === 'verifying' ? '正在校验 ' + v(target) + '…' : '正在安装 ' + v(target) + '…'
-    return [span('update-center-status', txt), span('update-center-spin', '')]
-  }
-  if (state === 'restart') {
-    return [span('update-center-status', '待重启'), dot(),
-      span('update-center-meta', v(snap?.latestVersion ?? snap?.installedVersion ?? null) + ' 已装好')]
-  }
-  if (state === 'blocked') {
-    return [span('update-center-status', '装不了'), dot(), span('update-center-meta', reasonText(blockedOf(store)))]
-  }
-  if (state === 'update') return [span('update-center-status', '有新版本 ' + v(snap?.latestVersion ?? null))]
-  if (state === 'failed') return [span('update-center-meta', '自动检查暂时不可用，可手动检查')]
-  if (state === 'unavailable') return [span('update-center-meta', '暂时查不到更新状态')]
-  /* latest：主状态只说"已是最新"（版本号在顶部胶囊里）；「最近检查」只在本会话真的查过时才出现——
-   * checkedAt 是会话内的，刷新即归零，若无条件显示就会与"已是最新"并列成自相矛盾的一句。 */
-  const out = [span('update-center-status', '已是最新')]
-  const at = store.lastCheckAt()
-  if (at !== null) {
-    out.push(dot())
-    out.push(span('update-center-meta', '最近检查 ' + lastCheckText(at, Date.now())))
-  }
-  return out
-}
-function blockedOf(store: UpdateStore): string | null {
-  const res = store.result()
-  if (res === null) return null
-  return res.ok ? res.snapshot.blockedReason : res.token
-}
-
-/** 唯一的动作：检查更新（在途变「检查中…」并禁用）。 */
-function buildCheckButton(hd: Handlers, busy: boolean): HTMLButtonElement {
-  const b = button(busy ? '检查中…' : '检查更新', 'update-center-secondary', busy)
-  b.addEventListener('click', hd.check)
-  return b
-}
-
-/** 失败灰字：显示条件唯一来源是 autoCheck.failing === true（初值 false ⇒ 新装用户看不到它）。 */
-function buildFailLine(state: UiState, store: UpdateStore, hd: Handlers): HTMLElement | null {
-  const res = store.result()
-  if (state === 'failed' || !failingOf(res)) return null
-  const last = res !== null && res.ok && res.autoCheck ? res.autoCheck.lastFailureAt : null
-  const row = h('div', { className: 'update-center-fail' },
-    span('update-center-fail-text', '自动检查暂时不可用，可手动检查' +
-      (last === null ? '' : '（最后尝试：' + lastCheckText(last, Date.now()) + '）')))
-  const retry = button('重试', 'update-center-link')
-  retry.addEventListener('click', hd.check)
-  row.appendChild(retry)
-  return row
-}
+const PLUGIN_ID = 'dsh-im-companion'
+const PREFIX = 'imc'
+const CHANNEL = '/im-companion'
+const RPC_TIMEOUT_MS = 30000
 
 /** 容器认领（P0-b：事件无重放 ⇒ 主动找已存在的挂载点，不依赖事件到达顺序）。 */
 function claimHost(): HTMLElement | null {
@@ -110,76 +26,74 @@ function claimHost(): HTMLElement | null {
   }
 }
 
+function clearHost(el: HTMLElement): void {
+  try {
+    el.replaceChildren()
+  } catch { /* ignore */ }
+}
+
+/** 本仓 `RpcResult` 信封 → 更新包认的扁平回包（包 README §5：只读顶层 `ok`/`snapshot`/`error`/`errorKind`）。
+ *
+ * 宿主把包载荷放两层里（`src/host/update.ts` 的 `reply`）：成功进 `value`、失败进 `error.details.update`。
+ * 不拆这层，包拿到的是 `{ok:true,value:{…}}`——外层 `ok` 让它判成功，可顶层没有 `snapshot`，
+ * 于是快照恒 `null`、错误也恒 `null` ⇒ 面板永远停在「正在读取更新状态…」（2026-10-10 实证）。
+ * 失败通道同理：包的 `failureCodeOf` 只认顶层字符串 `error`／`errorKind`，不还原就一律落兜底码。
+ * 旧自画实现（已删的 `phone.ts`）本来就有这层解信封，薄挂载重写时丢了，此函数把它补回。
+ * 认形状不认来源：只有本仓信封形状才翻译，已是包自己的扁平回包（成功带 `snapshot`、失败 `error` 是字符串）
+ * 一律原样直通——免得把包的原因码洗掉，也免得以后宿主改成直传包载荷时反而被它弄坏。 */
+export function toPackageReply(raw: unknown): unknown {
+  const env = raw as { ok?: unknown; value?: unknown; error?: unknown } | null
+  if (!env || typeof env !== 'object') return raw
+  if (env.ok === true) {
+    // 成功信封：`value` 行内仍可能是包自己的 `ok:false`（如 install 缺 checkId）——原样交回，包自己认。
+    if (env.value !== undefined) return env.value
+    if ('snapshot' in env) return raw // 已是包的扁平成功载荷（宿主哪天直传也不许弄坏）
+    return { ok: false, error: 'internal' } // 成功信封缺 value：宁可报失败，也不许落成「永远读取中」
+  }
+  if (env.ok !== false) return raw
+  const err = env.error as { code?: unknown; details?: { update?: unknown } } | null | undefined
+  if (!err || typeof err !== 'object') return raw // 包自己的扁平失败（error 是字符串）：原样直通
+  // 宿主失败通道：包原始载荷（error/errorKind/diag 全在）原样还原；宿主自产失败（端点未接线等）只给码。
+  const pkg = err.details?.update
+  if (pkg && typeof pkg === 'object') return pkg
+  const code = err.code
+  return { ok: false, error: typeof code === 'string' && code ? code : 'internal' }
+}
+
 /** 特性挂载：注册 {host} 监听 + 同步认领既有容器；所有宿主读取都在回调里发生（P0-a）。 */
 export function mountUpdateCenter(ctx: FeatureCtx): () => void {
-  let store: UpdateStore | null = null
   let host: HTMLElement | null = null
-  let unsub: (() => void) | null = null
-  let closeDialog: (() => void) | null = null
+  let controller: UpdateEntryController | null = null
 
-  function paint(): void {
-    if (host === null || store === null) return
-    const s = store
-    const snap = snapshotOf(s.result())
-    const state = s.state()
-    const busy = s.checking()
-    const hd: Handlers = {
-      check: () => {
-        void s.check().then(() => {
-          // 单一交互：点了就出弹窗（查到新版 / 已是最新 / 失败 都在同一窗里给结论，不再只弹说明）。
-          openDialog(s, hd)
-        })
-      },
-      install: () => { void s.install() },
-      toggle: () => { void s.setPrefs({ autoCheckEnabled: s.prefs().autoCheckEnabled !== true }) },
-      interval: (hours) => { void s.setPrefs({ intervalHours: hours }) },
-      openNotes: (version) => { openChangelog({ version }) },
-    }
-    mount(host, h('div', { className: 'update-center-root' }, [
-      /* 一个块（owner 2026-09-12 原型 v3 A 版）：动作行与设置行同一容器、轻分隔，不再夹在工具栏下当孤儿行。 */
-      h('div', { className: 'update-center-block' }, [
-        buildBanner(state, snap),
-        h('div', { className: 'update-center-row' },
-          h('div', { className: 'update-center-status-line' }, statusNodes(state, snap, s)),
-          h('div', { className: 'update-center-row-actions' }, buildCheckButton(hd, busy))),
-        buildFailLine(state, s, hd),
-        buildSettings(s, hd),
-      ]),
-    ]))
-  }
-
-  /** 开窗（同一时刻最多一窗：dialog 内部会先关上一个）。 */
-  function openDialog(s: UpdateStore, hd: Handlers): void {
-    try { closeDialog?.() } catch { /* 旧窗已在关 */ }
-    closeDialog = openCheckDialog(s, {
-      check: () => hd.check(),
-      install: () => hd.install(),
-      openNotes: (version) => hd.openNotes(version),
-    })
-  }
-
-  /** 先全拆（清表 / 退订 / 清 DOM）再挂；重复调用同一容器是幂等的。 */
+  /** 先全拆（关包面板 / 清 DOM）再挂；重复调用同一容器是幂等的。 */
   function detach(): void {
-    try { closeDialog?.() } catch { /* ignore */ }
-    closeDialog = null
-    try { unsub?.() } catch { /* ignore */ }
-    unsub = null
-    try { store?.dispose() } catch { /* ignore */ }
-    store = null
+    try {
+      controller?.unmount()
+    } catch { /* ignore */ }
+    controller = null
     const old = host
     host = null
-    if (old) { try { clear(old) } catch { /* ignore */ } }
+    if (old) clearHost(old)
   }
 
   function attach(el: HTMLElement): void {
-    if (host === el && store !== null) return
+    if (host === el && controller !== null) return
     detach()
     host = el
-    store = createUpdateStore(ctx, { timer: WINDOW_TIMER })
-    unsub = store.subscribe(paint)
-    paint()
-    void store.readStatus() // P1-c：每次 attach 后重拉一次状态，否则重开面板会永久停在「安装中」
-    void store.loadPrefs() // meta 只在回调里读（P0-a）
+    const rpc = ctx.rpc
+    const call = async (name: string, args: Record<string, unknown>): Promise<unknown> => {
+      if (!rpc) throw new Error('宿主桥不可用')
+      return toPackageReply(await rpc(CHANNEL, name, args, AbortSignal.timeout(RPC_TIMEOUT_MS)))
+    }
+    controller = mountUpdateEntry(host, {
+      pluginId: PLUGIN_ID,
+      prefix: PREFIX,
+      call,
+      variant: 'button',
+      theme: 'default',
+      autoCheck: 'mount',
+      openOn: 'always',
+    })
   }
 
   const onHost = (e: Event): void => {
@@ -207,7 +121,9 @@ export function mountUpdateCenter(ctx: FeatureCtx): () => void {
     if (live) attach(live)
   } catch { /* 认领失败不致命：事件到达时仍会挂 */ }
   return () => {
-    try { window.removeEventListener(UPDATE_CENTER_HOST_EVENT, onHost as EventListener) } catch { /* ignore */ }
+    try {
+      window.removeEventListener(UPDATE_CENTER_HOST_EVENT, onHost as EventListener)
+    } catch { /* ignore */ }
     detach()
   }
 }

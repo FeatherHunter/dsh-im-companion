@@ -35,8 +35,8 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
 * **发布日志只认公开物**：发布完成后**拉 tarball 自己验**（`npm pack <pkg>@<ver> --registry=https://registry.npmjs.org` → 查 `package/lib/client.js` 里的本次改动标记），别只看向导自报的 ✓。
 * **更新包（`dsh-plugin-update`）升级 = 改 pin 一行，但必须让发布侧自动跟随**（#99）：更新包是本插件的**运行期依赖**，用户装到的更新系统版本 = 我们发布那一版清单里 pin 的版本（包不会自更新，Node 也没有"import 最新版"这回事）。故：
   - **发布前比对**：`npm run check:update-pkg`（查**官方源** `latest` vs 本仓 pin；落后 exit 1）。`wizard-release.sh` 阶段 1 已内置这一步（落后 ⇒ ✗ 并打印修法）；确实要带旧版发用 `WIZARD_SKIP_UPDATE_PKG=1` 显式跳过。
-  - **升级动作**：`npm run sync:update-pkg` = 装 latest（`--save-exact`，官方源）+ 重生成派生常量；跑完 `npm run check`，提交（`package.json` / `package-lock.json` / `src/features/update-center/derived.ts`）再发布。
-  - **常量不再手抄**：`src/features/update-center/derived.ts` 由 `scripts/gen-update-constants.mjs` 从**已安装的那个包**派生（电话名宿主侧/客户端侧交叉核对，不一致直接报错）；`npm run build` 自带比对 ⇒ 改了 pin 忘重生成 = 构建直接红。
+  - **升级动作**：`npm run sync:update-pkg` = 装 latest（`--save-exact`，官方源）；跑完 `npm run check`，提交（`package.json` / `package-lock.json`）再发布。
+  - **派生常量链已退役（T5 #110 M6，别再长回来）**：`scripts/gen-update-constants.mjs` / `src/features/update-center/derived.ts` / `src/features/update-center/constants.ts` / `src/host/dsh-plugin-update.d.ts` 已整体删除，`npm run build` 不再有派生比对门。原因：更新中心改挂包自带的 `dsh-plugin-update/entry`（电话名由包内按 `prefix` 自拼，本仓不再拼字符串），手写 ambient `.d.ts` 反而会**遮蔽**包的真类型（0.3.0 起类型随包分发）。改 pin 忘同步不再由构建抓——靠发布前的 `check:update-pkg` 与 `tools/verify/features/update-center.ts` 的「生成器已退役」断言。
   - **解耦基线（0.2.0）**：宿主侧**不传** `runningVersion` / `profileDir` / `readInstalled`——包自己按包名解析目标包并反推使用范围；只传 `homeDir`（那是取值，保证更新落盘与本仓 `meta.json` 同源）。`src/host/update-reader.ts` / `update-paths.ts` 已整体删除（0.2.0 原生接管），**别再长回来**。
 
 ## Labels required (GitHub)

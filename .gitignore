@@ -9,3 +9,6 @@ lib/
 .wizard-release.env
 .tmp-wayfinder/
 .tmp-publish-token.log
+# 机器本地运行态（如 .local/state/gh/device-id）：随机器不同、可再生，不进仓库；
+# .local/ 下的取证脚本与 issue 草稿仍照常入库（本仓惯例：开发产物要留痕）。
+.local/state/

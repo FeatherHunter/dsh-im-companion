@@ -49,6 +49,7 @@ export interface FeatureManifest {
 | host 入口 `src/index.ts`（载体） | 自有桥**只**经 `connection.fetch.register` 挂到 DSH 公开 `/api` 载体（路径 `/api/im-companion`）；**禁止** `connection.rpc.handle`——前缀路由会以 connection 服务自身的 Context 取 `webServer`，装配期即抛 `cannot get property "webServer" without inject`（沿革与证据见 ADR-0002） |
 | client/index.ts | 只改 FEATURES 列表（每功能一行） |
 | A1 私有（components/panel.ts、connect-flow.ts、row-actions.ts 等） | 禁止被 feature 直接引用；触碰走单 PR（C1a/E2 入口按 R5 建议由 B3 胶囊承载或单 PR 改） |
+| 家/助理新表（T3 #116 · added-only） | 新表新名、旧 Agent 码（AgentMetaDoc/LocalAgent/AgentView）不动、映射层隔离；契约与新码只用家/助理/机器人，Agent 仅遗留别名（读兼容）。模型与命名回落见 `docs/research/T3-家助理数据模型与命名回落规格.md` |
 
 **先合并点（并行开工前单 PR 先行入库）**：① connection-stream.ts ② bindings.ts ③ theme.ts 增 installFeatureStyles(id, css) ④ icons 追加 ⑤ rpc.ts 骨架 case。
 

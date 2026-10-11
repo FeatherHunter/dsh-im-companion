@@ -11,14 +11,9 @@ export const name = 'dsh-im-companion'
 // 注册前缀路由，而那个 Context 没有 webServer 注入 → 装配期必抛 cannot get property "webServer" without inject；
 // 实测：给本插件加 webServer 声明【无效】，抛错的 Context 不是本插件的 ctx。修法与证据见 docs/adr/0002。
 //
-// `timer` 也是**必需**注入（2026-09-12 冷启动事故）：`ctx.interval` / `ctx.timeout` 不是普通属性，
-// 而是 cordis-plugin-timer 在自己装配时用 `ctx.mixin('timer', [...])` 注册的 **accessor**——
-// 读它 = 走代理去解析 `timer` 服务（cordis 4.0.2 `lib/index.js:883` getTarget → `ctx[source]`），
-// 本 fiber 没注入 ⇒ 直接抛 `cannot get property "timer" without inject`，**可选链 `ctx?.interval` 拦不住**
-// （异常发生在属性读取那一刻，回头看 update.ts 的 ctxTimerPort 降级判空永远到不了）。
-// 只走热重载看不见这个坑：让位分支（路由 already registered）在 update.start() 之前早退；
-// 冷启动（重启 DSH）才走到 update.start() → 抛错 → 整个 plugin tree 装配失败。
-export const inject = ['connection', 'timer']
+// T5 #110 M5 起不再注入 `timer`：自建自动检查调度器已删，宿主不再读 `ctx.interval` / `ctx.timeout`。
+// （2026-09-12 冷启动事故的 `timer` 必需注入前提已不存在：那是调度器排受管定时器才需要的。）
+export const inject = ['connection']
 
 /** 自有桥端点名（信封 method 字段）与它在 /api 载体上的路径：单点定义，避免两处字面量漂移。 */
 const ENDPOINT = 'im-companion'
@@ -30,8 +25,8 @@ export function apply(ctx: any, config: any = {}) {
   const store = new AgentMetaStore(path.join(dshHome, 'integrations', 'dsh-im-companion', 'meta.json'))
   void store.load()
 
-  // 更新系统接线（T7 #90）：`update` 是**提供函数**，让位分支上它一直是 null ⇒ 那个实例不建更新能力、
-  // 不长定时器、不碰宿主存储（票面 §F.2）。这里只交出函数，实现等让位分支过了才建。
+  // 更新系统接线（T7 #90 → T5 M5 起无定时器）：`update` 是**提供函数**，让位分支上它一直是 null ⇒
+  // 那个实例不建更新能力、不碰宿主存储（票面 §F.2）。这里只交出函数，实现等让位分支过了才建。
   let update: ReturnType<typeof createUpdateHostBridge> | null = null
   const handler = createAgentFleetHandler(store, { update: () => update })
   const reply = (rpcId: string, result: unknown): Response =>
@@ -71,10 +66,8 @@ export function apply(ctx: any, config: any = {}) {
     throw error
   }
 
-  // 让位分支之后才建更新系统：构造期零副作用，定时器在 `start()` 里才起（票面硬要求，见 src/host/update.ts 头注）。
-  update = createUpdateHostBridge({ ctx, store, logger, dshHome })
-  ctx.effect(() => () => update?.dispose(), 'dsh-im-companion: update auto-check cleanup')
-  update.start()
+  // 让位分支之后才建更新系统：标准接线（无定时器、无副作用，M5 起无 start/dispose 生命周期）。
+  update = createUpdateHostBridge({ ctx, logger, dshHome })
 
   try {
     ctx.provide?.('agentFleet', { version: '0.0.2', meta: store })

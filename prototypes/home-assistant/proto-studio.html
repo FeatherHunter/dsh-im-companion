@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T4 原型 · 窄面板 Studio（popover 交互版）</title>
+<style>
+:root{
+  --bg:#EEF0F4; --panel:#fff; --panel-2:#F7F8FA; --panel-3:#EFF1F5;
+  --ink:#101828; --ink-2:#475467; --ink-3:#98A2B3;
+  --line:rgba(16,24,40,.10); --line-soft:rgba(16,24,40,.06);
+  --accent:#0D9488; --accent-deep:#0F766E; --accent-soft:rgba(13,148,136,.11);
+  --warn:#92400E; --warn-soft:rgba(146,64,14,.11); --bad:#B42318; --bad-soft:rgba(180,35,24,.10);
+  --neutral:rgba(71,84,103,.10);
+  --r:10px; --r-lg:14px; --sh:0 1px 2px rgba(16,24,40,.05);
+  --sh-pop:0 0 0 1px rgba(16,24,40,.04),0 2px 4px rgba(16,24,40,.06),0 22px 52px -18px rgba(16,24,40,.5);
+  --sh-2:0 18px 40px -18px rgba(16,24,40,.28);
+  --ring:0 0 0 3px rgba(13,148,136,.22);
+  --t-fast:120ms; --t:160ms; --t-med:220ms;
+  --ease:cubic-bezier(.2,.7,.2,1); --spring:cubic-bezier(.34,1.36,.4,1);
+}
+*{box-sizing:border-box}
+html,body{max-width:100%;overflow-x:hidden}
+#popHost,[id$="Host"]{max-width:100vw}
+body{margin:0;padding:16px 12px 74px;background:var(--bg);color:var(--ink);
+  font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;
+  -webkit-font-smoothing:antialiased;font-feature-settings:"tnum" 1}
+.app{width:100%;max-width:540px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.i{width:15px;height:15px;display:block;flex:none}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px}
+[hidden]{display:none!important}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ============ chrome ============ */
+.chrome{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;white-space:nowrap}
+.proto{flex:none;font-size:10.5px;font-weight:650;letter-spacing:.06em;color:var(--ink-3);border:1px dashed var(--line);border-radius:999px;padding:3px 9px}
+.chrome .note{font-size:11.5px;color:var(--ink-3);min-width:0;overflow:hidden;text-overflow:ellipsis}
+.chrome .spacer{flex:1}
+.cbtn{flex:none;font:inherit;font-size:12px;color:var(--ink-2);background:#fff;border:1px solid var(--line);border-radius:8px;height:30px;padding:0 11px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;transition:all var(--t) var(--ease)}
+.cbtn:hover{background:var(--panel-2);color:var(--ink)}
+.cbtn:active{transform:scale(.97)}
+
+/* ============ frame ============ */
+.frame{position:relative;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);
+  border-radius:var(--r-lg);box-shadow:var(--sh-2);overflow:hidden;height:clamp(420px,calc(100vh - 126px),680px)}
+.fhead{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--line-soft);flex:none}
+.fhead .ttl{min-width:0;flex:1}
+.fhead .ttl b{display:block;font-size:15px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fhead .ttl small{display:block;font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ibtn{width:32px;height:32px;display:grid;place-items:center;background:none;border:1px solid transparent;border-radius:9px;color:var(--ink-2);cursor:pointer;transition:all var(--t) var(--ease);flex:none}
+.ibtn:hover{background:var(--panel-3);color:var(--ink)}
+.ibtn:active{transform:scale(.94)}
+.ibtn.solid{background:var(--accent);color:#fff}
+.ibtn.solid:hover{background:var(--accent-deep)}
+.ibtn[disabled]{opacity:.4;cursor:not-allowed}
+.back{width:32px;height:32px;display:grid;place-items:center;background:var(--panel-3);border:0;border-radius:9px;color:var(--ink-2);cursor:pointer;transition:all var(--t) var(--ease);flex:none}
+.back:hover{background:#E4E7EC;color:var(--ink)}
+.back:active{transform:scale(.94)}
+
+/* ============ liquid tab (面包屑即液签) ============ */
+.crumbs{position:relative;display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line-soft);flex:none;background:var(--panel-2);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.crumbs::-webkit-scrollbar{display:none}
+.crumb{font:inherit;font-size:11.5px;display:inline-flex;align-items:center;gap:5px;background:none;border:1px solid transparent;flex:none;
+  border-radius:999px;padding:3px 9px;color:var(--ink-3);cursor:pointer;white-space:nowrap;transition:color var(--t) var(--ease);position:relative;z-index:1}
+.crumb:hover{color:var(--ink-2)}
+.crumb[aria-current="true"]{color:var(--ink);font-weight:650}
+.crumb.ghost{opacity:.5;cursor:default;pointer-events:none}
+.crumb .lv{font-family:ui-monospace,Menlo,monospace;font-size:9.5px;color:var(--ink-3)}
+.crumb b{max-width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.csplit{color:var(--ink-3);font-size:11px;flex:none;opacity:.8}
+.tablk{position:absolute;left:0;top:6px;bottom:6px;border-radius:999px;background:#fff;border:1px solid rgba(16,24,40,.16);box-shadow:0 1px 3px rgba(16,24,40,.10);
+  transition:transform 300ms var(--spring),width 300ms var(--spring);pointer-events:none}
+
+/* ============ search + suggestions ============ */
+.fsearch{position:relative;margin:10px 12px 0;flex:none}
+.fsearch .box{display:flex;align-items:center;gap:7px;padding:0 10px;height:34px;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:9px;transition:all var(--t) var(--ease)}
+.fsearch .box:focus-within{background:#fff;border-color:rgba(13,148,136,.45);box-shadow:var(--ring)}
+.fsearch .box .i{color:var(--ink-3)}
+.fsearch input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:13px;color:var(--ink)}
+.fsearch input::placeholder{color:var(--ink-3)}
+.sugg{position:absolute;left:0;right:0;top:38px;z-index:30;background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:var(--sh-pop);
+  padding:4px;max-height:210px;overflow:auto;animation:popIn var(--t-med) var(--spring);transform-origin:50% 0}
+.sugg button{font:inherit;font-size:12.5px;display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:8px 9px;cursor:pointer;color:var(--ink)}
+.sugg button:hover,.sugg button.hl{background:var(--panel-3)}
+.sugg mark{background:rgba(13,148,136,.16);color:var(--accent-deep);border-radius:3px;padding:0 2px}
+.sugg .kind{font-size:10.5px;color:var(--ink-3);margin-left:auto}
+
+/* ============ list ============ */
+.fbody{flex:1;min-height:0;overflow-y:auto;padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px;scrollbar-width:thin}
+.fbody::-webkit-scrollbar{width:8px}
+.fbody::-webkit-scrollbar-thumb{background:rgba(16,24,40,.14);border-radius:8px}
+.row{position:relative;display:grid;grid-template-columns:36px 1fr auto;gap:13px;align-items:center;width:100%;text-align:left;font:inherit;
+  background:var(--panel);border:1px solid var(--line-soft);border-radius:var(--r);padding:9px 10px;cursor:pointer;
+  transition:border-color var(--t) var(--ease),box-shadow var(--t) var(--ease),transform var(--t-fast) var(--ease),opacity var(--t) var(--ease);min-height:56px}
+.row:hover{border-color:var(--line);box-shadow:var(--sh)}
+.row:active{transform:scale(.994)}
+.row.on{border-color:rgba(13,148,136,.42);background:#FBFEFD;box-shadow:var(--sh)}
+.row.anchor{box-shadow:var(--ring);border-color:rgba(13,148,136,.5)}
+.row.leaving{opacity:0;transform:translateX(14px) scale(.97)}
+.row.entering{animation:rowIn var(--t-med) var(--spring)}
+@keyframes rowIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.row .txt{min-width:0;overflow:hidden}
+.row .nm{display:flex;align-items:baseline;gap:7px;min-width:0;overflow:hidden}
+.row .nm .online,.row .nm .pill{align-self:center}
+.row .nm b{font-size:13.5px;font-weight:620;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;margin-right:1px}
+.row .sub{display:block;margin-top:5px;font-size:11.5px;line-height:1.4;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.names{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .acts2{display:flex;align-items:center;gap:5px;flex:none;padding-left:2px}
+.av{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:650;font-size:14px;flex:none}
+.av.round{border-radius:50%}
+.av.sm{width:30px;height:30px;font-size:12.5px;border-radius:9px}
+.pill{font-size:10.5px;font-weight:600;border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none}
+.pill.ok{color:var(--accent-deep);background:var(--accent-soft)}
+.pill.warn{color:var(--warn);background:var(--warn-soft)}
+.pill.bad{color:var(--bad);background:var(--bad-soft)}
+.pill.dim{color:var(--ink-2);background:var(--neutral)}
+.dot{width:7px;height:7px;border-radius:50%;flex:none}
+.dot.on{background:#12B0A0;box-shadow:0 0 0 3px rgba(18,176,160,.16)}
+.dot.off{background:#CBD5E1}
+.dot.live{animation:breathe 2.4s var(--ease) infinite}
+@keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(18,176,160,.35)}50%{box-shadow:0 0 0 5px rgba(18,176,160,0)}}
+.online{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--accent-deep);background:var(--accent-soft);border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none}
+.online.off{color:var(--ink-2);background:var(--neutral);border-radius:999px;padding:2px 7px;font-size:10.5px;font-weight:600}
+
+/* ============ row action buttons + tooltip ============ */
+.ract{font:inherit;font-size:11.5px;height:26px;padding:0 9px;display:inline-flex;align-items:center;gap:5px;background:#fff;border:1px solid var(--line);
+  border-radius:7px;color:var(--ink-3);cursor:pointer;white-space:nowrap;transition:all var(--t) var(--ease);flex:none;position:relative}
+.ract:hover{background:var(--panel-3);color:var(--ink)}
+.ract:active{transform:scale(.94)}
+.ract.connect{border-color:rgba(13,148,136,.4);background:var(--accent-soft);color:var(--accent-deep);font-weight:600}
+.ract.icon{width:26px;padding:0;justify-content:center}
+[data-tip]{position:relative}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 7px);left:50%;transform:translateX(-50%) translateY(3px) scale(.96);
+  background:#101828;color:#fff;font-size:11px;font-weight:500;line-height:1;padding:6px 8px;border-radius:7px;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:opacity var(--t) var(--ease),transform var(--t) var(--spring);z-index:80}
+[data-tip]:hover::after,[data-tip]:focus-visible::after{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+@media (max-width:470px){.hide-narrow{display:none}}
+
+/* ============ detail (3D 视差容器) ============ */
+.detail{border:1px solid var(--line-soft);border-radius:var(--r);background:var(--panel-2);padding:12px;display:flex;flex-direction:column;gap:10px;
+  transform-style:preserve-3d;transition:transform var(--t-med) var(--ease),box-shadow var(--t-med) var(--ease);will-change:transform}
+.detail.tilt{box-shadow:var(--sh)}
+.dhead{display:flex;align-items:center;gap:10px;min-width:0;transform:translateZ(14px)}
+.dhead .txt{min-width:0;flex:1}
+.dhead b{display:block;font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dhead small{display:block;font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta{display:flex;flex-wrap:wrap;gap:6px;min-width:0;transform:translateZ(8px)}
+.mchip{font-size:11px;color:var(--ink-2);background:#fff;border:1px solid var(--line-soft);border-radius:7px;padding:4px 8px;display:inline-flex;align-items:center;gap:5px;max-width:100%;min-width:0}
+.steps3{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ink-3);flex-wrap:wrap}
+.steps3 i{display:block;width:12px;height:1px;background:var(--line);flex:none}
+.acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(94px,1fr));gap:8px;transform:translateZ(6px)}
+.acts.danger{margin-top:6px;padding-top:14px;border-top:1px dashed rgba(16,24,40,.14)}
+.abtn{font:inherit;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:5px;height:33px;padding:0 10px;background:#fff;
+  border:1px solid var(--line);border-radius:8px;color:var(--ink);cursor:pointer;transition:all var(--t) var(--ease)}
+.abtn:hover{background:var(--panel-3)}
+.abtn:active{transform:scale(.96)}
+.abtn.go{border-color:rgba(13,148,136,.35);background:var(--accent-soft);color:var(--accent-deep);font-weight:600}
+.abtn.danger{color:var(--bad);border-color:rgba(180,35,24,.3);background:var(--bad-soft)}
+.abtn[disabled]{opacity:.45;cursor:not-allowed}
+.kv{display:grid;grid-template-columns:84px 1fr;gap:7px 10px;font-size:12px;margin:0}
+.kv dt{color:var(--ink-3)}
+.kv dd{margin:0;color:var(--ink);overflow-wrap:anywhere}
+
+/* ============ footer ============ */
+.ffoot{flex:none;padding:10px 12px;border-top:1px solid var(--line-soft);background:var(--panel);display:flex;gap:8px}
+.pbtn{position:relative;overflow:hidden;flex:1;font:inherit;font-size:13px;font-weight:600;height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:var(--accent);color:#fff;border:1px solid transparent;border-radius:9px;cursor:pointer;transition:transform var(--t-fast) var(--ease),background var(--t) var(--ease),box-shadow var(--t) var(--ease);
+  box-shadow:0 1px 2px rgba(13,148,136,.3);will-change:transform}
+.pbtn:hover{background:var(--accent-deep)}
+.pbtn:active{transform:scale(.975)}
+.pbtn.ghost{background:#fff;color:var(--ink);border-color:var(--line);box-shadow:none}
+.pbtn.ghost:hover{background:var(--panel-3)}
+.pbtn[disabled]{opacity:.5;cursor:not-allowed}
+
+/* ============ empty / skeleton / spinner / progress ============ */
+.empty{padding:34px 18px;text-align:center;color:var(--ink-3)}
+.empty .eic{width:40px;height:40px;margin:0 auto 10px;border-radius:13px;background:var(--panel-3);display:grid;place-items:center}
+.empty b{display:block;color:var(--ink-2);font-size:13px;margin-bottom:3px}
+.empty p{margin:0;font-size:11.5px;line-height:1.5}
+.sk{border-radius:9px;background:linear-gradient(90deg,#EFF1F5 0%,#E4E8EF 50%,#EFF1F5 100%);background-size:200% 100%;animation:sk 1.15s linear infinite}
+@keyframes sk{from{background-position:200% 0}to{background-position:-200% 0}}
+.skrow{border:1px solid var(--line-soft);border-radius:var(--r);padding:9px 10px;display:grid;grid-template-columns:36px 1fr 60px;gap:10px;align-items:center;min-height:56px}
+.spin{width:14px;height:14px;border-radius:50%;border:2px solid rgba(13,148,136,.25);border-top-color:var(--accent);animation:sp .7s linear infinite;flex:none}
+@keyframes sp{to{transform:rotate(360deg)}}
+.prog{height:3px;border-radius:2px;background:var(--panel-3);overflow:hidden}
+.prog i{display:block;height:100%;background:var(--accent);width:0;transition:width 280ms var(--ease)}
+
+/* ============ popover / dropdown / popconfirm ============ */
+.scrim{position:fixed;inset:0;z-index:70;background:rgba(16,24,40,.30);backdrop-filter:blur(1.5px);animation:fade var(--t) var(--ease)}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.pop{position:fixed;z-index:71;max-width:calc(100vw - 20px);background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--sh-pop);
+  transform-origin:var(--ox,50%) var(--oy,0%);animation:popIn var(--t-med) var(--spring);max-height:min(70vh,520px);display:flex;flex-direction:column;
+  cursor:grab}
+.pop.dragging{cursor:grabbing;animation:none;transition:none}
+@keyframes popIn{from{opacity:0;transform:scale(.94) translateY(-6px)}to{opacity:1;transform:none}}
+.pop.closing{animation:popOut 130ms var(--ease) forwards}
+@keyframes popOut{to{opacity:0;transform:scale(.96) translateY(-4px)}}
+.pop .arrow{position:absolute;top:-6px;width:12px;height:12px;background:#fff;border-left:1px solid rgba(16,24,40,.14);border-top:1px solid rgba(16,24,40,.14);transform:rotate(45deg);border-radius:2px}
+.pop .arrow.b{top:auto;bottom:-6px;border-left:0;border-top:0;border-right:1px solid rgba(16,24,40,.14);border-bottom:1px solid rgba(16,24,40,.14)}
+.ppo{padding:13px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:11px}
+.ptitle{font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:7px;color:var(--ink)}
+.ptitle .i{color:var(--accent-deep)}
+.pfoot{display:flex;justify-content:flex-end;gap:7px;padding:10px 12px;border-top:1px solid var(--line-soft);background:var(--panel-2);flex:none}
+.pbtn-s{font:inherit;font-size:12.5px;font-weight:600;height:32px;padding:0 13px;border-radius:8px;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);transition:all var(--t) var(--ease)}
+.pbtn-s:hover{background:var(--panel-3)}
+.pbtn-s:active{transform:scale(.96)}
+.pbtn-s.go{background:var(--accent);border-color:transparent;color:#fff}
+.pbtn-s.go:hover{background:var(--accent-deep)}
+.pbtn-s.deny{background:var(--bad);border-color:transparent;color:#fff}
+.pbtn-s[disabled]{opacity:.5;cursor:not-allowed}
+.menu{display:flex;flex-direction:column;gap:2px;padding:5px;min-width:168px;max-width:calc(100vw - 24px)}
+.menu button{font:inherit;font-size:12.5px;display:flex;align-items:center;gap:9px;text-align:left;background:none;border:0;border-radius:8px;padding:9px 10px;color:var(--ink);cursor:pointer;transition:background var(--t-fast) var(--ease)}
+.menu button:hover,.menu button.hl{background:var(--panel-3)}
+.menu button.danger{color:var(--bad)}
+.menu button .i{color:var(--ink-3)}
+.menu button.danger .i{color:var(--bad)}
+.menu .sep{height:1px;background:var(--line-soft);margin:4px 6px}
+.fld{display:flex;flex-direction:column;gap:5px;font-size:12px;color:var(--ink-2)}
+.fld>span{font-weight:600;color:var(--ink);font-size:12.5px}
+.fld input,.fld select{font:inherit;font-size:13px;height:36px;padding:0 10px;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:9px;transition:all var(--t) var(--ease)}
+.fld input:focus,.fld select:focus{outline:0;border-color:rgba(13,148,136,.5);box-shadow:var(--ring)}
+.fhint{margin:0;font-size:11.5px;color:var(--ink-3);line-height:1.5}
+.seg2{position:relative;display:flex;background:var(--panel-3);border-radius:9px;padding:3px;gap:2px}
+.seg2 button{position:relative;z-index:1;font:inherit;font-size:12.5px;flex:1;height:28px;border:0;border-radius:7px;background:none;color:var(--ink-2);cursor:pointer;transition:color var(--t) var(--ease)}
+.seg2 button[aria-selected="true"]{color:var(--ink);font-weight:600}
+.seg2 .ind{position:absolute;top:3px;bottom:3px;border-radius:7px;background:#fff;box-shadow:var(--sh);transition:transform 280ms var(--spring),width 280ms var(--spring)}
+.opts{display:flex;flex-direction:column;gap:4px;max-height:190px;overflow:auto}
+.opt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;font:inherit;font-size:12.5px;background:#fff;border:1px solid var(--line-soft);border-radius:9px;padding:8px 10px;cursor:pointer;color:var(--ink);transition:all var(--t) var(--ease)}
+.opt:hover{background:var(--panel-2);border-color:var(--line)}
+.opt[aria-selected="true"]{border-color:rgba(13,148,136,.5);background:var(--accent-soft);box-shadow:var(--ring)}
+.opt .oi{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--panel-3);flex:none;font-size:11px;font-weight:650}
+.opt .ot{min-width:0;flex:1}
+.opt .ot b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.opt .ot small{display:block;font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches button{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);cursor:pointer;display:grid;place-items:center;font-weight:650;font-size:14px;transition:transform var(--t) var(--spring),box-shadow var(--t) var(--ease)}
+.swatches button:hover{transform:translateY(-2px) scale(1.04)}
+.swatches button[aria-pressed="true"]{box-shadow:var(--ring);border-color:var(--accent)}
+
+/* ============ toast ============ */
+.toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:90;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:min(420px,calc(100vw - 24px))}
+.toast{pointer-events:auto;width:100%;background:#101828;color:#fff;border-radius:11px;padding:10px 12px;font-size:12.5px;display:flex;gap:9px;align-items:flex-start;
+  box-shadow:0 14px 34px -14px rgba(0,0,0,.5);animation:toastIn var(--t-med) var(--spring);cursor:grab;overflow:hidden;position:relative}
+@keyframes toastIn{from{opacity:0;transform:translateY(14px) scale(.96)}to{opacity:1;transform:none}}
+.toast.out{animation:toastOut 160ms var(--ease) forwards}
+@keyframes toastOut{to{opacity:0;transform:translateY(8px) scale(.97)}}
+.toast.ok .ti{color:#5EEAD4}
+.toast.bad .ti{color:#FCA5A5}
+.toast .ti{margin-top:1px;flex:none}
+.toast .tx{min-width:0;flex:1}
+.toast .prog{position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.18)}
+.toast .prog i{display:block;height:100%;background:#5EEAD4;width:100%;transform-origin:left;transition:transform linear}
+
+/* ============ modal (走查 / 状态) ============ */
+.modal{position:fixed;inset:0;z-index:80;background:rgba(16,24,40,.42);display:flex;align-items:center;justify-content:center;padding:16px;animation:fade var(--t) var(--ease)}
+.mbox{width:100%;max-width:460px;max-height:min(78vh,620px);background:#fff;border-radius:16px;box-shadow:var(--sh-pop);display:flex;flex-direction:column;overflow:hidden;animation:popIn var(--t-med) var(--spring)}
+.mhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line-soft);flex:none}
+.mhead b{font-size:13.5px}
+.mhead .spacer{flex:1}
+.mbody{padding:14px;overflow-y:auto;display:flex;flex-direction:column;gap:11px}
+.steplist{display:flex;flex-direction:column;gap:6px}
+.steplist button{font:inherit;font-size:12.5px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 11px;cursor:pointer;color:var(--ink);min-height:42px;transition:all var(--t) var(--ease)}
+.steplist button:hover{border-color:rgba(13,148,136,.4);background:var(--accent-soft)}
+.steplist button[aria-pressed="true"]{border-color:rgba(13,148,136,.45);background:var(--accent-soft);color:var(--accent-deep);font-weight:600}
+.json{margin:0;font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.5;color:var(--ink-2);background:var(--panel-3);border-radius:9px;padding:10px;max-height:240px;overflow:auto;white-space:pre-wrap;word-break:break-word}
+.diff{font-size:12px;color:var(--ink-2);background:var(--accent-soft);border-radius:9px;padding:9px 10px;line-height:1.5}
+
+/* ============ dock ============ */
+.dock{position:fixed;left:50%;transform:translateX(-50%);bottom:12px;z-index:40;display:flex;align-items:center;gap:3px;
+  background:rgba(255,255,255,.94);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:999px;padding:5px;
+  box-shadow:var(--sh-2);max-width:calc(100vw - 20px);overflow-x:auto;scrollbar-width:none}
+.dock::-webkit-scrollbar{display:none}
+.dock .lead{font-size:11px;color:var(--ink-3);padding:0 4px 0 7px;white-space:nowrap}
+.dock a,.dock button{font:inherit;font-size:12px;color:var(--ink-2);background:none;border:0;border-radius:999px;padding:6px 11px;cursor:pointer;text-decoration:none;white-space:nowrap;transition:all var(--t) var(--ease)}
+.dock a:hover,.dock button:hover{background:var(--panel-3);color:var(--ink)}
+.dock a.on{background:var(--accent);color:#fff;font-weight:600}
+.dock .div{width:1px;height:16px;background:var(--line);margin:0 3px}
+@media (max-width:470px){.chrome .note{display:none}.cbtn span{display:none}.cbtn{padding:0 9px}}
+@media (max-width:420px){.frame{height:clamp(400px,68vh,600px)}.fhead .ttl b{font-size:14px}.fhead{padding:10px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+.kv{grid-template-columns:82px minmax(0,1fr);gap:9px 10px}
+.ppo{padding:14px 15px;gap:12px}
+.chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px}
+.chain span{color:var(--ink-3);background:#fff;border:1px solid var(--line-soft);border-radius:999px;padding:3px 9px;white-space:nowrap}
+.chain span.on{color:var(--accent-deep);background:var(--accent-soft);border-color:rgba(13,148,136,.3);font-weight:650}
+.chain i{width:10px;height:1px;background:var(--line);display:block;flex:none}
+.botblock{border-top:1px solid var(--line-soft);padding-top:11px;margin-top:2px}
+.ptitle+.ptitle{margin-top:2px}
+.crumb.next{border:1px dashed rgba(16,24,40,.20);color:var(--ink-2);background:#fff}
+.crumb.next:hover{background:var(--accent-soft);border-color:rgba(13,148,136,.5);color:var(--accent-deep);border-style:solid}
+.crumb.next .crumbgo{width:12px;height:12px;opacity:.65}
+.crumb.next:hover .crumbgo{opacity:1}
+.crumb.off{opacity:.42;cursor:not-allowed;border-style:dotted}
+.crumb.next b{max-width:96px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-home" viewBox="0 0 16 16"><path d="M2 7.6l6-4.8 6 4.8V14H9.6v-4H6.4v4H2V7.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+<symbol id="i-person" viewBox="0 0 16 16"><circle cx="8" cy="5.2" r="2.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2.8 13.6c.7-2.5 2.8-3.8 5.2-3.8s4.5 1.3 5.2 3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-bot" viewBox="0 0 16 16"><rect x="3" y="5.2" width="10" height="7" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6.3" cy="8.6" r="1" fill="currentColor"/><circle cx="9.7" cy="8.6" r="1" fill="currentColor"/><path d="M8 5.2V2.8M5.8 2.8h4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+<symbol id="i-search" viewBox="0 0 16 16"><circle cx="7.2" cy="7.2" r="4.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10.6 10.6L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3.4v9.2M3.4 8h9.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="i-chev" viewBox="0 0 16 16"><path d="M6.2 3.6L10.6 8l-4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-chevdown" viewBox="0 0 16 16"><path d="M3.6 6.2L8 10.6l4.4-4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-back" viewBox="0 0 16 16"><path d="M9.8 3.6L5.4 8l4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-more" viewBox="0 0 16 16"><circle cx="3.6" cy="8" r="1.35" fill="currentColor"/><circle cx="8" cy="8" r="1.35" fill="currentColor"/><circle cx="12.4" cy="8" r="1.35" fill="currentColor"/></symbol>
+<symbol id="i-x" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 16 16"><path d="M11.2 2.4l2.4 2.4L6.2 12.2 3 13l.8-3.2 7.4-7.4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+<symbol id="i-image" viewBox="0 0 16 16"><rect x="2.5" y="3" width="11" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6.6" r="1.2" fill="currentColor"/><path d="M3.4 11.6L6.8 8.6l2.2 2 1.6-1.4 1.9 1.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-reset" viewBox="0 0 16 16"><path d="M13.2 8a5.2 5.2 0 1 1-1.5-3.7M13.2 1.8v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-move" viewBox="0 0 16 16"><path d="M8 2.2v11.6M2.2 8h11.6M5.2 5L2.6 8l2.6 3M10.8 5l2.6 3-2.6 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-link" viewBox="0 0 16 16"><path d="M6.6 9.4a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.9.9M9.4 6.6a2.6 2.6 0 0 0-3.7 0L3.5 8.8a2.6 2.6 0 0 0 3.7 3.7l.9-.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-unlink" viewBox="0 0 16 16"><path d="M6.8 9.2l2.4-2.4M5.4 4.4l.8-.8a2.6 2.6 0 0 1 3.7 3.7l-.5.5M10.6 11.6l-.8.8a2.6 2.6 0 0 1-3.7-3.7l.5-.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 3l10 10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 16 16"><path d="M13 8a5 5 0 1 1-1.5-3.6M13 2v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-flask" viewBox="0 0 16 16"><path d="M6 1.6h4v2.1l2.9 6.9c.5 1.2-.4 2.6-1.7 2.6H4.8c-1.3 0-2.2-1.4-1.7-2.6L6 3.7V1.6z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M5.6 9.2h4.8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
+<symbol id="i-data" viewBox="0 0 16 16"><ellipse cx="8" cy="4" rx="5" ry="2.1" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 4v8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1V4M3 8c0 1.2 2.2 2.1 5 2.1s5-.9 5-2.1" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+<symbol id="i-trash" viewBox="0 0 16 16"><path d="M3.4 4.6h9.2M6.6 4.6V3.2h2.8v1.4M4.8 4.6l.6 8.2h5.2l.6-8.2" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-check" viewBox="0 0 16 16"><path d="M3.4 8.4l3 3 6.2-6.6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="i-alert" viewBox="0 0 16 16"><path d="M8 2.6l5.6 10H2.4l5.6-10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M8 6.6v3.2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="11.4" r=".9" fill="currentColor"/></symbol>
+<symbol id="i-info" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 7.4v3.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="5.3" r=".85" fill="currentColor"/></symbol>
+<symbol id="i-radio" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="8" r="3" fill="currentColor"/></symbol>
+<symbol id="i-grip" viewBox="0 0 16 16"><circle cx="6" cy="4.6" r="1.1" fill="currentColor"/><circle cx="10" cy="4.6" r="1.1" fill="currentColor"/><circle cx="6" cy="8" r="1.1" fill="currentColor"/><circle cx="10" cy="8" r="1.1" fill="currentColor"/><circle cx="6" cy="11.4" r="1.1" fill="currentColor"/><circle cx="10" cy="11.4" r="1.1" fill="currentColor"/></symbol>
+</defs></svg>
+<div class="app">
+  <header class="chrome">
+    <span class="proto">PROTOTYPE 抛弃式</span>
+    <span class="note">锚定 popover · 无底部弹窗</span>
+    <span class="spacer"></span>
+    <button class="cbtn" id="btnWalk" data-tip="一键走查"><svg class="i"><use href="#i-flask"/></svg><span>走查</span></button>
+    <button class="cbtn" id="btnState" data-tip="状态外显"><svg class="i"><use href="#i-data"/></svg><span>状态</span></button>
+  </header>
+  <section class="frame" aria-label="IM 机器人增强配置面板">
+    <header class="fhead">
+      <button class="back" id="backBtn" hidden aria-label="返回上一级" data-tip="返回"><svg class="i"><use href="#i-back"/></svg></button>
+      <span class="av sm" id="fIcon" style="background:var(--accent-soft);color:var(--accent-deep)"><svg class="i"><use href="#i-home"/></svg></span>
+      <div class="ttl"><b id="fTitle">家</b><small id="fSub"></small></div>
+      <button class="ibtn" id="fMore" aria-label="更多操作" data-tip="更多"><svg class="i"><use href="#i-more"/></svg></button>
+      <button class="ibtn solid" id="fAdd" aria-label="新建" data-tip="新建"><svg class="i"><use href="#i-plus"/></svg></button>
+    </header>
+    <nav class="crumbs" id="crumbs" aria-label="三级链路"><span class="tablk" id="tablk" hidden></span></nav>
+    <div class="fsearch" id="searchWrap">
+      <div class="box"><svg class="i"><use href="#i-search"/></svg>
+        <input id="q" placeholder="搜索家、助理" autocomplete="off" spellcheck="false" aria-label="搜索" role="combobox" aria-expanded="false" aria-controls="sugg"></div>
+      <div class="sugg" id="sugg" hidden role="listbox"></div>
+    </div>
+    <div class="fbody" id="fbody"></div>
+    <footer class="ffoot" id="ffoot"></footer>
+  </section>
+</div>
+<nav class="dock" aria-label="款式对照">
+  <span class="lead">款式</span>
+  <a href="proto-apple.html">Apple</a>
+  <a href="proto-vercel.html">Vercel</a>
+  <a href="proto-notion.html">Notion</a>
+  <a href="proto-fusion.html">融合</a>
+  <a href="proto-studio.html" class="on" aria-current="page">Studio</a>
+  <span class="div"></span>
+  <button id="btnReset" data-tip="重置回种子"><svg class="i" style="display:inline-block;vertical-align:-2px"><use href="#i-refresh"/></svg> 重置</button>
+</nav>
+<div id="popHost"></div>
+<div class="toasts" id="toastHost" aria-live="polite" aria-atomic="false"></div>
+<div id="modalHost"></div>
+<script>
+/* ================= 状态（语义按 T3-spec #116 冻结） ================= */
+var HUE=[174,205,262,32,340,150];
+var CH={feishu:"飞书", wechat:"微信", qq:"QQ"};
+var AV_NAMES=["青瓷","湖蓝","藕紫","琥珀","绯樱","苔绿"];
+function seed(){ return {
+  seq:100, q:"", level:"L1", selHome:"h1", selAsst:"a1",
+  loading:true, flashId:null, focusId:null, lastDiff:"正在读取本机的家与助理…",
+  pick:{}, hl:-1,
+  workspaces:[
+    {id:"ws-keting", title:"客厅", path:"D:\\DeepSeekHarness\\agents\\keting"},
+    {id:"ws-shufang", title:"书房", path:"D:\\DeepSeekHarness\\agents\\shufang"},
+    {id:"ws-old", title:"旧书房", path:"D:\\DeepSeekHarness\\agents\\jiushufang", deleted:true}
+  ],
+  bots:[
+    {id:"bot-fei", name:"小帅", channel:"feishu", online:true},
+    {id:"bot-wxa", name:"A号", channel:"wechat", online:true},
+    {id:"bot-wxb", name:"B号", channel:"wechat", online:false},
+    {id:"bot-free", name:"待认领", channel:"feishu", online:true}
+  ],
+  homes:[
+    {id:"h1", workspaceId:"ws-keting", path:"D:\\DeepSeekHarness\\agents\\keting", name:"客厅", nameSource:"system", avatar:null},
+    {id:"h2", workspaceId:"ws-shufang", path:"D:\\DeepSeekHarness\\agents\\shufang", name:"书房基地", nameSource:"user", avatar:"3"},
+    {id:"h-orphan", workspaceId:null, path:"D:\\DeepSeekHarness\\agents\\旧书房", name:"旧书房", nameSource:"system", avatar:null, tombstone:{reason:"工作区已删除"}},
+    {id:"h-stash", workspaceId:null, path:null, name:"暂存", nameSource:"system", avatar:null}
+  ],
+  assistants:[
+    {id:"a1", homeId:"h1", channel:"feishu", botId:"bot-fei", status:"bound", name:"小帅", nameSource:"bot", avatar:null},
+    {id:"a2", homeId:"h1", channel:"wechat", botId:null, status:"unbound", name:"客厅", nameSource:"home", avatar:null},
+    {id:"a3", homeId:"h2", channel:"wechat", botId:"bot-wxa", status:"bound", name:"A号", nameSource:"bot", avatar:"2"},
+    {id:"a4", homeId:"h2", channel:"wechat", botId:"bot-wxb", status:"bound", name:"B号", nameSource:"bot", avatar:null},
+    {id:"a5", homeId:"h-orphan", channel:"feishu", botId:null, status:"orphan", name:"旧书房", nameSource:"home", avatar:null},
+    {id:"a6", homeId:"h-stash", channel:"feishu", botId:"bot-free", status:"bound", name:"待认领", nameSource:"bot", avatar:null}
+  ]
+}; }
+var S=seed();
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
+function uid(p){ return p+(++S.seq); }
+function byId(a,id){ for(var i=0;i<a.length;i++){ if(a[i].id===id) return a[i]; } return null; }
+function homeById(id){ return byId(S.homes,id); }
+function asstById(id){ return byId(S.assistants,id); }
+function botOf(a){ return (a && a.botId) ? byId(S.bots,a.botId) : null; }
+function wsOf(h){ return (h && h.workspaceId) ? byId(S.workspaces,h.workspaceId) : null; }
+function homeName(h){
+  if(!h) return "";
+  if(h.nameSource==="user") return h.name;
+  var w=wsOf(h); if(w && !w.deleted) return w.title;
+  if(h.path) return h.path.split(/[\\/]/).pop()||h.name;
+  return h.name;
+}
+function homeFrom(h){
+  if(h.nameSource==="user") return "你改过的名字";
+  var w=wsOf(h); if(w && !w.deleted) return "跟随工作区名";
+  if(h.path) return "跟随目录名";
+  return "默认名";
+}
+function asstName(a){
+  if(!a) return "";
+  if(a.nameSource==="user") return a.name;
+  var b=botOf(a); if(b) return b.name;
+  var h=homeById(a.homeId); if(h) return homeName(h);
+  return "未命名助理";
+}
+function asstFrom(a){
+  if(a.nameSource==="user") return "你取过的名字";
+  if(botOf(a)) return "跟随机器人名";
+  return "跟随家名";
+}
+function asstPath(a){ var h=homeById(a.homeId); return (h && h.path) ? h.path : "未关联工作区"; }
+function avStyle(obj,name){
+  var s=String(name||"?"), idx=(obj && obj.avatar) ? (parseInt(obj.avatar,10)-1) : -1, hue;
+  if(idx>=0 && idx<HUE.length){ hue=HUE[idx]; }
+  else { var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))%997; } hue=HUE[h%HUE.length]; }
+  return "background:hsl("+hue+",58%,93%);color:hsl("+hue+",48%,32%)";
+}
+function statusPill(a){
+  if(a.status==="bound") return "<span class=\"pill ok\">已绑</span>";
+  if(a.status==="unbound") return "<span class=\"pill warn\">未绑定</span>";
+  return "<span class=\"pill bad\">失联</span>";
+}
+function homePill(h){
+  if(h.tombstone) return "<span class=\"pill bad\">待重连</span>";
+  if(h.id==="h-stash") return "<span class=\"pill dim\">暂存</span>";
+  return "";
+}
+function onlineOf(a){ var b=botOf(a); return b ? !!b.online : null; }
+function onlineTag(a){
+  var on=onlineOf(a);
+  if(on===null) return "<span class=\"online off\"><span class=\"dot off\"></span>无渠道</span>";
+  return on ? "<span class=\"online\"><span class=\"dot on live\"></span>在线</span>" : "<span class=\"online off\"><span class=\"dot off\"></span>离线</span>";
+}
+function homeOnlineTag(h){
+  var list=S.assistants.filter(function(a){ return a.homeId===h.id; });
+  if(!list.length) return "<span class=\"online off\"><span class=\"dot off\"></span>没有助理</span>";
+  var on=list.filter(function(a){ return onlineOf(a)===true; }).length;
+  if(on>0) return "<span class=\"online\"><span class=\"dot on live\"></span>"+on+" 个在线</span>";
+  return "<span class=\"online off\"><span class=\"dot off\"></span>全部离线</span>";
+}
+function freeBots(){ var u={}; S.assistants.forEach(function(a){ if(a.botId) u[a.botId]=1; }); return S.bots.filter(function(b){ return !u[b.id]; }); }
+function freeWs(){ var u={}; S.homes.forEach(function(h){ if(h.workspaceId) u[h.workspaceId]=1; });
+  return S.workspaces.filter(function(w){ return !w.deleted && !u[w.id]; }); }
+function match(t){ return !S.q || String(t).toLowerCase().indexOf(S.q.toLowerCase())>=0; }
+
+/* ================= 渲染 ================= */
+var fbody=document.getElementById("fbody"), crumbsEl=document.getElementById("crumbs"),
+    tablk=document.getElementById("tablk"), fTitle=document.getElementById("fTitle"), fSub=document.getElementById("fSub"),
+    fIcon=document.getElementById("fIcon"), fAdd=document.getElementById("fAdd"), fMore=document.getElementById("fMore"),
+    backBtn=document.getElementById("backBtn"), ffoot=document.getElementById("ffoot"),
+    searchWrap=document.getElementById("searchWrap"), suggEl=document.getElementById("sugg");
+function fl(id){ return S.flashId===id ? " on" : ""; }
+function crumbBtn(level,label,current,next,off){
+  var cls="crumb"+(current?" cur":"")+(next?" next":"")+(off?" off":"");
+  var attrs = current ? " aria-current=\"true\"" : (" data-goto=\""+level+"\""+(off?" aria-disabled=\"true\"" : ""));
+  return "<button class=\""+cls+"\""+attrs+"><span class=\"lv\">"+level+"</span><b>"+esc(label)+"</b>"
+    + (next && !off ? "<svg class=\"i crumbgo\"><use href=\"#i-chev\"/></svg>" : "")+"</button>";
+}
+function focusedHomeId(){ return (S.level==="L1" && S.focusId) ? S.focusId : S.selHome; }
+function focusedAsstId(){
+  if(S.level==="L2") return S.focusId || S.selAsst;
+  if(S.level==="L1"){ var f=S.assistants.filter(function(a){ return a.homeId===focusedHomeId(); })[0]; return f?f.id:null; }
+  return S.selAsst;
+}
+function renderCrumbs(){
+  var h=homeById(S.selHome), a=asstById(S.selAsst), out=[];
+  if(S.level==="L1"){
+    var fh=homeById(focusedHomeId());
+    var fa=focusedAsstId()?asstById(focusedAsstId()):null;
+    out.push(crumbBtn("L1","家",true));
+    out.push("<span class=\"csplit\">›</span>");
+    out.push(crumbBtn("L2", fh?("助理 · "+homeName(fh)):"助理", false, true, !fh));
+    out.push("<span class=\"csplit\">›</span>");
+    out.push(crumbBtn("L3", fa?("机器人 · "+asstName(fa)):"机器人", false, true, !fa));
+  } else if(S.level==="L2"){
+    var fa2=focusedAsstId()?asstById(focusedAsstId()):null;
+    out.push(crumbBtn("L1","家",false));
+    out.push("<span class=\"csplit\">›</span>");
+    out.push(crumbBtn("L2", h?homeName(h):"", true));
+    out.push("<span class=\"csplit\">›</span>");
+    out.push(crumbBtn("L3", fa2?("机器人 · "+asstName(fa2)):"机器人", false, true, !fa2));
+  } else {
+    out.push(crumbBtn("L1","家",false));
+    out.push("<span class=\"csplit\">›</span>");
+    out.push(crumbBtn("L2", h?homeName(h):"", S.level==="L2"));
+    if(S.level==="L3"){
+      out.push("<span class=\"csplit\">›</span>");
+      out.push(crumbBtn("L3", a?asstName(a):"", true));
+    }
+  }
+  crumbsEl.innerHTML = "<span class=\"tablk\" id=\"tablk\" hidden></span>" + out.join("");
+  tablk=document.getElementById("tablk");
+}
+function slideTab(instant){
+  var cur=crumbsEl.querySelector(".crumb[aria-current=\"true\"]");
+  if(!cur){ tablk.hidden=true; return; }
+  var cr=crumbsEl.getBoundingClientRect(), r=cur.getBoundingClientRect();
+  tablk.hidden=false;
+  if(instant) tablk.style.transition="none";
+  tablk.style.width=r.width+"px";
+  tablk.style.transform="translateX("+(r.left-cr.left+crumbsEl.scrollLeft)+"px)";
+  if(instant) requestAnimationFrame(function(){ tablk.style.transition=""; });
+  if(r.right > cr.right) crumbsEl.scrollLeft += Math.ceil(r.right - cr.right + 6);
+  else if(r.left < cr.left) crumbsEl.scrollLeft -= Math.ceil(cr.left - r.left + 6);
+}
+function empty(t,p){
+  return "<div class=\"empty\"><div class=\"eic\"><svg class=\"i\" style=\"width:19px;height:19px\"><use href=\"#i-home\"/></svg></div>"
+    + "<b>"+esc(t)+"</b><p>"+esc(p)+"</p></div>";
+}
+function skeleton(){
+  var one="<div class=\"skrow\"><span class=\"sk\" style=\"width:36px;height:36px;border-radius:11px\"></span>"
+    + "<span><span class=\"sk\" style=\"display:block;width:38%;height:11px\"></span>"
+    + "<span class=\"sk\" style=\"display:block;width:62%;height:9px;margin-top:7px\"></span></span>"
+    + "<span class=\"sk\" style=\"width:56px;height:22px;border-radius:999px\"></span></div>";
+  return one+one+one;
+}
+function icb(act,label,icon,cls){
+  return "<button class=\"ract "+(cls||"")+"\" data-item-act=\""+act+"\" data-tip=\""+esc(label)+"\" aria-label=\""+esc(label)+"\"><svg class=\"i\"><use href=\"#"+icon+"\"/></svg></button>";
+}
+function rowsHomes(){
+  var hs=S.homes.filter(function(h){
+    if(!S.q) return true;
+    if(match(homeName(h))) return true;
+    return S.assistants.filter(function(a){ return a.homeId===h.id; }).some(function(a){ return match(asstName(a)); });
+  });
+  if(!hs.length) return empty("没有匹配的家","换个关键词，或者点右上角新建一个家");
+  return hs.map(function(h){
+    var d=homeName(h), n=S.assistants.filter(function(a){ return a.homeId===h.id; }).length;
+    var namesLine = n ? ("助理："+S.assistants.filter(function(a){ return a.homeId===h.id; }).map(function(a){ return esc(asstName(a)); }).join("、")) : "还没有助理";
+    return "<div class=\"row"+(S.selHome===h.id?" on":"")+fl(h.id)+"\" role=\"button\" tabindex=\"0\" data-open=\"L2\" data-id=\""+h.id+"\" aria-label=\"家 "+esc(d)+"\">"
+      + "<span class=\"av\" style=\""+avStyle(h,d)+"\">"+esc(d.charAt(0))+"</span>"
+      + "<span class=\"txt\"><span class=\"nm\"><b>"+esc(d)+"</b>"+homePill(h)+homeOnlineTag(h)+"</span>"
+      + "<span class=\"sub\">"+n+" 位助理 · "+esc(homeFrom(h))+"</span>"
+      + "<span class=\"names\">"+namesLine+"</span></span>"
+      + "<span class=\"acts2\">"
+      + icb("rename-h","重命名","i-pencil")+icb("more-home","更多","i-more")
+      + "</span></div>";
+  }).join("");
+}
+function rowsAsst(){
+  var h=homeById(S.selHome); if(!h) return empty("先选一个家","回到上一级挑一个家");
+  var list=S.assistants.filter(function(a){ return a.homeId===h.id; });
+  if(!list.length) return empty("这个家还没有助理","助理是机器人的人名片，可以先建人、后绑号");
+  return list.map(function(a){
+    var d=asstName(a);
+    return "<div class=\"row"+(S.selAsst===a.id?" on":"")+fl(a.id)+"\" role=\"button\" tabindex=\"0\" data-open=\"L3\" data-id=\""+a.id+"\" aria-label=\"助理 "+esc(d)+"\">"
+      + "<span class=\"av round\" style=\""+avStyle(a,d)+"\">"+esc(d.charAt(0))+"</span>"
+      + "<span class=\"txt\"><span class=\"nm\"><b>"+esc(d)+"</b>"+statusPill(a)+onlineTag(a)+"</span>"
+      + "<span class=\"sub\">"+esc(CH[a.channel]||a.channel)+" · 工作区 "+esc(asstPath(a))+"</span></span>"
+      + "<span class=\"acts2\">"
+      + "<button class=\"ract connect\" data-item-act=\"connect-a\" data-id=\""+a.id+"\">接入</button>"
+      + icb("more-asst","更多","i-more")
+      + "</span></div>";
+  }).join("");
+}
+function viewAsst(){
+  var a=asstById(S.selAsst); if(!a) return empty("没有选中助理","回到上一级选一位助理");
+  var d=asstName(a), b=botOf(a), h=homeById(a.homeId);
+  var chain="<div class=\"chain\"><span class=\""+(a.nameSource==="user"?"on":"")+"\">你取的名</span><i></i><span class=\""+(a.nameSource==="bot"?"on":"")+"\">机器人名</span><i></i><span class=\""+(a.nameSource==="home"?"on":"")+"\">家名</span></div>";
+  var head="<div class=\"detail\" data-tilt><div class=\"dhead\"><span class=\"av\" style=\""+avStyle(a,d)+"\">"+esc(d.charAt(0))+"</span>"
+    + "<span class=\"txt\"><b>"+esc(d)+"</b><small>"+esc(asstFrom(a))+" · <span class=\"mono\">"+esc(a.id)+"</span></small></span>"+onlineTag(a)+"</div>"
+    + "<div class=\"meta\"><span class=\"mchip\">"+esc(h?homeName(h):"未归家")+"</span>"
+    + "<span class=\"mchip\">"+esc(CH[a.channel]||a.channel)+"</span>"+statusPill(a)+"</div>"
+    + "<div class=\"meta\">"+chain+"</div>";
+  var botBox;
+  if(b){
+    botBox="<div class=\"botblock\"><div class=\"dhead\" style=\"transform:none\"><span class=\"av\" style=\"background:#101828;color:#fff\"><svg class=\"i\"><use href=\"#i-bot\"/></svg></span>"
+      + "<span class=\"txt\"><b>"+esc(b.name)+"</b><small>"+esc(CH[b.channel]||b.channel)+" · 单渠道实例</small></span>"
+      + "<span class=\"pill dim\"><span class=\"mono\">"+esc(b.id)+"</span></span></div>"
+      + "<div class=\"steps3\"><span>助理占位</span><i></i><span>机器人绑定</span><i></i><span>改名史跟随</span></div></div>";
+  } else {
+    botBox="<div class=\"botblock\" style=\"border-top-style:dashed\"><div class=\"dhead\" style=\"transform:none\"><span class=\"av\" style=\"background:var(--panel-3);color:var(--ink-3)\"><svg class=\"i\"><use href=\"#i-bot\"/></svg></span>"
+      + "<span class=\"txt\"><b>还没绑机器人</b><small>人先占位、号后到</small></span><span class=\"pill warn\">未绑定</span></div></div>";
+  }
+  var acts="<div class=\"acts\">"
+    + (b ? "<button class=\"abtn go\" data-act=\"connect-a\"><svg class=\"i\"><use href=\"#i-link\"/></svg>接入</button>"
+         : "<button class=\"abtn go\" data-act=\"bind-a\"><svg class=\"i\"><use href=\"#i-link\"/></svg>绑定机器人</button>")
+    + "<button class=\"abtn\" data-act=\"detail-a\"><svg class=\"i\"><use href=\"#i-data\"/></svg>详情</button>"
+    + "</div>"
+    + "<div class=\"acts\">"
+    + "<button class=\"abtn\" data-act=\"rename-a\"><svg class=\"i\"><use href=\"#i-pencil\"/></svg>重命名</button>"
+    + "<button class=\"abtn\" data-act=\"avatar-a\"><svg class=\"i\"><use href=\"#i-image\"/></svg>改头像</button>"
+    + "<button class=\"abtn\" data-act=\"move-a\"><svg class=\"i\"><use href=\"#i-move\"/></svg>换工作区</button>"
+    + "</div>"
+    + "<div class=\"acts danger\">"
+    + (b ? "<button class=\"abtn danger\" data-act=\"unbind-a\"><svg class=\"i\"><use href=\"#i-unlink\"/></svg>移除渠道</button>" : "")
+    + "<button class=\"abtn danger\" data-act=\"remove-a\"><svg class=\"i\"><use href=\"#i-trash\"/></svg>删除助理</button>"
+    + "</div>";
+  return head+botBox+"</div>"+acts;
+}
+function renderFoot(){
+  if(S.level==="L1"){ ffoot.innerHTML="<button class=\"pbtn\" data-act=\"new-home\"><svg class=\"i\"><use href=\"#i-plus\"/></svg>新建家</button>"; return; }
+  if(S.level==="L2"){ ffoot.innerHTML="<button class=\"pbtn\" data-act=\"new-asst\"><svg class=\"i\"><use href=\"#i-plus\"/></svg>新建助理</button>"; return; }
+  var a=asstById(S.selAsst), b=a?botOf(a):null;
+  ffoot.innerHTML = b
+    ? "<button class=\"pbtn ghost\" data-goto=\"L2\"><svg class=\"i\"><use href=\"#i-back\"/></svg>返回助理列表</button>"
+    : "<button class=\"pbtn\" data-act=\"bind-a\"><svg class=\"i\"><use href=\"#i-link\"/></svg>绑定机器人</button>";
+}
+function flipCapture(){
+  var m={};
+  var els=fbody.querySelectorAll("[data-id]");
+  for(var i=0;i<els.length;i++){ m[els[i].getAttribute("data-id")]=els[i].getBoundingClientRect().top; }
+  return m;
+}
+function flipPlay(prev){
+  if(!prev) return;
+  var els=fbody.querySelectorAll("[data-id]");
+  for(var i=0;i<els.length;i++){
+    var el=els[i], id=el.getAttribute("data-id"), p=prev[id];
+    if(p===undefined) { el.classList.add("entering"); continue; }
+    var d=p-el.getBoundingClientRect().top;
+    if(!d) continue;
+    el.style.transition="none"; el.style.transform="translateY("+d+"px)";
+    (function(node){ requestAnimationFrame(function(){
+      node.style.transition="transform 280ms cubic-bezier(.34,1.36,.4,1)";
+      node.style.transform="";
+    }); })(el);
+  }
+}
+function render(prev){
+  var h=homeById(S.selHome), a=asstById(S.selAsst);
+  backBtn.hidden=(S.level==="L1"); searchWrap.hidden=(S.level==="L3");
+  if(S.loading){
+    fTitle.textContent="家"; fSub.textContent="读取中…";
+    fbody.innerHTML=skeleton(); ffoot.innerHTML=""; crumbsEl.innerHTML="";
+    return;
+  }
+  if(S.level==="L1"){
+    fTitle.textContent="家"; fSub.textContent=S.homes.length+" 个 · 每个家对应一个工作区";
+    fIcon.innerHTML="<svg class=\"i\"><use href=\"#i-home\"/></svg>"; fbody.innerHTML=rowsHomes();
+  } else if(S.level==="L2"){
+    var n=h?S.assistants.filter(function(x){ return x.homeId===h.id; }).length:0;
+    fTitle.textContent=h?homeName(h):""; fSub.textContent=h?(homeFrom(h)+" · "+n+" 位助理"):"";
+    fIcon.innerHTML="<svg class=\"i\"><use href=\"#i-home\"/></svg>"; fbody.innerHTML=rowsAsst();
+  } else {
+    fTitle.textContent=a?asstName(a):""; fSub.textContent=a?(asstFrom(a)+" · 助理详情"):"";
+    fIcon.innerHTML="<svg class=\"i\"><use href=\"#i-person\"/></svg>"; fbody.innerHTML=viewAsst();
+  }
+  fMore.hidden=(S.level!=="L2"); fAdd.hidden=(S.level==="L3");
+  renderCrumbs(); renderFoot(); slideTab(S._first!==false); S._first=false; flipPlay(prev); bindTilt();
+}
+function touch(msg){ S.lastDiff=msg; render(); }
+function crumbGo(level){
+  if(level==="L1"){ go("L1"); return; }
+  if(level==="L2"){
+    if(S.level==="L1"){ S.selHome = focusedHomeId(); if(!S.selHome){ toast("先新建一个家","bad"); return; } }
+    go("L2"); return;
+  }
+  if(level==="L3"){
+    if(S.level==="L1"){ S.selHome = focusedHomeId(); }
+    var aid = focusedAsstId();
+    if(!aid){ toast("这个家还没有助理，先新建一位","bad"); return; }
+    S.selAsst = aid; go("L3"); return;
+  }
+}
+function setFocus(id){
+  if(S.focusId===id) return;
+  S.focusId=id;
+  renderCrumbs(); slideTab(true);
+}
+function go(level,id){
+  S.focusId=null;
+  var prev=flipCapture();
+  if(level==="L1"){ S.level="L1"; }
+  else if(level==="L2"){ if(id) S.selHome=id; S.level="L2";
+    var f=S.assistants.filter(function(x){ return x.homeId===S.selHome; })[0]; if(f) S.selAsst=f.id; }
+  else if(level==="L3"){ if(id) S.selAsst=id; var a=asstById(S.selAsst); if(a) S.selHome=a.homeId; S.level="L3"; }
+  S.flashId=null; render(prev);
+}
+
+/* ================= 3D 视差 ================= */
+function bindTilt(){
+  var cards=fbody.querySelectorAll("[data-tilt]");
+  for(var i=0;i<cards.length;i++){
+    (function(c){
+      c.onmousemove=function(e){
+        var r=c.getBoundingClientRect();
+        var px=(e.clientX-r.left)/r.width-0.5, py=(e.clientY-r.top)/r.height-0.5;
+        c.style.transform="perspective(700px) rotateY("+(px*5).toFixed(2)+"deg) rotateX("+(-py*5).toFixed(2)+"deg) translateZ(0)";
+        c.classList.add("tilt");
+      };
+      c.onmouseleave=function(){ c.style.transform=""; c.classList.remove("tilt"); };
+    })(cards[i]);
+  }
+}
+
+/* ================= 磁吸主按钮 ================= */
+function bindMagnet(){
+  var btns=document.querySelectorAll(".pbtn");
+  for(var i=0;i<btns.length;i++){
+    (function(b){
+      b.onmousemove=function(e){
+        var r=b.getBoundingClientRect();
+        var dx=((e.clientX-r.left)/r.width-0.5)*6, dy=((e.clientY-r.top)/r.height-0.5)*4;
+        b.style.transform="translate("+dx.toFixed(2)+"px,"+dy.toFixed(2)+"px) scale(1.012)";
+      };
+      b.onmouseleave=function(){ b.style.transform=""; };
+    })(btns[i]);
+  }
+}
+/* ================= popover 系统（取代底部弹窗） ================= */
+var popHost=document.getElementById("popHost"), toastHost=document.getElementById("toastHost"), modalHost=document.getElementById("modalHost");
+var popEl=null, anchorEl=null, onPopClose=null;
+function placePop(pop, anchor){
+  var r=anchor.getBoundingClientRect(), pr=pop.getBoundingClientRect();
+  var vw=window.innerWidth, vh=window.innerHeight, gap=9, below=(r.bottom+gap+pr.height) <= (vh-8);
+  var top = below ? (r.bottom+gap) : Math.max(8, r.top-gap-pr.height);
+  var fr=document.querySelector(".frame"), fb=fr?fr.getBoundingClientRect():{left:8,right:vw-8};
+  var pad=10;
+  var minL=Math.max(pad, fb.left+pad), maxL=Math.min(vw-pr.width-pad, fb.right-pr.width-pad);
+  if(maxL<minL) maxL=Math.max(pad, vw-pr.width-pad);
+  var centered=r.left + r.width/2 - pr.width/2;
+  var want = centered;
+  if(centered > maxL) want = r.right - pr.width;            /* 右侧放不下：右对齐锚点，向左展开 */
+  else if(centered < minL) want = r.left;                    /* 左侧放不下：左对齐锚点，向右展开 */
+  var left = Math.min(Math.max(minL, want), maxL);
+  pop.style.top=top+"px"; pop.style.left=left+"px";
+  var arrow=pop.querySelector(".arrow");
+  if(arrow){
+    var ax=Math.min(Math.max(12, r.left + r.width/2 - left - 5), Math.max(12, pr.width-22));
+    arrow.style.left=ax+"px";
+    if(!below) arrow.classList.add("b"); else arrow.classList.remove("b");
+  }
+  pop.style.setProperty("--ox", Math.round(r.left + r.width/2 - left)+"px");
+  pop.style.setProperty("--oy", below ? "0%" : "100%");
+}
+function openPop(anchor, opts){
+  opts=opts||{};
+  closePop(true);
+  var width=opts.width||300;
+  var html = (opts.scrim===false ? "" : "<div class=\"scrim\" data-pop-close></div>")
+    + "<div class=\"pop\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(opts.label||"操作")+"\" style=\"width:min("+width+"px,calc(100vw - 20px))\">"
+    + "<div class=\"ppo\">"+opts.html+"</div>"
+    + (opts.foot ? "<div class=\"pfoot\">"+opts.foot+"</div>" : "")
+    + "<span class=\"arrow\"></span></div>";
+  popHost.innerHTML=html;
+  popEl=popHost.querySelector(".pop"); anchorEl=anchor;
+  if(anchor && anchor.classList) anchor.classList.add("anchor");
+  placePop(popEl, anchor);
+  if(opts.onClose) onPopClose=opts.onClose;
+  var sc=popHost.querySelector("[data-pop-close]"); if(sc) sc.onclick=function(){ closePop(); };
+  var closers=popHost.querySelectorAll("[data-pop-close-btn]");
+  for(var i=0;i<closers.length;i++) closers[i].onclick=function(){ closePop(); };
+  bindPopDrag();
+  var f=popEl.querySelector("input,select,button:not([data-pop-close-btn])");
+  if(f) setTimeout(function(){ try{ f.focus(); }catch(e){} },40);
+  return popEl;
+}
+function closePop(immediate){
+  if(!popEl){ popHost.innerHTML=""; return; }
+  if(anchorEl && anchorEl.classList) anchorEl.classList.remove("anchor");
+  var node=popEl, cb=onPopClose;
+  popEl=null; anchorEl=null; onPopClose=null;
+  if(immediate){ popHost.innerHTML=""; if(cb) cb(); return; }
+  node.classList.add("closing");
+  setTimeout(function(){ popHost.innerHTML=""; },130);
+  if(cb) cb();
+}
+function bindPopDrag(){
+  var startX=0,startY=0,dragging=false;
+  popEl.addEventListener("pointerdown", function(e){
+    if(e.target.closest("button,input,select,.menu")) return;
+    dragging=true; startX=e.clientX; startY=e.clientY;
+    popEl.classList.add("dragging"); popEl.setPointerCapture&&popEl.setPointerCapture(e.pointerId);
+  });
+  popEl.addEventListener("pointermove", function(e){
+    if(!dragging) return;
+    var dx=e.clientX-startX, dy=e.clientY-startY;
+    popEl.style.transform="translate("+dx+"px,"+dy+"px) scale("+(1-Math.min(Math.abs(dy)/1400,.03)+")");
+  });
+  popEl.addEventListener("pointerup", function(e){
+    if(!dragging) return; dragging=false; popEl.classList.remove("dragging");
+    var dx=e.clientX-startX, dy=e.clientY-startY;
+    if(Math.abs(dy)>70 || Math.abs(dx)>110){ closePop(); return; }
+    popEl.style.transition="transform 260ms cubic-bezier(.34,1.36,.4,1)";
+    popEl.style.transform="";
+    setTimeout(function(){ if(popEl) popEl.style.transition=""; },280);
+  });
+}
+function dropdown(anchor, items, label){
+  var html="<div class=\"menu\">"+items.map(function(it){
+    return (it.sep ? "<span class=\"sep\"></span>" : "")
+      + "<button data-dd=\""+it.act+"\""+(it.danger?" class=\"danger\"":"")+">"
+      + "<svg class=\"i\"><use href=\"#"+it.icon+"\"/></svg>"+esc(it.t)+"</button>";
+  }).join("")+"</div>";
+  var pop=openPop(anchor, {html:html, width:200, label:label||"更多操作"});
+  var bs=pop.querySelectorAll("[data-dd]");
+  for(var i=0;i<bs.length;i++){
+    bs[i].onclick=(function(b){ return function(){ var k=b.getAttribute("data-dd"); closePop(true); doAct(k, anchor, b.getAttribute("data-id")); }; })(bs[i]);
+  }
+  return pop;
+}
+function popconfirm(anchor, o){
+  return openPop(anchor, {
+    width:o.width||280, label:o.title,
+    html:"<div class=\"ptitle\"><svg class=\"i\" style=\"color:"+(o.tone==="danger"?"var(--bad)":"var(--accent-deep)")+"\"><use href=\"#"+(o.tone==="danger"?"i-alert":"i-info")+"\"/></svg>"+esc(o.title)+"</div>"
+      + "<p class=\"fhint\">"+o.text+"</p>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>取消</button>"
+      + "<button class=\"pbtn-s "+(o.tone==="danger"?"deny":"go")+"\" id=\"pcOk\">"+esc(o.okLabel||"确定")+"</button>",
+  });
+}
+function popConfirmWire(pop, onOk){
+  var ok=pop.querySelector("#pcOk");
+  if(ok) ok.onclick=function(){ closePop(true); onOk(); };
+}
+
+/* ================= toast ================= */
+function toast(text, kind, opts){
+  opts=opts||{};
+  var el=document.createElement("div");
+  el.className="toast"+(kind==="bad"?" bad":(kind==="ok"?" ok":""));
+  el.innerHTML="<svg class=\"i ti\"><use href=\"#"+(kind==="bad"?"i-alert":(kind==="ok"?"i-check":"i-info"))+"\"/></svg>"
+    + "<span class=\"tx\">"+text+"</span>"
+    + (opts.undo ? "<button class=\"pbtn-s\" style=\"height:26px;padding:0 9px;font-size:11.5px\" id=\"tdUndo\">撤销</button>" : "")
+    + (opts.progress ? "<span class=\"prog\"><i></i></span>" : "");
+  toastHost.appendChild(el);
+  if(opts.progress){ var bar=el.querySelector(".prog i"); bar.style.transitionDuration=(opts.duration||1400)+"ms"; requestAnimationFrame(function(){ bar.style.transform="scaleX(0)"; }); }
+  var undo=el.querySelector("#tdUndo");
+  if(undo) undo.onclick=function(){ closeToast(el); if(opts.undo) opts.undo(); };
+  var sx=0,sy=0,down=false;
+  el.addEventListener("pointerdown", function(e){ down=true; sx=e.clientX; sy=e.clientY; el.style.animation="none"; });
+  el.addEventListener("pointermove", function(e){ if(!down) return; var dx=e.clientX-sx, dy=e.clientY-sy; el.style.transform="translate("+dx+"px,"+dy+"px)"; el.style.opacity=String(Math.max(.35,1-Math.abs(dy)/160)); });
+  el.addEventListener("pointerup", function(e){ if(!down) return; down=false; var dy=e.clientY-sy, dx=e.clientX-sx; if(Math.abs(dy)>54||Math.abs(dx)>120){ closeToast(el); return; } el.style.transform=""; el.style.opacity="1"; });
+  var life=opts.duration||3600;
+  var timer=setTimeout(function(){ closeToast(el); }, life+ (opts.progress?(opts.duration||1400):0));
+  el._timer=timer;
+  return el;
+}
+function closeToast(el){
+  if(!el || el._closed) return; el._closed=true; clearTimeout(el._timer);
+  el.classList.add("out");
+  setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); },170);
+}
+
+/* ================= 输入联想 ================= */
+function suggest(){
+  var q=S.q;
+  if(!q){ suggEl.hidden=true; return; }
+  var out=[];
+  S.homes.forEach(function(h){ var n=homeName(h); if(match(n)) out.push({kind:"家", label:n, id:h.id, level:"L2", sub:h.path||"未关联工作区"}); });
+  S.assistants.forEach(function(a){ var n=asstName(a); if(match(n)) out.push({kind:"助理", label:n, id:a.id, level:"L3", sub:(CH[a.channel]||a.channel)+" · "+asstPath(a)}); });
+  out=out.slice(0,7);
+  if(!out.length){ suggEl.hidden=true; return; }
+  S.hl=0;
+  suggEl.hidden=false;
+  document.getElementById("q").setAttribute("aria-expanded","true");
+  suggEl.innerHTML=out.map(function(o,i){
+    var re=new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\<!-- SCRIPT -->")+")","ig");
+    var lab=esc(o.label).replace(re,"<mark>$1</mark>");
+    return "<button data-sg=\""+i+"\" role=\"option\" class=\""+(i===0?"hl":"")+"\">"
+      + "<span class=\"av sm\" style=\""+avStyle(null,o.label)+"\">"+esc(o.label.charAt(0))+"</span>"
+      + "<span style=\"min-width:0\"><span style=\"display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis\">"+lab+"</span>"
+      + "<span style=\"display:block;font-size:11px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis\">"+esc(o.sub)+"</span></span>"
+      + "<span class=\"kind\">"+o.kind+"</span></button>";
+  }).join("");
+  suggEl._data=out;
+  var bs=suggEl.querySelectorAll("[data-sg]");
+  for(var i=0;i<bs.length;i++){
+    bs[i].onclick=(function(b){ return function(){ pickSugg(parseInt(b.getAttribute("data-sg"),10)); }; })(bs[i]);
+  }
+}
+function pickSugg(i){
+  var o=suggEl._data && suggEl._data[i]; if(!o) return;
+  suggEl.hidden=true; S.q=""; document.getElementById("q").value="";
+  if(o.level==="L2"){ S.selHome=o.id; go("L2"); }
+  else { S.selAsst=o.id; var a=asstById(o.id); if(a) S.selHome=a.homeId; go("L3"); }
+  toast("已跳到 <b>"+esc(o.label)+"</b>（"+o.kind+"）","ok");
+}
+
+/* ================= popover 内容 ================= */
+function fLabel(t,el){ return "<label class=\"fld\">"+t+el+"</label>"; }
+function seg2(name,opts,cur){
+  var w=100/opts.length;
+  return "<div class=\"seg2\" data-seg=\""+name+"\"><span class=\"ind\" style=\"width:calc("+w+"% - 2px);transform:translateX("+(opts.findIndex(function(o){ return o.v===cur; })*(w))+"%)\"></span>"
+    + opts.map(function(o){ return "<button data-segv=\""+o.v+"\" aria-selected=\""+(o.v===cur?"true":"false")+"\">"+esc(o.t)+"</button>"; }).join("")
+    + "</div>";
+}
+function wireSeg(pop){
+  var segs=pop.querySelectorAll("[data-seg]");
+  for(var i=0;i<segs.length;i++){
+    (function(seg){
+      var ind=seg.querySelector(".ind"), bs=seg.querySelectorAll("[data-segv]");
+      var w=100/bs.length;
+      for(var j=0;j<bs.length;j++){
+        bs[j].onclick=(function(b,idx){ return function(){
+          S.pick[seg.getAttribute("data-seg")]=b.getAttribute("data-segv");
+          ind.style.transform="translateX("+(idx*w)+"%)";
+          for(var k=0;k<bs.length;k++) bs[k].setAttribute("aria-selected", String(bs[k]===b));
+          if(seg.getAttribute("data-seg")==="mode") tolggleMode();
+        }; })(bs[j], j);
+      }
+    })(segs[i]);
+  }
+}
+function tolggleMode(){
+  var pick=S.pick.mode, sw=popEl.querySelector("#wrapWs"), dg=popEl.querySelector("#wrapDir");
+  if(!sw||!dg) return;
+  sw.style.display = pick==="pick" ? "" : "none";
+  dg.style.display = pick==="mkdir" ? "" : "none";
+}
+function optList(items, cur){
+  return "<div class=\"opts\">"+items.map(function(o){
+    return "<button class=\"opt\" role=\"radio\" aria-selected=\""+(o.v===cur?"true":"false")+"\" data-optv=\""+esc(o.v)+"\">"
+      + "<span class=\"oi\" style=\""+(o.style||"")+"\">"+esc(o.i||o.t.charAt(0))+"</span>"
+      + "<span class=\"ot\"><b>"+esc(o.t)+"</b>"+(o.sub?"<small>"+esc(o.sub)+"</small>":"")+"</span>"
+      + (o.v===cur?"<svg class=\"i\" style=\"color:var(--accent-deep)\"><use href=\"#i-check\"/></svg>":"")
+      + "</button>";
+  }).join("")+"</div>";
+}
+function wireOpts(pop, onPick){
+  var opts=pop.querySelectorAll("[data-optv]");
+  for(var i=0;i<opts.length;i++){
+    opts[i].onclick=(function(b){ return function(){
+      S.pick.opt=b.getAttribute("data-optv");
+      for(var k=0;k<opts.length;k++){
+        opts[k].setAttribute("aria-selected", String(opts[k]===b));
+        var t=opts[k].querySelector("svg.i");
+        if(opts[k]===b && !t){ opts[k].insertAdjacentHTML("beforeend","<svg class=\"i\" style=\"color:var(--accent-deep)\"><use href=\"#i-check\"/></svg>"); }
+        if(opts[k]!==b && t) t.remove();
+      }
+      if(onPick) onPick(S.pick.opt);
+    }; })(opts[i]);
+  }
+}
+function avatarGrid(cur){
+  var out="<div class=\"swatches\">"+ "<button data-av=\"\" aria-pressed=\""+(cur?"false":"true")+"\" style=\"background:var(--panel-3);color:var(--ink-3)\">默认</button>";
+  for(var i=0;i<AV_NAMES.length;i++){
+    var v=String(i+1), hue=HUE[i];
+    out+="<button data-av=\""+v+"\" aria-pressed=\""+(cur===v?"true":"false")+"\" data-tip=\""+AV_NAMES[i]+"\" style=\"background:hsl("+hue+",58%,93%);color:hsl("+hue+",48%,32%)\">"+AV_NAMES[i].charAt(0)+"</button>";
+  }
+  return out+"</div>";
+}
+function wireAvatars(pop){
+  var bs=pop.querySelectorAll("[data-av]");
+  for(var i=0;i<bs.length;i++){
+    bs[i].onclick=(function(b){ return function(){
+      S.pick.av=b.getAttribute("data-av");
+      for(var k=0;k<bs.length;k++) bs[k].setAttribute("aria-pressed", String(bs[k]===b));
+    }; })(bs[i]);
+  }
+}
+/* ================= 动作 ================= */
+function curAsst(){ return asstById(S.selAsst); }
+function curHome(){ return homeById(S.selHome); }
+function doAct(kind, anchor, id){
+  var a = id ? asstById(id) : curAsst();
+  var h = id ? (kind.indexOf("-h")>0 ? homeById(id) : (a?homeById(a.homeId):curHome())) : curHome();
+  if(kind==="new-home") return newHomePop(anchor);
+  if(kind==="new-asst") return newAsstPop(anchor);
+  if(kind==="more-home") return dropdown(anchor, [
+    {act:"rename-h",t:"重命名",icon:"i-pencil"},
+    {act:"avatar-h",t:"更换头像",icon:"i-image"},
+    {act:"detail-home",t:"这个家有哪些助理",icon:"i-data"},
+    {sep:true},
+    {act:"reset-h",t:"恢复默认名",icon:"i-reset"}
+  ].concat(h && h.tombstone ? [{act:"revive-h",t:"重连工作区",icon:"i-link"}] : []), "家 · "+(h?homeName(h):""));
+  if(kind==="more-asst") return dropdown(anchor, [
+    {act:"connect-a",t:"接入",icon:"i-link"},
+    {act:"detail-a",t:"详情",icon:"i-data"},
+    {sep:true},
+    {act:"rename-a",t:"重命名",icon:"i-pencil"},
+    {act:"avatar-a",t:"更换头像",icon:"i-image"},
+    {act:"move-a",t:"更换工作区",icon:"i-move"},
+    {sep:true},
+    {act:"reset-a",t:"恢复默认名",icon:"i-reset"},
+    {act:"remove-a",t:"删除助理",icon:"i-trash",danger:true}
+  ], "助理 · "+(a?asstName(a):""));
+  if(kind==="rename-h") return renamePop(h, anchor);
+  if(kind==="rename-a") return renamePop(a, anchor);
+  if(kind==="avatar-h") return avatarPop(h, "home", anchor);
+  if(kind==="avatar-a") return avatarPop(a, "asst", anchor);
+  if(kind==="reset-h"){ var p=popconfirm(anchor,{title:"把家名恢复默认？",text:"名字会重新跟随工作区或目录，你手改过的记录清空。",okLabel:"恢复"}); popConfirmWire(p,function(){ h.nameSource="system"; toast("家名已恢复默认：<b>"+esc(homeName(h))+"</b>","ok"); render(); }); return; }
+  if(kind==="reset-a"){ var p2=popconfirm(anchor,{title:"把助理名恢复默认？",text:"名字会重新按回落链取名（机器人名 ＞ 家名）。",okLabel:"恢复"}); popConfirmWire(p2,function(){ a.nameSource=a.botId?"bot":"home"; toast("助理名已恢复默认：<b>"+esc(asstName(a))+"</b>","ok"); render(); }); return; }
+  if(kind==="revive-h") return revivePop(h, anchor);
+  if(kind==="detail-a") return detailPop(a, anchor);
+  if(kind==="detail-home") return homeKidsPop(h, anchor);
+  if(kind==="connect-a") return connectPop(a, anchor);
+  if(kind==="bind-a") return bindPop(a, anchor);
+  if(kind==="move-a") return movePop(a, anchor);
+  if(kind==="unbind-a"){
+    var p3=popconfirm(anchor,{title:"移除渠道？",text:"“"+esc(asstName(a))+"”会回到未绑定，显示改用家名。机器人回到待认领池，随时能再绑。",okLabel:"移除",tone:"danger"});
+    popConfirmWire(p3,function(){ a.botId=null; a.status="unbound"; if(a.nameSource==="bot") a.nameSource="home";
+      toast("已移除渠道，显示回落到 <b>"+esc(asstName(a))+"</b>","ok"); render(); });
+    return;
+  }
+  if(kind==="remove-a"){
+    var p4=popconfirm(anchor,{title:"删除这位助理？",text:"“"+esc(asstName(a))+"”的人名片会删掉，机器人回到待认领。删完可以撤销。",okLabel:"删除",tone:"danger"});
+    popConfirmWire(p4,function(){ deleteAssistant(a, anchor); });
+    return;
+  }
+}
+function deleteAssistant(a, anchor){
+  var prev=flipCapture();
+  var row=anchor && anchor.closest ? anchor.closest(".row") : null;
+  var idx=S.assistants.indexOf(a);
+  if(row) row.classList.add("leaving");
+  setTimeout(function(){
+    S.assistants.splice(idx,1);
+    if(S.selAsst===a.id){ var f=S.assistants.filter(function(x){ return x.homeId===a.homeId; })[0]; S.selAsst=f?f.id:null; }
+    render(prev);
+    toast("已删除“"+esc(asstName(a))+"”","bad",{undo:function(){
+      S.assistants.splice(idx,0,a); S.selAsst=a.id; render();
+      toast("已撤销，助理回来了","ok");
+    }});
+  },170);
+}
+
+/* ---- 表单 popover ---- */
+function renamePop(obj, anchor){
+  var isHome = !!obj.workspaceId || obj.id.charAt(0)==="h";
+  var cur = obj.nameSource==="user" ? obj.name : "";
+  var pop=openPop(anchor,{width:300,label:"重命名",
+    html:"<div class=\"ptitle\"><svg class=\"i\"><use href=\"#i-pencil\"/></svg>"+(isHome?"重命名家":"重命名助理")+"</div>"
+      + fLabel("<span>新名字</span>","<input id=\"fName\" value=\""+esc(cur)+"\" placeholder=\"留空则恢复默认\">")
+      + "<p class=\"fhint\">"+(isHome?"改过一次就冻住：以后工作区再改名，这个家也不跟着变。":"回落顺序：你取的名 ＞ 机器人名 ＞ 所属家名。")+"</p>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>取消</button><button class=\"pbtn-s go\" id=\"fOk\">保存</button>"});
+  pop.querySelector("#fOk").onclick=function(){
+    var v=pop.querySelector("#fName").value.trim();
+    if(isHome){ if(!v){ obj.nameSource="system"; } else { obj.name=v; obj.nameSource="user"; } }
+    else { if(!v){ obj.nameSource=obj.botId?"bot":"home"; } else { obj.name=v; obj.nameSource="user"; } }
+    closePop(true); render();
+    toast(v?("已重命名为 <b>"+esc(v)+"</b>，已冻结"):("已恢复默认名 <b>"+esc(isHome?homeName(obj):asstName(obj))+"</b>"),"ok");
+  };
+  pop.querySelector("#fName").addEventListener("keydown", function(e){ if(e.key==="Enter") pop.querySelector("#fOk").click(); });
+}
+function avatarPop(obj, kind, anchor){
+  var pop=openPop(anchor,{width:300,label:"更换头像",
+    html:"<div class=\"ptitle\"><svg class=\"i\"><use href=\"#i-image\"/></svg>更换"+(kind==="home"?"家":"助理")+"头像</div>"
+      + avatarGrid(obj.avatar||"")
+      + "<p class=\"fhint\">原型用色板示意；实现时图片存文件，元数据只记路径。</p>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>取消</button><button class=\"pbtn-s go\" id=\"aOk\">保存</button>"});
+  S.pick.av=obj.avatar||"";
+  wireAvatars(pop);
+  pop.querySelector("#aOk").onclick=function(){
+    obj.avatar=S.pick.av||null; closePop(true); render();
+    toast(S.pick.av?"头像已更新":"已改回默认首字图","ok");
+  };
+}
+function revivePop(h, anchor){
+  var pop=openPop(anchor,{width:320,label:"重连工作区",
+    html:"<div class=\"ptitle\"><svg class=\"i\"><use href=\"#i-link\"/></svg>重连工作区</div>"
+      + fLabel("<span>重新选择目录</span>","<input id=\"fPath\" value=\""+esc(h.path||"D:\\DeepSeekHarness\\agents\\new")+"\">")
+      + "<p class=\"fhint\">重连只换路径，改名史与头像都保留。</p>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>取消</button><button class=\"pbtn-s go\" id=\"rOk\">重连</button>"});
+  pop.querySelector("#rOk").onclick=function(){
+    h.path=pop.querySelector("#fPath").value.trim()||h.path; h.workspaceId=null; delete h.tombstone;
+    closePop(true); render(); toast("已重连到 <b>"+esc(h.path)+"</b>，改名史保留","ok");
+  };
+}
+function bindPop(a, anchor){
+  var fb=freeBots();
+  if(!fb.length){ toast("没有空闲机器人可绑：同一个家下多个机器人各自成一位助理，不合并。","bad"); return; }
+  var items=fb.map(function(b){ return {v:b.id, t:b.name, sub:(CH[b.channel]||b.channel)+(b.online?" · 在线":" · 离线"), i:b.name.charAt(0), style:avStyle(null,b.name)}; });
+  S.pick.opt=items[0].v;
+  var pop=openPop(anchor,{width:320,label:"绑定机器人",
+    html:"<div class=\"ptitle\"><svg class=\"i\"><use href=\"#i-link\"/></svg>选择机器人</div>"+optList(items,S.pick.opt)
+      + "<p class=\"fhint\">一位助理只绑一个机器人，绑上即定死。</p>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>取消</button><button class=\"pbtn-s go\" id=\"bOk\">绑定</button>"});
+  wireOpts(pop);
+  pop.querySelector("#bOk").onclick=function(){
+    a.botId=S.pick.opt; a.status="bound"; if(a.nameSource==="home") a.nameSource="bot";
+    closePop(true); render(); toast("已绑定 <b>"+esc(asstName(a))+"</b>","ok");
+  };
+}
+function movePop(a, anchor){
+  var opts=S.homes.filter(function(x){ return x.id!==a.homeId && !x.tombstone; });
+  if(!opts.length){ toast("没有别的工作区可换，先新建一个家。","bad"); return; }
+  var items=opts.map(function(x){ return {v:x.id, t:homeName(x), sub:x.path||"未关联工作区", i:homeName(x).charAt(0), style:avStyle(x,homeName(x))}; });
+  S.pick.opt=items[0].v;
+  var pop=openPop(anchor,{width:330,label:"更换工作区",
+    html:"<div class=\"ptitle\"><svg class=\"i\"><use href=\"#i-move\"/></svg>换到哪个工作区</div>"+optList(items,S.pick.opt)
+      + "<p class=\"fhint\">一次换完，名下机器人跟随；没改过名的助理会改用新家名显示。</p>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>取消</button><button class=\"pbtn-s go\" id=\"mOk\">换过去</button>"});
+  wireOpts(pop);
+  pop.querySelector("#mOk").onclick=function(){
+    var from=homeById(a.homeId); a.homeId=S.pick.opt; S.selHome=a.homeId;
+    closePop(true); render();
+    toast(a.nameSource==="home" ? ("已换到 <b>"+esc(homeName(homeById(a.homeId)))+"</b>，未改名，显示切到“"+esc(asstName(a))+"”") : ("已换到 <b>"+esc(homeName(homeById(a.homeId)))+"</b>，因为改过名，仍叫“"+esc(asstName(a))+"”"),"ok");
+  };
+}
+function connectPop(a, anchor){
+  var b=botOf(a);
+  if(!b){ toast("还没绑机器人，先绑一个再接入。","bad"); return; }
+  var pop=openPop(anchor,{width:300,label:"接入",
+    html:"<div class=\"ptitle\"><span class=\"spin\"></span>正在接入…</div>"
+      + "<p class=\"fhint\">正在和 "+esc(CH[b.channel]||b.channel)+" 机器人“"+esc(b.name)+"”握手，建立会话通道。</p>"
+      + "<div class=\"prog\"><i></i></div>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>后台进行</button>"});
+  var bar=pop.querySelector(".prog i");
+  setTimeout(function(){ if(bar) bar.style.width="65%"; },60);
+  setTimeout(function(){
+    if(!popEl || popEl!==pop) return;
+    var body=pop.querySelector(".ppo");
+    if(!b.online){
+      body.innerHTML="<div class=\"ptitle\" style=\"color:var(--bad)\"><svg class=\"i\" style=\"color:var(--bad)\"><use href=\"#i-alert\"/></svg>接入失败</div>"
+        + "<p class=\"fhint\">“"+esc(b.name)+"”当前离线，机器人没连上 "+esc(CH[b.channel]||b.channel)+"。等它上线后重试。</p>";
+      var ft=pop.querySelector(".pfoot");
+      if(ft) ft.innerHTML="<button class=\"pbtn-s\" data-pop-close-btn>关闭</button><button class=\"pbtn-s go\" id=\"retry\">重试</button>";
+      var rb=pop.querySelector("#retry"); if(rb) rb.onclick=function(){ connectPop(a, anchor); };
+      toast("接入失败：<b>"+esc(b.name)+"</b> 当前离线","bad");
+      return;
+    }
+    body.innerHTML="<div class=\"ptitle\"><svg class=\"i\" style=\"color:var(--accent-deep)\"><use href=\"#i-check\"/></svg>接入成功</div>"
+      + "<p class=\"fhint\">“"+esc(asstName(a))+"”已连上 "+esc(CH[b.channel]||b.channel)+" · "+esc(b.name)+"，现在可以收消息了。</p>"
+      + "<dl class=\"kv\"><dt>机器人</dt><dd>"+esc(b.name)+"</dd><dt>渠道</dt><dd>"+esc(CH[b.channel]||b.channel)+"</dd><dt>工作区</dt><dd><span class=\"mono\">"+esc(asstPath(a))+"</span></dd></dl>";
+    var ft2=pop.querySelector(".pfoot"); if(ft2) ft2.innerHTML="<button class=\"pbtn-s go\" data-pop-close-btn>好</button>";
+    var c2=pop.querySelectorAll("[data-pop-close-btn]"); for(var i=0;i<c2.length;i++) c2[i].onclick=function(){ closePop(); };
+    toast("已接入 <b>"+esc(asstName(a))+"</b>（"+esc(CH[b.channel]||b.channel)+"）","ok");
+  }, 1350);
+}
+function popTitle(t, icon){
+  return "<div class=\"ptitle\"><svg class=\"i\"><use href=\"#"+icon+"\"/></svg>"+esc(t)+"</div>";
+}
+function popTitleBar(t, icon){
+  return "<div class=\"ptitle\" style=\"justify-content:space-between\">"
+    + "<span style=\"display:inline-flex;align-items:center;gap:7px\"><svg class=\"i\"><use href=\"#"+icon+"\"/></svg>"+esc(t)+"</span>"
+    + "<button class=\"ibtn\" style=\"width:24px;height:24px\" data-pop-close-btn aria-label=\"关闭\"><svg class=\"i\"><use href=\"#i-x\"/></svg></button></div>";
+}
+function detailPop(a, anchor){
+  var b=botOf(a), h=homeById(a.homeId);
+  var rows=[["助理编号","<span class=\"mono\">"+esc(a.id)+"</span>"],["显示名",esc(asstName(a))+"（"+esc(asstFrom(a))+"）"],
+    ["渠道",esc(CH[a.channel]||a.channel)],["机器人",b?(esc(b.name)+" · <span class=\"mono\">"+esc(b.id)+"</span>"):"未绑定"],
+    ["在线",b?(b.online?"在线":"离线"):"无渠道"],["所属家",h?esc(homeName(h)):"未归家"],
+    ["工作区","<span class=\"mono\">"+esc(asstPath(a))+"</span>"],["绑定状态",a.status==="bound"?"已绑":(a.status==="unbound"?"未绑定":"失联")]];
+  openPop(anchor,{width:312,label:"助理详情",
+    html:popTitleBar("助理详情","i-data")});
+  var pop=popEl;
+  pop.querySelector(".ppo").insertAdjacentHTML("beforeend","<dl class=\"kv\">"+rows.map(function(r){ return "<dt>"+r[0]+"</dt><dd>"+r[1]+"</dd>"; }).join("")+"</dl>");
+}
+function homeKidsPop(h, anchor){
+  var kids=S.assistants.filter(function(x){ return x.homeId===h.id; });
+  var body = kids.length
+    ? "<dl class=\"kv\">"+kids.map(function(x){ var b=botOf(x);
+        return "<dt>"+esc(asstName(x))+"</dt><dd>"+esc(CH[x.channel]||x.channel)+" · "+(b?(b.online?"在线":"离线"):"无渠道")+" · "+esc(x.status==="bound"?"已绑":(x.status==="unbound"?"未绑定":"失联"))+"</dd>"; }).join("")+"</dl>"
+    : "<p class=\"fhint\">这个家还没有助理。</p>";
+  openPop(anchor,{width:312,label:"家的助理清单",
+    html:popTitleBar(homeName(h)+" 的助理","i-home")+body
+      + "<p class=\"fhint\">工作区 "+esc(h.path||"未关联")+"（"+esc(homeFrom(h))+"）</p>"});
+}
+function newHomePop(anchor){
+  S.pick.mode="pick";
+  var fw=freeWs();
+  var wsItems=fw.map(function(w){ return {v:w.id, t:w.title, sub:w.path, i:w.title.charAt(0), style:avStyle(null,w.title)}; });
+  S.pick.opt=wsItems.length?wsItems[0].v:"";
+  var pop=openPop(anchor,{width:330,label:"新建家",
+    html:"<div class=\"ptitle\"><svg class=\"i\"><use href=\"#i-plus\"/></svg>新建家</div>"
+      + seg2("mode",[{v:"pick",t:"复用工作区"},{v:"mkdir",t:"新建工作区"}],"pick")
+      + "<div id=\"wrapWs\">"+fLabel("<span>已有工作区</span>","")+optList(wsItems, S.pick.opt)+"</div>"
+      + "<div id=\"wrapDir\" style=\"display:none\">"+fLabel("<span>新目录</span>","<input id=\"fDir\" value=\"D:\\DeepSeekHarness\\agents\\hupan\">")+"</div>"
+      + "<p class=\"fhint\">家和工作区一一对应：复用就只写本插件，新建会先建工作区再落家。</p>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>取消</button><button class=\"pbtn-s go\" id=\"nOk\">创建</button>"});
+  wireSeg(pop); wireOpts(pop);
+  pop.querySelector("#nOk").onclick=function(){
+    var nid=uid("h");
+    if(S.pick.mode==="pick"){
+      var w=byId(S.workspaces,S.pick.opt); if(!w){ toast("没有可复用的工作区","bad"); return; }
+      S.homes.push({id:nid, workspaceId:w.id, path:w.path, name:w.title, nameSource:"system", avatar:null});
+      toast("新建家 <b>"+esc(w.title)+"</b>：复用了已有工作区","ok");
+    } else {
+      var dir=pop.querySelector("#fDir").value.trim()||("D:\\DeepSeekHarness\\agents\\new"+S.seq);
+      var wid=uid("ws"), base=dir.split(/[\\/]/).pop();
+      S.workspaces.push({id:wid, title:base, path:dir});
+      S.homes.push({id:nid, workspaceId:wid, path:dir, name:base, nameSource:"system", avatar:null});
+      toast("新建家 <b>"+esc(base)+"</b>：先建工作区，再落家","ok");
+    }
+    closePop(true); S.selHome=nid; go("L2");
+  };
+}
+function newAsstPop(anchor){
+  var fb=freeBots(), hs=S.homes.filter(function(x){ return !x.tombstone; });
+  var homeItems=hs.map(function(x){ return {v:x.id, t:homeName(x), sub:x.path||"未关联工作区", i:homeName(x).charAt(0), style:avStyle(x,homeName(x))}; });
+  var botItems=[{v:"", t:"以后再绑", sub:"先占位，之后随时绑号", i:"占"}].concat(fb.map(function(b){ return {v:b.id, t:b.name, sub:(CH[b.channel]||b.channel)+(b.online?" · 在线":" · 离线"), i:b.name.charAt(0), style:avStyle(null,b.name)}; }));
+  S.pick.opt=S.selHome||homeItems[0].v; S.pick.bot="";
+  var pop=openPop(anchor,{width:340,label:"新建助理",
+    html:"<div class=\"ptitle\"><svg class=\"i\"><use href=\"#i-plus\"/></svg>新建助理</div>"
+      + fLabel("<span>属于哪个家</span>","") + optList(homeItems, S.pick.opt)
+      + fLabel("<span>名字</span>","<input id=\"fName\" placeholder=\"留空按回落取名\">")
+      + "<p class=\"fhint\">先建人、后绑号：机器人可以先不选，名字留空时已绑用机器人名，未绑用家名。</p>",
+    foot:"<button class=\"pbtn-s\" data-pop-close-btn>取消</button><button class=\"pbtn-s go\" id=\"naOk\">创建</button>"});
+  wireOpts(pop);
+  pop.querySelector("#naOk").onclick=function(){
+    var hid=S.pick.opt, nm=pop.querySelector("#fName").value.trim(), nid=uid("a");
+    S.assistants.push({id:nid, homeId:hid, channel:"feishu", botId:null, status:"unbound", name:(nm||""), nameSource:(nm?"user":"home"), avatar:null});
+    closePop(true); S.selHome=hid; S.selAsst=nid; go("L3");
+    toast("新建助理完成：先占位，之后随时绑号","ok");
+  };
+}
+
+/* ================= modal（走查 / 状态） ================= */
+function modal(title, bodyHtml, footHtml){
+  modalHost.innerHTML="<div class=\"modal\"><div class=\"mbox\" role=\"dialog\" aria-modal=\"true\" aria-label=\""+esc(title)+"\">"
+    + "<div class=\"mhead\"><b>"+esc(title)+"</b><span class=\"spacer\"></span><button class=\"ibtn\" data-mclose aria-label=\"关闭\"><svg class=\"i\"><use href=\"#i-x\"/></svg></button></div>"
+    + "<div class=\"mbody\">"+bodyHtml+"</div>"
+    + (footHtml?"<div class=\"pfoot\">"+footHtml+"</div>":"")
+    + "</div></div>";
+  var m=modalHost.querySelector(".modal");
+  m.onclick=function(e){ if(e.target===m) closeModal(); };
+  var cs=modalHost.querySelectorAll("[data-mclose]"); for(var i=0;i<cs.length;i++) cs[i].onclick=closeModal;
+}
+function closeModal(){ modalHost.innerHTML=""; }
+var STEPS=[
+  {k:"s1",t:"建家：复用已有工作区"},
+  {k:"s2",t:"建家：新建一个工作区"},
+  {k:"s3",t:"先建助理，后绑机器人"},
+  {k:"s4",t:"接入：让助理开始收消息"},
+  {k:"s5",t:"改名冻结与恢复默认"},
+  {k:"s6",t:"删除助理与撤销"},
+  {k:"s7",t:"TAB 向前钻取"}
+];
+var HINTS={
+  s1:"点底部“新建家”，方式选“复用工作区”，确定后列表多一项，名字自动等于工作区名。",
+  s2:"点底部“新建家”，切到“新建工作区”，改个目录名，会先建工作区再落家。",
+  s3:"点底部“新建助理”，名字留空、不绑机器人，它先显示家名；再到详情点“绑定机器人”。",
+  s4:"进任意助理详情点“接入”：弹层里先转圈再出结果；B号是离线，会给出失败原因和“重试”。",
+  s5:"先在弹层里“重命名”，再点“模拟：工作区改名”，它不动；点“恢复默认名”才跟回。",
+  s6:"详情里点“删除助理”，确认后列表补位动画 + 右下 toast 带“撤销”，点撤销它会回来。",
+  s7:"TAB 向前钻取：在列表页把鼠标移到任意一行上，顶部 L2/L3 标签会跟着显示那一行，点它就直接进去。"
+};
+document.getElementById("btnWalk").onclick=function(){
+  modal("一键走查",
+    "<p class=\"fhint\">窄面板里一次只做一件事：按顺序点，每步都会说明看哪里。</p>"
+    + "<div class=\"steplist\">"+STEPS.map(function(s,i){ return "<button data-step=\""+s.k+"\">"+(i+1)+". "+esc(s.t)+"</button>"; }).join("")+"</div>"
+    + "<p class=\"fhint\" id=\"stepHint\">选一个步骤开始。</p>"
+    + "<div class=\"menu\" style=\"border-top:1px solid var(--line-soft);padding-top:8px\">"
+    + "<button data-sim=\"rename-ws\"><svg class=\"i\"><use href=\"#i-refresh\"/></svg>模拟：工作区改名</button>"
+    + "<button data-sim=\"toggle-online\"><svg class=\"i\"><use href=\"#i-link\"/></svg>模拟：机器人掉线 / 恢复</button>"
+    + "<button data-sim=\"del-ws\" class=\"danger\"><svg class=\"i\"><use href=\"#i-x\"/></svg>模拟：删除工作区</button></div>");
+  var sb=modalHost.querySelectorAll("[data-step]");
+  for(var i=0;i<sb.length;i++){
+    sb[i].onclick=(function(b){ return function(){
+      var all=modalHost.querySelectorAll("[data-step]");
+      for(var k=0;k<all.length;k++) all[k].setAttribute("aria-pressed","false");
+      b.setAttribute("aria-pressed","true");
+      modalHost.querySelector("#stepHint").textContent=HINTS[b.getAttribute("data-step")];
+    }; })(sb[i]);
+  }
+  var ms=modalHost.querySelectorAll("[data-sim]");
+  for(var j=0;j<ms.length;j++){
+    ms[j].onclick=(function(b){ return function(){
+      var k=b.getAttribute("data-sim"); closeModal();
+      if(k==="rename-ws"){
+        var w=byId(S.workspaces,"ws-keting"); w.title=(w.title==="客厅"?"大客厅":"客厅");
+        render(); toast("工作区改名成 <b>"+esc(w.title)+"</b>：没改过名的家跟着变，改过名的不动","ok");
+      } else if(k==="toggle-online"){
+        var tb=byId(S.bots,"bot-fei"); tb.online=!tb.online;
+        render(); toast("机器人 <b>"+esc(tb.name)+"</b> 现在"+(tb.online?"在线":"离线")+"，列表标记与“接入”结果同步","ok");
+      } else {
+        var w2=byId(S.workspaces,"ws-keting"); w2.deleted=true;
+        var hh=byId(S.homes,"h1"); hh.workspaceId=null; hh.tombstone={reason:"工作区已删除"};
+        render(); toast("工作区已删除：这个家标记为“待重连”，重新选个目录就能接上","bad");
+      }
+    }; })(ms[j]);
+  }
+};
+document.getElementById("btnState").onclick=function(){
+  var data={ level:S.level,
+    homes:S.homes.map(function(h){ return {id:h.id, name:homeName(h), from:homeFrom(h), path:h.path, tombstone:!!h.tombstone, assistants:S.assistants.filter(function(a){ return a.homeId===h.id; }).length}; }),
+    assistants:S.assistants.map(function(a){ var b=botOf(a); return {id:a.id, home:a.homeId, name:asstName(a), from:asstFrom(a), channel:a.channel, bot:a.botId, online:b?!!b.online:null, status:a.status}; }) };
+  modal("状态外显", "<div class=\"diff\">"+esc(S.lastDiff)+"</div><pre class=\"json\">"+esc(JSON.stringify(data,null,1))+"</pre>",
+    "<button class=\"pbtn-s\" data-mclose>关闭</button>");
+};
+document.getElementById("btnReset").onclick=function(){ S=seed(); closePop(true); closeModal(); render(); toast("已重置回种子","ok"); };
+
+/* ================= 事件 ================= */
+document.addEventListener("click", function(e){
+  var ia=e.target.closest("[data-item-act]");
+  if(ia){ e.stopPropagation(); var row=ia.closest("[data-open]");
+    if(row){ if(row.getAttribute("data-open")==="L3"){ S.selAsst=row.getAttribute("data-id"); } else { S.selHome=row.getAttribute("data-id"); } }
+    doAct(ia.getAttribute("data-item-act"), ia, ia.getAttribute("data-id")); return; }
+  var got=e.target.closest("[data-goto]"); if(got){ crumbGo(got.getAttribute("data-goto")); return; }
+  var op=e.target.closest("[data-open]");
+  if(op){ var lv=op.getAttribute("data-open"), id=op.getAttribute("data-id");
+    if(lv==="L2"){ S.selHome=id; } else { S.selAsst=id; var a=asstById(id); if(a) S.selHome=a.homeId; }
+    go(lv); return; }
+  var act=e.target.closest("[data-act]"); if(act){ doAct(act.getAttribute("data-act"), act); return; }
+});
+document.addEventListener("contextmenu", function(e){
+  var row=e.target.closest(".row"); if(!row) return;
+  e.preventDefault();
+  var isAsst = row.getAttribute("data-open")==="L3";
+  if(isAsst){ S.selAsst=row.getAttribute("data-id"); } else { S.selHome=row.getAttribute("data-id"); }
+  doAct(isAsst?"more-asst":"more-home", row);
+});
+document.addEventListener("keydown", function(e){
+  if(e.key==="Escape"){ if(popEl){ closePop(); return; } if(modalHost.innerHTML){ closeModal(); return; } if(!suggEl.hidden){ suggEl.hidden=true; return; } }
+  if(e.target.classList && e.target.classList.contains("row") && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); e.target.click(); return; }
+  if(!suggEl.hidden && (e.key==="ArrowDown"||e.key==="ArrowUp")){
+    e.preventDefault();
+    var bs=suggEl.querySelectorAll("[data-sg]"); if(!bs.length) return;
+    S.hl=(S.hl+(e.key==="ArrowDown"?1:bs.length-1))%bs.length;
+    for(var i=0;i<bs.length;i++) bs[i].classList.toggle("hl", i===S.hl);
+    return;
+  }
+  if(!suggEl.hidden && e.key==="Enter"){ e.preventDefault(); pickSugg(S.hl<0?0:S.hl); return; }
+  if(popEl && (e.key==="ArrowDown"||e.key==="ArrowUp")){
+    var items=popEl.querySelectorAll(".menu button"); if(!items.length) return;
+    e.preventDefault();
+    S.hl=(S.hl+(e.key==="ArrowDown"?1:items.length-1))%items.length;
+    for(var k=0;k<items.length;k++) items[k].classList.toggle("hl", k===S.hl);
+    return;
+  }
+  if(popEl && e.key==="Enter" && e.target.tagName!=="INPUT" && e.target.tagName!=="BUTTON"){
+    var hl=popEl.querySelector(".menu button.hl"); if(hl){ e.preventDefault(); hl.click(); }
+  }
+});
+var qEl=document.getElementById("q");
+qEl.addEventListener("input", function(){ S.q=qEl.value.trim(); suggest(); if(S.level!=="L3"){ var prev=flipCapture(); render(prev); } });
+qEl.addEventListener("focus", function(){ suggest(); });
+document.addEventListener("click", function(e){ if(!e.target.closest(".fsearch")) suggEl.hidden=true; });
+backBtn.onclick=function(){ closePop(true); go(S.level==="L3" ? "L2" : "L1"); };
+fAdd.onclick=function(e){ doAct(S.level==="L1" ? "new-home" : "new-asst", e.currentTarget); };
+fMore.onclick=function(e){ doAct("more-home", e.currentTarget); };
+window.addEventListener("resize", function(){ if(popEl && anchorEl) placePop(popEl, anchorEl); if(tablk) slideTab(true); });
+fbody.addEventListener("pointerover", function(e){
+  var r=e.target.closest("[data-open]");
+  if(r){ setFocus(r.getAttribute("data-id")); return; }
+  setFocus(null);
+});
+fbody.addEventListener("pointerleave", function(){ setFocus(null); });
+fbody.addEventListener("focusin", function(e){
+  var r=e.target.closest("[data-open]"); if(r) setFocus(r.getAttribute("data-id"));
+});
+fbody.addEventListener("focusout", function(){ setFocus(null); });
+fbody.addEventListener("scroll", function(){ if(popEl) closePop(true); });
+
+/* ================= 启动 ================= */
+render();
+setTimeout(function(){
+  S.loading=false; render();
+  bindMagnet();
+  toast("已读取 4 个家、6 位助理。右击任意一行可以打开快捷菜单。","ok");
+}, 720);
+</script>
+</body>
+</html>

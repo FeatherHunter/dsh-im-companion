@@ -9,6 +9,7 @@
 | **Agent** | 拟人化的助理实体（如“小帅”），1 Agent 对应 1 Workspace（D1 约束），拥有跨渠道身份。 |
 | **Workspace** | DSH 的左侧工作区单元，用户日常切换的容器。1 Workspace = 1 Agent，不做 1 人多家。 |
 | **Bot** | dsh-im 中对接 IM 渠道的机器人实例（Feishu/WeChat/QQ），由 `botId` 标识，关联 `workspace` 通过 `workspaces.json` 与 `bot.workspace.set` RPC 维护。 |
+| **家／助理／机器人** | T3 #116 起的三分法：家＝地点记录（编号＋名＋图，对应一个工作区，一对一）；助理＝家下的人（编号＋名＋图，对应一个机器人，严格一对一，可先建后绑）；机器人＝单渠道实例（即 Bot）。契约与新表只用此三词；旧 Agent 退役为遗留别名（家与其下助理集合，仅读兼容）。完整模型与命名回落见 `docs/research/T3-家助理数据模型与命名回落规格.md`。 |
 | **Channel** | 渠道类型：`feishu` / `wechat` / `qq` 等，单插件多渠道（`xmanrui/dsh-im`）的抽象。 |
 | **Session** | Harness 会话（`sessionId`），对话区中间的会话流单位。飞书会话（私聊/群聊）通过 `StateStore.sessionFor` 路由到 Session。 |
 | **Health** | Bot 的在线状态（`connection.status` / `health.status`），决定左侧徽标呼吸灯与 Header 浮层文案（在线 vs 草稿）。 |
@@ -22,9 +23,9 @@
 | **Contract（契约）** | 模块间唯一交互面：共享包导出接口（theme/ui 原语/data 层）、挂载点（slot/左栏 DOM）、host 桥端点（自有桥经 DSH 公开 `/api` 载体注册，路径 `/api/im-companion`，按功能命名 `im-companion.<feature>.<action>`；载体沿革见 ADR-0002）。 |
 | **红线（300 行）** | 任何源文件 ≤300 行；lib/* 为构建产物豁免；由 T0 守卫脚本机械执行。 |
 | **Map** | Wayfinder 的目的地索引 issue，本文档对应的规划图谱。 |
-| **电话（Phone）** | 宿主对外提供的方法，由更新包按「前缀 + 点 + 动作名」拼出；本仓冻结为 `imc.updateStatus` / `imc.updateCheck` / `imc.updateInstall`，形态恒为**两段式** `<前缀>.<动作>`，与既有端点 `meta.get` / `routes.list` 同形（载体 `/api/im-companion` 已提供 `im-companion` 那一段）。与契约 §3 三段式端点命名法 `im-companion.<feature>.<action>` 的关系：更新包 `buildPhoneNames(prefix)` 只产 `<前缀>.<动作>`，且前缀禁含点/斜杠/空白、只能是 `imc` 这类单段 ⇒ 三段式命名法对电话名物理不可达；命名法规则本身见 `docs/features-contract.md` §3，此处不重复。**本行是该术语的唯一定义处。** |
+| **电话（Phone）** | 宿主对外提供的方法，由更新包按「前缀 + 点 + 动作名」拼出；本仓冻结为 `imc.updateStatus` / `imc.updateCheck` / `imc.updateInstall` / `imc.updateChangelog`（T5 #110 起四电话），形态恒为**两段式** `<前缀>.<动作>`，与既有端点 `meta.get` / `routes.list` 同形（载体 `/api/im-companion` 已提供 `im-companion` 那一段）。与契约 §3 三段式端点命名法 `im-companion.<feature>.<action>` 的关系：更新包 `buildPhoneNames(prefix)` 只产 `<前缀>.<动作>`，且前缀禁含点/斜杠/空白、只能是 `imc` 这类单段 ⇒ 三段式命名法对电话名物理不可达；命名法规则本身见 `docs/features-contract.md` §3，此处不重复。**本行是该术语的唯一定义处。** |
 | **落盘（Persist）** | 宿主统一写本地文件的动作（更新包 `state.json` / `install.lock` / `before.json` 三件）。与「真值」无涉，不得互换使用。 |
-| **更新包（Update Package）** | 装着更新系统的那个 npm 包 `dsh-plugin-update@0.2.0`；本仓是集成方，只 pin 不改。升级 = 改这一行 pin（`npm run sync:update-pkg` 查官方源 latest 并装成 exact），客户端派生取值随之重生成。 |
+| **更新包（Update Package）** | 装着更新系统的那个 npm 包 `dsh-plugin-update@0.13.0`（T5 #110 起；旧派生常量链已退役）；本仓是集成方，只 pin 不改。升级 = 改这一行 pin（`npm run sync:update-pkg` 查官方源 latest 并装成 exact）。 |
 | **更新系统（Update System）** | 更新功能本身（引擎、对外接口、文档），由更新包提供。 |
 | **更新中心（Update Center）** | 本仓新增的面板区块（设置-IM机器人增强内），承载检查更新 / 装更新 / 兜底命令 / 待重启横幅 / 版本说明。新词，勿与上述四个混用。 |
 | **使用范围（Profile）** | DSH 的 profile（web / desktop），更新包里叫「使用范围」；**不是 Workspace（工作区）**，两者不可互译。 |

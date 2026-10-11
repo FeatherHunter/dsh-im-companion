@@ -20,8 +20,6 @@ export type RpcResult =
 export interface UpdateHostSurface {
   handlers: Record<string, (payload?: unknown) => Promise<unknown>>
   reply(pkgReply: unknown): RpcResult
-  /** 面板改档位/开关后重排宿主定时器（读 store 现值）。 */
-  sync(): void
 }
 
 export interface AgentFleetHandlerOptions {
@@ -133,14 +131,14 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           await store.setWelcomed(workspace, p.seen === true)
           return ok({})
         }
-        // ── T7 #90 追加：自动检查偏好写入（**读**走既有 `meta.get` 的全量快照 `store.snapshot()`，不新增读端点）。
+        // ── T7 #90 追加 → T5 #110 M5 起只落盘保留（调度器已删，写后不再重排定时器）。
+        // **读**走既有 `meta.get` 的全量快照 `store.snapshot()`，不新增读端点。
         // 校验与 `meta.rename` 同款：非法值回既有 `fail('bad-request', …)` 信封。
         case 'meta.update.set': {
           if (typeof p.autoCheckEnabled !== 'boolean' || !isUpdateIntervalHours(p.intervalHours)) {
             return fail('bad-request', 'autoCheckEnabled 必须布尔，intervalHours ∈ {6,12,24,168}')
           }
           await store.setUpdate({ autoCheckEnabled: p.autoCheckEnabled, intervalHours: p.intervalHours })
-          opts.update?.()?.sync()
           return ok({})
         }
         // ── #98 追加：动效开关偏好写入（**读**走既有 `meta.get` 全量快照，不新增读端点；与 #90 同款）。
@@ -176,12 +174,13 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           const entries = await listDirectories(dir)
           return ok({ path: dir, parent: path.dirname(dir) === dir ? null : path.dirname(dir), entries })
         }
-        // ── T7 #90 追加：更新系统三通电话（电话名即端点名，票面定死；键由包的 `update.phoneNames` 给出，不另拼字符串）。
-        // 回包是本仓 RpcResult 信封：成功把包载荷原样放 `value`（含与 `manual` 同级的 `autoCheck` 运行期状态）；
+        // ── T7 #90 追加 → T5 #110 加第四电话：更新系统四通电话（电话名即端点名，票面定死；键由包的 `update.phoneNames` 给出，不另拼字符串）。
+        // 回包是本仓 RpcResult 信封：成功把包载荷原样放 `value`（M5 起不再注入 autoCheck）；
         // 包失败（`{ok:false,error,errorKind}`）走失败通道，翻译在 `src/host/update.ts` 的 `reply`，本文件不认识包字段。
         case 'imc.updateStatus':
         case 'imc.updateCheck':
-        case 'imc.updateInstall': {
+        case 'imc.updateInstall':
+        case 'imc.updateChangelog': {
           const surface = opts.update?.() ?? null
           if (!surface) return fail('bad-request', '更新端点未接线: ' + endpoint)
           const call = surface.handlers[endpoint]

@@ -86,6 +86,14 @@ export function FleetPanel(ctx: unknown): HTMLElement {
       }, copy.compatChip(compat.verified))
     : null
   const verBox = h('div', { className: 'af-verbox' }, verLink, compatChip)
+  /* T6（#89）更新中心挂载点：A1 只暴露一个空容器 + 广播（不引 update-center 特性，T8 自挂自管）。
+   * 类名走契约 §6 前缀约定（<feature>-*，故 update-center-host）。
+   * id 必须保留（R8 P0-b）：该事件**无重放**，热重载 / 事件顺序倒置时会漏掉 {host}；
+   * 故面板每次渲染都产出这个稳定 id，T8 可在 mount 末尾用 document.getElementById('imc-update-center')
+   * **主动认领**已存在的容器——id 就是那个认领把手，删了 T8 只能靠猜。
+   * owner 2026-10-10 裁定：从「工具栏之后、撰写条之前」挪到**页头右上组、star 左侧**
+   * （原 2026-09-12 位置作废）。仍只挪这一个空容器节点：类名 / id / 派发 / 特性侧零改。 */
+  const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host' })
   /* P2 引流星标：ghost 虚线风，新开页跳 companion 仓库点 Star（右上角，＋原位）。 */
   const starLink = h('a', {
     className: 'af-icon-btn af-star',
@@ -103,7 +111,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     title: copy.feedbackTitle,
     'aria-label': copy.feedbackTitle,
   }, icon('feedback', 18))
-  const hdRight = h('div', { className: 'af-hd-right' }, verBox, starLink, feedbackLink)
+  const hdRight = h('div', { className: 'af-hd-right' }, verBox, updateCenterHost, starLink, feedbackLink)
   const hd = h('div', { className: 'af-hd' }, h('div', { className: 'af-hd-left' }, title, titleMeta), hdRight)
 
   const search = makeSearchField((v) => {
@@ -147,15 +155,9 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     promoItem(copy.promoDeck, copy.promoDeckDesc, 'https://github.com/FeatherHunter/dsh-mattpocock-skills-deck'),
     promoItem(copy.promoPal, copy.promoPalDesc, 'https://github.com/FeatherHunter/dsh-opencode-palette'),
   )
-  /* T6（#89）更新中心挂载点：A1 只暴露一个空容器 + 广播（不引 update-center 特性，T8 自挂自管）；空 div 零高零间距。
-   * 类名走契约 §6 前缀约定（<feature>-*，故 update-center-host）。
-   * id 必须保留（R8 P0-b）：该事件**无重放**，热重载 / 事件顺序倒置时会漏掉 {host}；
-   * 故面板每次渲染都产出这个稳定 id，T8 可在 mount 末尾用 document.getElementById('imc-update-center')
-   * **主动认领**已存在的容器——id 就是那个认领把手，删了 T8 只能靠猜。 */
-  const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host' })
-  /* owner 2026-09-12 裁定：更新中心挪到**页头/工具栏之后、撰写条之前**（原来在列表之后、推广卡之前）。
-   * 只挪这一个空容器节点，不改类名、不改 id、不引特性 import、不改任何行为——A1 对本特性仍是零感知。 */
-  const root = h('div', { className: 'af-root' }, hd, toolbar, updateCenterHost, compose.el, body, promo)
+  /* T6（#89）更新中心挂载点原位置（工具栏之后、撰写条之前）已作废：容器改建在页头右上组里（见上）。
+   * root 序列回归 hd → toolbar → compose → body → promo，A1 对本特性仍是零感知。 */
+  const root = h('div', { className: 'af-root' }, hd, toolbar, compose.el, body, promo)
 
   emitUpdateCenterHost(updateCenterHost)
 

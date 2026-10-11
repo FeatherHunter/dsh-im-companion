@@ -121,19 +121,16 @@ test('inject 只声明 connection（不再需要 webServer）', () => {
   console.log('#79-PROOF inject=' + JSON.stringify(host.inject) + ' PASS');
 });
 
-test('inject 含 timer：冷启动装配真排受管定时器（24h 档位 + 60s 首查）', async () => {
-  assert.ok(host.inject.includes('timer'),
-    'inject 必须含 timer：ctx.interval/ctx.timeout 是 cordis accessor，缺注入 = 装配期抛 cannot get property "timer" without inject');
-  const { ctx, timers, warns } = makeCtx(host.inject);
+test('inject 不再含 timer：M5 删调度器后冷启动零定时器', async () => {
+  assert.ok(!host.inject.includes('timer'),
+    'M5 起 inject 不应再含 timer：宿主不再读 ctx.interval/ctx.timeout（调度器已删）');
+  const { ctx, timers } = makeCtx(host.inject);
   host.apply(ctx, { dshHome: tmpHome });
-  // start() 的定时器排在 store.load() 落定之后（异步续跑），等一拍
   await new Promise((resolve) => setTimeout(resolve, 50));
   const armed = timers.map((t) => t.kind + ':' + t.ms).sort();
-  assert.deepEqual(armed, ['interval:86400000', 'timeout:60000'],
-    '冷启动应排「24h 档位周期 + 60s 首查」两条受管定时器');
-  assert.equal(warns.filter((w) => w.includes('宿主没有受管定时器服务')).length, 0,
-    '有 timer 服务时不应走「没有受管定时器」降级分支');
-  console.log('#79-PROOF timer-inject armed=' + JSON.stringify(armed) + ' PASS');
+  assert.deepEqual(armed, [],
+    '冷启动应零受管定时器（调度器已删；mock 仍复刻 accessor 语义，读了就会抛）');
+  console.log('#79-PROOF timer-removed armed=' + JSON.stringify(armed) + ' PASS');
 });
 
 test('装配通过，并经 fetch.register 注册 /api/im-companion', () => {

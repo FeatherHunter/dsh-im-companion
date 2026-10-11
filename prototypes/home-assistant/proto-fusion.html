@@ -1,0 +1,562 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T4 原型 · 融合款</title>
+<style>
+/* ---- 设计令牌（语义命名，组件内不出现裸 hex） ---- */
+:root{
+  --bg:#f6f3ec; --panel:#fffdf8; --card:#fffdf8; --ink:#1d1d1f; --mut:#55534e; --faint:#8a877f;
+  --line:#e4e0d4; --line-soft:#efeadd;
+  --brand:#0066cc; --brand-2:#0071e3; --brand-soft:rgba(0,102,204,.08);
+  --pine:#2F6B4F; --pine-bg:#E0EEE4; --gold:#9A7418;
+  --ok:#0070f3; --ok-bg:#d3e5ff; --warn:#8a5a00; --warn-bg:#fbefd2; --bad:#ee0000; --bad-bg:#ffe9e9; --dim-bg:#f1ede1;
+  --r-sm:8px; --r-md:12px; --r-lg:16px;
+  --shadow-1:0 1px 2px rgba(90,70,40,.12);
+  --shadow-2:0 10px 28px rgba(30,40,90,.10);
+  --shadow-pop:0 0 0 3px rgba(0,113,227,.30);
+  --t-press:90ms; --t-fast:140ms; --t-med:220ms; --t-slow:320ms;
+  --ease-out:cubic-bezier(.2,.7,.2,1); --ease-spring:cubic-bezier(.34,1.35,.4,1);
+}
+*{box-sizing:border-box}
+html{scroll-padding-bottom:96px}
+body{margin:0;padding:20px 16px 130px;background:var(--bg);color:var(--ink);font:14px/1.6 -apple-system,"PingFang SC","Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.framesize{font-size:11.5px;color:var(--mut)}
+.proto{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--mut);border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:2px 8px;width:fit-content}
+h1{margin:0;font-size:28px;line-height:1.2;font-weight:600;letter-spacing:-.8px}
+h1 .grad{color:var(--ink)}
+.lede{margin:0;color:var(--mut);font-size:13px;max-width:76ch}
+.lede code{background:var(--brand-soft);padding:0 5px;border-radius:4px;color:var(--brand-2)}
+.card{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--panel);overflow:hidden;box-shadow:var(--shadow-1)}
+.hd{padding:12px 16px;border-bottom:1px solid var(--line-soft);background:#faf7ef;font-weight:700;font-size:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hd .mut{font-size:12px}
+.bd{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mut{color:var(--mut);font-size:12px}
+#scenHint{color:var(--ink);font-size:12.5px}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;color:var(--mut)}
+.meta{font-size:11.5px;color:var(--mut);margin-top:2px}
+.debug{display:inline-block}
+.debug summary{cursor:pointer;font-size:12px;color:var(--mut);border:1px dashed var(--line);background:none;border-radius:10px;padding:8px 12px;min-height:36px;list-style:none}
+.debug summary:hover{color:var(--brand-2)}
+.debug[open] summary{margin-bottom:6px}
+.debug .row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 14px;min-height:36px;border:1px solid var(--line);border-radius:8px;background:#fffdf8;font-size:12.5px;cursor:pointer;color:var(--ink);
+  transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out),background var(--t-fast) var(--ease-out)}
+.btn:hover{border-color:var(--brand);box-shadow:var(--shadow-1);transform:translateY(-1px)}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:#1d1d1f;color:#fff;border-color:#1d1d1f;border-radius:999px;padding:8px 22px}
+.btn.primary:hover{box-shadow:var(--shadow-2);filter:brightness(1.08)}
+.btn.danger{color:var(--bad);border-color:#5B2B30}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn:focus-visible,.item:focus-visible,.switcher button:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid var(--brand-2);outline-offset:2px}
+.tag{font-size:11px;padding:2px 8px;border-radius:999px;background:var(--brand-soft);color:var(--brand-2);white-space:nowrap}
+.tag.warn{background:var(--warn-bg);color:var(--warn)}
+.tag.bad{background:var(--bad-bg);color:var(--bad)}
+.tag.ok{background:var(--ok-bg);color:var(--ok)}
+.tag.dim{background:var(--dim-bg);color:var(--mut)}
+.lvl{font-size:12px;font-weight:500;color:var(--mut);background:transparent;border:none;border-radius:0;padding:1px 2px;letter-spacing:0;font-family:ui-monospace,Menlo,monospace}
+.ic{width:15px;height:15px;flex:none;vertical-align:-2px}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800;flex:none;overflow:hidden;font-size:15px;flex:none}
+.avatar svg{width:100%;height:100%;display:block}
+.botcard .bic svg{width:22px;height:22px}
+.avchar{display:grid;place-items:center;width:100%;height:100%;border-radius:50%}
+.flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;background:linear-gradient(90deg,rgba(0,124,240,.06),rgba(121,40,202,.06),rgba(255,0,128,.05)),#faf7ef;border:1px solid var(--line-soft);border-radius:10px;padding:8px 10px;font-size:12.5px}
+.flow .step{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;border-radius:999px;background:#FFFDF7;border:1px solid var(--line)}
+.flow .step b{font-weight:700}
+.flow .step.cur{border-color:var(--brand);background:rgba(0,102,204,.08)}
+.flow .sep{color:var(--faint)}
+.flow .step.swap{animation:swap var(--t-med) var(--ease-out)}
+@keyframes swap{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+.tree{display:flex;flex-direction:column;gap:10px}
+.kids{margin:2px 0 2px 20px;border-left:1px solid var(--line);padding-left:14px;display:flex;flex-direction:column;gap:8px;animation:rise var(--t-med) var(--ease-out)}
+.kids .kids{margin-left:18px}
+.kids>.item{background:transparent;border:none;border-bottom:1px solid var(--line-soft);border-radius:0;padding-left:2px}
+.kids>.item:hover{background:rgba(0,102,204,.05);border-color:transparent;border-bottom-color:var(--line)}
+.kids>.item.sel{background:#faf7ef;border:none;border-bottom:1px solid var(--line-soft);box-shadow:inset 3px 0 0 var(--brand)}
+.kids .avatar{width:28px;height:28px;font-size:13px}
+.col{border:1px solid var(--line-soft);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:8px;background:#faf7ef;min-width:0}
+.col h3{margin:0;font-size:13px;display:flex;align-items:center;gap:6px}
+.col .count{margin-left:auto;font-size:11px;color:var(--faint)}
+.col-body{display:flex;flex-direction:column;gap:8px}
+.col-body.rise{animation:rise var(--t-med) var(--ease-out)}
+.cols3{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+.item{position:relative;border:1px solid var(--line);border-radius:11px;padding:9px 10px;background:var(--card);display:flex;gap:9px;align-items:flex-start;cursor:pointer;
+  transition:transform var(--t-press) var(--ease-out),box-shadow var(--t-fast) var(--ease-out),border-color var(--t-fast) var(--ease-out)}
+.item:hover{border-color:var(--brand)}
+.item:active{transform:scale(.985)}
+.item.sel{border-color:var(--line);background:#faf7ef;box-shadow:inset 3px 0 0 var(--brand)}
+.item.open{background:#faf7ef}
+.item::before{content:"";position:absolute;left:0;top:9px;bottom:9px;width:4px;border-radius:4px;background:transparent;transition:background var(--t-fast)}
+.item.rail-orphan::before{background:var(--bad)}
+.item.rail-stash::before{background:#4B5568}
+.item.rail-live::before{background:var(--brand)}
+.item .grow{flex:1;min-width:0}
+.item .nm{font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.item .sub{font-size:12px;color:var(--mut);margin-top:2px}
+.item.flash{animation:flash 1s var(--ease-out)}
+@keyframes flash{0%{box-shadow:0 0 0 0 rgba(0,113,227,.5)}100%{box-shadow:0 0 0 12px rgba(0,113,227,0)}}
+.caret{flex:none;width:22px;height:34px;display:grid;place-items:center;color:var(--faint)}
+.caret svg{width:14px;height:14px;transition:transform var(--t-fast) var(--ease-out)}
+.caret.open svg{transform:rotate(90deg)}
+.ops{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.ops .btn{padding:5px 10px;font-size:12px;min-height:32px;border-radius:8px}
+.ops .btn.go{border-color:var(--brand);color:var(--brand);font-weight:700}
+.homecard{border:1px solid var(--line);border-radius:var(--r-md);padding:11px;background:var(--card);transition:border-color var(--t-fast),box-shadow var(--t-fast)}
+.homecard:hover{border-color:var(--brand)}
+.master{display:grid;grid-template-columns:1fr;gap:12px;align-items:start}
+.botcard{border:1px solid var(--line);border-radius:16px;padding:14px;background:#faf7ef;display:flex;flex-direction:column;gap:8px}
+.botcard .big{display:flex;gap:10px;align-items:center}
+.botcard .bic{width:40px;height:40px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center}
+.botcard .bic svg{width:22px;height:22px}
+.timeline{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--mut)}
+.timeline .dot{width:8px;height:8px;border-radius:50%;background:var(--brand-2);flex:none}
+.timeline .line{flex:1;height:2px;background:var(--line);border-radius:2px;min-width:12px}
+.state{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:11px;background:#0B0D12;color:#C9D7F2;border-radius:10px;padding:10px 12px;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow:auto;min-height:96px}
+.diff{background:#fffdf8;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12.5px;transition:background var(--t-fast)}
+.diff.pulse{animation:pulse var(--t-slow) var(--ease-out)}
+@keyframes pulse{0%{background:#efeadd}100%{background:#fffdf8}}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;place-items:center;padding:16px;z-index:60}
+.modal.open{display:grid;animation:scrim var(--t-fast) var(--ease-out)}
+@keyframes scrim{from{opacity:0}to{opacity:1}}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px;max-width:480px;width:100%;padding:18px;display:flex;flex-direction:column;gap:11px;box-shadow:0 24px 60px rgba(0,0,0,.5);animation:sheetIn var(--t-med) var(--ease-spring)}
+@keyframes sheetIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+.sheet h3{margin:0;font-size:15px}
+.sheet label{font-size:12.5px;color:var(--mut);display:flex;flex-direction:column;gap:5px}
+.sheet input,.sheet select{padding:9px 10px;border:1px solid var(--line);border-radius:10px;font-size:13.5px;color:var(--ink);background:#fff;min-height:40px}
+.scen{display:flex;gap:6px;flex-wrap:wrap}
+.scen .btn{background:#fffdf8}
+.scen .btn.hit{border-color:var(--brand);background:rgba(0,102,204,.08)}
+.switcher{position:fixed;left:50%;transform:translateX(-50%);bottom:14px;z-index:50;background:rgba(255,253,247,.94);border:1px solid var(--line);color:var(--ink);border-radius:999px;backdrop-filter:blur(6px);padding:8px 10px;display:flex;gap:6px;align-items:center;box-shadow:0 8px 28px rgba(0,0,0,.5);font-size:12px;max-width:calc(100vw - 24px);flex-wrap:wrap;justify-content:center}
+.switcher button{border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:7px 13px;min-height:36px;cursor:pointer;font-size:12px;transition:transform var(--t-press),background var(--t-fast)}
+.switcher button:active{transform:scale(.95)}
+.switcher button.on{background:var(--brand);border-color:var(--brand);font-weight:700}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important}
+}
+/* fusion: hairline grid + single mesh wash on breadcrumb */
+.card{border-radius:16px}
+.switcher a{display:inline-block;border:1px solid var(--line);background:transparent;color:var(--mut);border-radius:999px;padding:7px 13px;min-height:36px;font-size:12px;text-decoration:none;line-height:22px}
+.switcher a.on{background:#1d1d1f;border-color:#1d1d1f;color:#fff;font-weight:700}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-flask" viewBox="0 0 16 16"><path d="M6 1h4v2l3 7.2c.5 1.2-.4 2.8-1.8 2.8H4.8c-1.4 0-2.3-1.6-1.8-2.8L6 3V1z" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M5.5 9h5" stroke="currentColor" stroke-width="1.4"/></symbol>
+<symbol id="i-signal" viewBox="0 0 16 16"><path d="M2 12a8 8 0 0 1 12 0" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="8" cy="13.4" r="1.4" fill="currentColor"/></symbol>
+<symbol id="i-pencil" viewBox="0 0 16 16"><path d="M11 2l3 3L6 13H3v-3L11 2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+<symbol id="i-home" viewBox="0 0 16 16"><path d="M2 8l6-5 6 5v6H9.5v-4h-3v4H2V8z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+<symbol id="i-person" viewBox="0 0 16 16"><circle cx="8" cy="5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M2.5 14c.6-2.6 2.8-4 5.5-4s4.9 1.4 5.5 4" fill="none" stroke="currentColor" stroke-width="1.4"/></symbol>
+<symbol id="i-bot" viewBox="0 0 16 16"><rect x="3" y="5" width="10" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6.2" cy="8.5" r="1" fill="currentColor"/><circle cx="9.8" cy="8.5" r="1" fill="currentColor"/><path d="M8 5V2.5M5.5 2.5h5" stroke="currentColor" stroke-width="1.4"/></symbol>
+<symbol id="i-reset" viewBox="0 0 16 16"><path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 1.5v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+<symbol id="i-move" viewBox="0 0 16 16"><path d="M8 1.5v13M1.5 8h13M5 4.5L2 8l3 3.5M11 4.5L14 8l-3 3.5" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+<symbol id="i-check" viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+<symbol id="av-book" viewBox="0 0 20 20"><rect width="20" height="20" rx="5" fill="#2563eb"/><path d="M6 5.5h6a2 2 0 0 1 2 2v7H8a2 2 0 0 1-2-2v-7z" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M6 12.5h8" stroke="#fff" stroke-width="1.2"/></symbol>
+<symbol id="av-wave" viewBox="0 0 20 20"><rect width="20" height="20" rx="5" fill="#0e9f8a"/><path d="M3 12c2-2.5 4-2.5 6 0s4 2.5 6 0" fill="none" stroke="#fff" stroke-width="1.6"/><path d="M3 8c2-2.5 4-2.5 6 0s4 2.5 6 0" fill="none" stroke="#fff" stroke-width="1.2" opacity=".7"/></symbol>
+<symbol id="av-star" viewBox="0 0 20 20"><rect width="20" height="20" rx="5" fill="#7a5af8"/><path d="M10 4.5l1.5 3.2 3.5.4-2.6 2.4.7 3.5-3.1-1.8-3.1 1.8.7-3.5L4.9 8l3.5-.4L10 4.5z" fill="#fff"/></symbol>
+<symbol id="av-roof" viewBox="0 0 20 20"><rect width="20" height="20" rx="5" fill="#ef6820"/><path d="M4 10.5L10 5l6 5.5M6.5 10v5h7v-5" fill="none" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+<symbol id="av-leaf" viewBox="0 0 20 20"><rect width="20" height="20" rx="5" fill="#12a150"/><path d="M10 4c3 2 4 5 3.5 8.5C10.5 13 7 12 6 9c.8-2 2-3.8 4-5z" fill="none" stroke="#fff" stroke-width="1.5"/><path d="M7 15l6-6" stroke="#fff" stroke-width="1.2"/></symbol>
+</defs></svg>
+<div class="wrap">
+<span class="proto">PROTOTYPE 抛弃式</span> <span class="framesize">画布 660px · 融合款：暖纸底 + 果蓝单色 + mono 眉题 + 一处 mesh 点缀 · 宽画布对照版，窄面板请看 Studio</span>
+<h1><span class="grad">IM 机器人增强</span> · 家 → 助理 → 机器人</h1>
+<p class="lede">回答<b>三级在面板里长什么样、点得通吗</b>。A 三栏树改为纵向树：点家展开助理，点助理展开机器人。语义按 T3-spec #116，全 SVG 零 emoji，动效不超 240ms。</p>
+
+<div class="card"><div class="hd"><svg class="ic"><use href="#i-flask"/></svg> 一键走查 <span class="mut">点一步、看状态栏一步（高亮当前步骤）</span></div><div class="bd">
+<div class="scen">
+<button class="btn" data-scen="s1">1 建家选已有区</button>
+<button class="btn" data-scen="s2">2 建家选目录新建</button>
+<button class="btn" data-scen="s3">3 先建助理后绑机器人</button>
+<button class="btn" data-scen="s4">4 搬家（助理换家）</button>
+<button class="btn" data-scen="s5">5 改名冻结验证</button>
+<button class="btn" data-scen="s6">6 工作区已删除变待重连</button>
+</div>
+<div class="mut" id="scenHint">走查说明会显示在这里。所有写入都在内存，随时点底部“重置”回到种子。</div>
+</div></div>
+
+<div class="card"><div class="hd"><span id="varTitle">变体</span> <span class="mut" id="varDesc"></span>
+<span style="margin-left:auto"></span>
+<button class="btn primary" id="btnNewHome">新建家</button>
+<button class="btn" id="btnNewAsst">新建助理</button>
+<details class="debug"><summary>模拟调试</summary><div class="row"><button class="btn" id="btnRenameWs">工作区改名</button>
+<button class="btn danger" id="btnDelWs">删除工作区</button></div></details>
+</div><div class="bd">
+<div class="flow" id="flow" aria-live="polite"></div>
+<div id="stage"></div>
+</div></div>
+
+<div class="card"><div class="hd"><svg class="ic"><use href="#i-signal"/></svg> 状态外显 <span class="mut">每次点击后重渲染＋变化行闪光</span></div><div class="bd">
+<div class="diff" id="diff" aria-live="polite">尚无动作。点上面任何按钮，这里写刚才发生了什么，以及哪条回落生效。</div>
+<div class="state" id="state"></div>
+</div></div>
+
+<div class="card"><div class="hd"><svg class="ic"><use href="#i-pencil"/></svg> 待你 verdict（去 #109 回）</div><div class="bd"><p class="mut" style="margin:0">
+A 三栏树：左家（L1 地点）→ 中助理（L2 人）→ 右机器人（L3 号）。冻结确认：①三级层级 ②建家双入口 ③建助理后绑 ④搬家入口在助理上 ⑤改名冻结＋恢复默认。动效确认：选择跟手吗？搬家后闪光找得到吗？弹窗 Esc/焦点对吗？</p></div></div>
+</div>
+
+<div class="modal" id="modal"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h3 id="mTitle"></h3><div id="mBody" style="display:flex;flex-direction:column;gap:10px"></div>
+<div class="row" style="justify-content:flex-end"><button class="btn" id="mCancel">取消（Esc）</button><button class="btn primary" id="mOk">确定</button></div></div></div>
+
+<div class="switcher" role="group" aria-label="四款对照">款式：<a href="proto-apple.html" class="">Apple</a><a href="proto-vercel.html" class="">Vercel</a><a href="proto-notion.html" class="">Notion</a><a href="proto-fusion.html" class="on">融合</a><button id="btnReset" title="重置回种子"><svg class="ic"><use href="#i-reset"/></svg> 重置</button><span id="cnt"></span></div>
+
+<script>
+// ---- 纯状态模块（语义按 #116 冻结） ----
+const seedWorkspaces = () => ([
+  {id:'ws-keting', title:'客厅', path:'/ws/keting'},
+  {id:'ws-shufang', title:'书房', path:'/ws/shufang'},
+  {id:'ws-old', title:'旧书房', path:'/ws/deleted', deleted:true},
+]);
+const seedBots = () => ([
+  {id:'bot-fei', name:'小帅·飞书', channel:'feishu'},
+  {id:'bot-wxa', name:'A号·微信', channel:'wechat'},
+  {id:'bot-wxb', name:'B号·微信', channel:'wechat'},
+  {id:'bot-free', name:'待认领·飞书', channel:'feishu'},
+]);
+function seed(){
+  return {
+    seq: 100,
+    workspaces: seedWorkspaces(),
+    bots: seedBots(),
+    homes: [
+      {id:'h1', workspaceId:'ws-keting', path:'/ws/keting', name:'客厅', nameSource:'system', avatar:null, avatarSource:'default'},
+      {id:'h2', workspaceId:'ws-shufang', path:'/ws/shufang', name:'书房基地', nameSource:'user', avatar:'av-book', avatarSource:'user'},
+      {id:'h-orphan', workspaceId:null, path:'/ws/deleted', name:'旧书房', nameSource:'system', avatar:null, avatarSource:'default', tombstone:{at:Date.now(), reason:'工作区已删除'}},
+      {id:'h-stash', workspaceId:null, path:null, name:'暂存', nameSource:'system', avatar:null, avatarSource:'default'},
+    ],
+    assistants: [
+      {id:'a1', homeId:'h1', channel:'feishu', botId:'bot-fei', status:'bound', name:'小帅·飞书', nameSource:'bot', avatar:null, avatarSource:'bot'},
+      {id:'a2', homeId:'h1', channel:'wechat', botId:null, status:'unbound', name:'客厅', nameSource:'home', avatar:null, avatarSource:'home'},
+      {id:'a3', homeId:'h2', channel:'wechat', botId:'bot-wxa', status:'bound', name:'A号·微信', nameSource:'bot', avatar:null, avatarSource:'bot'},
+      {id:'a4', homeId:'h2', channel:'wechat', botId:'bot-wxb', status:'bound', name:'B号·微信', nameSource:'bot', avatar:null, avatarSource:'bot'},
+      {id:'a5', homeId:'h-orphan', channel:'feishu', botId:null, status:'orphan', name:'旧书房', nameSource:'home', avatar:null, avatarSource:'home'},
+      {id:'a6', homeId:'h-stash', channel:'feishu', botId:'bot-free', status:'bound', name:'待认领·飞书', nameSource:'bot', avatar:null, avatarSource:'bot'},
+    ],
+    selHome: 'h1', selAsst: 'a1', lastDiff: '种子已载入。', flashId: null, openH: {h1: true}, openA: {a1: true},
+  };
+}
+let S = seed();
+function wsOf(h){ return S.workspaces.find(w=>w.id===h.workspaceId) || null; }
+function homeDisplay(h){
+  if(h.nameSource==='user') return {t:h.name, from:'用户手改（冻结）'};
+  const ws = wsOf(h);
+  if(ws && !ws.deleted) return {t:ws.title, from:'工作区标题回落'};
+  if(h.path) return {t:h.path.split('/').pop()||h.path, from:'目录基名回落'};
+  return {t:h.name, from:'系统缺省'};
+}
+function botOf(a){ return S.bots.find(b=>b.id===a.botId) || null; }
+function homeById(id){ return S.homes.find(h=>h.id===id); }
+function asstDisplay(a){
+  if(a.nameSource==='user') return {t:a.name, from:'用户手改（冻结）'};
+  const b = botOf(a);
+  if(b && a.botId) return {t:b.name, from:'机器人名回落'};
+  const h = homeById(a.homeId);
+  if(h) return {t:homeDisplay(h).t, from:'所属家名回落'};
+  return {t:'未命名助理', from:'缺省'};
+}
+const AV_IDS = ['av-book','av-wave','av-star','av-roof','av-leaf'];
+const AV_NAME = {'av-book':'书卷蓝','av-wave':'湖波青','av-star':'星尘紫','av-roof':'屋顶橙','av-leaf':'新叶绿'};
+function avHue(name){ let h=0; for(const c of String(name)){ h=(h*31+c.codePointAt(0))%360; } return h; }
+function avatarHtml(kind, obj){
+  if(obj.avatar && AV_IDS.includes(obj.avatar)) return '<svg><use href="#'+obj.avatar+'"/></svg>';
+  const t = (kind==='home' ? homeDisplay(obj).t : asstDisplay(obj).t) || '?';
+  const kiln = [14, 32, 145, 42, 200];
+  return '<span class="avchar" style="background:hsl('+kiln[avHue(t)%5]+',52%,40%)">'+esc(t[0])+'</span>';
+}
+function statusTag(a){
+  if(a.status==='bound') return '<span class="tag ok">已绑</span>';
+  if(a.status==='unbound') return '<span class="tag warn">未绑定</span>';
+  return '<span class="tag bad">失联</span>';
+}
+function touch(diff, flashId){ S.lastDiff = diff; S.flashId = flashId || null; render(); }
+function uid(p){ return p + (++S.seq); }
+function freeWorkspaces(){ const used = new Set(S.homes.map(h=>h.workspaceId).filter(Boolean)); return S.workspaces.filter(w=>!w.deleted && !used.has(w.id)); }
+function freeBots(){ const used = new Set(S.assistants.map(a=>a.botId).filter(Boolean)); return S.bots.filter(b=>!used.has(b.id)); }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+// ---- 渲染 ----
+const params = new URLSearchParams(location.search);
+let variant = params.get('variant') || 'a'; // verdict: A 选定，默认 a
+if(!['a','b','c'].includes(variant)) variant = 'a';
+const stage = document.getElementById('stage');
+const stateEl = document.getElementById('state');
+const diffEl = document.getElementById('diff');
+const flowEl = document.getElementById('flow');
+
+function railClass(h){
+  if(h.tombstone) return 'rail-orphan';
+  if(h.id==='h-stash') return 'rail-stash';
+  return 'rail-live';
+}
+function flashCls(id){ return S.flashId===id ? ' flash' : ''; }
+
+function asstRow(a, tree){
+  const d = asstDisplay(a), b = botOf(a), h = homeById(a.homeId);
+  const open = !!S.openA[a.id];
+  return '<div class="item'+(S.selAsst===a.id?' sel':'')+(tree&&open?' open':'')+flashCls(a.id)+'" data-asst="'+a.id+'" role="button" tabindex="0"'+(tree?' aria-expanded="'+open+'"':'')+' aria-label="助理 '+esc(d.t)+'">'
+    + (tree?caret(open):'')
+    + '<div class="avatar">'+avatarHtml('asst',a)+'</div>'
+    + '<div class="grow"><div class="nm">'+(tree?'<span class="lvl">L2</span> ':'')+esc(d.t)+' '+statusTag(a)+(b?' <span class="tag dim">'+b.channel+'</span>':'')+'</div>'
+    + '<div class="sub">'+(b?esc(b.name):'暂无机器人')+'</div><div class="meta"><span class="mono">'+a.id+'</span> '+d.from+'</div>'
+    + '<div class="ops">'
+    + '<button class="btn" data-act="rename-a" data-id="'+a.id+'">取名</button>'
+    + '<button class="btn" data-act="avatar-a" data-id="'+a.id+'">配图</button>'
+    + '<button class="btn" data-act="reset-a" data-id="'+a.id+'">恢复默认</button>'
+    + '<button class="btn go" data-act="move-a" data-id="'+a.id+'"><svg class="ic"><use href="#i-move"/></svg> 搬家</button>'
+    + (a.botId? '<button class="btn" data-act="unbind-a" data-id="'+a.id+'">解绑</button>' : '<button class="btn" data-act="bind-a" data-id="'+a.id+'">绑机器人</button>')
+    + '</div></div></div>';
+}
+function caret(open){ return '<span class="caret'+(open?' open':'')+'"><svg viewBox="0 0 16 16"><path d="M6 4l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></span>'; }
+function treeHomeRow(h, open, n){
+  const d = homeDisplay(h);
+  const flag = h.tombstone ? ' <span class="tag bad">待重连</span>' : (h.id==='h-stash' ? ' <span class="tag dim">暂存</span>' : '');
+  return '<div class="item '+railClass(h)+(S.selHome===h.id?' sel':'')+(open?' open':'')+flashCls(h.id)+'" data-home="'+h.id+'" role="button" tabindex="0" aria-expanded="'+open+'" aria-label="家 '+esc(d.t)+'">'
+    + caret(open)
+    + '<div class="avatar">'+avatarHtml('home',h)+'</div>'
+    + '<div class="grow"><div class="nm"><span class="lvl">L1</span> '+esc(d.t)+flag+' <span class="mut">· '+n+' 助理</span></div>'
+    + '<div class="sub">'+esc(d.from)+'</div><div class="meta"><span class="mono">'+h.id+'</span> '+esc(h.path||'无路径')+'</div>'
+    + '<div class="ops"><button class="btn" data-act="rename-h" data-id="'+h.id+'">改名</button>'
+    + '<button class="btn" data-act="reset-h" data-id="'+h.id+'">恢复默认</button>'
+    + (h.tombstone? '<button class="btn" data-act="revive-h" data-id="'+h.id+'">重连</button>' : '')
+    + '</div></div></div>';
+}
+function botCard(a){
+  const b = botOf(a);
+  if(b) return '<div class="botcard"><div class="big"><div class="bic"><svg><use href="#i-bot"/></svg></div><div><div style="font-weight:800">'+esc(b.name)+' <span class="tag dim">'+b.channel+'</span></div><div class="meta"><span class="mono">'+a.botId+'</span> 单渠道实例</div></div><span class="tag ok" style="margin-left:auto">已绑</span></div>'
+    + '<div class="timeline"><span class="dot"></span>助理占位<span class="line"></span><span class="dot"></span>机器人绑定<span class="line"></span><span class="dot"></span>改名史跟随</div>'
+    + '<div class="mut">严格一对一；换号不断人（#116 故事 10）。</div></div>';
+  return '<div class="botcard"><div class="big"><div class="bic"><svg><use href="#i-person"/></svg></div><div><div style="font-weight:800">未绑定机器人</div><div class="mut">人先占位、号后到（允许后绑，#116 故事 9）</div></div><span class="tag warn" style="margin-left:auto">占位中</span></div>'
+    + '<div class="mut">点该助理行的“绑机器人”完成认领；显示走家名回落。</div></div>';
+}
+function homeRow(h){
+  const d = homeDisplay(h);
+  const n = S.assistants.filter(a=>a.homeId===h.id).length;
+  const flag = h.tombstone ? ' <span class="tag bad">待重连</span>' : (h.id==='h-stash' ? ' <span class="tag dim">暂存</span>' : '');
+  return '<div class="item '+railClass(h)+(S.selHome===h.id?' sel':'')+flashCls(h.id)+'" data-home="'+h.id+'" role="button" tabindex="0" aria-label="家 '+esc(d.t)+'">'
+    + '<div class="avatar">'+avatarHtml('home',h)+'</div>'
+    + '<div class="grow"><div class="nm"><svg class="ic"><use href="#i-home"/></svg> '+esc(d.t)+flag+' <span class="mut">· '+n+' 助理</span></div>'
+    + '<div class="sub">'+esc(d.from)+'</div><div class="meta"><span class="mono">'+h.id+'</span> '+esc(h.path||'无路径')+'</div>'
+    + '<div class="ops"><button class="btn" data-act="rename-h" data-id="'+h.id+'">改名</button>'
+    + '<button class="btn" data-act="reset-h" data-id="'+h.id+'">恢复默认</button>'
+    + (h.tombstone? '<button class="btn" data-act="revive-h" data-id="'+h.id+'">重连</button>' : '')
+    + '</div></div></div>';
+}
+
+function renderFlow(){
+  const h = homeById(S.selHome);
+  const a = S.assistants.find(x=>x.id===S.selAsst);
+  const b = a && botOf(a);
+  flowEl.innerHTML = '<span class="lvl">L1 家</span><span class="step'+(S.flashId===S.selHome?' swap':'')+'"><svg class="ic"><use href="#i-home"/></svg><b>'+esc(h?homeDisplay(h).t:'未选择')+'</b></span>'
+    + '<span class="sep">›</span><span class="lvl">L2 助理</span><span class="step'+(S.flashId===S.selAsst?' swap':'')+'"><svg class="ic"><use href="#i-person"/></svg><b>'+esc(a?asstDisplay(a).t:'未选择')+'</b></span>'
+    + '<span class="sep">›</span><span class="lvl">L3 机器人</span><span class="step"><svg class="ic"><use href="#i-bot"/></svg><b>'+esc(b?b.name:'未绑定')+'</b></span>';
+}
+
+function render(){
+  document.querySelectorAll('.switcher [data-v]').forEach(x=>{ x.classList.toggle('on', x.dataset.v===variant); x.setAttribute('aria-pressed', x.dataset.v===variant ? 'true':'false'); });
+  const titles = {a:'A · 面板树（家展开助理，助理展开机器人）', b:'B · 家卡片分组（对照保留）', c:'C · 主从抽屉（对照保留）'};
+  const descs = {a:'纵向三栏树，点选即展开联动，面包屑同步。', b:'手机友好纵滚；搬家用下拉。', c:'左窄右宽；搬家收进菜单。'};
+  document.getElementById('varTitle').textContent = titles[variant];
+  document.getElementById('varDesc').textContent = descs[variant];
+  renderFlow();
+  if(variant==='a'){
+    stage.innerHTML = '<div class="tree">'
+      + S.homes.map(h=>{
+        const open = !!S.openH[h.id];
+        const list = S.assistants.filter(x=>x.homeId===h.id);
+        const kids = open ? '<div class="kids">' + (list.map(a=>{
+          const aOpen = !!S.openA[a.id];
+          return asstRow(a, true) + (aOpen ? '<div class="kids">' + botCard(a) + '</div>' : '');
+        }).join('') || '<div class="mut">此家暂无助理，点“新建助理”。</div>') + '</div>' : '';
+        return treeHomeRow(h, open, list.length) + kids;
+      }).join('')
+      + '</div><div class="mut">点家展开助理，点助理展开机器人；搬家入口在助理行“搬家”上。</div>';
+  } else if(variant==='b'){
+    stage.innerHTML = S.homes.map(h=>{
+      const d = homeDisplay(h);
+      const rows = S.assistants.filter(x=>x.homeId===h.id).map(asstRow).join('') || '<div class="mut">暂无助理</div>';
+      return '<div class="homecard"><div class="row"><div class="avatar">'+avatarHtml('home',h)+'</div><b>'+esc(d.t)+'</b>'
+        + (h.tombstone?'<span class="tag bad">待重连</span>':'') + (h.id==='h-stash'?'<span class="tag dim">暂存</span>':'')
+        + '<span class="meta"><span class="mono">'+h.id+'</span> '+d.from+'</span><span style="margin-left:auto"></span>'
+        + '<button class="btn" data-act="rename-h" data-id="'+h.id+'">改名</button>'
+        + '<button class="btn" data-act="reset-h" data-id="'+h.id+'">恢复默认</button></div>'
+        + '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">'+rows+'</div></div>';
+    }).join('');
+  } else {
+    const hs = S.homes.map(homeRow).join('');
+    const home = homeById(S.selHome);
+    const rows = S.assistants.filter(x=>x.homeId===S.selHome).map(asstRow).join('') || '<div class="mut">此家暂无助理。</div>';
+    stage.innerHTML = '<div class="master"><div class="col"><h3>家</h3><div class="col-body rise">'+hs+'</div></div><div class="col mid"><h3>'+(home?esc(homeDisplay(home).t):'')+' · 助理与机器人</h3><div class="col-body rise">'+rows+'</div></div></div>';
+  }
+  diffEl.textContent = S.lastDiff;
+  diffEl.classList.remove('pulse'); void diffEl.offsetWidth; diffEl.classList.add('pulse');
+  const view = {variant, homes: S.homes.map(h=>({id:h.id, show:homeDisplay(h).t, from:homeDisplay(h).from, path:h.path, tombstone:!!h.tombstone})), assistants: S.assistants.map(x=>({id:x.id, home:x.homeId, show:asstDisplay(x).t, from:asstDisplay(x).from, bot:x.botId, status:x.status}))};
+  stateEl.textContent = JSON.stringify(view, null, 1);
+  document.getElementById('cnt').textContent = S.homes.length+'家·'+S.assistants.length+'助理';
+  history.replaceState(null,'','?variant='+variant);
+}
+
+// ---- 选择（点击＋键盘） ----
+stage.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-act]');
+  if(btn){ e.stopPropagation(); act(btn.dataset.act, btn.dataset.id); return; }
+  const asstEl = e.target.closest('[data-asst]');
+  if(asstEl){ S.selAsst = asstEl.dataset.asst; if(variant==='a'){ S.openA[S.selAsst] = !S.openA[S.selAsst]; const a0 = S.assistants.find(x=>x.id===S.selAsst); if(a0) S.selHome = a0.homeId; S.openH[S.selHome] = true; } S.flashId = null; S.lastDiff = '选中助理 '+S.selAsst+'（'+asstDisplay(S.assistants.find(x=>x.id===S.selAsst)).t+'），机器人详情同步展开。'; render(); return; }
+  const homeEl = e.target.closest('[data-home]');
+  if(homeEl){ S.selHome = homeEl.dataset.home; if(variant==='a'){ S.openH[S.selHome] = !S.openH[S.selHome]; } const first = S.assistants.find(x=>x.homeId===S.selHome); if(first) S.selAsst = first.id; S.flashId = null; S.lastDiff = '选中家 '+S.selHome+'，名下助理同步展开。'; render(); }
+});
+stage.addEventListener('keydown', e=>{
+  if((e.key==='Enter'||e.key===' ') && e.target.matches('[data-home],[data-asst]')){ e.preventDefault(); e.target.click(); }
+});
+
+function act(kind, id){
+  if(kind==='rename-h'){
+    const h = homeById(id);
+    openModal('家改名（'+id+'）', '<label>新名（留空=恢复默认）<input id="f-name" value="'+esc(h.nameSource==='user'?h.name:'')+'" placeholder="如：湖畔小屋"></label><div class="mut">用户手改后冻结：后续工作区改名不再跟随；来源为家的助理会跟随本次改名。</div>', ()=>{
+      const v = document.getElementById('f-name').value.trim();
+      if(!v){ h.nameSource='system'; touch('家 '+id+' 恢复默认 → 现显示“'+homeDisplay(h).t+'”（'+homeDisplay(h).from+'）。', id); return; }
+      h.name=v; h.nameSource='user';
+      let n=0; S.assistants.forEach(x=>{ if(x.homeId===id && x.nameSource==='home'){ n++; } });
+      touch('家 '+id+' 手改名“'+v+'”并冻结；名下 '+n+' 个来源为家的助理跟随显示。工作区再改名也不会动它。', id);
+    });
+  } else if(kind==='reset-h'){
+    const h = homeById(id); h.nameSource='system'; touch('家 '+id+' 恢复默认 → “'+homeDisplay(h).t+'”（'+homeDisplay(h).from+'）。', id);
+  } else if(kind==='revive-h'){
+    const h = homeById(id);
+    openModal('重连', '<label>重选目录（新路径）<input id="f-path" value="/ws/new-home" placeholder="/ws/新目录"></label><div class="mut">重连=清墓碑+重连路径，改名史与头像不丢（#116）。</div>', ()=>{
+      h.path = document.getElementById('f-path').value.trim() || '/ws/new-home'; h.workspaceId=null; delete h.tombstone;
+      touch('待重连 '+id+' 已重连到 '+h.path+'，改名史保留。', id);
+    });
+  } else if(kind==='rename-a'){
+    const a = S.assistants.find(x=>x.id===id);
+    openModal('助理取名（'+id+'）', '<label>新名（留空=恢复默认）<input id="f-name" value="'+esc(a.nameSource==='user'?a.name:'')+'"></label><div class="mut">回落：用户 ＞ 机器人名 ＞ 家名。手改后冻结。</div>', ()=>{
+      const v = document.getElementById('f-name').value.trim();
+      if(!v){ a.nameSource = a.botId?'bot':'home'; touch('助理 '+id+' 恢复默认 → “'+asstDisplay(a).t+'”（'+asstDisplay(a).from+'）。', id); return; }
+      a.name=v; a.nameSource='user'; touch('助理 '+id+' 手改名“'+v+'”并冻结；机器人/家再改名也不跟。', id);
+    });
+  } else if(kind==='avatar-a'){
+    const a = S.assistants.find(x=>x.id===id);
+    openModal('助理配图（'+id+'）', '<label>选图（SVG 文件化头像示意，元数据只存路径）<select id="f-av"><option value="">默认首字图</option><option value="av-book">书卷蓝</option><option value="av-wave">湖波青</option><option value="av-star">星尘紫</option><option value="av-roof">屋顶橙</option><option value="av-leaf">新叶绿</option></select></label>', ()=>{
+      const v = document.getElementById('f-av').value;
+      a.avatar = v||null; a.avatarSource = v?'user':'default'; touch('助理 '+id+(v?' 配图 '+(AV_NAME[v]||v)+'（SVG 文件化示意）。':' 恢复默认首字图。'), id);
+    });
+  } else if(kind==='reset-a'){
+    const a = S.assistants.find(x=>x.id===id); a.nameSource = a.botId?'bot':'home'; touch('助理 '+id+' 恢复默认 → “'+asstDisplay(a).t+'”（'+asstDisplay(a).from+'）。', id);
+  } else if(kind==='move-a'){
+    const a = S.assistants.find(x=>x.id===id);
+    const opts = S.homes.map(h=>'<option value="'+h.id+'"'+(h.id===a.homeId?' disabled':'')+'>'+esc(homeDisplay(h).t)+'（'+h.id+'）</option>').join('');
+    openModal('搬家：'+id+'（入口在助理上）', '<label>目标家<select id="f-home">'+opts+'</select></label><div class="mut">一次换家做完，名下机器人跟随；失败回滚（原型里即时生效、可重置）。未绑定显示切到“家名回落”。</div>', ()=>{
+      const t = document.getElementById('f-home').value;
+      const from = homeById(a.homeId); a.homeId = t;
+      if(a.nameSource==='home'){ touch('助理 '+id+' 从“'+homeDisplay(from).t+'”搬到“'+homeDisplay(homeById(t)).t+'”，机器人 '+(a.botId||'无')+' 跟随；未改名故显示切到新家名“'+asstDisplay(a).t+'”。', id); }
+      else touch('助理 '+id+' 已搬到“'+homeDisplay(homeById(t)).t+'”，手改名冻结故仍叫“'+asstDisplay(a).t+'”。', id);
+      S.selHome = t;
+    });
+  } else if(kind==='bind-a'){
+    const a = S.assistants.find(x=>x.id===id);
+    const free = freeBots();
+    if(!free.length){ touch('无空闲机器人可绑（同区多机器人各立一助理，不合并）。', id); return; }
+    openModal('绑定机器人（'+id+'）', '<label>选机器人<select id="f-bot">'+free.map(b=>'<option value="'+b.id+'">'+esc(b.name)+'·'+b.channel+'</option>').join('')+'</select></label>', ()=>{
+      a.botId = document.getElementById('f-bot').value; a.status='bound'; if(a.nameSource==='home') a.nameSource='bot';
+      touch('助理 '+id+' 已绑 '+a.botId+'；未手改过故显示切到机器人名“'+asstDisplay(a).t+'”。', id);
+    });
+  } else if(kind==='unbind-a'){
+    const a = S.assistants.find(x=>x.id===id);
+    a.botId=null; a.status='unbound'; if(a.nameSource==='bot') a.nameSource='home';
+    touch('助理 '+id+' 已解绑 → 未绑定态，显示回落到家名“'+asstDisplay(a).t+'”。机器人回池可再认领。', id);
+  }
+}
+
+// ---- 顶栏 ----
+document.getElementById('btnNewHome').onclick = ()=>{
+  const free = freeWorkspaces();
+  openModal('建家：选区 / 选目录', '<label>方式<select id="f-mode"><option value="pick">选已有区即绑定（不新建工作区）</option><option value="mkdir">选目录即新建工作区再落家</option></select></label>'
+    + '<label>已有区<select id="f-ws">'+(free.map(w=>'<option value="'+w.id+'">'+esc(w.title)+'（'+w.path+'）</option>').join('')||'<option value="">暂无空闲区，请用选目录</option>')+'</select></label>'
+    + '<label>目录基名（选目录时用）<input id="f-dir" value="/ws/湖畔" placeholder="/ws/新目录"></label>'
+    + '<div class="mut">家默认名=工作区名/目录基名（系统回落），可之后改名冻结。</div>', ()=>{
+    const mode = document.getElementById('f-mode').value;
+    const nid = uid('h');
+    if(mode==='pick'){
+      const wid = document.getElementById('f-ws').value;
+      if(!wid){ touch('建家取消：没有空闲区可选。'); return; }
+      const w = S.workspaces.find(x=>x.id===wid);
+      S.homes.push({id:nid, workspaceId:wid, path:w.path, name:w.title, nameSource:'system', avatar:null, avatarSource:'default'});
+      S.selHome=nid; S.openH[nid]=true; touch('新建家 '+nid+'：选已有区“'+w.title+'”即绑定，未新建工作区；默认名“'+w.title+'”。', nid);
+    } else {
+      const dir = document.getElementById('f-dir').value.trim() || ('/ws/新区'+S.seq);
+      const wid = uid('ws'); S.workspaces.push({id:wid, title:dir.split('/').pop(), path:dir});
+      S.homes.push({id:nid, workspaceId:wid, path:dir, name:dir.split('/').pop(), nameSource:'system', avatar:null, avatarSource:'default'});
+      S.selHome=nid; S.openH[nid]=true; touch('新建家 '+nid+'：选目录 '+dir+' → 新建工作区 '+wid+' 再落家；默认名“'+dir.split('/').pop()+'”。', nid);
+    }
+  });
+};
+document.getElementById('btnNewAsst').onclick = ()=>{
+  const free = freeBots();
+  openModal('建助理：同时选绑 / 允许后绑', '<label>所属家<select id="f-home">'+S.homes.filter(h=>!h.tombstone).map(h=>'<option value="'+h.id+'"> '+esc(homeDisplay(h).t)+'</option>').join('')+'</select></label>'
+    + '<label>机器人<select id="f-bot"><option value="">以后再绑（先占位）</option>'+free.map(b=>'<option value="'+b.id+'">'+esc(b.name)+'·'+b.channel+'</option>').join('')+'</select></label>'
+    + '<label>取名（留空走回落：机器人名＞家名）<input id="f-name" placeholder="如：门童"></label>'
+    + '<label>配图（SVG）<select id="f-av"><option value="">默认首字图</option><option value="av-book">书卷蓝</option><option value="av-wave">湖波青</option><option value="av-star">星尘紫</option><option value="av-roof">屋顶橙</option><option value="av-leaf">新叶绿</option></select></label>', ()=>{
+    const hid = document.getElementById('f-home').value;
+    const bid = document.getElementById('f-bot').value || null;
+    const nm = document.getElementById('f-name').value.trim();
+    const av = document.getElementById('f-av').value || null;
+    const nid = uid('a');
+    const b = bid && S.bots.find(x=>x.id===bid);
+    S.assistants.push({id:nid, homeId:hid, channel:b?b.channel:'feishu', botId:bid, status:bid?'bound':'unbound', name:nm||'', nameSource:nm?'user':(bid?'bot':'home'), avatar:av, avatarSource:av?'user':'default'});
+    S.selHome=hid; S.selAsst=nid; S.openH[hid]=true; S.openA[nid]=true;
+    touch('新建助理 '+nid+' 在“'+homeDisplay(homeById(hid)).t+'”：'+(bid?'同时绑 '+bid+'，显示“'+asstDisplay(S.assistants.find(x=>x.id===nid)).t+'”。':'暂不绑（占位），显示家名回落。'), nid);
+  });
+};
+document.getElementById('btnRenameWs').onclick = ()=>{
+  const w = S.workspaces.find(x=>x.id==='ws-keting');
+  w.title = w.title==='客厅' ? '大客厅' : '客厅';
+  touch('工作区 ws-keting 改名 → “'+w.title+'”。未手改的家自动跟随；手改过的家（书房基地）冻结不动；来源为家的助理跟随其家。', 'h1');
+};
+document.getElementById('btnDelWs').onclick = ()=>{
+  const w = S.workspaces.find(x=>x.id==='ws-keting');
+  w.deleted = true;
+  const h = S.homes.find(x=>x.id==='h1'); h.workspaceId=null; h.tombstone={at:Date.now(), reason:'工作区已删除'};
+  touch('工作区 ws-keting 已删除 → 家 h1 标待重连（不是消失），重选目录即可重连，改名史不丢。', 'h1');
+};
+
+// ---- 走查（高亮当前步骤） ----
+document.querySelectorAll('[data-scen]').forEach(b=>b.onclick = ()=>{
+  document.querySelectorAll('[data-scen]').forEach(x=>x.classList.remove('hit'));
+  b.classList.add('hit');
+  const hints = {
+    s1:'1 建家选已有区：点“新建家”→选“选已有区”→确定，看新家默认名=区名，树内闪光定位。',
+    s2:'2 建家选目录：点“新建家”→选“选目录”→改目录基名→确定，看新建工作区+家，面包屑同步。',
+    s3:'3 先建后绑：点“新建助理”→机器人选“以后再绑”→确定（未绑定显示家名），展开该助理点“绑机器人”。',
+    s4:'4 搬家：点任一助理行“搬家”→选目标家，看机器人跟随、变化行闪光、面包屑滑动。',
+    s5:'5 冻结：先给助理“取名”为“门童”，再点“模拟调试”里的“工作区改名”，看它不动；再“恢复默认”看它跟回。',
+    s6:'6 失联重连：点“模拟调试”里的“删除工作区”，看 h1 左缘变红加待重连徽；再点它“重连”重选目录。',
+  };
+  document.getElementById('scenHint').textContent = hints[b.dataset.scen];
+});
+
+// ---- 弹窗（焦点管理＋Esc） ----
+let okFn=null, lastFocus=null;
+function openModal(title, body, ok){
+  lastFocus = document.activeElement;
+  document.getElementById('mTitle').textContent=title;
+  document.getElementById('mBody').innerHTML=body;
+  okFn=ok;
+  document.getElementById('modal').classList.add('open');
+  const f = document.querySelector('#mBody input, #mBody select');
+  if(f) setTimeout(()=>f.focus(), 30);
+}
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+  if(lastFocus && lastFocus.focus) lastFocus.focus();
+}
+document.getElementById('mCancel').onclick = closeModal;
+document.getElementById('mOk').onclick = ()=>{ const fn = okFn; closeModal(); if(fn) fn(); };
+document.getElementById('modal').addEventListener('click', e=>{ if(e.target.id==='modal') closeModal(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && document.getElementById('modal').classList.contains('open')) closeModal(); });
+document.querySelectorAll('.switcher [data-v]').forEach(b=>b.onclick=()=>{ variant=b.dataset.v; S.flashId=null; render(); });
+document.getElementById('btnReset').onclick = ()=>{ const keep = variant; S = seed(); variant = keep; S.openH = {h1:true}; S.openA = {a1:true}; touch('已重置回种子。'); };
+render();
+</script>
+</body>
+</html>
