@@ -51,6 +51,15 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 /* #82 右组收紧：间隙 8→6、右上按钮 36→32（与工具栏同尺寸）——548px 下单行余量才够英文界面 */
 .af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .af-hd-right .af-icon-btn { width: 32px; height: 32px; border-radius: 10px; flex: none; }
+/* 2026-10-13 真机（owner）：页头必须单行装得下。两处让位，谁也不许把谁挤到第二行：
+ *   ① 标题 30px→20px（theme 本体）：30px 是 hero 尺寸，在 ~543px 的窄面板里独占 1/3 行宽，
+ *      与「版本胶囊 + 更新状态 + 两枚动作」争位 ⇒ 只能靠换行收场（真机就是两行）。
+ *      20px 仍明显高于正文，身份层级不丢，单行预算直接省出 ~73px。
+ *   ② 更新入口按钮（外部更新包的 variant=button，失败态文案「更新失败，请查看详情」10 字）：
+ *      包自己的 CSS 是 font:inherit + padding 4px 12px（13px 字号 ⇒ ~156px 宽）。这里按窄面板
+ *      收紧到 11.5px / padding 3px 8px（~133px），与两枚版本胶囊同高同气质；文案一字不改
+ *      （包是外部依赖，只允许样式让位，不允许改它的字）。 */
+.af-hd-right .dsh-upd-entry-btn { font-size: 11.5px; line-height: 18px; padding: 3px 8px; border-radius: 8px; }
 
 /* 工具栏单行不断行：4 按钮与搜索/分段同行（搜索可压到 0，按钮 32px 不换行不缩小；theme 本体不动）。 */
 .af-toolbar { flex-wrap: nowrap; }

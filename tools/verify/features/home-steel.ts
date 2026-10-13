@@ -624,6 +624,23 @@ test('上部区域定稿：搜索/分段退场，三个面板动作并进绿框�
     '骨架行必须与真行同几何（复用 .hu-row）');
 });
 
+test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行（owner 2026-10-13）', () => {
+  /* 真机两连：①更新失败横幅 + 两枚版本胶囊把标题压成省略号；②我为救它把右组改成可换行 ⇒ 页头变两行，
+   * owner 否掉：「需要做到一行装得下，文字也不会变成省略号（起码标题不能变）」。
+   * 正解 = 把单行预算做够，而不是让谁换行。三条钉住这个结论，防回潮。 */
+  const theme = readFileSync(join(CLIENT, 'theme.ts'), 'utf8');
+  assert.ok(/\.af-title \{ margin: 0; font-size: 20px;/.test(theme),
+    '标题必须是 20px 面板尺度（30px 是 hero 尺寸，~543px 窄面板里独占 1/3 行宽 ⇒ 只能靠换行收场）');
+  const fv = readFileSync(join(COMP, 'first-view-styles.ts'), 'utf8');
+  assert.ok(fv.includes('.af-hd-right .dsh-upd-entry-btn'),
+    '外部更新包按钮（失败态「更新失败，请查看详情」10 字）必须在页头里收紧：它是 13px 字号 + 4px 12px 内边距 ≈156px');
+  assert.ok(/\.af-hd-right \.dsh-upd-entry-btn \{[^}]*font-size: 11\.5px/.test(fv), '收紧到 11.5px（≈133px，与版本胶囊同高）');
+  assert.ok(fv.includes('.af-hd { flex-wrap: nowrap; }'), '#78 单行硬约束不得回退（换行＝回潮）');
+  const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
+  assert.ok(!panel.includes('flex-wrap:wrap') && !panel.includes("'af-hd-right', style:"),
+    '页头不得再写行内 flex 覆盖：行内 style 曾把 CSS 的 nowrap 顶成 wrap（真机两行的直接原因）');
+});
+
 test('旧面板能力保留：工具栏三钮顺序＋事件制＋文案一字不动', () => {
   const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
   /* 工具栏 ＋ 已退场（T6a 重做）：同一个「新建」不再有第三个入口——绿框页头 ＋（随层）

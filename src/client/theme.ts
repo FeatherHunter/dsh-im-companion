@@ -39,7 +39,7 @@ const CSS = `
 
 /* ---- 头部：Apple 大标题 ---- */
 .af-hd { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 0; }
-.af-title { margin: 0; font-size: 30px; line-height: 36px; font-weight: 700; letter-spacing: -0.4px; }
+.af-title { margin: 0; font-size: 20px; line-height: 26px; font-weight: 700; letter-spacing: -0.4px; }
 .af-title-meta { margin: 3px 0 0; font-size: 13px; line-height: 18px; color: var(--af-tertiary); font-variant-numeric: tabular-nums; }
 
 /* ---- 工具行：搜索 + 分段控件 ---- */

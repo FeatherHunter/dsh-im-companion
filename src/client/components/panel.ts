@@ -110,12 +110,18 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     title: copy.feedbackTitle,
     'aria-label': copy.feedbackTitle,
   }, icon('feedback', 18))
-  /* 页头是**防御性布局**：标题是身份（不许被压），徽标带是可伸缩区（放不下就整组换行）。
-   * 真机事故（2026-10-13）：更新失败横幅 + 两枚版本胶囊把「IM机器人增强」压成「IM 机器人⋯」——
-   * 附加信息有能力破坏主内容 ⇒ 这里反过来：标题 flex:0 0 auto，右侧组 flex:0 1 auto + 可换行。 */
-  const hdRight = h('div', { className: 'af-hd-right', style: 'flex:0 1 auto;min-width:0;margin-left:auto' }, verBox, updateCenterHost, starLink, feedbackLink)
-  const hd = h('div', { className: 'af-hd', style: 'flex-wrap:wrap;row-gap:6px' },
-    h('div', { className: 'af-hd-left', style: 'flex:0 0 auto;min-width:0' }, title, titleMeta), hdRight)
+  /* 页头是**防御性布局**：标题是身份（不许被压），徽标带是附加信息（不许换行、不许把标题挤没）。
+   * 2026-10-13 真机两连（owner）：
+   *   ① 首次事故——更新失败横幅 + 两枚版本胶囊把「IM机器人增强」压成「IM 机器人⋯」；
+   *   ② 我当时的处置（标题 flex:0 0 auto + 右组可换行）换来的是**页头变两行**，owner 直接否掉：
+   *      「需要做到一行装得下，文字也不会变成省略号（起码标题不能变）」。
+   * 正解不是让谁换行，而是**把单行预算做够**：#78 的「不换行」不变，右组仍 flex:none，
+   * 左块仍留 ellipsis 兜底；预算从内容侧省——标题 20px（theme）、更新入口按钮收紧
+   * （first-view-styles 的 .af-hd-right .dsh-upd-entry-btn）。真机 ~543px 实测单行余量 ≈74px。
+   * 故这里不再写任何行内 flex 覆盖：CSS 就是唯一真相（行内 style 曾把 nowrap 顶成 wrap）。 */
+  const hdRight = h('div', { className: 'af-hd-right' }, verBox, updateCenterHost, starLink, feedbackLink)
+  const hd = h('div', { className: 'af-hd' },
+    h('div', { className: 'af-hd-left' }, title, titleMeta), hdRight)
 
   /* 上部区域定稿（owner 裁定 2026-10-13）：
    *   ① 搜索框移除——钻取三级下目标是「家 → 助理」两跳可达，13 行规模不需要全局搜索；

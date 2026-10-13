@@ -273,6 +273,62 @@ const skel = join(OUT, 'skeleton.html')
 writeFileSync(skel, '<!doctype html><meta charset="utf-8"><title>骨架 · 首屏未就绪</title>\n'
   + '<style>' + injected + '</style>\n<style>' + PARITY_TOKENS + '</style>\n' + ser(skelUi) + '\n', 'utf8')
 
+/* ---------- 页头单行对拍页（owner 2026-10-13：一行装得下、标题不许变省略号） ----------
+ * 更新入口按钮由**外部更新包**挂进 #imc-update-center（variant=button，失败态文案
+ * 「更新失败，请查看详情」，class `dsh-upd-entry-btn`）。这里按包的真实标记造一枚同形按钮塞进去，
+ * 再只序列化 `.af-hd`（外套 `.af-root` 让主题令牌生效）⇒ 真 Chrome 里量「是不是真的一行 + 有没有重叠」。
+ * 宽度取真机实测：页头可用宽 ≈533px（面板内容宽 543 − 左右各 ~5px），窄档 460 用来看降级。 */
+const updateHost = all(container).find((e) => e.attributes?.get?.('id') === 'imc-update-center')
+if (updateHost) {
+  const fakeBtn = new El('button', doc)
+  fakeBtn.setAttribute('type', 'button')
+  /* 桩里 class 必须走 classList：序列化器读 classList，setAttribute('class') 会被丢掉。 */
+  fakeBtn.classList.add('dsh-upd-entry-btn')
+  fakeBtn.textContent = '更新失败，请查看详情'
+  updateHost.appendChild(fakeBtn)
+}
+/* 版本胶囊的真实文案来自宿主（桩里 pluginVersion()/pluginCompat() 拿不到 ⇒ 胶囊是空壳），
+ * 按真机补两枚同形胶囊，否则页头宽度被低估、单行预算算不准。 */
+const verbox = all(container).find((e) => e.classList.contains('af-verbox'))
+if (verbox) {
+  const self = all(verbox).find((e) => e.classList.contains('af-cap--self'))
+  if (self) self.textContent = 'v0.2.8'
+  const im = new El('a', doc)
+  im.classList.add('af-cap', 'af-cap--im')
+  im.textContent = 'dsh-im 4.21.1'
+  verbox.appendChild(im)
+}
+const hdEl = all(container).find((e) => e.classList.contains('af-hd'))
+/* A1 页头的**布局本体**在 theme.ts 的私有 `CSS`（`.af-hd{display:flex…}`、`.af-title`、`.af-hd-right` 的兜底），
+ * 它由应用外壳调 installStyles() 装、不由面板装 ⇒ 桩里 doc.head 只有 first-view-styles 那几条
+ * （`flex-wrap:nowrap` 单条，落在非 flex 元素上等于没写）。不补这一块，预览里 `.af-hd` 是普通 block
+ * （标题一行、胶囊一行、左对齐），测出来的「单行」结论全是假的。 */
+const themeMod: any = createRequire(join(tmpClient, 'run.cjs'))('./theme.js')
+try { themeMod.installStyles() } catch { /* 桩里装不上就退化成下面的 themeCss 兜底 */ }
+const themeCss: string = String(themeMod.TOKEN_BLOCK ?? '')
+const injectedAll = ((doc as any).head?.childNodes ?? [])
+  .map((n: any) => String(n?.textContent ?? '')).filter((s: string) => s.trim()).join('\n')
+const headerPage = (w: number, file: string): void => {
+  writeFileSync(file, '<!doctype html><meta charset="utf-8"><title>页头单行 · ' + w + 'px</title>\n'
+    /* 外部更新包的基础样式（dist/entry.js 内联注入的那几条，逐字搬）：预览里它先到，
+     * 本仓的收紧规则（.af-hd-right .dsh-upd-entry-btn，特异性更高）必须能盖住它——
+     * 这正是真机里的层叠关系（包先注入、我们后覆盖），预览保持同序才测得准。 */
+    + '<style>.dsh-upd-entry-btn{font:inherit;border:1px solid var(--dsh-update-bad-border,#dc2626);'
+    + 'border-radius:var(--dsh-update-entry-border-radius,6px);background:var(--dsh-update-button-bg,#f9fafb);'
+    + 'color:var(--dsh-update-bad-border,#dc2626);padding:var(--dsh-update-entry-padding,4px 12px);'
+    + 'zoom:var(--dsh-update-entry-scale,1);cursor:pointer}</style>\n'
+    + '<style>' + injectedAll + '</style>\n'
+    + '<style>' + themeCss + '</style>\n'
+    + '<style>body{margin:0;padding:0;width:' + w + 'px;background:#fff;'
+    + 'font:13px/1.5 -apple-system,"PingFang SC","Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased}'
+    + '.af-root{width:100%}</style>\n'
+    + '<div class="af-root">' + ser(hdEl) + '</div>\n', 'utf8')
+}
+const header = join(OUT, 'header.html')
+headerPage(Number(process.env.HP_HEAD_W || 533), header)
+const headerNarrow = join(OUT, 'header-narrow.html')
+headerPage(Number(process.env.HP_HEAD_NARROW || 460), headerNarrow)
+
 /* ---------- 目标页：proto-studio + 隔离 CSS（只留 .frame：页头/面包屑/列表/底部主操作） ---------- */
 const protoSrc = readFileSync(join(REPO, 'prototypes', 'home-assistant', 'proto-studio.html'), 'utf8')
 const ISO = `<style>
@@ -290,6 +346,8 @@ writeFileSync(target, protoSrc.replace('</head>', ISO + '\n</head>'), 'utf8')
 console.log('CANDIDATE ' + cand)
 console.log('DARK      ' + candDark)
 console.log('SKELETON  ' + skel)
+console.log('HEADER    ' + header)
+console.log('HEADER-N  ' + headerNarrow)
 console.log('TARGET    ' + target)
 console.log('（两页都按视口宽 ' + W + ' 截图：vision_html_screenshot fullPage:true → vision_pixel_diff）')
 try { streamMod.getSharedStream(null).dispose() } catch { /* 未建忽略 */ }
