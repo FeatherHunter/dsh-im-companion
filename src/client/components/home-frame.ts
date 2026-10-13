@@ -12,6 +12,9 @@ export interface HeadOpts {
   onBack: () => void
   onAdd: () => void
   onMore: () => void
+  /** 面板级动作（船 / 串门搬家 / 刷新）由装配层交进来，与 ＋ 同一行右侧成簇——
+   * 上部区域因此只剩「标题行 + 绿框页头」，不再有独立工具栏行（owner 裁定 2026-10-13）。 */
+  actions?: HTMLElement | null
 }
 
 /** 页头：L1 无返回；L2/L3 有返回；＋ 在 L1/L2；⋯ 在 L2（T6a 未实现 ⇒ 禁用并标票号）。 */
@@ -25,6 +28,7 @@ export function headEl(o: HeadOpts): HTMLElement {
   }
   head.appendChild(h('span', { className: 'hu-av sm', style: 'background:var(--hu-accent-soft);color:var(--hu-accent-deep)' }, huIcon(iconName, 15)))
   head.appendChild(h('div', { className: 'hu-ttl' }, h('b', {}, o.title), h('small', {}, o.sub)))
+  if (o.actions) head.appendChild(o.actions)
   if (o.level === 'L2') {
     const more = h('button', {
       className: 'hu-ibtn planned', type: 'button', 'aria-label': '更多操作', 'data-tip': '更多操作（#114 待实现）',

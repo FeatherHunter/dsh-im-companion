@@ -11,11 +11,9 @@ import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, type Level } from './home-frame'
 import { newAsstPop, newHomePop, type FormOps } from './home-forms'
 import { closeHomePop } from './home-pop'
-import { firstViewCopy } from './first-view-copy'
-import { skeletonEl, viewOf, type RowView } from './home-rows'
+import { skeletonRows, viewOf, type RowView } from './home-rows'
 import { stageCrumbOpts, stageHead, stageList, type StageCtx } from './home-stage'
 import type { PanelState } from './panel-data'
-import type { SegHandle } from '../ui/segmented'
 
 export interface PanelBodyDeps {
   state: PanelState
@@ -24,8 +22,8 @@ export interface PanelBodyDeps {
   ops: FormOps & { connect(homeId: string, anchor: HTMLElement): void }
   onRetry(): void
   titleMetaEl?: HTMLElement
-  seg?: SegHandle
-  relayout?: () => void
+  /** 面板级动作簇（船 / 串门搬家 / 刷新）由装配层交进来，放进绿框页头右侧与 ＋ 同行。 */
+  headActions?: HTMLElement | null
 }
 
 export interface PanelBodyHandle {
@@ -58,7 +56,6 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
 
   const view = (): RowView => viewOf(state.homes, state.assistants, state.bots, deps.getWorkspaces())
   const channelMode = (): boolean => state.mode === 'channel'
-  const channels = (v: RowView): string[] => [...new Set(v.assistants.map((a) => a.channel))]
 
   function flash(id: string): void {
     flashId = id
@@ -162,29 +159,32 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     clear(deps.bodyEl)
     const root = h('div', { className: 'home-ui' })
     deps.bodyEl.appendChild(root)
-    if (!v.homes.length && state.loading) { root.appendChild(skeletonEl()); return }
-    if (!v.homes.length && state.failed && !state.volatile) {
-      const err = h('div', { className: 'hu-err' }, '家表读取失败：', state.error ? String(state.error) : '未知错误')
-      const retry = h('button', { type: 'button' }, '重试')
-      retry.addEventListener('click', () => deps.onRetry())
-      err.appendChild(retry)
-      root.appendChild(err)
+    /* 首屏（家表未就绪）＝**同一副框架 + 等比例骨架行**：页头/面包屑/底部主操作照画，
+     * 只有列表区是灰条 ⇒ 数据到位后只换列表，几何零跳动（owner 要求 2026-10-13）。
+     * 曾经的「家表读取失败」横条会一闪而过：`state.failed` 是**失败端点数组**（空数组也 truthy），
+     * 只要家表还没读完就会命中错误分支；现在未就绪一律骨架，读失败也不再往顶部塞横条。 */
+    if (!state.homesReady) {
+      const info = { title: '家', sub: '正在读取家表…' }
+      root.appendChild(headEl({
+        level: 'L1', title: info.title, sub: info.sub,
+        onBack: () => go('L1'), onAdd: () => openCreate(), onMore: () => undefined,
+        actions: deps.headActions,
+      }))
+      root.appendChild(crumbsEl(stageCrumbOpts(stage(v))))
+      root.appendChild(skeletonRows())
+      root.appendChild(footEl({ level: 'L1', bound: false, onPrimary: () => openCreate() }))
       return
     }
     if (level !== 'L1' && !channelMode() && !v.homes.some((x) => x.id === selHome)) { level = 'L1'; selAsst = '' }
     if (level === 'L3' && !v.assistants.some((x) => x.id === selAsst)) level = 'L2'
     const sc = stage(v)
     const info = stageHead(sc)
-    if (deps.seg) {
-      const copy = firstViewCopy()
-      deps.seg.setLabel('agent', copy.byAgent(v.homes.length))
-      deps.seg.setLabel('channel', copy.byChannel(channels(v).length))
-    }
     root.appendChild(headEl({
       level, title: info.title, sub: info.sub,
       onBack: () => go(level === 'L3' ? 'L2' : 'L1'),
       onAdd: () => openCreate(),
       onMore: () => undefined,
+      actions: deps.headActions,
     }))
     const crumbs = crumbsEl(stageCrumbOpts(sc))
     root.appendChild(crumbs)

@@ -246,6 +246,9 @@ const l1Head = String(q1('.hu-ttl')?.textContent ?? '');
 const l1Foot = String(q1('.hu-pbtn')?.textContent ?? '');
 const l1CrumbList = crumbList();
 const l1HomeCount = homeRows().length;
+/* 面板动作簇：装配层交进绿框页头的三枚动作 + 页头自己的 ＋（L1 有 ＋）＝ 4 枚。 */
+const headActs = all('.hu-head-acts').length;
+const l1HeadActBtns = all('.hu-head-acts')[0]?.childNodes?.filter((n: any) => n.nodeType === 1).length ?? 0;
 const l1Snap = l1Text;
 console.log('---- L1 head ---- ' + l1Head);
 console.log('---- L1 crumbs ---- ' + l1CrumbList.join(' | '));
@@ -346,8 +349,10 @@ const dshCompatVerified: string = pkg?.dshCompat?.verified ?? '';
 
 const checks: [string, boolean][] = [
   ['顶部标题 IM机器人增强(#56)', String((container as any).textContent).includes('IM机器人增强')],
-  ['按助理 计数 (4)(T6a 家表)', l1Text.includes('按助理 (4)')],
-  ['按渠道 计数 (2)', l1Text.includes('按渠道 (2)')],
+  /* 上部区域定稿（owner 裁定 2026-10-13）：搜索框与「按助理 / 按渠道」分段退场，
+   * 三个面板动作（船 / 串门搬家 / 刷新）并进绿框页头右侧。 */
+  ['搜索框与分段已退场（上部只留标题行 + 绿框页头）', !l1Text.includes('按助理 (') && !l1Text.includes('按渠道 (')],
+  ['面板动作簇在绿框页头里（船 / 串门搬家 / 刷新 3 枚）', headActs === 1 && l1HeadActBtns === 3],
   ['无按工作区(已砍)', !l1Text.includes('按工作区')],
   ['页头 家 + N 个 · 每个家对应一个工作区（原型 fhead）', l1Head.includes('家') && l1Head.includes('4 个 · 每个家对应一个工作区')],
   ['L1 面包屑三级 chip（L1 家 / L2 助理 · … / L3 机器人 · …）', l1CrumbList.length === 3 && l1CrumbList[0].includes('L1家') && l1CrumbList[1].includes('L2助理') && l1CrumbList[2].includes('L3机器人')],

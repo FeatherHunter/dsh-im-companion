@@ -162,7 +162,11 @@ test('大弹窗装配：矩阵自管模态 + 装配层零感知 + A1 船按钮�
   const panelSrc = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
   assert.match(panelSrc, /iconName: 'ship'/);
   assert.match(panelSrc, /emitFleetView\('radar'\)/);
-  assert.match(panelSrc, /gap: '12px'/);
+  /* 上部区域定稿（owner 裁定 2026-10-13）：船按钮从 A1 工具栏并进绿框页头动作簇，
+   * 簇间距改由绿框样式表管（.hu-head-acts）；装配层照旧只负责派事件，特性侧零感知。 */
+  assert.match(panelSrc, /headActions/);
+  assert.match(readFileSync(join(REPO, 'src', 'client', 'components', 'home-ui-styles.ts'), 'utf8'),
+    /\.hu-head-acts\{[^}]*gap:6px/);
   assert.doesNotMatch(panelSrc, /fleet-radar/);
   assert.match(stylesSrc, /\.fleet-radar-modal/);
 });

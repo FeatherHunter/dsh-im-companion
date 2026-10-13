@@ -139,11 +139,11 @@ const clickEl = (e: any): void => { e.dispatchEvent({ type: 'click' }); };
 function renderBox(): { bodyEl: any; handle: any } {
   const bodyEl = new El('div', domDoc);
   const handle = bodyMod.createPanelBody({
-    state: { homes: BOX_HOMES, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: false, volatile: false },
+    state: { homes: BOX_HOMES, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
     bodyEl,
     titleMetaEl: new El('div', domDoc),
-    seg: { el: new El('div', domDoc), setLabel: () => {} },
-    relayout: () => {},
+
+
     getWorkspaces: () => BOX_WS,
     ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {} },
     onRetry: () => {},
@@ -588,6 +588,40 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.ok(panel.includes('createPanelBody'), '装配层接线绿框 body');
   assert.ok(!panel.includes('openCreate'), 'A1 不再直连建单入口（绿框页头 ＋ 与底部主操作自管）');
   assert.ok(!strip(panel).includes('compose.el'), '旧 compose 新建条退役（文件保留供回归钉）');
+});
+
+test('首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰条行），顶部不出报错横条', () => {
+  const bodyEl = new El('div', domDoc);
+  const handle = bodyMod.createPanelBody({
+    state: { homes: [], assistants: [], bots: [], query: '', mode: 'agent', loading: true, failed: ['feishu'], homesReady: false, volatile: false },
+    bodyEl,
+    titleMetaEl: new El('div', domDoc),
+    getWorkspaces: () => BOX_WS,
+    ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {} },
+    onRetry: () => {},
+  });
+  handle.render();
+  assert.ok(one(bodyEl, 'hu-fhead'), '骨架也要有页头（几何与真框架一致）');
+  assert.deepEqual(cls(bodyEl, 'hu-crumb').length, 3, '骨架也要有三级面包屑');
+  assert.equal(cls(bodyEl, 'hu-srow').length, 4, '骨架固定 4 行');
+  assert.ok(cls(bodyEl, 'hu-srow')[0].classList.contains('hu-row'), '骨架行复用 .hu-row 几何（加载完零跳动）');
+  assert.equal(txt(footOf(bodyEl)), '新建家', '骨架也要有底部主操作');
+  /* 真机事故（2026-10-13）：state.failed 是失败端点数组（空数组也 truthy），
+   * 只要家表没读完就命中错误分支 ⇒ 进面板瞬间闪出「家表读取失败」横条。这里连非空 failed 也不许出横条。 */
+  assert.equal(cls(bodyEl, 'hu-err').length, 0, '首屏不得出现报错横条');
+  handle.dispose();
+});
+
+test('上部区域定稿：搜索/分段退场，三个面板动作并进绿框页头', () => {
+  const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
+  assert.ok(!panel.includes('makeSearchField') && !panel.includes('makeSegmented'),
+    '搜索框与「按助理 / 按渠道」分段必须退场（owner 裁定：钻取三级下二者无价值）');
+  assert.ok(!panel.includes('af-toolbar'), '工具栏行退场：动作并进绿框页头，上部少一行');
+  assert.ok(panel.includes('headActions'), '三个面板动作交绿框页头承载');
+  assert.ok(readFileSync(join(COMP, 'home-frame.ts'), 'utf8').includes('actions?: HTMLElement'),
+    '页头必须支持动作槽（headActions 有落点）');
+  assert.ok(readFileSync(join(COMP, 'home-rows.ts'), 'utf8').includes('hu-srow'),
+    '骨架行必须与真行同几何（复用 .hu-row）');
 });
 
 test('旧面板能力保留：工具栏三钮顺序＋事件制＋文案一字不动', () => {

@@ -4,12 +4,9 @@
 import { h } from '../dom'
 import type { RpcCall } from '../data/fleet-api'
 import { extractRpcV2 as extractRpc } from '../data/rpc'
-import type { ViewMode } from '../data/model'
 import { ADOPT_VIEW_EVENT, FLEET_VIEW_EVENT, UPDATE_CENTER_HOST_EVENT, type FleetViewDetail, type UpdateCenterHostDetail } from '../data/config'
 import { icon } from '../icons'
 import { makeIconButton } from '../ui/button'
-import { makeSearchField } from '../ui/field'
-import { makeSegmented, type SegHandle } from '../ui/segmented'
 import { toast } from '../ui/toast'
 import { firstViewCopy } from './first-view-copy'
 import { installFirstViewStyles } from './first-view-styles'
@@ -120,21 +117,13 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   const hd = h('div', { className: 'af-hd', style: 'flex-wrap:wrap;row-gap:6px' },
     h('div', { className: 'af-hd-left', style: 'flex:0 0 auto;min-width:0' }, title, titleMeta), hdRight)
 
-  const search = makeSearchField((v) => {
-    data.state.query = v
-    bodyModule.render()
-  })
-  search.input.placeholder = copy.search
-  search.input.setAttribute('aria-label', copy.searchAria)
-  let seg: SegHandle
-  seg = makeSegmented([
-    { id: 'agent', label: copy.byAgent(0) },
-    { id: 'channel', label: copy.byChannel(0) },
-  ], 'agent', (id) => {
-    data.state.mode = id as ViewMode
-    bodyModule.render()
-  })
-  seg.el.setAttribute('aria-label', copy.segAria)
+  /* 上部区域定稿（owner 裁定 2026-10-13）：
+   *   ① 搜索框移除——钻取三级下目标是「家 → 助理」两跳可达，13 行规模不需要全局搜索；
+   *      若日后要过滤，按 T4 认可款原型放进绿框页头之下（原型 .fsearch），不再挂 A1 工具栏。
+   *   ② 「按助理 / 按渠道」分段移除——三级钻取已经把「家→助理→机器人」表达完整，
+   *      再挂一个「按渠道」分组维度会让 L1 的主概念在两种模式间摇摆（与地图目的地冲突）。
+   *   ③ 剩下的三个面板级动作（船 / 串门搬家 / 刷新）并进绿框页头右侧，与 ＋ 同一行成簇：
+   *      整个上部区域因此只剩「标题行 → 绿框页头 → 面包屑」，少一行、少一处对齐漂移。 */
   const refreshBtn = makeIconButton({ iconName: 'refresh', label: copy.refresh, title: copy.refresh, onClick: () => void refreshAll() })
   /* 舰队雷达入口（#10 例外单 PR：只加按钮+事件派发，不引矩阵、不改 mode 语义；弹窗由矩阵特性自管）。 */
   const radarBtn = makeIconButton({
@@ -146,8 +135,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     iconName: 'home', label: copy.adopt, title: copy.adopt,
     onClick: () => emitAdoptView(),
   })
-  /* 工具栏只留「船 / 串门搬家 / 刷新」：＋ 已退场（绿框页头 ＋ 与底部主操作接管建单）。 */
-  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '12px' } }, radarBtn, adoptBtn, refreshBtn))
+  const headActions = h('div', { className: 'hu-head-acts' }, radarBtn, adoptBtn, refreshBtn)
   /* T6a 钢线：＋ 按当前钻取层级开建单（L1 建家选已有区 / L2 建助理选绑机器人）；
    * 旧 compose 新建条（LocalAgent）退役，文件保留供 connect-qr 回归钉。 */
   const body = h('div', { className: 'af-body' })
@@ -158,8 +146,8 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     promoItem(copy.promoPal, copy.promoPalDesc, 'https://github.com/FeatherHunter/dsh-opencode-palette'),
   )
   /* T6（#89）更新中心挂载点原位置（工具栏之后、撰写条之前）已作废：容器改建在页头右上组里（见上）。
-   * root 序列回归 hd → toolbar → body → promo，A1 对本特性仍是零感知。 */
-  const root = h('div', { className: 'af-root' }, hd, toolbar, body, promo)
+   * root 序列＝hd → body → promo（工具栏行随搜索/分段一并退场，动作并进绿框页头）。 */
+  const root = h('div', { className: 'af-root' }, hd, body, promo)
 
   emitUpdateCenterHost(updateCenterHost)
 
@@ -194,8 +182,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     state: data.state,
     bodyEl: body,
     titleMetaEl: titleMeta,
-    seg,
-    relayout: () => seg.relayout(),
+    headActions,
     getWorkspaces,
     ops: createDrillOps({
       ctx,

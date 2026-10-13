@@ -255,6 +255,24 @@ const candDark = join(OUT, 'candidate-dark.html')
 writeFileSync(candDark, '<!doctype html><meta charset="utf-8"><title>候选 · 绿框（真面板 · 深色令牌）</title>\n'
   + '<style>' + injected + '</style>\n<style>' + DARK_TOKENS + '</style>\n' + domHtml + '\n', 'utf8')
 
+/* ---------- 骨架页：首屏未就绪（homesReady=false）时的等比例骨架 ----------
+ * 目的：目验「骨架 → 真行」几何是否一致（owner 要求 2026-10-13：骨架和实际效果比例一样）。
+ * 直接调 panel-body（不挂整面板）：状态给未就绪，其余与候选页共用同一份 CSS/令牌。 */
+const bodyMod: any = createRequire(join(tmpClient, 'run.cjs'))('./components/panel-body.js')
+const skelBody = new El('div', doc)
+const skelHandle: any = bodyMod.createPanelBody({
+  state: { homes: [], assistants: [], bots: [], query: '', mode: 'agent', loading: true, failed: [], homesReady: false, volatile: false },
+  bodyEl: skelBody,
+  getWorkspaces: () => [],
+  ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {} },
+  onRetry: () => {},
+})
+skelHandle.render()
+const skelUi = all(skelBody).find((e) => e.classList.contains('home-ui'))
+const skel = join(OUT, 'skeleton.html')
+writeFileSync(skel, '<!doctype html><meta charset="utf-8"><title>骨架 · 首屏未就绪</title>\n'
+  + '<style>' + injected + '</style>\n<style>' + PARITY_TOKENS + '</style>\n' + ser(skelUi) + '\n', 'utf8')
+
 /* ---------- 目标页：proto-studio + 隔离 CSS（只留 .frame：页头/面包屑/列表/底部主操作） ---------- */
 const protoSrc = readFileSync(join(REPO, 'prototypes', 'home-assistant', 'proto-studio.html'), 'utf8')
 const ISO = `<style>
@@ -271,6 +289,7 @@ writeFileSync(target, protoSrc.replace('</head>', ISO + '\n</head>'), 'utf8')
 
 console.log('CANDIDATE ' + cand)
 console.log('DARK      ' + candDark)
+console.log('SKELETON  ' + skel)
 console.log('TARGET    ' + target)
 console.log('（两页都按视口宽 ' + W + ' 截图：vision_html_screenshot fullPage:true → vision_pixel_diff）')
 try { streamMod.getSharedStream(null).dispose() } catch { /* 未建忽略 */ }

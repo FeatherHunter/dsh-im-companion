@@ -260,14 +260,18 @@ export function emptyEl(title: string, sub: string, iconName: HuIconName = 'home
     h('p', {}, sub))
 }
 
-export function skeletonEl(): HTMLElement {
-  const one = (): HTMLElement => h('div', { className: 'hu-skrow' },
-    h('span', { className: 'hu-sk', style: 'width:36px;height:36px;border-radius:11px' }),
-    h('span', {},
-      h('span', { className: 'hu-sk', style: 'display:block;width:38%;height:11px' }),
-      h('span', { className: 'hu-sk', style: 'display:block;width:62%;height:9px;margin-top:7px' })),
-    h('span', { className: 'hu-sk', style: 'width:56px;height:22px;border-radius:999px' }))
-  return h('div', { style: 'display:flex;flex-direction:column;gap:7px' }, one(), one(), one())
+/** 骨架列表：复用 `.hu-row` 的网格与盒模型（36px 头像 / 1fr 文本 / auto 动作、同 padding、
+ * 同 min-height、同圆角），行内三条灰条各占**与真行文字相同的行盒**（20 / 17 / 17 + 同间距）
+ * ⇒「骨架 → 真行」只换内容不换几何，布局零跳动。真机要求（2026-10-13）：骨架和实际效果比例一样。 */
+export function skeletonRows(n = 4): HTMLElement {
+  const line = (cls: string): HTMLElement => h('span', { className: 'hu-sline' }, h('span', { className: 'hu-sk ' + cls }))
+  const one = (): HTMLElement => h('div', { className: 'hu-row hu-srow', 'aria-hidden': 'true' },
+    h('span', { className: 'hu-sk hu-sk-av' }),
+    h('span', { className: 'hu-scol' }, line('hu-sk-t1'), line('hu-sk-t2'), line('hu-sk-t3')),
+    h('span', { className: 'hu-sk hu-sk-act' }))
+  const list = h('div', { className: 'hu-fbody' })
+  for (let i = 0; i < n; i += 1) list.appendChild(one())
+  return list
 }
 
 export { basenameOf }

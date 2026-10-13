@@ -147,8 +147,8 @@ function renderBody(state: any): any {
   const bodyEl = new El('div', doc)
   panelBody.createPanelBody({
     state, bodyEl, titleMetaEl: new El('div', doc),
-    seg: { el: new El('div', doc), setLabel: () => {} },
-    relayout: () => {}, getWorkspaces: () => WS,
+
+    getWorkspaces: () => WS,
     ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {} },
     onRetry: () => {},
   }).render()

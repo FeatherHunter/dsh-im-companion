@@ -173,9 +173,26 @@ export const HOME_UI_CSS = `
 .home-ui .hu-empty .hu-eic{width:40px;height:40px;margin:0 auto 10px;border-radius:13px;background:var(--hu-panel-3);display:grid;place-items:center}
 .home-ui .hu-empty b{display:block;color:var(--hu-ink-2);font-size:13px;margin-bottom:3px}
 .home-ui .hu-empty p{margin:0;font-size:11.5px;line-height:1.5}
-.home-ui .hu-sk{border-radius:9px;background:linear-gradient(90deg,var(--hu-panel-3) 0%,var(--hu-panel-2) 50%,var(--hu-panel-3) 100%);background-size:200% 100%;animation:huSk 1.15s linear infinite}
+.home-ui .hu-sk{display:block;border-radius:9px;background:linear-gradient(90deg,var(--hu-panel-3) 0%,var(--hu-panel-2) 50%,var(--hu-panel-3) 100%);background-size:200% 100%;animation:huSk 1.15s linear infinite}
 @keyframes huSk{from{background-position:200% 0}to{background-position:-200% 0}}
-.home-ui .hu-skrow{border:1px solid var(--hu-line-soft);border-radius:var(--hu-r);padding:9px 10px;display:grid;grid-template-columns:36px 1fr 60px;gap:10px;align-items:center;min-height:56px}
+/* 骨架行复用 .hu-row 的几何（网格/内距/最小高/圆角），行内灰条占**与真行文字相同的行盒**
+ * （名字 20px / 副标 17px+5 / 清单 17px+4，取自 .hu-nm b / .hu-sub / .hu-names 的实际行高）
+ * ⇒ 加载完只换内容，行高与总高逐像素不变。 */
+.home-ui .hu-srow{pointer-events:none;cursor:default}
+.home-ui .hu-srow:hover{border-color:var(--hu-line-soft);background:var(--hu-panel)}
+.home-ui .hu-sk-av{width:36px;height:36px;border-radius:11px}
+.home-ui .hu-scol{display:block;min-width:0}
+.home-ui .hu-sline{display:flex;align-items:center;height:20px}
+.home-ui .hu-sline:nth-child(2){height:17px;margin-top:5px}
+.home-ui .hu-sline:nth-child(3){height:17px;margin-top:4px}
+.home-ui .hu-sk-t1{width:38%;height:11px}
+.home-ui .hu-sk-t2{width:64%;height:10px}
+.home-ui .hu-sk-t3{width:46%;height:10px}
+.home-ui .hu-sk-act{width:26px;height:26px;border-radius:7px}
+/* 页头右侧动作簇（船 / 串门搬家 / 刷新）：与 ＋ 同行成簇，吃掉原工具栏行。
+ * 只定义「槽位里孩子的几何」，不写任何 .af-* 私有类名——装配层交进来什么就排什么（契约 §6）。 */
+.home-ui .hu-head-acts{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none}
+.home-ui .hu-head-acts > *{width:32px;height:32px;border-radius:10px;flex:none}
 .home-ui .hu-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--hu-accent-soft);border-top-color:var(--hu-accent);animation:huSp .7s linear infinite;flex:none}
 @keyframes huSp{to{transform:rotate(360deg)}}
 .home-ui .hu-err{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--hu-warn);background:var(--hu-warn-soft);border:1px solid var(--hu-warn-soft);border-radius:9px;padding:8px 10px}
