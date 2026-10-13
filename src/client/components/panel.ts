@@ -4,20 +4,20 @@
 import { h } from '../dom'
 import type { RpcCall } from '../data/fleet-api'
 import { extractRpcV2 as extractRpc } from '../data/rpc'
-import type { AgentView, ViewMode } from '../data/model'
+import type { ViewMode } from '../data/model'
 import { ADOPT_VIEW_EVENT, FLEET_VIEW_EVENT, UPDATE_CENTER_HOST_EVENT, type FleetViewDetail, type UpdateCenterHostDetail } from '../data/config'
 import { icon } from '../icons'
 import { makeIconButton } from '../ui/button'
 import { makeSearchField } from '../ui/field'
 import { makeSegmented, type SegHandle } from '../ui/segmented'
-import type { RowCallbacks } from './agent-row'
-import { makeComposeBar } from './compose-bar'
+import { toast } from '../ui/toast'
 import { firstViewCopy } from './first-view-copy'
 import { installFirstViewStyles } from './first-view-styles'
-import { createPanelActions } from './panel-actions'
+import { installHomeUiStyles } from './home-ui-styles'
 import { createPanelBody } from './panel-body'
 import { createPanelData } from './panel-data'
-import { WORKSPACE_PICKER_COPY, ctxNativePicker, openDirPicker } from '../ui/dir-picker'
+import type { WorkspaceRef } from '../data/home-model'
+import { createDrillOps } from './home-ops'
 
 /* #56：构建注入的插件版本（tsdown define __PLUGIN_VERSION__，package.json 唯一真相）。 */
 declare const __PLUGIN_VERSION__: string | undefined
@@ -49,6 +49,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   const data = createPanelData(rpc)
   const copy = firstViewCopy()
   const stopFirstView = installFirstViewStyles()
+  const stopHomeStyles = installHomeUiStyles()
 
   /* ---------- 静态骨架 ---------- */
   const title = h('h1', { className: 'af-title' }, copy.title)
@@ -56,7 +57,8 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   /* D 标题不独占行：计数行收起（计数看分段后缀），元素保留隐藏位供 body 兼容。 */
   const titleMeta = h('div', { className: 'af-title-meta' }, '')
   titleMeta.hidden = true
-  const plusBtn = makeIconButton({ iconName: 'plus', label: copy.plus, title: copy.plus })
+  /* 旧面板遗留的工具栏 ＋ 已退场（T6a 重做）：绿框自带页头 ＋（随层新建家/新建助理）
+   * 与底部上下文主操作，同一个动作不再有第三个入口。 */
   /* #56 右上组（对标 deck SettingsPage：版本小字可点跳仓库 + Star/Issue 双按钮）。
    * #78 版本组：自家版本 + 兼容标记（dsh-im）同行成组；
    * #82 改「两色胶囊」——颜色即身份（用户裁定）：紫=自家 / 蓝白=兼容的 dsh-im，
@@ -93,7 +95,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
    * **主动认领**已存在的容器——id 就是那个认领把手，删了 T8 只能靠猜。
    * owner 2026-10-10 裁定：从「工具栏之后、撰写条之前」挪到**页头右上组、star 左侧**
    * （原 2026-09-12 位置作废）。仍只挪这一个空容器节点：类名 / id / 派发 / 特性侧零改。 */
-  const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host' })
+  const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host', style: 'min-width:0' })
   /* P2 引流星标：ghost 虚线风，新开页跳 companion 仓库点 Star（右上角，＋原位）。 */
   const starLink = h('a', {
     className: 'af-icon-btn af-star',
@@ -111,8 +113,12 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     title: copy.feedbackTitle,
     'aria-label': copy.feedbackTitle,
   }, icon('feedback', 18))
-  const hdRight = h('div', { className: 'af-hd-right' }, verBox, updateCenterHost, starLink, feedbackLink)
-  const hd = h('div', { className: 'af-hd' }, h('div', { className: 'af-hd-left' }, title, titleMeta), hdRight)
+  /* 页头是**防御性布局**：标题是身份（不许被压），徽标带是可伸缩区（放不下就整组换行）。
+   * 真机事故（2026-10-13）：更新失败横幅 + 两枚版本胶囊把「IM机器人增强」压成「IM 机器人⋯」——
+   * 附加信息有能力破坏主内容 ⇒ 这里反过来：标题 flex:0 0 auto，右侧组 flex:0 1 auto + 可换行。 */
+  const hdRight = h('div', { className: 'af-hd-right', style: 'flex:0 1 auto;min-width:0;margin-left:auto' }, verBox, updateCenterHost, starLink, feedbackLink)
+  const hd = h('div', { className: 'af-hd', style: 'flex-wrap:wrap;row-gap:6px' },
+    h('div', { className: 'af-hd-left', style: 'flex:0 0 auto;min-width:0' }, title, titleMeta), hdRight)
 
   const search = makeSearchField((v) => {
     data.state.query = v
@@ -129,7 +135,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     bodyModule.render()
   })
   seg.el.setAttribute('aria-label', copy.segAria)
-  const refreshBtn = makeIconButton({ iconName: 'refresh', label: copy.refresh, title: copy.refresh, onClick: () => void data.load(true) })
+  const refreshBtn = makeIconButton({ iconName: 'refresh', label: copy.refresh, title: copy.refresh, onClick: () => void refreshAll() })
   /* 舰队雷达入口（#10 例外单 PR：只加按钮+事件派发，不引矩阵、不改 mode 语义；弹窗由矩阵特性自管）。 */
   const radarBtn = makeIconButton({
     iconName: 'ship', label: copy.radar, title: copy.radar,
@@ -140,14 +146,10 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     iconName: 'home', label: copy.adopt, title: copy.adopt,
     onClick: () => emitAdoptView(),
   })
-  /* ＋ 进工具栏按钮组最左：新增、船、串门搬家、刷新（☆ 已搬右上角）。 */
-  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '12px' } }, plusBtn, radarBtn, adoptBtn, refreshBtn))
-  /* #62 创建即选家：表单自带工作区选择器，创建编排原子落家（addLocal＋落家＋记名）。
-   * 建完即收由表单按编排返回值决定（成功关、失败留单保现场）。 */
-  const compose = makeComposeBar(
-    (name, ws) => actions.create(name, ws),
-    { pickWorkspace: () => openDirPicker(rpc, '', ctxNativePicker(ctx), WORKSPACE_PICKER_COPY).promise },
-  )
+  /* 工具栏只留「船 / 串门搬家 / 刷新」：＋ 已退场（绿框页头 ＋ 与底部主操作接管建单）。 */
+  const toolbar = h('div', { className: 'af-toolbar' }, search.el, seg.el, h('div', { style: { marginLeft: 'auto', display: 'flex', gap: '12px' } }, radarBtn, adoptBtn, refreshBtn))
+  /* T6a 钢线：＋ 按当前钻取层级开建单（L1 建家选已有区 / L2 建助理选绑机器人）；
+   * 旧 compose 新建条（LocalAgent）退役，文件保留供 connect-qr 回归钉。 */
   const body = h('div', { className: 'af-body' })
   /* P2 底部关联卡：名 + 一句话 + 右箭头，新开页（常驻；点击不记数）。 */
   const promo = h('div', { className: 'af-promo' },
@@ -156,43 +158,65 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     promoItem(copy.promoPal, copy.promoPalDesc, 'https://github.com/FeatherHunter/dsh-opencode-palette'),
   )
   /* T6（#89）更新中心挂载点原位置（工具栏之后、撰写条之前）已作废：容器改建在页头右上组里（见上）。
-   * root 序列回归 hd → toolbar → compose → body → promo，A1 对本特性仍是零感知。 */
-  const root = h('div', { className: 'af-root' }, hd, toolbar, compose.el, body, promo)
+   * root 序列回归 hd → toolbar → body → promo，A1 对本特性仍是零感知。 */
+  const root = h('div', { className: 'af-root' }, hd, toolbar, body, promo)
 
   emitUpdateCenterHost(updateCenterHost)
 
   /* ---------- 模块接线 ---------- */
-  const rowCallbacks = (): RowCallbacks => ({
-    rename: (view: AgentView, next: string) => void actions.rename(view, next),
-    connect: (view: AgentView, anchor: HTMLElement) => actions.connect(view, anchor),
-    avatarMenu: (view: AgentView, anchor: HTMLElement) => actions.avatarMenu(view, anchor),
-    pickWorkspace: (view: AgentView) => void actions.pickWorkspace(view),
-    removeBot: (view: AgentView, channel: string, botId: string) => void actions.removeBot(view, channel, botId),
-    deleteLocal: (view: AgentView) => void actions.removeLocal(view),
-  })
-  const actions = createPanelActions({
-    ctx,
-    rpc,
-    getStore: data.store,
-    getMeta: () => data.state.meta,
-    refresh: () => data.load(true),
-    loadMeta: data.loadMeta,
-    render: () => bodyModule.render(),
-  })
+  /* 宿主工作区全名单（adopt/panel.ts listHomes 同款 ctx.get 惰性读法；取不到按空名单，种子跳过）。 */
+  const getWorkspaces = (): WorkspaceRef[] => {
+    try {
+      const get = (ctx as { get?: (n: string) => unknown } | null)?.get
+      if (typeof get !== 'function') return []
+      const svc = get('workspaces') as { list?: { getSnapshot?: () => { items?: { workspaceId?: unknown; path?: unknown; title?: unknown }[] } } } | null
+      const items = svc?.list?.getSnapshot?.()?.items
+      if (!Array.isArray(items)) return []
+      const out: WorkspaceRef[] = []
+      for (const it of items) {
+        const workspaceId = String(it?.workspaceId ?? '')
+        const path = String(it?.path ?? '')
+        const title = String(it?.title ?? '')
+        if (workspaceId && path && !out.some((w) => w.workspaceId === workspaceId)) out.push({ workspaceId, path, title })
+      }
+      return out
+    } catch {
+      return []
+    }
+  }
+  async function refreshAll(): Promise<void> {
+    await data.load(true)
+    await data.loadHomes(getWorkspaces)
+  }
+  /* 旧动作层（panel-actions：改名/选家/移除/头像）文件冻结保留供 connect-qr 回归；
+   * 绿框写管道（建家/建助理绑机器人/接入）下沉 home-ops（本文件只接线，单真相源＝家表）。 */
   const bodyModule = createPanelBody({
     state: data.state,
     bodyEl: body,
     titleMetaEl: titleMeta,
     seg,
     relayout: () => seg.relayout(),
-    rowCallbacks,
-    onRetry: () => void data.load(),
+    getWorkspaces,
+    ops: createDrillOps({
+      ctx,
+      getRpc: () => rpc,
+      getWorkspaces,
+      getHome: (id) => data.state.homes.find((x) => x.id === id),
+      getBot: (channel, botId) => data.state.bots.find((b) => b.channel === channel && b.botId === botId),
+      refresh: () => data.load(true),
+      reloadHomes: () => data.loadHomes(getWorkspaces),
+    }),
+    onRetry: () => void refreshAll(),
   })
   data.setRender(() => bodyModule.render())
-  plusBtn.onclick = () => compose.setVisible(true)
 
   /* ---------- 生命周期（#17：轮询归共享 stream，面板只订阅 + dispose 退订） ---------- */
+  /* 顺序化首屏：先 load（拿到 bots+meta）再 loadHomes（种子一次到位，助理行不等下一轮 15s 轮询）。
+   * 两者并发会造出「有家无助理」的空窗（T6a 验证抓到）。 */
   void data.load()
+    .then(() => data.loadHomes(getWorkspaces))
+    .then(() => bodyModule.render())
+    .catch(() => bodyModule.render())
   ;(root as unknown as { __afDispose?: () => void }).__afDispose = () => {
     emitUpdateCenterHost(null)
     try {
@@ -202,6 +226,11 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     }
     try {
       stopFirstView()
+    } catch {
+      /* 样式清理失败不影响卸载 */
+    }
+    try {
+      stopHomeStyles()
     } catch {
       /* 样式清理失败不影响卸载 */
     }

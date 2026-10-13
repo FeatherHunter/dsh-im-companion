@@ -1,7 +1,7 @@
 // Real-React verification for dsh-im-companion lib/client.js（TypeScript，Node 直跑）
 // 不写死任何机器路径：产物按仓库根解析，react 走模块解析（本仓 devDependency）——
 // 别的开发者 clone 后 npm install 即可直接跑，换机器 / 换目录 / 换用户名都不受影响。
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import vm from 'node:vm';
@@ -43,6 +43,7 @@ let loaded: { id: string; exports: any } | null = null;
 const sandbox = vm.createContext({
   ...win, window: win, document: doc, console, setTimeout, clearTimeout, setInterval, clearInterval,
   AbortSignal, navigator: {}, location: { protocol: 'http:', host: 'x' },
+  requestAnimationFrame: (fn: any) => setTimeout(fn, 0), cancelAnimationFrame: (id: any) => clearTimeout(id),
 });
 vm.runInContext(code, sandbox);
 
@@ -51,43 +52,105 @@ console.log('inject =', JSON.stringify((loaded?.exports as any)?.inject));
 
 const effects: (string | undefined)[] = [];
 let registered: { opts: any; Comp: any } | null = null;
+/* 家/助理小表（内存镜像宿主 home-store 判重口径）：面板首读空表即种子迁移，故此处必须有真幂等语义，
+ * 否则「首读→种子→回填」这条链在验证里跑不通（T6a 绿框真相源）。 */
+const homeDb: { homes: any[]; assistants: any[] } = { homes: [], assistants: [] };
+const normP = (p: string) => String(p ?? '').replace(/\\/g, '/').replace(/\/+$/, '').trim().toLowerCase();
+/* 宿主工作区名单（面板经 ctx.get('workspaces') 惰性读取；含一个无人之家以验「一区一家」）。 */
+const workspaceItems = [
+  { workspaceId: 'ws-1', path: 'D:\\agents\\xiaoshuai', title: '小帅窝', sessionIds: [] },
+  { workspaceId: 'ws-2', path: 'D:\\agents\\xinghuo', title: '星火', sessionIds: [] },
+  { workspaceId: 'ws-3', path: 'D:\\agents\\wechat', title: '', sessionIds: [] },
+  { workspaceId: 'ws-4', path: 'D:\\agents\\empty', title: '空房间', sessionIds: [] },
+];
+function bridgeReply(ep: string, p: any): unknown {
+  if (ep === 'home.list') return { ok: true, value: { homes: homeDb.homes, assistants: homeDb.assistants } };
+  if (ep === 'home.create') {
+    if (homeDb.homes.some((h) => normP(h.path) === normP(p?.path))) {
+      return { ok: false, error: { code: 'already-exists', message: '家已存在', details: {} } };
+    }
+    const row = {
+      id: 'h-' + (homeDb.homes.length + 1), workspaceId: p?.workspaceId ?? null, path: p?.path ?? '',
+      name: p?.title ?? '', nameSource: 'system', avatar: null, avatarSource: 'default', createdAt: 1, updatedAt: 1,
+    };
+    homeDb.homes.push(row);
+    return { ok: true, value: { home: row } };
+  }
+  if (ep === 'assistant.create') {
+    if (homeDb.assistants.some((a) => a.channel === p?.channel && a.botId === p?.botId && a.status === 'bound')) {
+      return { ok: false, error: { code: 'already-bound', message: '已绑定', details: {} } };
+    }
+    const row = {
+      id: 'a-' + (homeDb.assistants.length + 1), homeId: p?.homeId ?? '', channel: p?.channel ?? '',
+      botId: p?.botId ?? null, status: 'bound', name: p?.botName || p?.homeText || '', nameSource: p?.botName ? 'bot' : 'home',
+      avatar: null, avatarSource: 'default', createdAt: 1, boundAt: 1,
+    };
+    homeDb.assistants.push(row);
+    return { ok: true, value: { assistant: row } };
+  }
+  if (ep === 'home.seed') {
+    const mapped: any[] = [];
+    for (const r of p?.homes ?? []) {
+      const hit = homeDb.homes.find((h) => normP(h.path) === normP(r.path) || (h.workspaceId && h.workspaceId === r.workspaceId));
+      if (hit) { mapped.push(hit); continue; }
+      const row = { ...r, createdAt: 1, updatedAt: 1 };
+      homeDb.homes.push(row); mapped.push(row);
+    }
+    const outA: any[] = [];
+    for (const a of p?.assistants ?? []) {
+      if (homeDb.assistants.some((x) => x.botId === a.botId && x.channel === a.channel)) continue;
+      const row = { ...a, createdAt: 1, boundAt: 1 };
+      homeDb.assistants.push(row); outA.push(row);
+    }
+    return { ok: true, value: { homes: mapped, assistants: outA } };
+  }
+  return { ok: false, error: { code: 'bad-request', message: 'unknown ' + ep, details: {} } };
+}
 const ctx = {
   logger: () => ({ info: () => {}, warn: () => {}, error: () => {} }),
   effect(fn: () => unknown, name?: string) { effects.push(name); const d = fn(); if (typeof d === 'function') d(); },
+  get(name: string) {
+    if (name === 'workspaces') return { list: { getSnapshot: () => ({ items: workspaceItems }) } };
+    return undefined;
+  },
   slots: {
     inject(_name: string, fn: () => unknown) { return fn(); },
     register(opts: any, Comp: any) { registered = { opts, Comp }; return () => {}; },
   },
-  connection: { rpc: { call: async (ch: string) => {
+  connection: { rpc: { call: async (ch: string, ep?: string, p?: any) => {
     if (ch === '/feishu') {
       return { ok: true, value: {
         schemaVersion: 2, revision: 3, state: 'connected',
         bots: [
-          { botId: 'bot_aaaa', workspace: 'D:\\agents\\xiaoshuai', connected: true,
+          { botId: 'bot_aaaa', workspace: 'D:\\agents\\xiaoshuai', connected: true, bot: { name: '小帅·飞书' },
             health: { status: 'healthy', summary: '长连接运行正常', lastCheckedAt: 1 } },
-          { botId: 'bot_bbbb', workspace: 'D:\\agents\\xiaoshuai', connected: true,
+          { botId: 'bot_bbbb', workspace: 'D:\\agents\\xiaoshuai', connected: true, bot: { name: '小帅·微信' },
             health: { status: 'healthy', summary: '长连接运行正常', lastCheckedAt: 2 } },
-          { botId: 'bot_cccc', workspace: 'D:\\agents\\xinghuo', connected: false,
+          { botId: 'bot_cccc', workspace: 'D:\\agents\\xinghuo', connected: false, bot: { name: '星火·飞书' },
             health: { status: 'offline', summary: '尚未连接', lastCheckedAt: 3 } },
+          { botId: 'bot_free', workspace: '', connected: false, bot: { name: '待认领·飞书' },
+            health: { status: 'offline', summary: '尚未连接', lastCheckedAt: 5 } },
         ],
-        totals: { configured: 3, connected: 2 },
+        totals: { configured: 4, connected: 2 },
       } };
     }
     if (ch === '/weixin') {
       return { ok: true, value: {
         bots: [
-          { botId: 'wx_1111', workspace: 'D:\\agents\\wechat', connected: true,
+          { botId: 'wx_1111', workspace: 'D:\\agents\\wechat', connected: true, bot: { name: '微信小号' },
             health: { status: 'healthy', summary: '长连接运行正常', lastCheckedAt: 4 } },
         ],
         totals: { configured: 1, connected: 1 },
       } };
     }
-    /* T5（#77）：旧 DSH 传输语义——未知路由传输层 reject（T1 verdict：立即拒识或 5s 超时），
-     * 而非 ok:false（ok:false 是权威答复，dualTransportCallV2 永不回退）。
-     * 本 mock 扮旧 DSH：新载体 /api 拒识 → 生产回退旧直调；自有桥 /im-companion 保持 ok:false。 */
+    /* T6a 自有桥：家/助理端点走内存小表（list 首读空 → 面板种子 → seed 幂等回填）；其余端点沿用旧答复。 */
     if (ch === '/im-companion') {
+      if (ep === 'home.list' || ep === 'home.seed' || ep === 'home.create' || ep === 'assistant.create') return bridgeReply(ep, p);
       return { ok: false, error: { code: 'CHANNEL_NOT_CONFIGURED', message: '渠道未配置', details: {} } };
     }
+    /* T5（#77）：旧 DSH 传输语义——未知路由传输层 reject（T1 verdict：立即拒识或 5s 超时），
+     * 而非 ok:false（ok:false 是权威答复，dualTransportCallV2 永不回退）。
+     * 本 mock 扮旧 DSH：新载体 /api 拒识 → 生产回退旧直调。 */
     throw Object.assign(new Error('old DSH mock: no route for ' + ch), { code: 'RPC_NO_ROUTE' });
   } } },
   emit() {},
@@ -98,10 +161,180 @@ console.log('registered label =', registered?.opts?.label());
 const container = doc.createElement('div');
 const root = ReactDOMClient.createRoot(container);
 root.render(React.createElement(registered!.Comp, { ...(registered!.opts.inject?.() || {}) }));
-await new Promise((resolve) => setTimeout(resolve, 300));
-const text = (container as any).textContent as string;
-console.log('---- rendered text (first 700) ----');
-console.log(text.slice(0, 700));
+await new Promise((resolve) => setTimeout(resolve, 600));
+const l1Text = (container as any).textContent as string;
+console.log('---- L1 rendered text (first 700) ----');
+console.log(l1Text.slice(0, 700));
+
+/* DOM 真序列化（dom-shim 的 innerHTML 只是桩：不递归、不带属性，故自己走一遍节点树）。
+ * 断言与预览共用同一份序列化：结构断言不依赖 RC_DUMP 是否设置。 */
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+const VOID_TAGS = new Set(['BR', 'HR', 'IMG', 'INPUT', 'META', 'LINK']);
+const ser = (n: any): string => {
+  if (!n) return '';
+  if (n.nodeType === 3) return esc(String(n.textContent ?? ''));
+  const name = String(n.nodeName || n.tagName || '').toLowerCase();
+  if (!name) return '';
+  let attrs = '';
+  for (const [k, v] of (n.attributes ?? new Map<string, string>())) {
+    if (String(k).toLowerCase() === 'class') continue;
+    attrs += ' ' + k + '="' + esc(String(v)) + '"';
+  }
+  /* dom-shim 把 className 收在 classList 里（不进 attributes）——漏了它整页就没样式。 */
+  const cls = n.classList && typeof n.classList.toString === 'function' ? String(n.classList.toString()).trim() : '';
+  if (cls) attrs = ' class="' + esc(cls) + '"' + attrs;
+  const tagUp = String(n.nodeName || '').toUpperCase();
+  if ((tagUp === 'INPUT' || tagUp === 'TEXTAREA' || tagUp === 'SELECT') && n._value) attrs += ' value="' + esc(String(n._value)) + '"';
+  const st = n._style && Object.keys(n._style).length
+    ? ' style="' + esc(Object.entries(n._style).map(([k, v]) => k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase()) + ':' + String(v)).join(';')) + '"'
+    : '';
+  const kids = (n.childNodes ?? []).map(ser).join('');
+  if (VOID_TAGS.has(name.toUpperCase())) return '<' + name + attrs + st + '>';
+  return '<' + name + attrs + st + '>' + kids + '</' + name + '>';
+};
+/* 客户端自己注入的样式（installFeatureStyles 挂进 head）——断言「绿框样式表已装」用。 */
+const injectedCss = ((doc as any).head?.childNodes ?? [])
+  .map((n: any) => String(n?.textContent ?? '')).filter((s: string) => s.trim()).join('\n');
+
+/* 视觉预览导出（只在 RC_DUMP 设了路径时才写）：把**真面板**的 DOM＋客户端自己注入的样式落成一个
+ * 自包含 HTML，交给真浏览器渲染后截图，用于人工目验布局（非真机；真机仍须在 DSH 里刷新验收）。 */
+function dumpHtml(tag: string): { file: string; dom: string } | null {
+  const out = process.env.RC_DUMP;
+  if (!out) return null;
+  const file = out.replace(/\.html$/i, '') + '-' + tag + '.html';
+  const dom = ser(container);
+  const html = '<!doctype html><meta charset="utf-8"><title>IM机器人增强 · ' + tag + ' 预览</title>\n'
+    + '<style>body{margin:0;padding:18px;background:#f5f6f8;font-family:"Microsoft YaHei",sans-serif}'
+    + '.wrap{max-width:760px;margin:0 auto;background:#fff;border:1px solid #e5e6eb;border-radius:12px;padding:10px 12px}</style>\n'
+    + '<style>' + injectedCss + '</style>\n'
+    + '<div class="wrap">' + dom + '</div>\n';
+  writeFileSync(file, html, 'utf8');
+  console.log('DUMP ' + file + '（样式 ' + injectedCss.length + ' 字节，DOM ' + html.length + ' 字节）');
+  return { file, dom };
+}
+dumpHtml('l1');
+const l1Dump = ser(container);
+const css = injectedCss;
+const seededHomes = homeDb.homes.length;
+const seededAssts = homeDb.assistants.length;
+
+/* ===== 三级钻取（T4 认可款 proto-studio 结构）：点行进下一级，不是展开树 ===== */
+const q1 = (sel: string) => (container as any).querySelector?.(sel) ?? null;
+const all = (sel: string) => (container as any).querySelectorAll(sel) as any[];
+const rows = () => all('.hu-row');
+const homeRows = () => rows().filter((n) => n.getAttribute('data-open') === 'L2');
+const asstRows = () => rows().filter((n) => n.getAttribute('data-open') === 'L3');
+const crumbs = () => all('.hu-crumb');
+const crumbList = () => crumbs().map((n) => String(n.textContent).replace(/\s+/g, ''));
+const click = (el: any, what: string) => { if (!el) throw new Error('点不到：' + what); el.dispatchEvent({ type: 'click' }); };
+const tick = () => new Promise((resolve) => setTimeout(resolve, 90));
+const settle = () => new Promise((resolve) => setTimeout(resolve, 400));
+const popHost = () => (((doc as any).body.childNodes as any[]) || []).find((n) => n.classList?.contains('hu-pophost')) ?? null;
+const popNode = () => popHost()?.querySelector?.('.hu-pop') ?? null;
+const popBtn = (label: string) => popNode()?.querySelectorAll('.hu-pbtn-s')?.find((b: any) => String(b.textContent).trim() === label) ?? null;
+
+if (homeRows().length !== 3) throw new Error('L1 活跃家行数应为 3，实际 ' + homeRows().length + '（0 助理的家应折叠进尾部）');
+const moreRow = q1('.hu-more-row');
+const moreText = String(moreRow?.textContent ?? '');
+if (!moreText.includes('1 个空家')) throw new Error('L1 空家折叠行缺失，实际：' + moreText);
+const plannedL1 = all('.hu-ract').filter((b: any) => b.classList.contains('planned')).length;
+const plannedAria = all('.hu-ract').filter((b: any) => b.classList.contains('planned')).every((b: any) => b.getAttribute('aria-disabled') === 'true');
+const avatarOf = (row: any): string => String(row?.querySelector?.('.hu-av')?.textContent ?? '');
+const avatar0 = avatarOf(homeRows()[0]);
+const avatarWe = avatarOf(homeRows().find((r: any) => String(r.textContent).includes('wechat')));
+const l1Head = String(q1('.hu-ttl')?.textContent ?? '');
+const l1Foot = String(q1('.hu-pbtn')?.textContent ?? '');
+const l1CrumbList = crumbList();
+const l1HomeCount = homeRows().length;
+const l1Snap = l1Text;
+console.log('---- L1 head ---- ' + l1Head);
+console.log('---- L1 crumbs ---- ' + l1CrumbList.join(' | '));
+
+/* L1 → L2：点第一家（小帅窝，2 位助理） */
+click(homeRows()[0], 'L1 家行 #0');
+await tick();
+const l2Text = String((container as any).textContent ?? '');
+const l2Head = String(q1('.hu-ttl')?.textContent ?? '');
+const l2Asst = asstRows().length;
+const l2Foot = String(q1('.hu-pbtn')?.textContent ?? '');
+const l2Crumbs = crumbList().join(' | ');
+dumpHtml('l2');
+
+/* L2 → L3：点第一位助理（钻取详情，不是展开） */
+click(asstRows()[0], 'L2 助理行 #0');
+await tick();
+const l3Text = String((container as any).textContent ?? '');
+const detail = q1('.hu-detail');
+const detailCls = detail ? String(detail.className ?? '') : '';
+const acts = all('.hu-abtn');
+const enabledActs = acts.filter((b) => !b.hasAttribute('disabled')).map((b) => String(b.textContent).trim());
+const disabledActs = acts.filter((b) => b.hasAttribute('disabled')).map((b) => String(b.textContent).trim());
+const l3Foot = String(q1('.hu-pbtn')?.textContent ?? '');
+const l3Head = String(q1('.hu-ttl')?.textContent ?? '');
+const l3Soon = String(q1('.hu-soon')?.textContent ?? '');
+dumpHtml('l3');
+
+/* 头部返回键（T4 verdict：返回方式＝头部返回键 / 点 TAB 的上级） */
+click(q1('.hu-back'), '返回键');
+await tick();
+const afterBack = !!q1('.hu-detail');
+click(crumbs().find((n) => n.getAttribute('data-goto') === 'L1'), '面包屑 L1 章');
+await tick();
+const backToL1 = homeRows().length === 3 && !!q1('.hu-more-row');
+
+/* 空家（第 4 家 ws-4 无 bot ⇒ 原型空态文案）：默认收在「N 个空家」折叠段里（呈现策略），
+ * 先点折叠行展开，再钻进去。 */
+click(q1('.hu-more-row'), 'L1「1 个空家」折叠行');
+await tick();
+const l1ExpandedText = String((container as any).textContent ?? '');
+const l1ExpandedRows = homeRows().length;
+click(homeRows()[3], 'L1 家行 #3（空家）');
+await tick();
+const emptyText = String((container as any).textContent ?? '');
+const emptyBox = q1('.hu-empty');
+dumpHtml('l4');
+click(q1('.hu-back'), '返回键（空家回 L1）');
+await tick();
+
+/* 建家（锚定 popover）：先冒出一个新工作区（真实场景：DSH 里新加的工作区）再建家 */
+workspaceItems.push({ workspaceId: 'ws-5', path: 'D:\\agents\\keting', title: '客厅', sessionIds: [] });
+click(homeRows()[0], 'L1 家行 #0（触发重渲染）');
+await tick();
+click(q1('.hu-back'), '返回键（回 L1）');
+await tick();
+const beforeHomes = homeDb.homes.length;
+click(q1('.hu-pbtn'), 'L1 底部「新建家」');
+await tick();
+const popHome = popNode();
+const popHomeText = String(popHome?.textContent ?? '');
+const popHomeOpts = popHome ? popHome.querySelectorAll('.hu-opt').length : 0;
+click(popBtn('创建'), '建家弹层「创建」');
+await settle();
+const afterHomes = homeDb.homes.length;
+const createdHome = homeDb.homes.find((h: any) => h.workspaceId === 'ws-5');
+const l2AfterHome = String(q1('.hu-ttl')?.textContent ?? '');
+dumpHtml('l5');
+if (!createdHome) throw new Error('建家没写入家表：opts=' + popHomeOpts + ' popText=' + popHomeText + ' homes=' + JSON.stringify(homeDb.homes.map((h: any) => h.workspaceId)));
+if (!q1('.hu-back')) throw new Error('建家后没落到 L2：head=' + l2AfterHome + ' body=' + String((container as any).textContent).slice(0, 120));
+
+/* 建助理（锚定 popover）：回第一家 ⇒ L2 底部主操作 ⇒ 选空闲机器人 bot_free */
+click(q1('.hu-back'), '返回键（新家回 L1）');
+await tick();
+click(homeRows()[0], 'L1 家行 #0（回小帅窝）');
+await tick();
+const beforeAssts = homeDb.assistants.length;
+click(q1('.hu-pbtn'), 'L2 底部「新建助理」');
+await tick();
+const popAsst = popNode();
+const popAsstText = String(popAsst?.textContent ?? '');
+const popAsstOpts = popAsst ? popAsst.querySelectorAll('.hu-opt').length : 0;
+const popAsstDisabled = popAsst ? popAsst.querySelectorAll('.hu-opt').filter((b: any) => b.hasAttribute('disabled')).length : 0;
+click(popBtn('创建'), '建助理弹层「创建」');
+await settle();
+const afterAssts = homeDb.assistants.length;
+const l3AfterAsst = !!q1('.hu-detail');
+dumpHtml('l6');
+if (afterAssts === beforeAssts) throw new Error('建助理没写入助理表：opts=' + popAsstOpts + ' disabled=' + popAsstDisabled + ' popText=' + popAsstText);
 
 /* #82 两色胶囊：值由构建从 package.json 注入，故断言按真相源推导，
  * 不在测试里再抄一份版本号（宿主 / 上游换版本时这里自动跟随）。
@@ -112,31 +345,66 @@ const dshImCompatVerified: string = pkg?.dshImCompat?.verified ?? '';
 const dshCompatVerified: string = pkg?.dshCompat?.verified ?? '';
 
 const checks: [string, boolean][] = [
-  ['顶部标题 IM机器人增强(#56)', text.includes('IM机器人增强')],
-  ['按助理 计数 (3)(#26)', text.includes('按助理 (3)')],
-  ['按渠道 计数 (2)', text.includes('按渠道 (2)')],
-  ['标题计数行收起(#26)', !text.includes('个机器人')],
-  ['无按工作区(已砍)', !text.includes('按工作区')],
-  ['渲染出内容(非空)', container.childNodes.length > 0 && !text.includes('还没有 Agent')],
-  ['名字 Xiaoshuai', text.includes('Xiaoshuai')],
-  ['名字 Xinghuo', text.includes('Xinghuo')],
-  ['名字 Wechat', text.includes('Wechat')],
-  ['无“未命名”', !text.includes('未命名')],
-  ['在线状态', text.includes('在线')],
-  ['离线状态', text.includes('离线')],
-  ['渠道标签 飞书', text.includes('飞书')],
-  ['渠道标签 微信', text.includes('微信')],
-  ['接入按钮', text.includes('接入')],
-  ['详情按钮(#26 ghost 同级)', text.includes('详情')],
-  ['引流关联卡 P2(#26)', text.includes('作者其他插件')],
-  ['自家版本胶囊 紫(#82)', pluginVersion !== '' && text.includes('v' + pluginVersion)],
-  ['上游胶囊 dsh-im(#82)', dshImCompatVerified !== '' && text.includes('dsh-im ' + dshImCompatVerified)],
-  ['宿主胶囊已删(2026-10-01)', dshCompatVerified === '' || !text.includes('dsh ' + dshCompatVerified)],
-  ['副标已删(#82)', !text.includes('IM COMPANION · 辅助插件')],
-  ['页面干净-无解释词', !text.includes('解耦') && !text.includes('试验') && !text.includes('B1 ')],
-  ['显示工作区绑定', text.includes('工作区·D:')],
+  ['顶部标题 IM机器人增强(#56)', String((container as any).textContent).includes('IM机器人增强')],
+  ['按助理 计数 (4)(T6a 家表)', l1Text.includes('按助理 (4)')],
+  ['按渠道 计数 (2)', l1Text.includes('按渠道 (2)')],
+  ['无按工作区(已砍)', !l1Text.includes('按工作区')],
+  ['页头 家 + N 个 · 每个家对应一个工作区（原型 fhead）', l1Head.includes('家') && l1Head.includes('4 个 · 每个家对应一个工作区')],
+  ['L1 面包屑三级 chip（L1 家 / L2 助理 · … / L3 机器人 · …）', l1CrumbList.length === 3 && l1CrumbList[0].includes('L1家') && l1CrumbList[1].includes('L2助理') && l1CrumbList[2].includes('L3机器人')],
+  ['L1 家名（工作区标题回落）', l1Text.includes('小帅窝')],
+  ['L1 家名（空标题回落目录基名）', l1Text.includes('wechat')],
+  ['L1 空家折叠（0 助理的家收尾部，可达性不丢）', moreText.includes('1 个空家') && l1HomeCount === 3],
+  ['L1 展开后可见空家与 0 位助理', l1ExpandedRows === 4 && l1ExpandedText.includes('空房间') && l1ExpandedText.includes('0 位助理')],
+  ['头像字形：CJK 单字 / 拉丁两词首字母（dsh-* 不再全是 d）', avatar0 === '小' && avatarWe === 'WE'],
+  ['未实现钮语义化禁用（planned + aria-disabled，非 opacity 假死）', plannedL1 >= 6 && plannedAria],
+  ['L1 助理计数（N 位助理）', l1Text.includes('2 位助理')],
+  ['L1 命名回落来源行（原型 sub）', l1Text.includes('跟随工作区名') && l1Text.includes('跟随目录名')],
+  ['L1 助理清单行（原型 names）', l1Text.includes('助理：')],
+  ['L1 在线汇总（N 个在线 / 全部离线；0 助理不再重复一枚）', l1Text.includes('2 个在线') && l1Text.includes('全部离线') && !l1Text.includes('没有助理') && !l1Text.includes('还没有助理')],
+  ['L1 无“未命名”', !l1Text.includes('未命名')],
+  ['L1 家行 3 枚（钻取锚点 data-open=L2）', l1HomeCount === 3],
+  ['L1 底部主操作＝新建家（随层）', l1Foot.includes('新建家')],
+  ['点家行进入 L2（钻取，非展开树）', l2Asst === 2],
+  ['L2 页头标题＝家名', l2Head.includes('小帅窝')],
+  ['L2 页头副标＝回落来源 · N 位助理', l2Head.includes('跟随工作区名 · 2 位助理')],
+  ['L2 面包屑当前层在 L2', l2Crumbs.includes('L2小帅窝')],
+  ['L2 助理行两枚（一对一不合并）', l2Asst === 2],
+  ['L2 渠道标签 飞书', l2Text.includes('飞书')],
+  ['L2 已绑状态章', l2Text.includes('已绑')],
+  ['L2 行内接入钮常显（旧能力继承）', l2Text.includes('接入')],
+  ['L2 底部主操作＝新建助理（随层）', l2Foot.includes('新建助理')],
+  ['L3 详情卡存在（原型 .detail）', !!detail],
+  ['L3 详情卡不继承列表行 hover 隐藏', !detailCls.includes('hu-row') && !detailCls.includes('af-row')],
+  ['L3 机器人 id 与单渠道实例', l3Text.includes('bot_aaaa') && l3Text.includes('单渠道实例')],
+  ['L3 命名链三段（你取的名/机器人名/家名）', l3Text.includes('你取的名') && l3Text.includes('机器人名') && l3Text.includes('家名')],
+  ['L3 页头标题＝助理名 + 副标回落来源', l3Head.includes('跟随机器人名')],
+  ['L3 行动作启用集＝接入,详情（T6a 实做）', enabledActs.join(',') === '接入,详情'],
+  ['L3 未实现动作只留一行「待实现」清单（不再 5 枚假按钮）', l3Soon.includes('待实现：重命名') && l3Soon.includes('#115') && disabledActs.length <= 1],
+  ['L3 底部主操作＝返回助理列表（已绑）', l3Foot.includes('返回助理列表')],
+  ['头部返回键回 L2', afterBack === false],
+  ['面包屑 L1 章回 L1', backToL1],
+  ['空家空态卡（原型 .empty）', !!emptyBox && emptyText.includes('这个家还没有助理')],
+  ['建家弹层＝锚定 popover（非底部弹窗）', !!popHome && popHomeText.includes('新建家')],
+  ['建家弹层列出空闲工作区', popHomeOpts >= 1 && popHomeText.includes('客厅')],
+  ['建家写入家表（4→5）', beforeHomes === 4 && afterHomes === 5],
+  ['建家后落到新家的 L2', l2AfterHome.includes('客厅')],
+  ['建助理弹层含空闲机器人与禁用「以后再绑」', popAsstOpts >= 2 && popAsstText.includes('待认领·飞书') && popAsstText.includes('以后再绑') && popAsstDisabled >= 1],
+  ['建助理写入助理表（4→5）', beforeAssts === 4 && afterAssts === 5],
+  ['建助理后落到该助理 L3 详情', l3AfterAsst],
+  ['旧 A1 列表行 DOM 已退出绿框', !l1Dump.includes('af-row') && !l1Dump.includes('af-actions')],
+  ['绿框样式表已装（.home-ui 命名空间 + hu- 前缀）', css.includes('.home-ui .hu-row') && css.includes('.home-ui .hu-detail') && css.includes('.home-ui .hu-pop')],
+  ['引流关联卡 P2(#26)', String((container as any).textContent).includes('作者其他插件')],
+  ['自家版本胶囊 紫(#82)', pluginVersion !== '' && String((container as any).textContent).includes('v' + pluginVersion)],
+  ['上游胶囊 dsh-im(#82)', dshImCompatVerified !== '' && String((container as any).textContent).includes('dsh-im ' + dshImCompatVerified)],
+  ['宿主胶囊已删(2026-10-01)', dshCompatVerified === '' || !String((container as any).textContent).includes('dsh ' + dshCompatVerified)],
+  ['副标已删(#82)', !String((container as any).textContent).includes('IM COMPANION · 辅助插件')],
+  ['页面干净-无解释词', !String((container as any).textContent).includes('解耦') && !String((container as any).textContent).includes('试验')],
+  ['家表经种子落盘（一区一家 4 行）', seededHomes === 4],
+  ['助理经种子落盘（有归属 4 枚）', seededAssts === 4],
+  ['未绑定 bot 不进表（空 workspace 不建行）', !homeDb.assistants.some((a: any) => !a.botId)],
 ];
 for (const [name, ok] of checks) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 const allOk = checks.every(([, ok]) => ok);
 console.log('==== ' + (allOk ? 'ALL PASS' : 'SOME FAIL') + ' ====');
 process.exit(allOk ? 0 : 1);
+

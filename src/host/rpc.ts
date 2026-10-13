@@ -6,6 +6,7 @@ import type { AgentMetaStore } from './meta-store.js'
 import { isUpdateIntervalHours } from './meta-store.js'
 import { collectRoutes } from './routes.js'
 import { collectActivity } from './activity.js'
+import { createAssistantRow, createHomeRow, homesFileFor, loadHomesDoc, seedDocs } from './home-store.js'
 
 export type RpcPayload = Record<string, unknown>
 
@@ -173,6 +174,39 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           if (!dir || !path.isAbsolute(dir)) return fail('bad-request', '需要绝对路径')
           const entries = await listDirectories(dir)
           return ok({ path: dir, parent: path.dirname(dir) === dir ? null : path.dirname(dir), entries })
+        }
+        // ── T6a #113 追加（Added-only，只追加 case）：家/助理新表三端点，旧 Agent 码不动。
+        // 存储见 src/host/home-store.ts（homes.json，version:2）；形状与 T3 #116 速记同形。
+        case 'home.list': {
+          const doc = await loadHomesDoc(homesFileFor(dshHome))
+          return ok({ homes: doc.homes, assistants: doc.assistants })
+        }
+        case 'home.create': {
+          const r = await createHomeRow(homesFileFor(dshHome), {
+            workspaceId: String(p.workspaceId ?? ''),
+            path: String(p.path ?? ''),
+            title: String(p.title ?? ''),
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ home: r.home })
+        }
+        case 'assistant.create': {
+          const r = await createAssistantRow(homesFileFor(dshHome), {
+            homeId: String(p.homeId ?? ''),
+            channel: String(p.channel ?? ''),
+            botId: String(p.botId ?? ''),
+            botName: String(p.botName ?? ''),
+            homeText: String(p.homeText ?? ''),
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ assistant: r.assistant })
+        }
+        case 'home.seed': {
+          const r = await seedDocs(homesFileFor(dshHome), {
+            homes: Array.isArray(p.homes) ? p.homes as never[] : [],
+            assistants: Array.isArray(p.assistants) ? p.assistants as never[] : [],
+          })
+          return ok({ homes: r.homes, assistants: r.assistants })
         }
         // ── T7 #90 追加 → T5 #110 加第四电话：更新系统四通电话（电话名即端点名，票面定死；键由包的 `update.phoneNames` 给出，不另拼字符串）。
         // 回包是本仓 RpcResult 信封：成功把包载荷原样放 `value`（M5 起不再注入 autoCheck）；

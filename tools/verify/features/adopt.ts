@@ -606,8 +606,8 @@ test('toolbar：串门搬家按钮与舰队/新增同组，只派发不直引特
   const panel = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
   assert.ok(panel.includes('ADOPT_VIEW_EVENT'), '面板应派发串门搬家事件');
   assert.ok(panel.includes('adoptBtn'), '工具栏应有串门搬家按钮');
-  const order = [panel.indexOf('plusBtn, radarBtn, adoptBtn, refreshBtn')];
-  assert.ok(order[0] !== -1, '按钮顺序应为新增、舰队、串门搬家、刷新');
+  const order = [panel.indexOf('radarBtn, adoptBtn, refreshBtn')];
+  assert.ok(order[0] !== -1, '按钮顺序应为舰队、串门搬家、刷新（工具栏 ＋ 已退场：绿框页头 ＋ 与底部主操作接管，T6a 2026-10-13）');
   assert.ok(!panel.includes('features/adopt') && !panel.includes('adopt/view'), '面板不得直引 adopt 特性（事件制解耦）');
 });
 

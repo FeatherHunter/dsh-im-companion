@@ -641,11 +641,25 @@ test('#62 commitBinding：空工作区提示须指向真能补绑的卡', async 
   assert.equal(done, 1);
 });
 
-test('#62 创建接线：面板创建表单必带选家', () => {
+test('#62 创建接线：面板创建表单必带选家（T6a 起改钉「建家选已有区」同款硬约束）', () => {
   const panel = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
   const compose = readFileSync(join(REPO, 'src', 'client', 'components', 'compose-bar.ts'), 'utf8');
-  assert.ok(compose.includes('选择工作区'), '创建表单须内嵌选家');
-  assert.ok(panel.includes('openDirPicker'), '面板须为创建表单接选家器');
+  const forms = readFileSync(join(REPO, 'src', 'client', 'components', 'home-forms.ts'), 'utf8');
+  const body = readFileSync(join(REPO, 'src', 'client', 'components', 'panel-body.ts'), 'utf8');
+  const rows = readFileSync(join(REPO, 'src', 'client', 'components', 'home-rows.ts'), 'utf8');
+  const ops = readFileSync(join(REPO, 'src', 'client', 'components', 'home-ops.ts'), 'utf8');
+  assert.ok(compose.includes('选择工作区'), '创建表单须内嵌选家（旧 compose 冻结保留）');
+  /* T6a：创建入口改为绿框三级钻取的建家/建助理弹层（T4 认可款 proto-studio 的 newHomePop/newAsstPop）——
+   * 必须从宿主工作区名单里选（无区不可建）、建助理必须选家 + 选空闲机器人；
+   * 写管道下沉 home-ops（createDrillOps），表单住在 home-forms，行渲染住在 home-rows（300 行红线拆分）；
+   * 选目录新建工作区归后续票。 */
+  assert.ok(panel.includes('createDrillOps'), '面板须接线绿框写管道');
+  assert.ok(ops.includes('createHome'), '写管道须含建家落盘（工作区必选）');
+  assert.ok(forms.includes('已有工作区'), '建家表单须显式要求选已有工作区');
+  assert.ok(forms.includes('属于哪个家') && forms.includes('绑定机器人'), '建助理表单须选家 + 选机器人');
+  assert.ok(body.includes('openCreate'), '面板须接线建单入口（＋ / 底部主操作）');
+  assert.ok(rows.includes('data-open'), '三级钻取行须带钻取锚点（点行进下一级）');
+  assert.ok(!panel.includes('openDirPicker'), 'T6a 不做选目录新建工作区（归后续票）');
 });
 
 // ---- T4 双模式接入（#69，消费 #66 T1 矩阵 + #67 T2 定稿 + #68 T3-A 变体）----
