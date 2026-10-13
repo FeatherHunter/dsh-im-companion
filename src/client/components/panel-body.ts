@@ -51,8 +51,6 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
   /** L1「N 个空家」折叠态（呈现策略：0 助理的家收在尾部，默认不展开）。 */
   let showEmpty = false
   let flashTimer: ReturnType<typeof setTimeout> | null = null
-  /** 上一次渲染的层级：只有**层级变化**才让液签滑动，重渲染/焦点变化一律瞬时落位（否则真机会抖）。 */
-  let lastLevel: Level | null = null
 
   const view = (): RowView => viewOf(state.homes, state.assistants, state.bots, deps.getWorkspaces())
   const channelMode = (): boolean => state.mode === 'channel'
@@ -126,7 +124,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     if (!box || !box.parentNode) return
     const fresh = crumbsEl(stageCrumbOpts(stage(view())))
     box.parentNode.replaceChild(fresh, box)
-    slideTab(fresh, fresh.querySelector('.hu-tablk') as HTMLElement | null, true)
+    /* 焦点只改 chip 文案，当前层没变 ⇒ 液签目标同点，FLIP 起止重合 ⇒ 零位移不抖（见 home-frame.slideTab）。 */
+    slideTab(fresh, fresh.querySelector('.hu-tablk') as HTMLElement | null)
   }
 
   function openCreate(): void {
@@ -167,7 +166,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
       const info = { title: '家', sub: '正在读取家表…' }
       root.appendChild(headEl({
         level: 'L1', title: info.title, sub: info.sub,
-        onBack: () => go('L1'), onAdd: () => openCreate(), onMore: () => undefined,
+        onBack: () => go('L1'), onMore: () => undefined,
         actions: deps.headActions,
       }))
       root.appendChild(crumbsEl(stageCrumbOpts(stage(v))))
@@ -182,7 +181,6 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     root.appendChild(headEl({
       level, title: info.title, sub: info.sub,
       onBack: () => go(level === 'L3' ? 'L2' : 'L1'),
-      onAdd: () => openCreate(),
       onMore: () => undefined,
       actions: deps.headActions,
     }))
@@ -205,8 +203,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
         openCreate()
       },
     }))
-    slideTab(crumbs, crumbs.querySelector('.hu-tablk') as HTMLElement | null, lastLevel === null || lastLevel === level)
-    lastLevel = level
+    slideTab(crumbs, crumbs.querySelector('.hu-tablk') as HTMLElement | null)
     const rowEls = list.querySelectorAll('.hu-row')
     for (let i = 0; i < rowEls.length; i += 1) {
       const row = rowEls[i] as HTMLElement

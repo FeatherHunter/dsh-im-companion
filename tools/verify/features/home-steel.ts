@@ -502,11 +502,11 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   for (const c of ['hu-av', 'hu-txt', 'hu-nm', 'hu-sub', 'hu-names', 'hu-acts2']) assert.ok(one(rows()[0], c), '家行解剖缺件：' + c);
   assert.deepEqual(crumbInfo(bodyEl), [
     { lv: 'L1', label: '家', cur: true, goto: null },
-    { lv: 'L2', label: '助理', cur: false, goto: 'L2' },
-    { lv: 'L3', label: '机器人', cur: false, goto: 'L3' },
-  ], '链路条三级：当前层 aria-current，可前进层带 data-goto');
-  assert.ok(cls(bodyEl, 'hu-crumb').slice(1).every((c) => c.getAttribute('aria-disabled') === 'true'),
-    'L1 未聚焦任何家时后两级是灰色预显（原型 off）');
+    { lv: 'L2', label: '助理 · 客厅', cur: false, goto: 'L2' },
+    { lv: 'L3', label: '机器人 · 小帅', cur: false, goto: 'L3' },
+  ], '链路条三级：当前层 aria-current，后两级带默认去处（列表第一个，见「面包屑默认路径」）');
+  assert.ok(cls(bodyEl, 'hu-crumb').slice(1).every((c) => !c.getAttribute('aria-disabled')),
+    '无焦点时后两级必须可点即进（owner：点击 tab 后就自动进去）');
   assert.equal(txt(foot()), '新建家', 'L1 底部主操作＝新建家');
   /* 命名回落（渲染口径）：手改名冻结＞工作区标题＞目录名，副标如实标出来源 */
   assert.equal(txt(tag(one(rows()[0], 'hu-nm'), 'b')), '客厅', '家名回落：没手改 ⇒ 用工作区标题');
@@ -612,7 +612,7 @@ test('首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰�
   handle.dispose();
 });
 
-test('上部区域定稿：搜索/分段退场，三个面板动作并进绿框页头', () => {
+test('上部区域定稿：搜索/分段退场，三个面板动作并进绿框页头，页头不再有 ＋', () => {
   const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
   assert.ok(!panel.includes('makeSearchField') && !panel.includes('makeSegmented'),
     '搜索框与「按助理 / 按渠道」分段必须退场（owner 裁定：钻取三级下二者无价值）');
@@ -622,6 +622,13 @@ test('上部区域定稿：搜索/分段退场，三个面板动作并进绿框�
     '页头必须支持动作槽（headActions 有落点）');
   assert.ok(readFileSync(join(COMP, 'home-rows.ts'), 'utf8').includes('hu-srow'),
     '骨架行必须与真行同几何（复用 .hu-row）');
+  /* 页头 ＋ 退场（owner 2026-10-13）：它与底部主操作**同效、同屏、同时可见**，L3 还点了没反应。
+   * 一个动作一个入口：建单归底部主操作（随层：新建家 / 新建助理），页头只留面板级动作（船/房/刷新）。 */
+  const frame = readFileSync(join(COMP, 'home-frame.ts'), 'utf8');
+  const body = readFileSync(join(COMP, 'panel-body.ts'), 'utf8');
+  assert.ok(!frame.includes('onAdd') && !frame.includes('hu-ibtn solid'),
+    '页头不得再有 ＋（与底部主操作重复；L3 点了无反应）');
+  assert.ok(!body.includes('onAdd'), '装配层不得再给页头传建单回调（唯一入口＝底部主操作）');
 });
 
 test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行（owner 2026-10-13）', () => {
@@ -688,46 +695,57 @@ test('解耦：新文件不引特性、不自开轮询、不直写 localStorage'
   }
 });
 
-/* —— 液签几何（真机反馈：一级目录反复动画/抖动 + 液签比 chip 高）——
- * 行为断言而非源码 grep：给 crumbs/chip 装假布局矩形，跑**真 slideTab**，量它落到 tab 上的宽高位移。
- * 旧实现只设 width/translateX、高度交给 CSS 的 top/bottom 内缩 ⇒ 液签比 chip 高 4px（Δtop=-2）。 */
-test('液签：宽高位移全部取自 chip 实测矩形（不再比 chip 高 4px），且瞬时落位不触发滑动动画', async () => {
+/* —— 液签几何与滑动（真机两连：①一级目录反复动画/抖动 ②应该在三个 tab 之间滑动）——
+ * 行为断言而非源码 grep：给 crumbs/chip 装假布局矩形，跑**真 slideTab**，量它落到 tab 上的宽高位移。 */
+test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移），宽高取自 chip 实测矩形', () => {
   const frame: any = (() => {
     try { return boxReq('./components/home-frame.js'); } catch { return boxReq('./home-frame.js'); }
   })();
-  const mk = (): any => {
-    const crumbs: any = domDoc.createElement('div');
-    const tab: any = domDoc.createElement('span');
-    const chip: any = domDoc.createElement('button');
-    crumbs.querySelector = (sel: string) => (String(sel).indexOf('hu-crumb') >= 0 ? chip : null);
-    crumbs.scrollLeft = 0;
-    crumbs.getBoundingClientRect = () => ({ left: 100, top: 200, width: 540, height: 41.25 });
-    chip.getBoundingClientRect = () => ({ left: 112, top: 208, width: 46.38, height: 25.25 });
-    return { crumbs, tab, chip };
-  };
-  /* rAF 在 node 侧默认不存在（存在时才是异步恢复）⇒ 装一个捕获队列，才能断言「先 none、落位后恢复」。 */
   const rafQueue: Array<() => void> = [];
   const prevRaf = (globalThis as any).requestAnimationFrame;
   (globalThis as any).requestAnimationFrame = (fn: () => void) => { rafQueue.push(fn); return rafQueue.length };
-  const a = mk();
-  frame.slideTab(a.crumbs, a.tab, true);
+  const flush = (): void => { rafQueue.splice(0).forEach((fn) => fn()); };
+  const mk = (chipLeft: number, chipWidth: number, hasCur = true): any => {
+    const crumbs: any = domDoc.createElement('div');
+    const tab: any = domDoc.createElement('span');
+    const chip: any = domDoc.createElement('button');
+    crumbs.querySelector = (sel: string) => (String(sel).indexOf('hu-crumb') >= 0 && hasCur ? chip : null);
+    crumbs.scrollLeft = 0;
+    crumbs.getBoundingClientRect = () => ({ left: 100, top: 200, width: 540, height: 41.25 });
+    chip.getBoundingClientRect = () => ({ left: chipLeft, top: 208, width: chipWidth, height: 25.25 });
+    return { crumbs, tab, chip };
+  };
+  /* 记忆复位（模块级 lastTabRect）：无当前层时清空旧位，保证本测试从「首帧」开始。 */
+  const reset = mk(0, 0, false);
+  frame.slideTab(reset.crumbs, reset.tab);
+  assert.ok(reset.tab.attributes.get('hidden') !== undefined, '无当前层（例如空家）时液签必须隐藏');
+
+  /* 首帧：无旧位可 FLIP ⇒ 直接落位（禁过渡），下一帧恢复过渡。 */
+  const a = mk(112, 46.38);
+  frame.slideTab(a.crumbs, a.tab);
   assert.equal(a.tab.style.width, '46.38px', '液签宽 = chip 宽');
   assert.equal(a.tab.style.height, '25.25px', '液签高必须 = chip 高（旧实现缺这行 ⇒ 高出 4px）');
-  assert.equal(a.tab.style.transform, 'translate(12px, 8px)', '位移取 chip 相对 crumbs 的左上角（旧实现只给 X）');
-  assert.equal(a.tab.style.transition, 'none', '瞬时落位那一刻不得有过渡（否则重建面包屑时液签会从 0 位滑过来）');
-  rafQueue.splice(0).forEach((fn) => fn());
-  assert.notEqual(a.tab.style.transition, 'none', '落位后必须恢复过渡：层级切换才有滑动动画');
+  assert.equal(a.tab.style.transform, 'translate(12px, 8px)', '位移取 chip 相对 crumbs 的左上角');
+  assert.equal(a.tab.style.transition, 'none', '首帧落位那一刻不得有过渡（否则从 0 位滑过来）');
+  flush();
+  assert.notEqual(a.tab.style.transition, 'none', '落位后必须恢复过渡（CSS 的 spring 才有机会生效）');
+
+  /* 换层（L1→L2）：液签必须**从旧 chip 滑到新 chip** —— FLIP 先按回旧位，再放开过渡滑走。 */
+  const b = mk(300, 60);
+  frame.slideTab(b.crumbs, b.tab);
+  assert.equal(b.tab.style.transform, 'translate(12px, 8px)', 'FLIP 第一步必须按回上一次的位置（否则没有起点，无从滑动）');
+  assert.equal(b.tab.style.transition, 'none', '按回旧位那一刻不得有过渡');
+  flush();
+  assert.equal(b.tab.style.transform, 'translate(200px, 8px)', '下一帧放开过渡滑到新 chip（液态 tab）');
+
+  /* 同点（悬停换行不改当前层）：起止重合 ⇒ 零位移，不抖。 */
+  const c = mk(300, 60);
+  frame.slideTab(c.crumbs, c.tab);
+  const before = c.tab.style.transform;
+  flush();
+  assert.equal(c.tab.style.transform, before, '目标没变时起止同点 ⇒ 零位移（真机「反复动画/抖动」的根因）');
+
   (globalThis as any).requestAnimationFrame = prevRaf;
-
-  const b = mk();
-  frame.slideTab(b.crumbs, b.tab, false);
-  assert.notEqual(b.tab.style.transition, 'none', '层级切换（instant=false）不得禁用过渡');
-
-  /* 没有 aria-current（例如渠道模式无焦点）时液签隐藏，不得残留上一次的宽度。 */
-  const c = mk();
-  c.crumbs.querySelector = () => null;
-  frame.slideTab(c.crumbs, c.tab, true);
-  assert.ok(c.tab.attributes.get('hidden') !== undefined, '无当前层时液签必须隐藏');
 
   /* CSS 不得再用 top/bottom 内缩：几何全部由 JS 按实测矩形给。 */
   const css = readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8');
@@ -735,10 +753,36 @@ test('液签：宽高位移全部取自 chip 实测矩形（不再比 chip 高 4
   assert.ok(rule.indexOf('bottom:6px') < 0 && rule.indexOf('top:6px') < 0, '液签不得再用 top/bottom 内缩');
   assert.ok(rule.indexOf('top:0') >= 0 && rule.indexOf('left:0') >= 0, '液签原点必须归零（由 translate 定位）');
 
-  /* 调用点契约：重建面包屑（setFocus）必须瞬时落位；重渲染只在层级没变时瞬时 ⇒ 只有换层才滑动。 */
+  /* 调用点契约：FLIP 自己分清「位没变/位变了」⇒ 不再需要瞬时开关，也不再有 lastLevel 记账。 */
   const bodySrc = readFileSync(join(COMP, 'panel-body.ts'), 'utf8');
-  assert.match(bodySrc, /slideTab\(fresh,[\s\S]*?,\s*true\)/, 'setFocus 重建面包屑必须瞬时落位（否则每次悬停都滑一下）');
-  assert.match(bodySrc, /lastLevel === null \|\| lastLevel === level/, '重渲染仅在层级未变时瞬时落位，换层才动画');
+  assert.ok(!/slideTab\([^;]*,\s*true\)/.test(bodySrc), '调用点不得再传瞬时落位（FLIP 已接管判定）');
+  assert.ok(!bodySrc.includes('lastLevel'), 'lastLevel 记账必须退场（瞬时/动画判定归 slideTab）');
+});
+
+/* —— 面包屑默认路径（owner 2026-10-13：「当没有焦点时，默认二级目录 三级目录 tab 上的内容
+ * 就是当前列表的第一个，点击 tab 后就自动进去」）—— */
+test('面包屑默认路径：无焦点时二级/三级 chip＝列表第一个且可点即进；没有下一级时显式留空', () => {
+  const { bodyEl } = renderBox();
+  const goto = (root: any, l: string): any => cls(root, 'hu-crumb').filter((c) => c.getAttribute('data-goto') === l)[0];
+  assert.deepEqual(crumbInfo(bodyEl).map((c) => c.label), ['家', '助理 · 客厅', '机器人 · 小帅'],
+    'L1 无焦点：默认路径＝列表第一行（活跃家 客厅）→ 它的第一位助理（小帅）');
+  assert.ok(!goto(bodyEl, 'L2').getAttribute('aria-disabled') && !goto(bodyEl, 'L3').getAttribute('aria-disabled'),
+    '后两级必须可点（owner：点击 tab 后就自动进去）——不许留「助理」/「机器人」空 chip');
+  clickEl(goto(bodyEl, 'L2'));
+  assert.equal(ttlOf(bodyEl).b, '客厅', '点 L2 chip 直接进入该家的助理层');
+  assert.deepEqual(crumbInfo(bodyEl).map((c) => c.label), ['家', '客厅', '机器人 · 小帅'],
+    'L2 当前层＝家名，L3 预显该家第一位助理');
+  clickEl(goto(bodyEl, 'L3'));
+  assert.equal(ttlOf(bodyEl).b, '小帅', '点 L3 chip 直接进入该助理的详情层');
+  assert.ok(one(bodyEl, 'hu-detail'), 'L3 落点确实是助理详情卡');
+
+  /* 没有下一级可去（空家）⇒ chip 显式留空并禁用：不假装有去处，也不给一个点了没反应的入口。 */
+  const empty = renderBox();
+  clickEl(one(empty.bodyEl, 'hu-more-row'));
+  const h2 = rowsOf(empty.bodyEl).filter((r) => r.getAttribute('data-id') === 'h2')[0];
+  clickEl(h2);
+  assert.deepEqual(crumbInfo(empty.bodyEl).map((c) => c.label), ['家', '书房基地', '机器人'], '空家：L3 没有可预显的助理');
+  assert.equal(goto(empty.bodyEl, 'L3').getAttribute('aria-disabled'), 'true', '没有下一级时必须显式禁用');
 });
 
 console.log('features/home-steel: ALL PASS');

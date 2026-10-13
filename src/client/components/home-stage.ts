@@ -52,11 +52,18 @@ export function stageHead(c: StageCtx): { title: string; sub: string } {
   return { title: a ? asstName(v, a) : '助理', sub: a ? `${asstDisplay(v, a).from} · 助理详情` : '助理详情' }
 }
 
-/** 面包屑三级的「焦点」语义照原型：L1 悬停谁就预显谁的下一级。 */
+/** 面包屑三级的「焦点」语义（owner 2026-10-13 收紧）：
+ *   ① 悬停谁就预显谁（原型语义）；
+ *   ② **没有焦点时不留空**——下一级 chip 显示「它要带你去的那个列表的第一个」，
+ *      并且可点即进（owner：「点击 tab 后就自动进去」）。空 chip（`助理`/`机器人` 后面没名字、
+ *      aria-disabled）既没信息也没去处，属于没做完的状态。
+ *   ③ 默认值取**列表实际顺序**的第一个（有助理的家在前、空家折叠在后），不是数组顺序——
+ *      chip 说什么，点进去就该看到什么。 */
 export function stageCrumbOpts(c: StageCtx): Parameters<typeof crumbsEl>[0] {
   const v = c.view
   if (c.channelMode) {
-    const focused = c.level === 'L1' && c.focusId ? c.focusId : c.selChannel
+    const chs = channelsOf(v)
+    const focused = (c.level === 'L1' && c.focusId) ? c.focusId : (c.selChannel || chs[0] || '')
     const first = v.assistants.filter((a) => a.channel === focused)[0]
     return {
       level: c.level,
@@ -64,13 +71,15 @@ export function stageCrumbOpts(c: StageCtx): Parameters<typeof crumbsEl>[0] {
       asstName: c.selAsst ? asstName(v, v.assistants.find((a) => a.id === c.selAsst) as Assistant) : '',
       focusHomeName: focused ? channelLabel(focused) : '',
       focusAsstName: first ? asstName(v, first) : '',
-      onGo: (l) => c.onGo(l),
+      l2Target: focused,
+      l3Target: first ? first.id : '',
+      onGo: (l, id) => c.onGo(l, id),
     }
   }
-  const focusedHome = c.level === 'L1' && c.focusId ? c.focusId : c.selHome
+  const focusedHome = (c.level === 'L1' && c.focusId) ? c.focusId : (c.selHome || firstListedHomeId(v))
   const home = v.homes.find((x) => x.id === focusedHome)
   const firstAsst = home ? asstOfHome(v, home.id)[0] : undefined
-  const focusedAsst = c.level === 'L2' ? (c.focusId || c.selAsst) : (firstAsst ? firstAsst.id : '')
+  const focusedAsst = ((c.level === 'L2' ? (c.focusId || c.selAsst) : '') || (firstAsst ? firstAsst.id : ''))
   const a = v.assistants.find((x) => x.id === focusedAsst)
   return {
     level: c.level,
@@ -78,8 +87,17 @@ export function stageCrumbOpts(c: StageCtx): Parameters<typeof crumbsEl>[0] {
     asstName: c.selAsst && v.assistants.some((x) => x.id === c.selAsst) ? asstName(v, v.assistants.find((x) => x.id === c.selAsst) as Assistant) : '',
     focusHomeName: home ? homeName(v, home) : '',
     focusAsstName: a ? asstName(v, a) : '',
-    onGo: (l) => c.onGo(l),
+    l2Target: focusedHome,
+    l3Target: focusedAsst,
+    onGo: (l, id) => c.onGo(l, id),
   }
+}
+
+/** L1 列表实际顺序的第一行（有助理的家在前、空家在后）——chip 的默认去处必须与眼睛看到的一致。 */
+function firstListedHomeId(v: RowView): string {
+  const { active, empty } = partitionHomes(v.homes, v.index)
+  const first = active[0] ?? empty[0] ?? v.homes[0]
+  return first ? first.id : ''
 }
 
 /** 当前层的列表本体（L1 家 / L2 助理 / L3 详情，渠道模式另走一套）。 */
