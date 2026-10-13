@@ -61,6 +61,10 @@ function sanitize(v: unknown, max: number): string {
   return typeof v === 'string' ? v.slice(0, max) : ''
 }
 
+function isAvatarCode(v: unknown): v is string {
+  return typeof v === 'string' && /^[1-6]$/.test(v)
+}
+
 function cleanHome(r: unknown): HomeRow | null {
   const o = r as Record<string, unknown> | null
   if (!o || typeof o !== 'object') return null
@@ -69,6 +73,9 @@ function cleanHome(r: unknown): HomeRow | null {
   if (!id || !p) return null
   const ws = typeof o.workspaceId === 'string' ? sanitize(o.workspaceId, 256) || null : null
   const name = sanitize(o.name, 64) || p
+  const av = o.avatar
+  const avatar = isAvatarCode(av) ? av : null
+  const avSrc = o.avatarSource === 'user' && avatar ? 'user' : avatar === null && o.avatarSource === 'bot' ? 'bot' : 'default'
   const tomb = o.tombstone as { at?: unknown; reason?: unknown } | null | undefined
   const tombstone = tomb && typeof tomb === 'object' && typeof tomb.at === 'number' && typeof tomb.reason === 'string'
     ? { at: tomb.at, reason: tomb.reason.slice(0, 256) }
@@ -79,8 +86,8 @@ function cleanHome(r: unknown): HomeRow | null {
     path: p,
     name,
     nameSource: o.nameSource === 'user' ? 'user' : 'system',
-    avatar: null,
-    avatarSource: 'default',
+    avatar,
+    avatarSource: avSrc as HomeRow['avatarSource'],
     createdAt: typeof o.createdAt === 'number' ? o.createdAt : Date.now(),
     updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : Date.now(),
     ...(tombstone ? { tombstone } : {}),
@@ -99,6 +106,9 @@ function cleanAssistant(r: unknown, homeIds: Set<string>): AssistantRow | null {
   const botId = typeof o.botId === 'string' && o.botId ? sanitize(o.botId, 256) : null
   const status = o.status === 'unbound' ? 'unbound' : o.status === 'orphan' ? 'orphan' : 'bound'
   if (status === 'bound' && !botId) return null
+  const aav = o.avatar
+  const aavatar = isAvatarCode(aav) ? aav : null
+  const aavSrc = o.avatarSource === 'user' && aavatar ? 'user' : aavatar === null && o.avatarSource === 'bot' ? 'bot' : o.avatarSource === 'home' ? 'home' : 'default'
   return {
     id,
     homeId,
@@ -107,10 +117,10 @@ function cleanAssistant(r: unknown, homeIds: Set<string>): AssistantRow | null {
     status,
     name: sanitize(o.name, 64) || botId || '未命名助理',
     nameSource: o.nameSource === 'user' ? 'user' : o.nameSource === 'home' ? 'home' : 'bot',
-    avatar: null,
-    avatarSource: 'default',
+    avatar: aavatar,
+    avatarSource: aavSrc as AssistantRow['avatarSource'],
     createdAt: typeof o.createdAt === 'number' ? o.createdAt : Date.now(),
-    boundAt: typeof o.boundAt === 'number' ? o.boundAt : Date.now(),
+    boundAt: typeof o.boundAt === 'number' ? o.boundAt : status === 'bound' ? Date.now() : null,
   }
 }
 
@@ -132,6 +142,21 @@ export async function loadHomesDoc(file: string): Promise<HomesDoc> {
   } catch {
     return { ...EMPTY, homes: [], assistants: [] }
   }
+}
+
+/** 读-改-写串行口（T6b #114：改名/配图/占位/绑定/删除共用；与下同队列防交错）。 */
+export async function modifyHomesDoc<T>(file: string, fn: (doc: HomesDoc) => T | Promise<T>): Promise<T> {
+  let out!: T
+  writeQueue = writeQueue.then(async () => {
+    const doc = await loadHomesDoc(file)
+    out = await fn(doc)
+    await fs.mkdir(path.dirname(file), { recursive: true })
+    const tmp = file + '.tmp'
+    await fs.writeFile(tmp, JSON.stringify(doc, null, 2), 'utf8')
+    await fs.rename(tmp, file)
+  })
+  await writeQueue
+  return out
 }
 
 async function persistDoc(file: string, doc: HomesDoc): Promise<void> {
@@ -217,12 +242,14 @@ export async function seedDocs(
       continue
     }
     const now = Date.now()
+    const hv = (r as { avatar?: unknown }).avatar
+    const havatar = isAvatarCode(hv) ? hv : null
     const home: HomeRow = {
       id: typeof r.id === 'string' && r.id ? sanitize(r.id, 64) : genId(now),
       workspaceId: wsId, path: p,
       name: sanitize(r.name, 64) || p,
       nameSource: r.nameSource === 'user' ? 'user' : 'system',
-      avatar: null, avatarSource: 'default', createdAt: now, updatedAt: now,
+      avatar: havatar, avatarSource: havatar ? 'user' : 'default', createdAt: now, updatedAt: now,
     }
     doc.homes.push(home)
     if (typeof r.id === 'string' && r.id) idMap.set(r.id, home.id)
@@ -232,20 +259,33 @@ export async function seedDocs(
   const outAssistants: AssistantRow[] = []
   for (const r of input.assistants || []) {
     const channel = sanitize(r.channel, 64).trim()
-    const botId = sanitize((r.botId ?? '') as string, 256).trim()
-    if (!channel || !botId) continue
-    if (doc.assistants.some((a) => a.botId === botId && a.channel === channel && a.status === 'bound')) continue
+    const botId = sanitize((r.botId ?? '') as string, 256).trim() || null
+    const wantUnbound = (r.status === 'unbound' || r.status === 'orphan') && !botId
+    if (!channel || (!botId && !wantUnbound)) continue
+    if (botId && doc.assistants.some((a) => a.botId === botId && a.channel === channel && a.status === 'bound')) continue
     const rawHome = typeof r.homeId === 'string' ? r.homeId : ''
     const homeId = idMap.get(rawHome) ?? rawHome
     if (!homeId || !homeIds.has(homeId)) continue
     const now = Date.now()
     const botName = sanitize(r.name, 64).trim()
+    const av = (r as { avatar?: unknown }).avatar
+    const avatar = isAvatarCode(av) ? av : null
+    if (wantUnbound) {
+      outAssistants.push({
+        id: typeof r.id === 'string' && r.id ? sanitize(r.id, 64) : genId(now),
+        homeId, channel, botId: null, status: r.status === 'orphan' ? 'orphan' : 'unbound',
+        name: botName || '未命名助理',
+        nameSource: (r.nameSource === 'user' ? 'user' : 'home'),
+        avatar, avatarSource: avatar ? 'user' : 'default', createdAt: now, boundAt: null,
+      })
+      continue
+    }
     outAssistants.push({
       id: typeof r.id === 'string' && r.id ? sanitize(r.id, 64) : genId(now),
       homeId, channel, botId, status: 'bound',
       name: botName || '未命名助理',
       nameSource: (r.nameSource === 'home' ? 'home' : 'bot'),
-      avatar: null, avatarSource: 'default', createdAt: now, boundAt: now,
+      avatar, avatarSource: avatar ? 'user' : 'default', createdAt: now, boundAt: now,
     })
   }
   doc.assistants.push(...outAssistants)

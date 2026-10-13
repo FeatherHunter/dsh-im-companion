@@ -385,7 +385,7 @@ test('②建助理点击级：点家钻进 L2→「新建助理」→弹层点�
     assert.ok(ketingOpt, '「属于哪个家」里必须有当前钻取的家\n当前候选：' + JSON.stringify(boxValues(homeBox)))
     assert.equal(attr(ketingOpt, 'aria-selected'), 'true', '建单必须挂当前选中的家（客厅）')
     assert.deepEqual(boxValues(botBox), ['', 'bot_dddd', 'bot_eeee'], '候选=未绑定的两枚（外加禁用的「以后再绑」占位）')
-    assert.ok(boxOpts(botBox)[0].hasAttribute('disabled'), '「以后再绑」占位必须禁用（T6b 才做未绑定行）')
+    assert.ok(!boxOpts(botBox)[0].hasAttribute('disabled'), '「以后再绑」T6b #114 已启用（未绑定占位，不再禁用）')
     assert.ok(boxLabels(botBox)[1].includes('飞书') && boxLabels(botBox)[2].includes('微信'), '候选项带渠道标注：' + JSON.stringify(boxLabels(botBox)))
     const picked = clickOpt(botBox, 'bot_dddd') /* 点选 bot_dddd */
     assert.equal(attr(picked, 'aria-selected'), 'true', '点选即选中')
@@ -530,7 +530,7 @@ test('④一对一：已被绑走的机器人不进新建助理候选（候选�
     const values = boxValues(botBox)
     const labels = boxLabels(botBox)
 
-    assert.deepEqual(values, ['', 'bot_dddd', 'bot_eeee'], '候选集合恰为「以后再绑」占位（禁用）+ 未绑定的两枚')
+    assert.deepEqual(values, ['', 'bot_dddd', 'bot_eeee'], '候选集合恰为「以后再绑」占位（T6b #114 已启用）+ 未绑定的两枚')
     for (const gone of ['bot_aaaa', 'wx_1111', 'q_2222']) {
       assert.ok(!values.some((v) => v.includes(gone)), gone + ' 已被绑走，不得出现在候选：' + JSON.stringify(values))
     }

@@ -16,6 +16,7 @@ const COMP = join(CLIENT, 'components');
 const HOST = join(REPO, 'src', 'host');
 const ENTRIES = [
   join(CLIENT, 'data', 'home-model.ts'),
+  join(CLIENT, 'data', 'home-edit.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'home-steel-'));
@@ -37,6 +38,7 @@ try {
 } catch { /* 已存在跳过 */ }
 const req = createRequire(join(tmp, 'run.cjs'));
 const model: any = req('./home-model.js');
+const editMod: any = req('./home-edit.js');
 
 // —— 宿主 home-store 单独转译（真文件 IO，盘换临时目录） ——
 const tmpHost = mkdtempSync(join(tmpdir(), 'home-steel-host-'));
@@ -99,6 +101,11 @@ const boxReq = createRequire(join(tmpBox, 'run.cjs'));
 /* tsc 的推断 rootDir 随 import 图变：两种落点都试，避免换一次 import 就 ENOENT。 */
 const bodyMod: any = (() => {
   try { return boxReq('./components/panel-body.js'); } catch { return boxReq('./panel-body.js'); }
+})();
+/* 弹层逻辑状态（开/关）读 pop 模块：遮罩关闭带 130ms 渐隐，DOM 移除是异步的，
+ * “关了没”以 homePopOpen() 为准，数 DOM 会误判（T6b #114 实测）。 */
+const popMod: any = (() => {
+  try { return boxReq('./components/home-pop.js'); } catch { return boxReq('./home-pop.js'); }
 })();
 
 const H = (o: any) => ({ id: 'h1', workspaceId: 'ws-1', path: 'D:\\agents\\keting', name: '客厅', nameSource: 'system', avatar: null, avatarSource: 'default', createdAt: 1, updatedAt: 1, ...o });
@@ -262,6 +269,178 @@ test('缺口判定：空表有料→补；齐→静默；新 bot→补', () => {
   assert.equal(model.seedGap([], [], [], []), false);
   assert.equal(model.seedGap([W({})], [B({})], [H({})], [A({})]), false);
   assert.equal(model.seedGap([W({})], [B({}), B({ botId: 'b2' })], [H({})], [A({})]), true);
+  /* T6b #114 回退说明：曾收窄为“只补缺家”防删后复活，但与已验收契约冲突——
+   * 缺家工作区必须留给手动建家（create-flow ①③前提），新号自动补是 ② 顺序契约的一环。
+   * 已知局限（删有工作区号会被补回）记入 #114 正文，归 T6c/后续票。 */
+  assert.equal(model.seedGap(
+    [W({}), W({ workspaceId: 'ws-9', path: 'D:\\agents\\new', title: '新区' })],
+    [B({})], [H({})], [A({})]), false, '缺家工作区不自动补（留给手动建家）');
+});
+
+test('T6b 改名配图纯逻辑：user 覆盖/恢复默认/非法拒收（验收①②）', () => {
+  const h1: any = editMod.applyHomeUpdate(H({}), { name: '湖畔小屋' }, 7);
+  assert.ok(h1 && h1.name === '湖畔小屋' && h1.nameSource === 'user' && h1.updatedAt === 7);
+  const h2: any = editMod.applyHomeUpdate(H({ name: '旧', nameSource: 'user' }), { name: '  ' }, 7);
+  assert.ok(h2 && h2.name === '' && h2.nameSource === 'system', '空名＝恢复默认（跟工作区走）');
+  const h3: any = editMod.applyHomeUpdate(H({}), { avatar: '3' });
+  assert.ok(h3 && h3.avatar === '3' && h3.avatarSource === 'user');
+  const h4: any = editMod.applyHomeUpdate(H({ avatar: '3', avatarSource: 'user' }), { avatar: null });
+  assert.ok(h4 && h4.avatar === null && h4.avatarSource === 'default');
+  assert.equal(editMod.applyHomeUpdate(H({}), { avatar: '9' }), null, '非法配图拒收');
+  assert.equal(editMod.applyHomeUpdate(H({}), { avatar: 'red' }), null, '非法配图拒收');
+  const h5: any = editMod.applyHomeUpdate(H({}), { name: 'x'.repeat(100) });
+  assert.equal(h5.name.length, 64, '名字截断 64');
+  const a1: any = editMod.applyAssistantUpdate(A({ name: '旧', nameSource: 'user' }), { name: '' });
+  assert.ok(a1 && a1.name === '' && a1.nameSource === 'bot', '已绑恢复默认→走机器人名');
+  const a2: any = editMod.applyAssistantUpdate(
+    A({ botId: null, status: 'unbound', name: '旧', nameSource: 'user' }), { name: '' });
+  assert.ok(a2 && a2.nameSource === 'home', '未绑恢复默认→走家名');
+  assert.equal(editMod.isAvatarCode('1'), true);
+  assert.equal(editMod.isAvatarCode('6'), true);
+  assert.equal(editMod.isAvatarCode('0'), false);
+  assert.equal(editMod.isAvatarCode(''), false);
+  assert.equal(editMod.isAvatarCode(null), false);
+  assert.equal(editMod.trimName('  ab  '), 'ab');
+});
+
+test('T6b 未绑定占位纯逻辑：channel 必填、无号不占号（验收③）', () => {
+  const u: any = editMod.makeUnboundAssistant({ homeId: 'h1', channel: 'feishu', name: '' }, 5);
+  assert.ok(u && u.botId === null && u.status === 'unbound' && u.boundAt === null
+    && u.channel === 'feishu' && u.nameSource === 'home' && u.createdAt === 5);
+  const u2: any = editMod.makeUnboundAssistant({ homeId: 'h1', channel: 'feishu', name: '小梨' });
+  assert.ok(u2 && u2.name === '小梨' && u2.nameSource === 'user');
+  assert.equal(editMod.makeUnboundAssistant({ homeId: 'h1', channel: '' }), null);
+  assert.equal(editMod.makeUnboundAssistant({ homeId: '', channel: 'feishu' }), null);
+});
+
+test('T6b 占位绑定纯逻辑：只收未绑、一对一、user 名保留（验收③④）', () => {
+  const bound = A({ id: 'a1' });
+  const u: any = editMod.makeUnboundAssistant({ homeId: 'h1', channel: 'qq', name: '' }, 1);
+  u.id = 'a2';
+  const ok: any = editMod.applyBind(u, { channel: 'qq', botId: 'b9', botName: '野号', homeText: '客厅' }, [bound, u], 9);
+  assert.ok(ok && ok.status === 'bound' && ok.botId === 'b9' && ok.name === '野号'
+    && ok.nameSource === 'bot' && ok.boundAt === 9);
+  const u3 = { ...u, id: 'a3', channel: 'feishu' };
+  assert.equal(editMod.applyBind(u3, { channel: 'feishu', botId: 'b1' }, [bound, u3]), null, '同号同道已绑→拒收');
+  assert.equal(editMod.applyBind(bound, { channel: 'feishu', botId: 'b2' }, [bound]), null, '已绑→拒收再绑');
+  const u4 = { ...u, id: 'a4', name: '专属', nameSource: 'user' };
+  const ok4: any = editMod.applyBind(u4, { channel: 'qq', botId: 'b8', botName: '机器名' }, [bound, u4]);
+  assert.ok(ok4 && ok4.name === '专属' && ok4.nameSource === 'user', '绑定不丢用户改名');
+});
+
+test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连（验收①③④）', async () => {
+  const homeEdit: any = reqHost('./home-edit.js');
+  const dir = mkdtempSync(join(tmpdir(), 'hs-t6b-'));
+  const file = join(dir, 'homes.json');
+  const r1: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
+  const hid = r1.home.id;
+  const uh: any = await homeEdit.updateHomeRow(file, { id: hid, name: '湖畔', avatar: '2' });
+  assert.equal(uh.ok, true);
+  assert.ok(uh.row.name === '湖畔' && uh.row.nameSource === 'user' && uh.row.avatar === '2' && uh.row.avatarSource === 'user');
+  const uh2: any = await homeEdit.updateHomeRow(file, { id: hid, name: '', avatar: null });
+  assert.ok(uh2.ok && uh2.row.name === '' && uh2.row.nameSource === 'system' && uh2.row.avatar === null);
+  const bad: any = await homeEdit.updateHomeRow(file, { id: hid, avatar: '9' });
+  assert.equal(bad.ok, false);
+  assert.equal(bad.code, 'bad-request');
+  assert.equal((await homeEdit.updateHomeRow(file, { id: hid })).ok, false, '无字段→拒收');
+  assert.equal((await homeEdit.updateHomeRow(file, { id: 'nope', name: 'x' })).code, 'not-found');
+  const c: any = await homeEdit.createUnboundRow(file, { homeId: hid, channel: 'qq', name: '' });
+  assert.equal(c.ok, true);
+  assert.ok(c.row.botId === null && c.row.status === 'unbound' && c.row.boundAt === null);
+  assert.equal((await homeEdit.createUnboundRow(file, { homeId: 'nope', channel: 'qq' })).code, 'not-found');
+  let doc: any = JSON.parse(readFileSync(file, 'utf8'));
+  assert.deepEqual(Object.keys(doc.homes[0]).sort(), Object.keys(H({})).sort(), '改名配图不发明字段');
+  assert.deepEqual(Object.keys(doc.assistants[0]).sort(), Object.keys(A({})).sort(), '占位不发明字段');
+  const b: any = await homeStore.createAssistantRow(file, { homeId: hid, channel: 'feishu', botId: 'b1', botName: '小帅', homeText: '' });
+  assert.equal(b.ok, true);
+  const ua: any = await homeEdit.updateAssistantRow(file, { id: b.assistant.id, name: '' });
+  assert.ok(ua.ok && ua.row.nameSource === 'bot', '已绑恢复默认→bot');
+  const ua2: any = await homeEdit.updateAssistantRow(file, { id: c.row.id, name: '' });
+  assert.ok(ua2.ok && ua2.row.nameSource === 'home', '未绑恢复默认→home');
+  const bd: any = await homeEdit.bindAssistantRow(file, { id: c.row.id, channel: 'qq', botId: 'b9', botName: '野号' });
+  assert.equal(bd.ok, true);
+  assert.ok(bd.row.status === 'bound' && bd.row.name === '野号' && bd.row.nameSource === 'bot');
+  assert.equal((await homeEdit.bindAssistantRow(file, { id: bd.row.id, channel: 'qq', botId: 'b8' })).ok, false, '已绑→拒收');
+  const c2: any = await homeEdit.createUnboundRow(file, { homeId: hid, channel: 'qq' });
+  const clash: any = await homeEdit.bindAssistantRow(file, { id: c2.row.id, channel: 'qq', botId: 'b9' });
+  assert.equal(clash.ok, false);
+  assert.equal(clash.code, 'already-bound');
+  const rm: any = await homeEdit.removeAssistantRow(file, { id: bd.row.id });
+  assert.equal(rm.ok, true);
+  const doc2: any = await homeStore.loadHomesDoc(file);
+  assert.ok(!doc2.assistants.some((x: any) => x.id === bd.row.id), '删后行不在');
+  assert.equal(doc2.assistants.length, 2, '只少一行（b1 已绑＋c2 占位都在）');
+  assert.equal((await homeEdit.removeAssistantRow(file, { id: 'nope' })).code, 'not-found');
+  /* 删不断连的结构保证：宿主改行层没有任何机器人 RPC 可调（不断连、不断开）。
+   * 注释里会提到“不断连”做说明 ⇒ 先剥注释再查，查的是真调用。 */
+  const hostEditSrc = readFileSync(join(HOST, 'home-edit.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  assert.ok(!hostEditSrc.includes('deleteBot') && !hostEditSrc.includes('disconnect') && !hostEditSrc.includes('bot.delete'),
+    '宿主 home-edit 无机器人断连调用');
+  assert.ok(hostEditSrc.match(/^import .*$/gm)?.every((l) => l.includes('home-store')),
+    '宿主 home-edit 只引 home-store（同队列落盘，无旁路）');
+});
+
+test('T6b 绿框呈现：家设置弹层改名＋配图、绑定弹层可开（验收①③）', () => {
+  const { bodyEl } = renderBox();
+  const renameBtn = byAttr(rowsOf(bodyEl)[0], 'data-item-act', 'rename-h')[0];
+  assert.ok(renameBtn && !off(renameBtn));
+  clickEl(renameBtn);
+  const pop = cls(domDoc.body, 'hu-pop')[0];
+  assert.ok(pop, '点重命名→家设置弹层');
+  assert.ok(txt(pop).includes('家设置'));
+  assert.equal(cls(pop, 'hu-avopt').length, 7, '配图行＝默认＋6 色');
+  assert.ok(txt(pop).includes('恢复默认'));
+  clickEl(cls(domDoc.body, 'hu-scrim')[0]);
+  assert.equal(popMod.homePopOpen(), false, '点遮罩→弹层逻辑关闭（DOM 渐隐 130ms 后移除）');
+  popMod.closeHomePop(true);
+  /* L1→L2→未绑助理行点绑机器人→绑定弹层（空闲号 野号 可选） */
+  clickEl(rowsOf(bodyEl)[0]);
+  const l2rows = rowsOf(bodyEl);
+  const bindBtn = byAttr(l2rows[1], 'data-item-act', 'bind-a')[0];
+  assert.ok(bindBtn && !off(bindBtn));
+  clickEl(bindBtn);
+  const pop2 = cls(domDoc.body, 'hu-pop')[0];
+  assert.ok(pop2 && txt(pop2).includes('绑定机器人') && txt(pop2).includes('野号'), '绑定弹层列出空闲机器人');
+  clickEl(cls(domDoc.body, 'hu-scrim')[0]);
+  assert.equal(popMod.homePopOpen(), false);
+  popMod.closeHomePop(true);
+});
+
+test('T6b 两步删除：首点布防、次点真删且只走行删除（验收④）', () => {
+  const removed: string[] = [];
+  const bodyEl = new El('div', domDoc);
+  const handle = bodyMod.createPanelBody({
+    state: { homes: BOX_HOMES, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
+    bodyEl,
+    titleMetaEl: new El('div', domDoc),
+    getWorkspaces: () => BOX_WS,
+    ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {}, removeAssistant: async (id: string) => { removed.push(id); } },
+    onRetry: () => {},
+  });
+  handle.render();
+  clickEl(rowsOf(bodyEl)[0]);
+  clickEl(rowsOf(bodyEl)[0]);
+  assert.ok(one(bodyEl, 'hu-detail'), 'L3 详情在');
+  const ra = byAttr(bodyEl, 'data-item-act', 'rename-a')[0];
+  assert.ok(ra && !off(ra));
+  clickEl(ra);
+  const pop = cls(domDoc.body, 'hu-pop')[0];
+  assert.ok(pop && txt(pop).includes('助理设置'));
+  const links = cls(pop, 'hu-plink');
+  const del = links.find((b: any) => txt(b).includes('删除助理'));
+  assert.ok(del, '助理设置弹层有删除助理（恢复默认旁，不再是假按钮）');
+  clickEl(del);
+  assert.ok(txt(del).includes('再点一次确认删除') && removed.length === 0, '首点只布防不删除');
+  clickEl(del);
+  assert.deepEqual(removed, ['a1'], '次点真删（只调行删除）');
+  popMod.closeHomePop(true);
+  /* 结构保证：remove-a 分支只调行删除，不碰连接。 */
+  const lines = readFileSync(join(COMP, 'panel-body.ts'), 'utf8').split('\n');
+  const at = lines.findIndex((l) => l.includes("kind === 'remove-a'"));
+  const branch = lines.slice(at, at + 3).join('\n');
+  assert.ok(branch.includes('removeAssistant') && !branch.includes('disconnect') && !branch.includes('connect('),
+    'remove-a 分支只走行删除');
 });
 
 test('全程只走 T3 模型，不另发明字段（验收④）：产出行与落盘行的键集合都钉死（可执行）', async () => {
@@ -514,12 +693,10 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.ok(txt(one(rows()[0], 'hu-sub')).includes('跟随工作区名'), '副标标出来源：跟随工作区名');
   assert.equal(txt(tag(one(rows()[1], 'hu-nm'), 'b')), '书房基地', '家名冻结：手改过就不跟工作区（书房）');
   assert.ok(txt(one(rows()[1], 'hu-sub')).includes('你改过的名字'), '副标标出来源：你改过的名字');
-  /* 未实现钮（T6b/T6c 各票）照原型画出但 disabled，且每个都标了归属票号 */
-  assert.equal(cls(bodyEl, 'hu-ract').length, 4, 'L1 只有禁用钮，没有可点的行动作');
-  assert.ok(cls(bodyEl, 'hu-ract').every(off), '家行的重命名/更多全部 disabled（T6b 才实现）');
-  assert.deepEqual([...new Set(cls(bodyEl, 'hu-ract').map((b) => b.getAttribute('data-tip')))].sort(),
-    ['重命名（#114 待实现）', '更多（#114 待实现）'].sort(),
-    '家行禁用钮标注归属票号 #114');
+  /* T6b #114：家行重命名/更多已启用（开家设置弹层：改名＋配图＋恢复默认） */
+  assert.equal(cls(bodyEl, 'hu-ract').length, 4, 'L1 家行两枚行动作 ×2 行');
+  assert.ok(cls(bodyEl, 'hu-ract').every((b) => !off(b)), '家行的重命名/更多全部可用');
+  assert.ok(cls(bodyEl, 'hu-ract').every((b) => !b.classList.contains('planned')), 'L1 不再有 planned 假按钮');
 
   /* 点家行 → L2（钻取，不是展开）：页头换家名、返回键出现、行变助理、底部换「新建助理」 */
   clickEl(rows()[0]);
@@ -530,25 +707,25 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.equal(txt(curCrumb(bodyEl)), 'L2客厅', '当前层＝L2 家（链路条跟着钻取走）');
   assert.equal(txt(foot()), '新建助理', 'L2 底部主操作＝新建助理');
   assert.ok(txt(rows()[0]).includes('已绑') && txt(rows()[0]).includes('小帅'), '已绑助理行：机器人名回落＋已绑章');
-  assert.ok(off(one(rows()[1], 'hu-ract')) && one(rows()[1], 'hu-ract').getAttribute('data-tip') === '绑机器人（#114 待实现）',
-    '未绑助理的「绑机器人」是未实现钮：disabled 且标票号');
+  assert.ok(!off(one(rows()[1], 'hu-ract')) && txt(one(rows()[1], 'hu-ract')) === '绑机器人',
+    '未绑助理的「绑机器人」可用（开绑定弹层，T6b #114）');
 
-  /* 点助理行 → L3 详情：行动作按 114/115 分票，只有「接入 / 详情」可点 */
+  /* 点助理行 → L3 详情：T6b #114 接入/详情/改名·配图/删除助理全可用；#115 只留一行清单 */
   clickEl(rows()[0]);
   assert.ok(one(bodyEl, 'hu-detail'), 'L3 详情卡 .hu-detail 必须在');
   const acts = cls(bodyEl, 'hu-abtn');
-  assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['接入', '详情'], 'L3 只有「接入 / 详情」可点（已绑助理）');
-  assert.equal(acts.filter(off).length, 0, 'L3 不再平铺 5 枚假按钮（真机反馈：灰钮读起来像坏了）');
-  assert.ok(txt(one(bodyEl, 'hu-soon')).includes('待实现：重命名') && txt(one(bodyEl, 'hu-soon')).includes('#115'),
-    '未实现动作改一行「待实现」清单：可发现性保留、可用性不伪装');
+  assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['接入', '详情', '改名·配图', '删除助理'], 'L3 四枚全可用（已绑助理）');
+  assert.equal(acts.filter(off).length, 0, 'L3 无禁用钮');
+  assert.ok(txt(one(bodyEl, 'hu-soon')).includes('换工作区') && txt(one(bodyEl, 'hu-soon')).includes('#115') && !txt(one(bodyEl, 'hu-soon')).includes('#114'),
+    '待实现清单只留 #115（换工作区·移除渠道）');
   assert.equal(txt(one(one(bodyEl, 'hu-chain'), 'on')), '机器人名', '命名链高亮命中来源（nameSource=bot）');
   assert.equal(txt(foot()), '返回助理列表', 'L3 已绑：底部主操作＝返回助理列表');
 
-  /* L3 未绑：底部主操作换成禁用的「绑定机器人」（同一层随绑定状态变） */
+  /* L3 未绑：底部主操作是可用的「绑定机器人」（同一层随绑定状态变，T6b #114） */
   clickEl(one(bodyEl, 'hu-back'));
   clickEl(rows()[1]);
   assert.equal(txt(foot()), '绑定机器人', 'L3 未绑：底部主操作＝绑定机器人');
-  assert.ok(off(foot()) && foot().getAttribute('data-tip') === '绑定机器人（#114 待实现）', '未绑的绑定钮是未实现钮：disabled 且标票号');
+  assert.ok(!off(foot()), '未绑的绑定钮可用（开绑定弹层）');
   assert.ok(txt(one(bodyEl, 'hu-detail')).includes('还没绑机器人'), 'L3 未绑详情卡走占位文案');
 
   /* 面包屑可向前钻取：点 L1 章回到 L1 */
@@ -572,7 +749,7 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.deepEqual(cls(pop, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['属于哪个家', '绑定机器人', '名字'], '建单字段');
   assert.deepEqual(byAttr(pop, 'data-value', 'b9').map((o) => txt(tag(o, 'b'))), ['野号'], '空闲机器人是候选：已绑的 b1 不进下拉');
   const later = byAttr(pop, 'data-value', '')[0];
-  assert.ok(off(later) && later.getAttribute('data-tip') === '未绑定占位（#114 待实现）', '「以后再绑」照原型画出但禁用并标票号');
+  assert.ok(!off(later), '「以后再绑」可用（未绑定占位，T6b #114）');
   assert.deepEqual(cls(pop, 'hu-pbtn-s').map(txt), ['取消', '创建'], '弹层底钮＝取消 / 创建');
   clickEl(one(bodyEl, 'hu-back'));
   clickEl(foot());
@@ -722,6 +899,7 @@ test('解耦：新文件不引特性、不自开轮询、不直写 localStorage'
   /* 绿框解耦面（契约 §1②③）：整包新文件（含删旧文件后的新成员）逐条钉。 */
   const files = [
     join(CLIENT, 'data', 'home-model.ts'),
+    join(CLIENT, 'data', 'home-edit.ts'),
     join(COMP, 'home-ops.ts'),
     join(COMP, 'home-ui-styles.ts'),
     join(COMP, 'home-icons.ts'),

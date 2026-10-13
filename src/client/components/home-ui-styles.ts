@@ -75,6 +75,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-row:active{transform:scale(.994)}
 .home-ui .hu-row.on{border-color:var(--hu-accent);background:color-mix(in srgb, var(--af-accent) 5%, var(--hu-panel));box-shadow:var(--hu-sh)}
 .home-ui .hu-row.hu-flash{animation:huRowIn var(--hu-t-med) var(--hu-spring)}
+.home-ui .hu-row.off .hu-av{filter:grayscale(.45);opacity:.8}
 @keyframes huRowIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .home-ui .hu-row .hu-txt{min-width:0;overflow:hidden}
 .home-ui .hu-row .hu-nm{display:flex;align-items:baseline;gap:7px;min-width:0;overflow:hidden}
@@ -249,6 +250,12 @@ export const HOME_UI_CSS = `
 .home-ui .hu-opt .hu-ot{min-width:0;flex:1}
 .home-ui .hu-opt .hu-ot b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-opt .hu-ot small{display:block;font-size:11px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.home-ui .hu-avrow{display:flex;gap:6px;flex-wrap:wrap}
+.home-ui .hu-avopt{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:12px;font-weight:650;cursor:pointer;border:2px solid transparent}
+.home-ui .hu-avopt[aria-selected="true"]{border-color:var(--hu-accent);box-shadow:var(--hu-ring)}
+.home-ui .hu-plink{font:inherit;font-size:12px;text-align:left;background:none;border:0;color:var(--hu-accent-deep);cursor:pointer;padding:2px 0}
+.home-ui .hu-plink.danger{color:var(--hu-bad)}
 
 @media (max-width:470px){.home-ui .hu-hide-narrow{display:none}}
 @media (prefers-reduced-motion:reduce){.home-ui *,.home-ui *::before,.home-ui *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

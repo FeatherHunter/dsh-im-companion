@@ -104,6 +104,62 @@ function bridgeReply(ep: string, p: any): unknown {
     }
     return { ok: true, value: { homes: mapped, assistants: outA } };
   }
+  /* T6b #114：改名/配图/占位/绑定/删除（内存镜像同口径：user 冻结、avatar 1-6、一对一、删行不断连）。 */
+  if (ep === 'home.update') {
+    const h = homeDb.homes.find((x) => x.id === p?.id);
+    if (!h) return { ok: false, error: { code: 'not-found', message: '家不存在', details: {} } };
+    if (p?.name !== undefined) {
+      const t = String(p.name ?? '').trim().slice(0, 64);
+      if (t) { h.name = t; h.nameSource = 'user'; } else { h.name = ''; h.nameSource = 'system'; }
+    }
+    if (p?.avatar !== undefined) {
+      if (p.avatar === null) { h.avatar = null; h.avatarSource = 'default'; }
+      else if (/^[1-6]$/.test(String(p.avatar))) { h.avatar = String(p.avatar); h.avatarSource = 'user'; }
+      else return { ok: false, error: { code: 'bad-request', message: 'avatar 非法', details: {} } };
+    }
+    return { ok: true, value: { home: h } };
+  }
+  if (ep === 'assistant.update') {
+    const a = homeDb.assistants.find((x) => x.id === p?.id);
+    if (!a) return { ok: false, error: { code: 'not-found', message: '助理不存在', details: {} } };
+    if (p?.name !== undefined) {
+      const t = String(p.name ?? '').trim().slice(0, 64);
+      if (t) { a.name = t; a.nameSource = 'user'; } else { a.name = ''; a.nameSource = a.botId ? 'bot' : 'home'; }
+    }
+    if (p?.avatar !== undefined) {
+      if (p.avatar === null) { a.avatar = null; a.avatarSource = 'default'; }
+      else if (/^[1-6]$/.test(String(p.avatar))) { a.avatar = String(p.avatar); a.avatarSource = 'user'; }
+      else return { ok: false, error: { code: 'bad-request', message: 'avatar 非法', details: {} } };
+    }
+    return { ok: true, value: { assistant: a } };
+  }
+  if (ep === 'assistant.createUnbound') {
+    if (!p?.homeId || !p?.channel) return { ok: false, error: { code: 'bad-request', message: 'homeId/channel 必填', details: {} } };
+    const t = String(p.name ?? '').trim().slice(0, 64);
+    const row = {
+      id: 'a-' + (homeDb.assistants.length + 1), homeId: p.homeId, channel: p.channel,
+      botId: null, status: 'unbound', name: t, nameSource: t ? 'user' : 'home',
+      avatar: null, avatarSource: 'default', createdAt: Date.now(), boundAt: null,
+    };
+    homeDb.assistants.push(row);
+    return { ok: true, value: { assistant: row } };
+  }
+  if (ep === 'assistant.bind') {
+    const a = homeDb.assistants.find((x) => x.id === p?.id);
+    if (!a) return { ok: false, error: { code: 'not-found', message: '助理不存在', details: {} } };
+    if (a.status === 'bound') return { ok: false, error: { code: 'bad-request', message: '已绑定', details: {} } };
+    if (homeDb.assistants.some((x) => x.id !== a.id && x.botId === p?.botId && x.channel === p?.channel && x.status === 'bound')) {
+      return { ok: false, error: { code: 'already-bound', message: '已被绑定', details: {} } };
+    }
+    a.channel = p.channel; a.botId = p.botId; a.status = 'bound'; a.boundAt = 1;
+    return { ok: true, value: { assistant: a } };
+  }
+  if (ep === 'assistant.remove') {
+    const i = homeDb.assistants.findIndex((x) => x.id === p?.id);
+    if (i < 0) return { ok: false, error: { code: 'not-found', message: '助理不存在', details: {} } };
+    homeDb.assistants.splice(i, 1);
+    return { ok: true, value: {} };
+  }
   return { ok: false, error: { code: 'bad-request', message: 'unknown ' + ep, details: {} } };
 }
 const ctx = {
@@ -145,7 +201,9 @@ const ctx = {
     }
     /* T6a 自有桥：家/助理端点走内存小表（list 首读空 → 面板种子 → seed 幂等回填）；其余端点沿用旧答复。 */
     if (ch === '/im-companion') {
-      if (ep === 'home.list' || ep === 'home.seed' || ep === 'home.create' || ep === 'assistant.create') return bridgeReply(ep, p);
+      if (ep === 'home.list' || ep === 'home.seed' || ep === 'home.create' || ep === 'assistant.create'
+        || ep === 'home.update' || ep === 'assistant.update' || ep === 'assistant.createUnbound'
+        || ep === 'assistant.bind' || ep === 'assistant.remove') return bridgeReply(ep, p);
       return { ok: false, error: { code: 'CHANNEL_NOT_CONFIGURED', message: '渠道未配置', details: {} } };
     }
     /* T5（#77）：旧 DSH 传输语义——未知路由传输层 reject（T1 verdict：立即拒识或 5s 超时），
@@ -339,6 +397,26 @@ const l3AfterAsst = !!q1('.hu-detail');
 dumpHtml('l6');
 if (afterAssts === beforeAssts) throw new Error('建助理没写入助理表：opts=' + popAsstOpts + ' disabled=' + popAsstDisabled + ' popText=' + popAsstText);
 
+/* 建助理·以后再绑（T6b #114 未绑定占位点击级）：点选「以后再绑」→ assistant.createUnbound → 落未绑行 → 进该助理 L3 */
+click(q1('.hu-back'), '返回键（回 L2）');
+await tick();
+const beforeUnbound = homeDb.assistants.length;
+click(q1('.hu-pbtn'), 'L2 底部「新建助理」');
+await tick();
+const popLater = popNode();
+const laterOpt = popLater?.querySelectorAll('.hu-opt')?.find((b: any) => b.getAttribute('data-value') === '') ?? null;
+if (!laterOpt || laterOpt.hasAttribute('disabled')) throw new Error('「以后再绑」选项不可点');
+click(laterOpt, '建助理弹层「以后再绑」');
+await tick();
+click(popBtn('创建'), '建助理弹层「创建」（未绑定占位）');
+await settle();
+const afterUnbound = homeDb.assistants.length;
+const unboundRow = homeDb.assistants.find((a: any) => a.status === 'unbound' && !a.botId);
+const l3UnboundText = String((container as any).textContent ?? '');
+const l3UnboundFoot = String(q1('.hu-pbtn')?.textContent ?? '');
+dumpHtml('l7');
+if (afterUnbound !== beforeUnbound + 1 || !unboundRow) throw new Error('以后再绑没写入未绑行：' + JSON.stringify(homeDb.assistants.map((a: any) => [a.id, a.status, a.botId])));
+
 /* #82 两色胶囊：值由构建从 package.json 注入，故断言按真相源推导，
  * 不在测试里再抄一份版本号（宿主 / 上游换版本时这里自动跟随）。
  * 宿主胶囊已删（用户裁定 2026-10-01）：此处断言它**不在**渲染文本里。 */
@@ -361,7 +439,7 @@ const checks: [string, boolean][] = [
   ['L1 空家折叠（0 助理的家收尾部，可达性不丢）', moreText.includes('1 个空家') && l1HomeCount === 3],
   ['L1 展开后可见空家与 0 位助理', l1ExpandedRows === 4 && l1ExpandedText.includes('空房间') && l1ExpandedText.includes('0 位助理')],
   ['头像字形：CJK 单字 / 拉丁两词首字母（dsh-* 不再全是 d）', avatar0 === '小' && avatarWe === 'WE'],
-  ['未实现钮语义化禁用（planned + aria-disabled，非 opacity 假死）', plannedL1 >= 6 && plannedAria],
+  ['L1 行动作已启用（T6b #114：重命名/更多不再 planned）', plannedL1 === 0],
   ['L1 助理计数（N 位助理）', l1Text.includes('2 位助理')],
   ['L1 命名回落来源行（原型 sub）', l1Text.includes('跟随工作区名') && l1Text.includes('跟随目录名')],
   ['L1 助理清单行（原型 names）', l1Text.includes('助理：')],
@@ -383,8 +461,8 @@ const checks: [string, boolean][] = [
   ['L3 机器人 id 与单渠道实例', l3Text.includes('bot_aaaa') && l3Text.includes('单渠道实例')],
   ['L3 命名链三段（你取的名/机器人名/家名）', l3Text.includes('你取的名') && l3Text.includes('机器人名') && l3Text.includes('家名')],
   ['L3 页头标题＝助理名 + 副标回落来源', l3Head.includes('跟随机器人名')],
-  ['L3 行动作启用集＝接入,详情（T6a 实做）', enabledActs.join(',') === '接入,详情'],
-  ['L3 未实现动作只留一行「待实现」清单（不再 5 枚假按钮）', l3Soon.includes('待实现：重命名') && l3Soon.includes('#115') && disabledActs.length <= 1],
+  ['L3 行动作启用集＝接入,详情,改名·配图,删除助理（T6b 实做）', enabledActs.join(',') === '接入,详情,改名·配图,删除助理'],
+  ['L3 待实现只留 #115（换工作区·移除渠道，无假按钮）', l3Soon.includes('待实现') && l3Soon.includes('#115') && !l3Soon.includes('#114') && disabledActs.length === 0],
   ['L3 底部主操作＝返回助理列表（已绑）', l3Foot.includes('返回助理列表')],
   ['头部返回键回 L2', afterBack === false],
   ['面包屑 L1 章回 L1', backToL1],
@@ -393,9 +471,11 @@ const checks: [string, boolean][] = [
   ['建家弹层列出空闲工作区', popHomeOpts >= 1 && popHomeText.includes('客厅')],
   ['建家写入家表（4→5）', beforeHomes === 4 && afterHomes === 5],
   ['建家后落到新家的 L2', l2AfterHome.includes('客厅')],
-  ['建助理弹层含空闲机器人与禁用「以后再绑」', popAsstOpts >= 2 && popAsstText.includes('待认领·飞书') && popAsstText.includes('以后再绑') && popAsstDisabled >= 1],
+  ['建助理弹层含空闲机器人与可用「以后再绑」（T6b 占位）', popAsstOpts >= 2 && popAsstText.includes('待认领·飞书') && popAsstText.includes('以后再绑') && popAsstDisabled === 0],
   ['建助理写入助理表（4→5）', beforeAssts === 4 && afterAssts === 5],
   ['建助理后落到该助理 L3 详情', l3AfterAsst],
+  ['建助理·以后再绑写入未绑行（无号不占号）', afterUnbound === beforeUnbound + 1 && !!unboundRow && unboundRow.boundAt === null],
+  ['建助理·以后再绑落到该助理 L3 未绑详情', l3UnboundText.includes('还没绑机器人') && l3UnboundFoot.includes('绑定机器人')],
   ['旧 A1 列表行 DOM 已退出绿框', !l1Dump.includes('af-row') && !l1Dump.includes('af-actions')],
   ['绿框样式表已装（.home-ui 命名空间 + hu- 前缀）', css.includes('.home-ui .hu-row') && css.includes('.home-ui .hu-detail') && css.includes('.home-ui .hu-pop')],
   ['引流关联卡 P2(#26)', String((container as any).textContent).includes('作者其他插件')],
@@ -406,7 +486,7 @@ const checks: [string, boolean][] = [
   ['页面干净-无解释词', !String((container as any).textContent).includes('解耦') && !String((container as any).textContent).includes('试验')],
   ['家表经种子落盘（一区一家 4 行）', seededHomes === 4],
   ['助理经种子落盘（有归属 4 枚）', seededAssts === 4],
-  ['未绑定 bot 不进表（空 workspace 不建行）', !homeDb.assistants.some((a: any) => !a.botId)],
+  ['种子不建未绑定行（空 workspace 不进表，T6b 占位只走显式创建）', homeDb.assistants.filter((a: any) => !a.botId).length === 1 && !!unboundRow],
 ];
 for (const [name, ok] of checks) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 const allOk = checks.every(([, ok]) => ok);

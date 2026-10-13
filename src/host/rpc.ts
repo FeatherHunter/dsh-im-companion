@@ -7,6 +7,7 @@ import { isUpdateIntervalHours } from './meta-store.js'
 import { collectRoutes } from './routes.js'
 import { collectActivity } from './activity.js'
 import { createAssistantRow, createHomeRow, homesFileFor, loadHomesDoc, seedDocs } from './home-store.js'
+import { bindAssistantRow, createUnboundRow, removeAssistantRow, updateAssistantRow, updateHomeRow } from './home-edit.js'
 
 export type RpcPayload = Record<string, unknown>
 
@@ -207,6 +208,46 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
             assistants: Array.isArray(p.assistants) ? p.assistants as never[] : [],
           })
           return ok({ homes: r.homes, assistants: r.assistants })
+        }
+        // ── T6b #114 追加（Added-only，只追加 case）：改名/配图/占位/绑定/删除，旧码不动。
+        case 'home.update': {
+          const r: any = await updateHomeRow(homesFileFor(dshHome), {
+            id: String(p.id ?? ''),
+            ...(p.name !== undefined ? { name: p.name as string | null } : {}),
+            ...(p.avatar !== undefined ? { avatar: p.avatar as string | null } : {}),
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ home: r.row })
+        }
+        case 'assistant.update': {
+          const r: any = await updateAssistantRow(homesFileFor(dshHome), {
+            id: String(p.id ?? ''),
+            ...(p.name !== undefined ? { name: p.name as string | null } : {}),
+            ...(p.avatar !== undefined ? { avatar: p.avatar as string | null } : {}),
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ assistant: r.row })
+        }
+        case 'assistant.createUnbound': {
+          const r: any = await createUnboundRow(homesFileFor(dshHome), {
+            homeId: String(p.homeId ?? ''), channel: String(p.channel ?? ''),
+            ...(p.name !== undefined ? { name: String(p.name ?? '') } : {}),
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ assistant: r.row })
+        }
+        case 'assistant.bind': {
+          const r: any = await bindAssistantRow(homesFileFor(dshHome), {
+            id: String(p.id ?? ''), channel: String(p.channel ?? ''), botId: String(p.botId ?? ''),
+            botName: String(p.botName ?? ''), homeText: String(p.homeText ?? ''),
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ assistant: r.row })
+        }
+        case 'assistant.remove': {
+          const r: any = await removeAssistantRow(homesFileFor(dshHome), { id: String(p.id ?? '') })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({})
         }
         // ── T7 #90 追加 → T5 #110 加第四电话：更新系统四通电话（电话名即端点名，票面定死；键由包的 `update.phoneNames` 给出，不另拼字符串）。
         // 回包是本仓 RpcResult 信封：成功把包载荷原样放 `value`（M5 起不再注入 autoCheck）；

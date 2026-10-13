@@ -208,6 +208,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
       getRpc: () => rpc,
       getWorkspaces,
       getHome: (id) => data.state.homes.find((x) => x.id === id),
+      getAssistant: (id) => data.state.assistants.find((x) => x.id === id),
       getBot: (channel, botId) => data.state.bots.find((b) => b.channel === channel && b.botId === botId),
       refresh: () => data.load(true),
       reloadHomes: () => data.loadHomes(getWorkspaces),

@@ -120,6 +120,10 @@ export class El {
   addEventListener(t: string, fn: Function) { const key = String(t); if (!this._listeners.has(key)) this._listeners.set(key, new Set()); this._listeners.get(key)!.add(fn); }
   removeEventListener(t: string, fn: Function) { this._listeners.get(String(t))?.delete(fn); }
   dispatchEvent(ev: any) {
+    /* 真浏览器事件恒带 stopPropagation/preventDefault；桩里补空实现，
+     * 否则行动作这类“先止冒再派发”的监听在桩里一点就抛（T6b #114 实测）。 */
+    if (ev && typeof ev.stopPropagation !== 'function') ev.stopPropagation = () => {};
+    if (ev && typeof ev.preventDefault !== 'function') ev.preventDefault = () => {};
     const set = this._listeners.get(ev.type);
     if (set) for (const fn of [...set]) { ev.currentTarget = this; fn.call(this, ev); }
     return true;
@@ -139,8 +143,24 @@ export class El {
   }
   querySelectorAll(sel: string) {
     const out: El[] = [];
-    const cls = sel.startsWith('.') ? sel.slice(1) : null;
-    const walk = (n: El) => { for (const c of n.childNodes) { if (c.nodeType === 1) { if (cls && c.classList.contains(cls)) out.push(c); walk(c); } } };
+    const s = String(sel ?? '').trim();
+    /* 属性选择器（T6b #114 实测缺口）：行动作装配走 '[data-item-act]'，
+     * 桩里原来只认 .class，一律返回 [] ⇒ 整排按钮看着可用、实则没挂监听。 */
+    const am = /^\[([\w-]+)(?:=(?:"([^"]*)"|'([^']*)'|([^\]]*)))?\]$/.exec(s);
+    const cls = !am && s.startsWith('.') ? s.slice(1) : null;
+    const walk = (n: El) => {
+      for (const c of n.childNodes) {
+        if (c.nodeType !== 1) continue;
+        let hit = false;
+        if (am) {
+          const v = c.getAttribute(am[1]);
+          const want = am[2] ?? am[3] ?? am[4];
+          hit = v !== null && (want === undefined ? true : v === want);
+        } else if (cls) { hit = c.classList.contains(cls); }
+        if (hit) out.push(c);
+        walk(c);
+      }
+    };
     walk(this);
     return out;
   }

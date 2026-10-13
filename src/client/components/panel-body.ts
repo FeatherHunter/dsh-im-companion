@@ -4,12 +4,12 @@
  *   页头（返回 / 层级图标 / 标题副标 / ⋯ / ＋）→ 三级 chip 面包屑（液签）→ 行列表 → 底部主操作随层。
  * 导航＝钻取（点行进下一级），不是展开树；TAB/面包屑可向前钻取（跟随悬停或聚焦行）。
  * 旧 buildModel 列表退役（data/model.ts 保留：抽屉/徽标/会话头仍读它，verify 照旧）。
- * T6a 只做「建家选已有区 + 建助理选绑机器人 + 三级呈现」；T6b/T6c 的钮照原型画出但禁用。 */
+ * T6b #114：改名/配图/占位绑定/删助理已接线（未绑定不可接入，删助理只删行不断连）。 */
 import { h, clear } from '../dom'
 import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, type Level } from './home-frame'
-import { newAsstPop, newHomePop, type FormOps } from './home-forms'
+import { bindAsstPop, newAsstPop, newHomePop, renameAsstPop, renameHomePop, type FormOps } from './home-forms'
 import { closeHomePop } from './home-pop'
 import { skeletonRows, viewOf, type RowView } from './home-rows'
 import { stageCrumbOpts, stageHead, stageList, type StageCtx } from './home-stage'
@@ -104,17 +104,43 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     onToggleEmpty: () => { showEmpty = !showEmpty; render() },
   })
 
-  /** 行动作：接入（dsh-im 渠道 RPC）/ 详情（抽屉事件，key=工作区路径）。 */
+  /** 行动作（T6b #114）：接入 / 详情 / 绑定 / 改名·配图 / 删除（只删行不断连）。
+   * 未绑定點接入直接拒收（fail-closed，不产生脏数据）；接入只收已绑。 */
   function act(kind: string, id: string, anchor: HTMLElement): void {
     const v = view()
     if (kind === 'connect-a' || kind === 'connect') {
       const a = v.assistants.find((x) => x.id === id)
+      if (a && a.status !== 'bound') return
       deps.ops.connect(a ? a.homeId : selHome, anchor)
     } else if (kind === 'detail-a') {
       const a = v.assistants.find((x) => x.id === id)
       const home = a ? v.homes.find((x) => x.id === a.homeId) : undefined
       emitDrawer(home ? home.path : '')
+    } else if (kind === 'bind-a') {
+      const a = v.assistants.find((x) => x.id === id)
+      if (!a || a.status === 'bound') return
+      bindAsstPop(anchor, { view: v, ops: deps.ops, asstId: a.id, onDone: () => render() })
+    } else if (kind === 'rename-h' || kind === 'more-home') {
+      if (!v.homes.some((x) => x.id === id)) return
+      renameHomePop(anchor, { view: v, ops: deps.ops, homeId: id, onDone: () => render() })
+    } else if (kind === 'rename-a' || kind === 'more-asst') {
+      if (!v.assistants.some((x) => x.id === id)) return
+      renameAsstPop(anchor, { view: v, ops: deps.ops, asstId: id, onDone: () => render() })
+    } else if (kind === 'remove-a') {
+      void deps.ops.removeAssistant(id).then(() => render())
     }
+  }
+
+  function openHomeSettings(anchor: HTMLElement): void {
+    if (!selHome || !view().homes.some((x) => x.id === selHome)) return
+    renameHomePop(anchor, { view: view(), ops: deps.ops, homeId: selHome, onDone: () => render() })
+  }
+
+  function openBindForL3(): void {
+    const a = view().assistants.find((x) => x.id === selAsst)
+    if (!a || a.status === 'bound') { go('L2'); return }
+    const anchor = (deps.bodyEl.querySelector('.hu-pbtn') as HTMLElement | null) ?? null
+    bindAsstPop(anchor, { view: view(), ops: deps.ops, asstId: a.id, onDone: () => render() })
   }
 
   function setFocus(id: string): void {
@@ -181,7 +207,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     root.appendChild(headEl({
       level, title: info.title, sub: info.sub,
       onBack: () => go(level === 'L3' ? 'L2' : 'L1'),
-      onMore: () => undefined,
+      onMore: (anchor) => openHomeSettings(anchor),
       actions: deps.headActions,
     }))
     const crumbs = crumbsEl(stageCrumbOpts(sc))
@@ -199,7 +225,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
       level,
       bound: level === 'L3' && (v.assistants.find((x) => x.id === selAsst)?.status === 'bound'),
       onPrimary: () => {
-        if (level === 'L3') { go('L2'); return }
+        if (level === 'L3') { openBindForL3(); return }
         openCreate()
       },
     }))

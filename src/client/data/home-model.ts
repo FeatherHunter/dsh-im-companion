@@ -268,7 +268,11 @@ export function buildSeed(
   return { homes, assistants }
 }
 
-/** 缺口判定（每轮快照后内存比对，零 IO）：homes 为空且有工作区/bot，或有已绑 bot 无对应 bound 行。 */
+/** 缺口判定（每轮快照后内存比对，零 IO）：homes 为空且有工作区/bot，或有已绑 bot 无对应 bound 行。
+ * T6b #114 说明：曾收窄为“只补缺家”以防删助理后复活，实测与已验收的点击级契约冲突
+ * （home-create-flow 前提“缺家工作区留给手动建家”、② 顺序契约依赖自动补新号），已回退。
+ * 已知局限：删掉“有工作区”的助理后，快照仍会把它当新号自动补回（复活）；真修需删行留痕
+ * （tombstone）或删时解绑工作区，归 T6c/后续票（见 #114 收尾记录）。 */
 export function seedGap(workspaces: WorkspaceRef[], bots: BotRef[], homes: Home[], assistants: Assistant[]): boolean {
   if (!(homes || []).length && ((workspaces || []).length || (bots || []).some((b) => b && b.workspace))) return true
   for (const b of bots || []) {

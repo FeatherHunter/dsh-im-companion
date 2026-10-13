@@ -10,13 +10,13 @@ export interface HeadOpts {
   title: string
   sub: string
   onBack: () => void
-  onMore: () => void
+  onMore: (anchor: HTMLElement) => void
   /** 面板级动作（船 / 串门搬家 / 刷新）由装配层交进来，与页头同一行右侧成簇——
    * 上部区域因此只剩「标题行 + 绿框页头」，不再有独立工具栏行（owner 裁定 2026-10-13）。 */
   actions?: HTMLElement | null
 }
 
-/** 页头：L1 无返回；L2/L3 有返回；⋯ 在 L2（T6a 未实现 ⇒ 禁用并标票号）。
+/** 页头：L1 无返回；L2/L3 有返回；⋯ 在 L2 开家设置（改名·配图，T6b #114）。
  * 页头**不再有 ＋**（owner 裁定 2026-10-13）：它与底部主操作同效、同屏、同时可见，
  * 而在 L3 还点了没反应 —— 一个动作一个入口，建单归底部主操作（随层：新建家 / 新建助理）。
  * 页头只留「面板级动作」（去舰队 / 串门搬家 / 刷新），两个区各管一类，语义不再重叠。 */
@@ -33,11 +33,9 @@ export function headEl(o: HeadOpts): HTMLElement {
   if (o.actions) head.appendChild(o.actions)
   if (o.level === 'L2') {
     const more = h('button', {
-      className: 'hu-ibtn planned', type: 'button', 'aria-label': '更多操作', 'data-tip': '更多操作（#114 待实现）',
+      className: 'hu-ibtn', type: 'button', 'aria-label': '更多操作', 'data-tip': '家设置（改名·配图）',
     }, huIcon('more', 15))
-    more.disabled = true
-    more.setAttribute('disabled', '')
-    more.setAttribute('aria-disabled', 'true')
+    more.addEventListener('click', () => o.onMore(more))
     head.appendChild(more)
   }
   return head
@@ -154,7 +152,7 @@ export interface FootOpts {
   onPrimary: () => void
 }
 
-/** 底部主操作随层：L1 新建家 · L2 新建助理 · L3 绑定机器人 / 返回助理列表。 */
+/** 底部主操作随层：L1 新建家 · L2 新建助理 · L3 绑定机器人（未绑，T6b #114）/ 返回助理列表（已绑）。 */
 export function footEl(o: FootOpts): HTMLElement {
   const foot = h('div', { className: 'hu-ffoot' })
   if (o.level === 'L3' && o.bound) {
@@ -166,13 +164,7 @@ export function footEl(o: FootOpts): HTMLElement {
   const label = o.level === 'L1' ? '新建家' : o.level === 'L2' ? '新建助理' : '绑定机器人'
   const btn = h('button', { className: 'hu-pbtn', type: 'button', 'data-act': 'primary' },
     huIcon(o.level === 'L3' ? 'link' : 'plus', 15), label)
-  if (o.level === 'L3') {
-    btn.disabled = true
-    btn.setAttribute('disabled', '')
-    btn.setAttribute('aria-disabled', 'true')
-    btn.setAttribute('data-tip', '绑定机器人（#114 待实现）')
-    btn.classList.add('planned')
-  } else if (o.busy) {
+  if (o.busy) {
     btn.disabled = true
     btn.setAttribute('disabled', '')
   } else {

@@ -1,6 +1,6 @@
 /** 绿框 L3 助理详情（T6a）：结构逐字照 T4 认可款原型 proto-studio.html 的 viewAsst——
  * 详情卡（头像/名/回落来源/在线 + 家·渠道章 + 命名链 + 机器人块）+ 三组行动作。
- * T6b/T6c 才实现的钮照原型画出但 disabled（owner 裁定 2026-10-12），title 标注归属票号。 */
+ * T6b #114：绑定/改名/配图/删除已启用；T6c 的钮（换工作区·移除渠道）仍走待实现清单。 */
 import { h } from '../dom'
 import { channelLabel } from '../data/config'
 import { huIcon } from './home-icons'
@@ -92,14 +92,21 @@ export function detailEl(o: DetailOpts): HTMLElement {
 
   const primary = h('div', { className: 'hu-acts' })
   if (a.status === 'bound') primary.appendChild(abtn('connect-a', '接入', o, { cls: 'go', icon: 'link' }))
-  else primary.appendChild(abtn('bind-a', '绑定机器人', o, { cls: 'go', icon: 'link', ticket: '114' }))
+  else primary.appendChild(abtn('bind-a', '绑定机器人', o, { cls: 'go', icon: 'link' }))
   primary.appendChild(abtn('detail-a', '详情', o, { icon: 'info' }))
 
-  /* T6b/T6c 的动作**不画成假按钮**：5 枚 opacity .45 的灰钮在深色主题里读起来就是「坏了」
-   * （真机反馈 2026-10-13）。改成一行「待实现」清单——可发现性保留（知道功能在路上），
-   * 可用性不伪装，也不再制造 5 个假焦点。 */
-  const soon = h('p', { className: 'hu-soon' },
-    '待实现：重命名 · 改头像（#114）｜ 换工作区 · 移除渠道 · 删除助理（#115）')
+  /* T6b #114 已启用：改名·配图（同一设置弹层）＋删除助理（两步确认，只删行不断连）。
+   * T6c 的动作不画成假按钮：一行待实现清单（真机反馈 2026-10-13）。 */
+  const second = h('div', { className: 'hu-acts' })
+  second.appendChild(abtn('rename-a', '改名·配图', o, { icon: 'pencil' }))
+  const del = h('button', { className: 'hu-abtn', type: 'button', 'data-item-act': 'remove-a' }, huIcon('trash', 14), '删除助理')
+  let armed = false
+  del.addEventListener('click', () => {
+    if (!armed) { armed = true; del.textContent = '再点一次确认删除'; return }
+    o.onAct('remove-a', del)
+  })
+  second.appendChild(del)
+  const soon = h('p', { className: 'hu-soon' }, '待实现：换工作区 · 移除渠道（#115）')
 
-  return h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, card, primary, soon)
+  return h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, card, primary, second, soon)
 }

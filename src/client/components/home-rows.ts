@@ -200,8 +200,8 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
     avatarEl(home.id, d.text, home.avatar),
     txt,
     h('span', { className: 'hu-acts2' },
-      iconBtn('rename-h', '重命名', 'pencil', { ticket: '114' }),
-      iconBtn('more-home', '更多', 'more', { ticket: '114' })))
+      iconBtn('rename-h', '重命名', 'pencil'),
+      iconBtn('more-home', '更多', 'more')))
   wireRow(el, opts, home.id)
   return el
 }
@@ -214,7 +214,7 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
   const path = home && home.path ? home.path : '未关联工作区'
   const nm = h('span', { className: 'hu-nm' }, h('b', {}, d.text), statusPillEl(a), onlineTagEl(bot))
   const el = h('div', {
-    className: `hu-row${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}`,
+    className: `hu-row${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}${a.status !== 'bound' ? ' off' : ''}`,
     role: 'button', tabindex: 0, 'data-open': 'L3', 'data-id': a.id, 'aria-label': `助理 ${d.text}`,
   },
     avatarEl(a.id, d.text, a.avatar, { round: true }),
@@ -223,8 +223,8 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
     h('span', { className: 'hu-acts2' },
       a.status === 'bound'
         ? textBtn('connect-a', '接入', { cls: 'connect', id: a.id })
-        : textBtn('bind-a', '绑机器人', { ticket: '114' }),
-      iconBtn('more-asst', '更多', 'more', { ticket: '114' })))
+        : textBtn('bind-a', '绑机器人', { id: a.id }),
+      iconBtn('more-asst', '更多', 'more')))
   wireRow(el, opts, a.id)
   return el
 }
