@@ -194,6 +194,10 @@ export const HOME_UI_CSS = `
 .home-ui .hu-head-acts{margin-left:auto;display:flex;align-items:center;gap:6px;flex:none}
 .home-ui .hu-head-acts > *{width:32px;height:32px;border-radius:10px;flex:none}
 .home-ui .hu-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--hu-accent-soft);border-top-color:var(--hu-accent);animation:huSp .7s linear infinite;flex:none}
+/* 刷新钮在途态：图标原地转圈 + 整体压暗（禁用态由 button[disabled] 自己管）。
+ * 手动动作必须在 100ms 内可见——「点了没反应」和「点了没变化」是两回事。 */
+.home-ui .hu-head-acts .hu-busy svg{animation:huSp .9s linear infinite}
+.home-ui .hu-head-acts .hu-busy{opacity:.6}
 @keyframes huSp{to{transform:rotate(360deg)}}
 .home-ui .hu-err{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--hu-warn);background:var(--hu-warn-soft);border:1px solid var(--hu-warn-soft);border-radius:9px;padding:8px 10px}
 .home-ui .hu-err button{font:inherit;font-size:11.5px;color:inherit;background:none;border:1px solid currentColor;border-radius:7px;padding:2px 8px;cursor:pointer;flex:none}

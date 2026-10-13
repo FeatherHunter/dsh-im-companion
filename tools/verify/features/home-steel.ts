@@ -63,6 +63,7 @@ try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
     join(COMP, 'panel-body.ts'),
+    join(COMP, 'home-refresh.ts'),
     '--ignoreConfig',
     '--outDir', tmpBox, '--module', 'commonjs', '--target', 'es2023',
     '--moduleResolution', 'bundler', '--skipLibCheck',
@@ -439,7 +440,7 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   /* 旧 variant-A（home-drill / home-create / home-styles）整体删除，绿框改钉 T4 认可款原型
    * prototypes/home-assistant/proto-studio.html 的文件集合与 DOM（owner 裁定 2026-10-13）。 */
   const GONE = ['home-drill.ts', 'home-create.ts', 'home-styles.ts'];
-  const GREEN = ['home-ui-styles.ts', 'home-icons.ts', 'home-rows.ts', 'home-frame.ts', 'home-detail.ts', 'home-forms.ts', 'home-pop.ts', 'home-ops.ts', 'panel-body.ts'];
+  const GREEN = ['home-ui-styles.ts', 'home-icons.ts', 'home-rows.ts', 'home-frame.ts', 'home-detail.ts', 'home-forms.ts', 'home-pop.ts', 'home-ops.ts', 'home-refresh.ts', 'panel-body.ts'];
   for (const f of GONE) assert.equal(existsSync(join(COMP, f)), false, '旧 variant-A 文件必须已删：' + f);
   for (const f of GREEN) assert.ok(existsSync(join(COMP, f)), '绿框实现文件必须存在：' + f);
 
@@ -629,6 +630,61 @@ test('上部区域定稿：搜索/分段退场，三个面板动作并进绿框�
   assert.ok(!frame.includes('onAdd') && !frame.includes('hu-ibtn solid'),
     '页头不得再有 ＋（与底部主操作重复；L3 点了无反应）');
   assert.ok(!body.includes('onAdd'), '装配层不得再给页头传建单回调（唯一入口＝底部主操作）');
+});
+
+test('刷新：两个真相源各读一遍（渠道先、家表后），在途去重，忙态成对且失败不锁死', async () => {
+  const refresher: any = (() => {
+    try { return boxReq('./components/home-refresh.js'); } catch { return boxReq('./home-refresh.js'); }
+  })();
+  /* 行为断言（不读源码文本）：给定一个可挂起的 load，连点两下只能跑一轮。 */
+  const order: string[] = [];
+  const busySeq: boolean[] = [];
+  const doneSeq: boolean[] = [];
+  let release: (() => void) | null = null;
+  const refresh = refresher.createRefresher({
+    load: async () => { order.push('load'); await new Promise<void>((res) => { release = res; }); },
+    reloadHomes: async () => { order.push('homes'); },
+    onBusy: (b: boolean) => busySeq.push(b),
+    onDone: (ok: boolean) => doneSeq.push(ok),
+  });
+  const first = refresh();
+  const second = refresh();
+  assert.equal(await second, false, '在途重复点击必须被忽略（不得叠第二轮）');
+  (release as unknown as () => void)();
+  assert.equal(await first, true, '一轮刷新成功');
+  assert.deepEqual(order, ['load', 'homes'], '顺序：渠道/机器人快照先、家表后（家表种子判定要读刚更新的 bot 名单）');
+  assert.deepEqual(busySeq, [true, false], '忙态必须成对');
+  assert.deepEqual(doneSeq, [true], '完成回调一轮只报一次');
+  /* 失败路径：家表读失败也必须解忙态——否则刷新钮永久禁用（比不刷新更糟）。 */
+  const busy2: boolean[] = [];
+  const done2: boolean[] = [];
+  const fail = refresher.createRefresher({
+    load: async () => {},
+    reloadHomes: async () => { throw new Error('boom'); },
+    onBusy: (b: boolean) => busy2.push(b),
+    onDone: (ok: boolean) => done2.push(ok),
+  });
+  assert.equal(await fail(), false, '失败必须如实返回 false（供调用方给失败提示）');
+  assert.deepEqual(busy2, [true, false], '失败路径忙态也必须成对');
+  assert.deepEqual(done2, [false]);
+  /* 去重只在途生效，不能变成一次性：释放后再点仍然照刷。 */
+  const again: string[] = [];
+  const ok = refresher.createRefresher({ load: async () => { again.push('load'); }, reloadHomes: async () => { again.push('homes'); } });
+  await ok();
+  await ok();
+  assert.deepEqual(again, ['load', 'homes', 'load', 'homes'], '去重只在途生效');
+
+  /* 装配层：页头刷新钮与家表重试钮共用同一条管道（旧的无去重 refreshAll 必须消失）。 */
+  const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
+  assert.ok(panel.includes('createRefresher'), '刷新走统一管道');
+  assert.ok(panel.includes('data.load(true)') && panel.includes('data.loadHomes(getWorkspaces)'),
+    '一次刷新＝两个真相源各读一遍（漏一个就会出现「刷了还是旧的」）');
+  assert.ok(panel.includes('refreshBtn.disabled = busy') && panel.includes('hu-busy'),
+    '在途忙态：按钮禁用 + 图标转圈（手动动作必须可见可确认）');
+  assert.ok(panel.includes('onRetry: () => void refresh()'), '家表重试钮共用同一管道（同样去重、同样忙态）');
+  assert.ok(!panel.includes('refreshAll'), '旧的无去重刷新路径必须消失');
+  assert.ok(readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8').includes('.hu-head-acts .hu-busy svg{animation:huSp'),
+    '忙态转圈规则必须在绿框样式里（否则「点了没反应」）');
 });
 
 test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行（owner 2026-10-13）', () => {

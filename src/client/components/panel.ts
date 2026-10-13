@@ -13,6 +13,7 @@ import { installFirstViewStyles } from './first-view-styles'
 import { installHomeUiStyles } from './home-ui-styles'
 import { createPanelBody } from './panel-body'
 import { createPanelData } from './panel-data'
+import { createRefresher } from './home-refresh'
 import type { WorkspaceRef } from '../data/home-model'
 import { createDrillOps } from './home-ops'
 
@@ -130,7 +131,23 @@ export function FleetPanel(ctx: unknown): HTMLElement {
    *      再挂一个「按渠道」分组维度会让 L1 的主概念在两种模式间摇摆（与地图目的地冲突）。
    *   ③ 剩下的三个面板级动作（船 / 串门搬家 / 刷新）并进绿框页头右侧，与 ＋ 同一行成簇：
    *      整个上部区域因此只剩「标题行 → 绿框页头 → 面包屑」，少一行、少一处对齐漂移。 */
-  const refreshBtn = makeIconButton({ iconName: 'refresh', label: copy.refresh, title: copy.refresh, onClick: () => void refreshAll() })
+  /* 手动刷新：两个真相源各读一遍（渠道/机器人快照 → 家表），在途去重，忙态成对。
+   * 反馈分两段：在途 = 按钮禁用 + 图标转圈（可见即可确认）；完成 = 一条带数据时间的 toast
+   * （「没变化」与「没点上」在界面上必须能区分——这正是旧实现缺的那一环）。 */
+  const refresh = createRefresher({
+    load: () => data.load(true),
+    reloadHomes: () => data.loadHomes(getWorkspaces),
+    onBusy: (busy) => {
+      refreshBtn.disabled = busy
+      refreshBtn.classList.toggle('hu-busy', busy)
+    },
+    onDone: (ok) => {
+      const t = data.state.updatedAt
+      if (!ok) toast('刷新失败：家表没读到最新状态，稍后重试')
+      else toast(t ? `已刷新 · 渠道状态更新于 ${t}` : '已刷新')
+    },
+  })
+  const refreshBtn = makeIconButton({ iconName: 'refresh', label: copy.refresh, title: copy.refresh, onClick: () => void refresh() })
   /* 舰队雷达入口（#10 例外单 PR：只加按钮+事件派发，不引矩阵、不改 mode 语义；弹窗由矩阵特性自管）。 */
   const radarBtn = makeIconButton({
     iconName: 'ship', label: copy.radar, title: copy.radar,
@@ -178,10 +195,6 @@ export function FleetPanel(ctx: unknown): HTMLElement {
       return []
     }
   }
-  async function refreshAll(): Promise<void> {
-    await data.load(true)
-    await data.loadHomes(getWorkspaces)
-  }
   /* 旧动作层（panel-actions：改名/选家/移除/头像）文件冻结保留供 connect-qr 回归；
    * 绿框写管道（建家/建助理绑机器人/接入）下沉 home-ops（本文件只接线，单真相源＝家表）。 */
   const bodyModule = createPanelBody({
@@ -199,7 +212,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
       refresh: () => data.load(true),
       reloadHomes: () => data.loadHomes(getWorkspaces),
     }),
-    onRetry: () => void refreshAll(),
+    onRetry: () => void refresh(),
   })
   data.setRender(() => bodyModule.render())
 
