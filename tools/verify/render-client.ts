@@ -166,9 +166,24 @@ const ctx = {
   logger: () => ({ info: () => {}, warn: () => {}, error: () => {} }),
   effect(fn: () => unknown, name?: string) { effects.push(name); const d = fn(); if (typeof d === 'function') d(); },
   get(name: string) {
-    if (name === 'workspaces') return { list: { getSnapshot: () => ({ items: workspaceItems }) } };
-    return undefined;
+    if (name !== 'workspaces') return undefined;
+    return {
+      list: {
+        getSnapshot: () => ({ items: workspaceItems }),
+        /* T10 #124：建家＝「选目录 → DSH 建工作区」⇒ 夹具的 workspaces 服务要真能 create（adoptDirectory 走真实现）。 */
+        create: async (input: { path: string }) => {
+          const path = String(input?.path ?? '');
+          const hit = workspaceItems.find((w: any) => w.path === path);
+          if (hit) return { ok: true, value: { workspace: hit, created: false } };
+          const row = { workspaceId: 'ws-new', path, title: '新房间', sessionIds: [] };
+          workspaceItems.push(row);
+          return { ok: true, value: { workspace: row, created: true } };
+        },
+      },
+    };
   },
+  /* 原生选择器：给一个还不是工作区的目录（T10 #124：建家永远是新建工作区）。 */
+  uiWorkspace: { pickDirectory: async () => 'D:\\agents\\newroom' },
   slots: {
     inject(_name: string, fn: () => unknown) { return fn(); },
     register(opts: any, Comp: any) { registered = { opts, Comp }; return () => {}; },
@@ -357,22 +372,20 @@ dumpHtml('l4');
 click(q1('.hu-back'), '返回键（空家回 L1）');
 await tick();
 
-/* 建家（锚定 popover）：先冒出一个新工作区（真实场景：DSH 里新加的工作区）再建家 */
-workspaceItems.push({ workspaceId: 'ws-5', path: 'D:\\agents\\keting', title: '客厅', sessionIds: [] });
-click(homeRows()[0], 'L1 家行 #0（触发重渲染）');
-await tick();
-click(q1('.hu-back'), '返回键（回 L1）');
-await tick();
+/* 建家（T10 #124：锚定 popover → 选目录 → DSH 建区＋等投影 → 落家）：目录还不是工作区 ⇒ 收养后落家 */
 const beforeHomes = homeDb.homes.length;
 click(q1('.hu-pbtn'), 'L1 底部「新建家」');
 await tick();
 const popHome = popNode();
 const popHomeText = String(popHome?.textContent ?? '');
 const popHomeOpts = popHome ? popHome.querySelectorAll('.hu-opt').length : 0;
+if (popHomeOpts !== 0) throw new Error('T10 #124 后建家弹层不该再有候选列表：' + popHomeText);
+click(popBtn('选择目录'), '建家弹层「选择目录」');
+await settle();
 click(popBtn('创建'), '建家弹层「创建」');
 await settle();
 const afterHomes = homeDb.homes.length;
-const createdHome = homeDb.homes.find((h: any) => h.workspaceId === 'ws-5');
+const createdHome = homeDb.homes.find((h: any) => h.workspaceId === 'ws-new');
 const l2AfterHome = String(q1('.hu-ttl')?.textContent ?? '');
 dumpHtml('l5');
 if (!createdHome) throw new Error('建家没写入家表：opts=' + popHomeOpts + ' popText=' + popHomeText + ' homes=' + JSON.stringify(homeDb.homes.map((h: any) => h.workspaceId)));
@@ -458,19 +471,19 @@ const checks: [string, boolean][] = [
   ['L2 底部主操作＝新建助理（随层）', l2Foot.includes('新建助理')],
   ['L3 详情卡存在（原型 .detail）', !!detail],
   ['L3 详情卡不继承列表行 hover 隐藏', !detailCls.includes('hu-row') && !detailCls.includes('af-row')],
-  ['L3 机器人 id 与单渠道实例', l3Text.includes('bot_aaaa') && l3Text.includes('单渠道实例')],
+  ['L3 机器人 id 与只接一个渠道', l3Text.includes('bot_aaaa') && l3Text.includes('只接一个渠道')],
   ['L3 命名链三段（你取的名/机器人名/家名）', l3Text.includes('你取的名') && l3Text.includes('机器人名') && l3Text.includes('家名')],
   ['L3 页头标题＝助理名 + 副标回落来源', l3Head.includes('跟随机器人名')],
-  ['L3 行动作启用集＝接入,详情,改名·配图,删除助理（T6b 实做）', enabledActs.join(',') === '接入,详情,改名·配图,删除助理'],
-  ['L3 待实现只留 #115（换工作区·移除渠道，无假按钮）', l3Soon.includes('待实现') && l3Soon.includes('#115') && !l3Soon.includes('#114') && disabledActs.length === 0],
+  ['L3 行动作启用集＝接入,详情,改名·头像,删除助理,换工作区,移除渠道（T6c 实做）', enabledActs.join(',') === '接入,详情,改名·头像,删除助理,换工作区,移除渠道'],
+  ['L3 待实现清单退场（#115 落地，无假按钮）', l3Soon === '' && disabledActs.length === 0],
   ['L3 底部主操作＝返回助理列表（已绑）', l3Foot.includes('返回助理列表')],
   ['头部返回键回 L2', afterBack === false],
   ['面包屑 L1 章回 L1', backToL1],
   ['空家空态卡（原型 .empty）', !!emptyBox && emptyText.includes('这个家还没有助理')],
   ['建家弹层＝锚定 popover（非底部弹窗）', !!popHome && popHomeText.includes('新建家')],
-  ['建家弹层列出空闲工作区', popHomeOpts >= 1 && popHomeText.includes('客厅')],
+  ['建家弹层＝选目录支路（T10 #124 分段退场）', popHomeOpts === 0 && popHomeText.includes('选中的目录会建成 DSH 工作区')],
   ['建家写入家表（4→5）', beforeHomes === 4 && afterHomes === 5],
-  ['建家后落到新家的 L2', l2AfterHome.includes('客厅')],
+  ['建家后落到新家的 L2', l2AfterHome.includes('新房间')],
   ['建助理弹层含空闲机器人与可用「以后再绑」（T6b 占位）', popAsstOpts >= 2 && popAsstText.includes('待认领·飞书') && popAsstText.includes('以后再绑') && popAsstDisabled === 0],
   ['建助理写入助理表（4→5）', beforeAssts === 4 && afterAssts === 5],
   ['建助理后落到该助理 L3 详情', l3AfterAsst],

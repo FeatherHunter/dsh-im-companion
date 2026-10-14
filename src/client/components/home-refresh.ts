@@ -6,6 +6,8 @@
  *   ③ 忙态成对：onBusy(true) → onBusy(false) 必然一一对应，异常路径也不例外（否则按钮会永久禁用）。
  * 这里只做编排与状态机，不碰 DOM：按钮禁用/转圈、完成提示由调用方在回调里决定。 */
 
+import { logLine, logOn } from '../log'
+
 export interface RefreshDeps {
   /** 真相源一：渠道与机器人快照（共享 connection-stream 的一次 refresh）。 */
   load: () => Promise<void>
@@ -27,18 +29,24 @@ export function createRefresher(deps: RefreshDeps): Refresher {
     }
   }
   return async () => {
-    if (busy) return false
+    if (busy) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'refresh', action: 'dedup', ok: false, message: '在途，忽略重复点击' })
+      return false
+    }
     busy = true
     fire(deps.onBusy, true)
     let ok = true
+    let err = ''
     try {
       await deps.load()
       await deps.reloadHomes()
-    } catch {
+    } catch (e) {
       ok = false
+      err = String((e as Error)?.message ?? e)
     }
     busy = false
     fire(deps.onBusy, false)
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'refresh', action: 'run', ok, message: err })
     fire(deps.onDone, ok)
     return ok
   }

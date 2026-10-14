@@ -6,6 +6,7 @@ import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
 import { boardGroups, homeList, homePlate, shortName, sloganFor, type HomePlate } from './model'
+import { logLine, logOn } from '../../client/log'
 import type { WorkspaceItem } from '../../client/data/header-overlay'
 
 export interface BoardHandle {
@@ -36,7 +37,7 @@ export function listHomes(ctx: FeatureCtx): string[] {
     const out: string[] = []
     for (const it of items) { const p = (it as WorkspaceItem)?.path; if (typeof p === 'string' && p && !out.includes(p)) out.push(p) }
     return out
-  } catch { return [] }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'adopt', action: 'homes-fail', ok: false, message: '宿主工作区名单取不到（按无名单处理）：' + String((e as Error)?.message ?? e) }); return [] }
 }
 
 export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHandle {
@@ -54,7 +55,8 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
     overlay.appendChild(dialog as unknown as Node)
     overlay.addEventListener('mousedown', (e: Event) => { if (e.target === overlay) api.close() })
     document.body.appendChild(overlay)
-  } catch {
+  } catch (e) {
+    logLine('error', 'ui.render.fail', { area: 'adopt', message: '驾驶舱面板未建出（返回空句柄）：' + String((e as Error)?.message ?? e) })
     return { repaint() {}, close() {} }
   }
   const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') api.close() }
@@ -109,7 +111,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
         if (have.has(w)) continue
         grid.appendChild(homeCard(homePlate(w, meta), w, [], false, { class: 'adopt-sec adopt-sec-empty' }, '空无一人，拖个人来安家'))
       }
-    } catch { /* 渲染失败保持旧面板（fail-closed） */ }
+    } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'adopt', action: 'board-repaint-fail', ok: false, message: '面板重绘失败，保持旧面板：' + String((e as Error)?.message ?? e) }) }
   }
 
   const api: BoardHandle & { close(): void } = {

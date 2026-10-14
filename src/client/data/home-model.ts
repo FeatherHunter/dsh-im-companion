@@ -268,17 +268,22 @@ export function buildSeed(
   return { homes, assistants }
 }
 
-/** 缺口判定（每轮快照后内存比对，零 IO）：homes 为空且有工作区/bot，或有已绑 bot 无对应 bound 行。
- * T6b #114 说明：曾收窄为“只补缺家”以防删助理后复活，实测与已验收的点击级契约冲突
- * （home-create-flow 前提“缺家工作区留给手动建家”、② 顺序契约依赖自动补新号），已回退。
- * 已知局限：删掉“有工作区”的助理后，快照仍会把它当新号自动补回（复活）；真修需删行留痕
- * （tombstone）或删时解绑工作区，归 T6c/后续票（见 #114 收尾记录）。 */
+/** 缺口判定（每轮快照后内存比对，零 IO）：**任一工作区没有家**即补（T10 #124：家＝工作区的镜像），
+ * 以及「某 bot 的工作区有家但没有 bound 行」。判重口径与宿主 `seedDocs` 一致（规范路径），
+ * tombstone 行同样算「已占用」——否则删掉的家会被每轮 sweep 反复补回（宿主判重也会命中它）。
+ * 已知局限：删掉「有工作区」的助理后快照仍会把它当新号补回（复活）；真修需删行留痕或删时解绑，归 T6c/后续票。 */
 export function seedGap(workspaces: WorkspaceRef[], bots: BotRef[], homes: Home[], assistants: Assistant[]): boolean {
-  if (!(homes || []).length && ((workspaces || []).length || (bots || []).some((b) => b && b.workspace))) return true
+  const rows = homes || []
+  /* 空表有料（历史契约）：家表空而工作区/机器人有货 ⇒ 补一次（buildSeed 按有工作区的号建家）。 */
+  if (!rows.length && ((workspaces || []).length || (bots || []).length)) return true
+  for (const w of workspaces || []) {
+    if (!w || !w.workspaceId || !w.path) continue
+    if (!rows.some((h) => normPath(h.path) === normPath(w.path) || (h.workspaceId && h.workspaceId === w.workspaceId))) return true
+  }
   for (const b of bots || []) {
     if (!b || !b.botId || !b.channel || !b.workspace) continue
     if (!isBotBound(assistants, b.channel, b.botId)) {
-      if ((homes || []).some((h) => normPath(h.path) === normPath(b.workspace))) return true
+      if (rows.some((h) => normPath(h.path) === normPath(b.workspace))) return true
     }
   }
   return false

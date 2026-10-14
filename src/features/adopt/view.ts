@@ -7,6 +7,7 @@ import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import { installFeatureStyles } from '../../client/theme'
 import { toast } from '../../client/ui/toast'
+import { logLine, logOn } from '../../client/log'
 import type { FeatureCtx } from '../protocol'
 import { actDrop, dismissUndo } from './acts'
 import { listHomes, openBoard, type BoardHandle } from './panel'
@@ -61,6 +62,7 @@ function hasMime(e: DragEvent): boolean {
 }
 
 function openPanel(ctx: FeatureCtx): void {
+  logLine('debug', 'ui.action', { area: 'adopt', action: 'open-panel', ok: true, message: '打开串门搬家面板（bot 数 ' + lastBots.length + '）' })
   try {
     try { installFeatureStyles('adopt', CSS) } catch { /* 忽略 */ }
     try { board?.close() } catch { /* 忽略 */ }
@@ -70,7 +72,7 @@ function openPanel(ctx: FeatureCtx): void {
     board.close = () => { try { if (staged.size) toast([...staged.keys()].map((id) => lastBots.find((b) => b.botId === id)?.botName || id).join('、') + '没安顿好，已送回原来的家') } catch { /* 提示失败不阻断 */ } staged.clear(); try { rawClose() } catch { /* 忽略 */ } }
     board.repaint(lastBots, staged)
     reloadMeta(ctx)
-  } catch { /* 打不开就不开 */ }
+  } catch (e) { logLine('error', 'ui.render.fail', { area: 'adopt', message: '串门面板打开失败：' + String((e as Error)?.message ?? e) }) }
 }
 
 function ensureEntry(ctx: FeatureCtx, g: number): void {
@@ -95,7 +97,7 @@ function ensureEntry(ctx: FeatureCtx, g: number): void {
     }) as HTMLElement
     header.appendChild(btn)
     entryBtn = btn
-  } catch { /* 找不到头栏就不放入口（fail-closed） */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'adopt', action: 'entry-fail', ok: false, message: '头栏锚点/入口按钮未挂（fail-closed）：' + String((e as Error)?.message ?? e) }) }
 }
 
 export function mountAdopt(ctx: FeatureCtx): () => void {
@@ -187,6 +189,7 @@ export function mountAdopt(ctx: FeatureCtx): () => void {
       if ((!desc.botId || !desc.channel) && dragDesc?.botId && dragDesc?.channel) desc = { botId: dragDesc.botId, channel: dragDesc.channel }
       dragDesc = null
       if (!desc.botId || !desc.channel) {
+        logLine('debug', 'ui.action', { area: 'adopt', action: 'drop-bad-payload', ok: false, message: '拖拽载荷缺 botId/channel，未绑定任何工作区' })
         toast('拖拽数据无效，未绑定任何工作区')
         return
       }
@@ -198,9 +201,10 @@ export function mountAdopt(ctx: FeatureCtx): () => void {
       }
       if (sec && sec.hasAttribute('data-adopt-plaza')) {
         /* 巷子口歇脚：只记小本本不写服务器；拖进一家才走正常换绑，关面板即送回。 */
-        if (!live) { toast('没找着这张照片'); return }
+        if (!live) { toast('找不到这张照片'); return }
         if (!live.workspace) { toast('它已经在巷子口歇着了'); return }
         staged.set(live.botId, live.workspace)
+        logLine('debug', 'ui.action', { area: 'adopt', action: 'stage-plaza', ok: true, message: (live.botName || live.botId) + ' 歇脚于巷子口，来自 ' + live.workspace })
         toast((live.botName || live.botId) + '去巷子口歇着了，拖进一家才算搬完')
         if (alive(g)) paint()
         return
@@ -208,11 +212,12 @@ export function mountAdopt(ctx: FeatureCtx): () => void {
       const to = sec?.getAttribute('data-adopt-ws')
       try { if (to && to === live?.workspace && desc.botId) staged.delete(desc.botId) } catch { /* 忽略 */ }
       if (!to) {
+        logLine('debug', 'ui.action', { area: 'adopt', action: 'drop-empty', ok: false, message: '空白处不可放：' + desc.botId })
         toast('空白处不可放，请拖到分组上')
         return
       }
       actDrop(ctx, bot, { kind: 'workspace', workspace: to }, lastMeta, { onCommitted: (id) => { try { staged.delete(id) } catch { /* 忽略 */ } if (alive(g)) paint() } })
-    } catch { /* 忽略 */ }
+    } catch (e) { logLine('error', 'ui.render.fail', { area: 'adopt', message: 'drop 处理失败（本次拖放作废）：' + String((e as Error)?.message ?? e) }) }
   };
   const onDragEnd = (): void => {
     dragId = null; dragStartX = null; dragDesc = null
@@ -259,7 +264,7 @@ export function mountAdopt(ctx: FeatureCtx): () => void {
     document.addEventListener('dragover', onTilt)
     document.addEventListener('drop', onDrop)
     document.addEventListener('dragend', onDragEnd)
-  } catch { /* 无 DOM 环境可挂载为空操作 */ }
+  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'adopt', message: '拖放监听注册失败：' + String((e as Error)?.message ?? e) }) }
 
   return () => {
     try {

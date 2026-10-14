@@ -3,6 +3,7 @@
  * 被筛选藏起（data-left-filter="hidden" 祖先链）的不动；血统树（aria-level）永不动。
  * 无轮询、无存储、无跨 feature 引用；按钮随条带同生同灭。 */
 import { isLineageNode } from '../../client/dom'
+import { logLine } from '../../client/log'
 import { GROUP_SEL, HIDE_ATTR, HIDE_ON } from './dom-scope'
 
 export const COLLAPSE_CLASS = 'left-filter-collapse'
@@ -13,7 +14,8 @@ export const COLLAPSE_TIP = '一键收起当前可见分组'
 export const COLLAPSE_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M5.8 9.6l2.2-2.2 2.2 2.2"/></svg>'
 
 function info(msg: string): void {
-  try { console.info('[dsh-im-companion] left-filter：' + msg) } catch { /* 无 console 静默 */ }
+  /* 用户动作结果（收起全部）：低频，不套开关守卫；语义走 ui.action + area（清单无 collapse 专用事件）。 */
+  logLine('debug', 'ui.action', { area: 'left-filter', action: 'collapse-all', ok: true, message: msg })
 }
 
 function isExpanded(row: Element): boolean {
@@ -174,7 +176,7 @@ export function ensureCollapseBtn(strip: Element | null | undefined): Element | 
     try {
       btn.addEventListener('click', (e: Event) => {
         try { e.stopPropagation() } catch { /* 阻断失败忽略 */ }
-        try { collapseFromStrip(strip) } catch { /* 折叠失败不抛 */ }
+        try { collapseFromStrip(strip) } catch (err) { logLine('error', 'ui.render.fail', { area: 'left-filter', message: String((err as Error)?.message ?? err) }) }
       })
     } catch { /* 监听失败忽略 */ }
     try { strip.appendChild(btn) } catch { return null }

@@ -2,6 +2,7 @@
  * 行上只读写三个无害属性（data-lb-kind/data-lb-label/title），不增删节点——重渲染无东西可吃。
  * 无自有轮询；徽标纯展示不可点（用户裁定，点击事件已退役）。 */
 import { badgeForWorkspace } from '../../client/data/bindings'
+import { logLine, logOn } from '../../client/log'
 import type { BotSnap } from '../../client/data/fleet-api'
 import { buildCardData, mountHoverCard } from './hover-card'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
@@ -22,12 +23,9 @@ let activeGen = 0
 const claimGen = (): number => { try { const w = window as unknown as Record<string, number>; w.__lbGen = (w.__lbGen || 0) + 1; return w.__lbGen } catch { return 1 } }
 const genAlive = (g: number): boolean => { try { return (window as unknown as Record<string, number>).__lbGen === g } catch { return true } }
 
+/* 关键节点人话（挂载/首次命中）：低频，走 ui.action（area=left-badges），不套开关守卫。 */
 function info(msg: string): void {
-  try {
-    console.info('[dsh-im-companion] left-badges：' + msg)
-  } catch {
-    /* 无 console 环境静默 */
-  }
+  logLine('debug', 'ui.action', { area: 'left-badges', action: 'lifecycle', ok: true, message: msg })
 }
 
 function collectRows(): Element[] {
@@ -119,11 +117,7 @@ function paint(bots: BotSnap[], nowMs: number): void {
   }
   if (rows.length !== lastRowTotal) {
     lastRowTotal = rows.length
-    try {
-      console.debug('[dsh-im-companion] left-badges：行数 ' + rows.length + '，已装饰 ' + decorated)
-    } catch {
-      /* 无 console 环境静默 */
-    }
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-badges', action: 'rows', ok: true, message: '行数 ' + rows.length + '，已装饰 ' + decorated })
   }
 }
 
@@ -134,8 +128,8 @@ function schedulePaint(bots: BotSnap[]): void {
     rafQueued = false
     try {
       paint(bots, Date.now())
-    } catch {
-      /* 绘制失败下次再试 */
+    } catch (e) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-badges', action: 'paint-fail', ok: false, message: String((e as Error)?.message ?? e) })
     }
   }
   try {
@@ -163,8 +157,8 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     if (!hasSnap) return
     try {
       paint(current, Date.now())
-    } catch {
-      /* 绘制失败下次再试 */
+    } catch (e) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-badges', action: 'paint-fail', ok: false, message: String((e as Error)?.message ?? e) })
     }
   }
   info('已挂载（选择器 ' + ROW_SELECTORS.join(' / ') + '，等 stream 首轮快照）')
@@ -183,7 +177,7 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
             } catch {
               /* 名表刷新失败保留旧表 */
             }
-          }).catch(() => {})
+          }).catch((e) => { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-badges', action: 'meta-fail', ok: false, message: '名表未刷新，保留旧表：' + String((e as Error)?.message ?? e) }) })
         }
       } catch {
         /* meta 未就绪下轮再试 */
@@ -191,8 +185,8 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
       if (!genAlive(activeGen)) return
       repaint()
     })
-  } catch {
-    /* 订阅失败即不挂载 */
+  } catch (e) {
+    logLine('error', 'feature.mount.fail', { feature: 'left-badges', message: String((e as Error)?.message ?? e) })
     return noop
   }
   let stopHover: (() => void) | null = null
@@ -226,8 +220,8 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
         }
       },
     })
-  } catch {
-    /* 悬浮卡失败不影响徽标 */
+  } catch (e) {
+    logLine('error', 'ui.render.fail', { area: 'left-badges', message: '悬浮卡挂载失败（徽标不受影响）：' + String((e as Error)?.message ?? e) })
   }
   try {
     if (typeof MutationObserver !== 'undefined') {

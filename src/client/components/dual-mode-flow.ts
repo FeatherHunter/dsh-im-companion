@@ -12,6 +12,7 @@ import type { ModalHandle } from '../ui/modal'
 import { showMenu, type MenuItem } from '../ui/menu'
 import { getChannelMode } from '../data/dual-mode-capabilities'
 import type { DualModeCopy } from './dual-mode-copy'
+import { logLine, logOn } from '../log'
 import { renderManualForm } from './manual-form'
 import type { ConnectTarget } from './connect-flow'
 
@@ -43,6 +44,7 @@ export interface DualQrHooks {
 /** 同步挂载（provision 未启动时调用，无取消语义）；调用后 run() 直接返回，后续导航走内部闭包。 */
 export function enterDualMode(ctx: DualCtx, qr: DualQrHooks): void {
   const mode = getChannelMode(ctx.channel)
+  if (logOn('debug')) logLine('debug', 'ui.action', { area: 'connect', action: 'dual-mode', ok: true, message: ctx.channel + ' 走 ' + mode })
   if (mode === 'manual-only') {
     showManual(null)
     return
@@ -110,7 +112,8 @@ export function enterDualMode(ctx: DualCtx, qr: DualQrHooks): void {
     try {
       const st = await fetchChannelStatus(ctx.rpc, ctx.channel)
       submitted = st.provisioning?.submitted === true
-    } catch {
+    } catch (e) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'connect', action: 'switch-manual', ok: false, message: '查不到 provision 状态，按未提交处理：' + String((e as Error)?.message ?? e) })
       submitted = false
     }
     await qr.refreshBaseline()
@@ -119,10 +122,12 @@ export function enterDualMode(ctx: DualCtx, qr: DualQrHooks): void {
     qr.setAttemptId(undefined)
     qr.setQrSwitch(null)
     if (!submitted && id) await qr.cancelAttempt(id)
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'connect', action: 'switch-manual', ok: true, message: submitted ? '已提交：保留本次尝试' : '未提交：取消尝试 ' + String(id ?? '无') })
     showManual(() => void switchToQr())
   }
 
   async function switchToQr(): Promise<void> {
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'connect', action: 'switch-qr', ok: true, message: ctx.channel })
     await qr.refreshBaseline()
     qr.setQrSwitch(() => void switchToManual())
     qr.begin()

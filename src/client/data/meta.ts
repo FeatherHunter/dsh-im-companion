@@ -2,6 +2,7 @@
  * 接口 MetaStore 与存储实现解耦：真机走 host 桥（RpcMetaStore，host 持久化文件），
  * 桥不可用时降级 localStorage（LocalMetaStore，兼容旧键名）。UI 只依赖接口。 */
 import type { RpcCall } from './fleet-api'
+import { logLine, logOn } from '../log'
 
 export interface LocalAgent {
   name: string
@@ -55,6 +56,8 @@ export class RpcMetaStore implements MetaStore {
     const res = raw as { ok: boolean; value?: T; error?: { code?: string; message?: string } } | null
     if (!res || res.ok !== true) {
       const msg = res?.error?.message ?? res?.error?.code ?? 'host 桥调用失败'
+      /* 元数据写失败＝用户动作静默丢失（改名/头像/落家），必须留原文与端点（T9 #123）。 */
+      logLine('warn', 'bridge.call.fail', { method: 'meta:' + endpoint, message: msg })
       throw new Error(msg)
     }
     return res.value as T
@@ -211,8 +214,11 @@ export async function createMetaStore(rpc: RpcCall | null): Promise<MetaStore> {
       const raw = await rpc(HOST_CHANNEL, 'ping', {}, AbortSignal.timeout(1500))
       const res = raw as { ok?: boolean } | null
       if (res?.ok === true) return new RpcMetaStore(HOST_CHANNEL, rpc)
-    } catch {
+      /* ping 不通 → 降级 localStorage：界面照常可用但写不落 host 文件，必须留下降级证据。 */
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'meta', action: 'fallback-local', ok: false, message: 'ping ok:false' })
+    } catch (e) {
       /* 桥不可用 → 降级 */
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'meta', action: 'fallback-local', ok: false, message: String((e as Error)?.message ?? e) })
     }
   }
   let storage: Storage | null = null

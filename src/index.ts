@@ -4,6 +4,8 @@ import path from 'node:path'
 import { AgentMetaStore } from './host/meta-store.js'
 import { createAgentFleetHandler } from './host/rpc.js'
 import { createUpdateHostBridge } from './host/update.js'
+import { createHostLogFor, type HostLogHandle, type LogPhoneRegistry } from './host/log.js'
+import type { InstallVerdict } from './host/update-precheck.js'
 
 export const name = 'dsh-im-companion'
 // 载体：DSH 公开的 /api（connection.fetch.register），故 inject 只需 connection。
@@ -19,6 +21,14 @@ export const inject = ['connection']
 const ENDPOINT = 'im-companion'
 const ROUTE_PATH = '/api/' + ENDPOINT
 
+/** #126：预检留痕一行（resident ⇒ 调试开关关着也落盘）。`expected` 只在 dev-source 时为真——
+ * 「解析不出目标包」不等于「预期」，那种情况由 message 明说「没能归因」（诚实口径）。 */
+function logPrecheck(handle: HostLogHandle, v: InstallVerdict): void {
+  handle.log('info', 'update.precheck', {
+    mode: v.mode, dir: v.dir ?? '', profileDir: v.profileDir ?? '', expected: v.mode === 'dev-source', message: v.message,
+  })
+}
+
 export function apply(ctx: any, config: any = {}) {
   const logger = typeof ctx?.logger === 'function' ? ctx.logger(name) : (ctx?.logger ?? console)
   const dshHome = String(config.dshHome ?? process.env.DSH_HOME ?? path.join(homedir(), '.dsh'))
@@ -28,7 +38,11 @@ export function apply(ctx: any, config: any = {}) {
   // 更新系统接线（T7 #90 → T5 M5 起无定时器）：`update` 是**提供函数**，让位分支上它一直是 null ⇒
   // 那个实例不建更新能力、不碰宿主存储（票面 §F.2）。这里只交出函数，实现等让位分支过了才建。
   let update: ReturnType<typeof createUpdateHostBridge> | null = null
-  const handler = createAgentFleetHandler(store, { update: () => update })
+  /* 日志（T9 #123）同样取成提供函数：让位分支上不建库——同一日志目录不许出现第二个活跃写者。
+   * 电话注册表先建好（handler 按名字查表），实现等让位分支过了再填。 */
+  let hostLog: HostLogHandle | null = null
+  const logPhones: LogPhoneRegistry = new Map()
+  const handler = createAgentFleetHandler(store, { update: () => update, log: () => hostLog, logPhones })
   const reply = (rpcId: string, result: unknown): Response =>
     Response.json({ type: 'server-response', rpcId, result })
   try {
@@ -66,8 +80,44 @@ export function apply(ctx: any, config: any = {}) {
     throw error
   }
 
-  // 让位分支之后才建更新系统：标准接线（无定时器、无副作用，M5 起无 start/dispose 生命周期）。
-  update = createUpdateHostBridge({ ctx, logger, dshHome })
+  /* #126：预检判定可能早于建库落地（createHostLogFor 是异步的）⇒ 先缓存，库就绪后补记。 */
+  let pendingPrecheck: InstallVerdict | null = null
+
+  // 让位分支之后才建日志：落点 <DSH_HOME>/logs/dsh-im-companion/（生态惯例），失败降级为 no-op。
+  // 装配本身保持**同步**（宿主不提供 fetch.register 时必须当场抛——回归钉见 tools/verify/host-entry.ts），
+  // 故这里不 await：建库要 mkdir + 读回开关；完成后才填电话注册表并补记启动行（客户端首批约 1s 后到，够快）。
+  void createHostLogFor(dshHome)
+    .then((handle) => {
+      if (!handle) return
+      hostLog = handle
+      handle.registerPhones(logPhones)
+      handle.log('info', 'host.start', { route: ROUTE_PATH, dshHome })
+      handle.log('info', 'host.log.init', { dir: handle.dir, ok: true, reason: '' })
+      handle.log('info', 'host.ready', { route: ROUTE_PATH })
+      /* #126 预检若早于建库落地，判定先缓存、这里补记（绝不静默丢行）。 */
+      if (pendingPrecheck) { logPrecheck(handle, pendingPrecheck); pendingPrecheck = null }
+    })
+    .catch(() => { /* createHostLogFor 内部已吞错：日志绝不拖垮装配 */ })
+  update = createUpdateHostBridge({
+    ctx,
+    logger,
+    dshHome,
+    /* 更新包的事件口 `fire(level,event,fields)` 直落本仓日志：更新包的关键处自动有据可查。 */
+    logCtx: {
+      fire: (level, event, fields) => hostLog?.log(
+        level === 'error' ? 'error' : level === 'warn' ? 'warn' : 'debug',
+        'host.update.tap',
+        { level, event, detail: JSON.stringify(fields ?? {}) },
+      ),
+    },
+    /* #126 只读预检：开发态 Junction／越界实装 ⇒ 更新中心必回 unknown-profile（预期而非缺陷）。
+     * 只多留一行 resident 判定，失败本身仍走 host.rpc.fail 原样透传。
+     * 建库异步（上面 createHostLogFor 才落地）⇒ 判定先缓存、库就绪后补记，绝不静默丢。 */
+    onPrecheck: (v) => {
+      if (hostLog) logPrecheck(hostLog, v)
+      else pendingPrecheck = v
+    },
+  })
 
   try {
     ctx.provide?.('agentFleet', { version: '0.0.2', meta: store })

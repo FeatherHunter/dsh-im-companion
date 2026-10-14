@@ -25,7 +25,7 @@ try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
     join(COMP, 'panel-data.ts'), join(COMP, 'panel-body.ts'),
-    '--ignoreConfig', '--outDir', tmp, '--module', 'commonjs', '--target', 'es2023',
+    '--ignoreConfig', '--rootDir', join(REPO, 'src'), '--outDir', tmp, '--module', 'commonjs', '--target', 'es2023',
     '--moduleResolution', 'bundler', '--skipLibCheck', '--declaration', 'false', '--sourceMap', 'false',
   ], { stdio: 'pipe' })
 } catch (e) {
@@ -50,10 +50,11 @@ for (const n of ['HTMLElement', 'HTMLDivElement', 'HTMLSpanElement', 'HTMLButton
 try { (globalThis as any).localStorage = win.localStorage } catch { /* read-only */ }
 
 const req = createRequire(join(tmp, 'run.cjs'))
-const panelData: any = req('./components/panel-data.js')
-const panelBody: any = req('./components/panel-body.js')
-const streamMod: any = req('./data/connection-stream.js')
-const model: any = req('./data/home-model.js')
+/* rootDir 已钉死 src ⇒ 产物在 client/ 下（T9 起 data 链牵到 src/log-events.ts，不钉就会随 import 图漂）。 */
+const panelData: any = req('./client/components/panel-data.js')
+const panelBody: any = req('./client/components/panel-body.js')
+const streamMod: any = req('./client/data/connection-stream.js')
+const model: any = req('./client/data/home-model.js')
 
 /* ---------- 夹具：4 个工作区（一区一家）＋ 2 个有归属 bot ＋ 1 个未归属 bot ---------- */
 const KETING = 'D:\\agents\\keting'

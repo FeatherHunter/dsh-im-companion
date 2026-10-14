@@ -24,7 +24,7 @@ export function makeSkeletonRows(count = 3): HTMLDivElement[] {
   return rows
 }
 
-export function makeLoadingRow(text = '正在加载…'): HTMLDivElement {
+export function makeLoadingRow(text = '正在加载'): HTMLDivElement {
   return h('div', { className: 'af-loading-row' }, h('span', { className: 'af-spin' }), text)
 }
 

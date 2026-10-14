@@ -10,6 +10,7 @@ import { makeRow } from '../ui/list'
 import { HEALTH_LABELS, OPEN_DRAWER_EVENT, stateColor, type OpenDrawerDetail } from '../data/config'
 import { paletteOf, type AgentView } from '../data/model'
 import { openMoreMenu } from './row-actions'
+import { logLine, logOn } from '../log'
 
 export type RowVariant = 'agent' | 'channel'
 
@@ -143,7 +144,7 @@ function emitOpenDrawer(key: string): void {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
     const detail: OpenDrawerDetail = { key }
     window.dispatchEvent(new window.CustomEvent(OPEN_DRAWER_EVENT, { detail }))
-  } catch {
-    /* 派发失败静默（抽屉打不开但行不受影响） */
+  } catch (e) {
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'row', action: 'open-drawer', ok: false, message: '派发失败，抽屉打不开：' + String((e as Error)?.message ?? e) })
   }
 }

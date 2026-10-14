@@ -8,6 +8,7 @@
  */
 import { mountUpdateEntry, type UpdateEntryController } from 'dsh-plugin-update/entry'
 import { UPDATE_CENTER_HOST_EVENT, type UpdateCenterHostDetail } from '../../client/data/config'
+import { logLine } from '../../client/log'
 import type { FeatureCtx } from '../protocol'
 
 const HOST_ID = 'imc-update-center'
@@ -74,6 +75,7 @@ export function mountUpdateCenter(ctx: FeatureCtx): () => void {
     const old = host
     host = null
     if (old) clearHost(old)
+    if (old) logLine('info', 'update.action', { action: 'detach', ok: true, message: '回收更新中心容器 #' + (old.id || 'host') })
   }
 
   function attach(el: HTMLElement): void {
@@ -82,8 +84,16 @@ export function mountUpdateCenter(ctx: FeatureCtx): () => void {
     host = el
     const rpc = ctx.rpc
     const call = async (name: string, args: Record<string, unknown>): Promise<unknown> => {
-      if (!rpc) throw new Error('宿主桥不可用')
-      return toPackageReply(await rpc(CHANNEL, name, args, AbortSignal.timeout(RPC_TIMEOUT_MS)))
+      if (!rpc) {
+        logLine('warn', 'bridge.call.fail', { method: name, message: '宿主桥不可用（rpc 缺失）' })
+        throw new Error('宿主桥不可用')
+      }
+      try {
+        return toPackageReply(await rpc(CHANNEL, name, args, AbortSignal.timeout(RPC_TIMEOUT_MS)))
+      } catch (e) {
+        logLine('warn', 'bridge.call.fail', { method: name, message: String((e as Error)?.message ?? e) })
+        throw e
+      }
     }
     controller = mountUpdateEntry(host, {
       pluginId: PLUGIN_ID,
@@ -94,6 +104,7 @@ export function mountUpdateCenter(ctx: FeatureCtx): () => void {
       autoCheck: 'mount',
       openOn: 'always',
     })
+    logLine('info', 'update.action', { action: 'attach', ok: true, message: '更新中心已挂上 #' + (el.id || 'host') })
   }
 
   const onHost = (e: Event): void => {
@@ -107,19 +118,17 @@ export function mountUpdateCenter(ctx: FeatureCtx): () => void {
       detach()
       const live = claimHost() // host=null 后再复查一次是否还有 live 容器
       if (live) attach(live)
-    } catch { /* 单次回调失败不留死状态：下一次 {host} 仍会走 attach/detach */ }
+    } catch (e) { logLine('error', 'ui.render.fail', { area: 'update-center', message: '宿主 {host} 事件处理失败（不留死状态，下次事件仍 attach/detach）：' + String((e as Error)?.message ?? e) }) }
   }
 
   try {
     if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => undefined
     window.addEventListener(UPDATE_CENTER_HOST_EVENT, onHost as EventListener)
-  } catch {
-    return () => undefined
-  }
+  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'update-center', message: '宿主事件监听注册失败：' + String((e as Error)?.message ?? e) }); return () => undefined }
   try {
     const live = claimHost()
     if (live) attach(live)
-  } catch { /* 认领失败不致命：事件到达时仍会挂 */ }
+  } catch (e) { logLine('error', 'ui.render.fail', { area: 'update-center', message: '主动认领容器失败（事件到达时仍会挂）：' + String((e as Error)?.message ?? e) }) }
   return () => {
     try {
       window.removeEventListener(UPDATE_CENTER_HOST_EVENT, onHost as EventListener)

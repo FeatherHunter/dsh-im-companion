@@ -1,11 +1,21 @@
 /** 绿框家/助理写管道（owner：components 系本票领地；panel-actions.ts 旧流程冻结保留，connect-qr 钉住）。
- * 家经自有桥 home.*；绑定先走 dsh-im bot.workspace.set（5 次×2s 竞态重试，T1 §2.3）再落表；写后刷新。 */
+ * 家经自有桥 home.*；绑定先走 dsh-im bot.workspace.set（5 次×2s 竞态重试，T1 §2.3）再落表；写后刷新。
+ * T8 #121：新建家的「新建工作区」支路（选目录→DSH 建区→等投影）下沉 home-dir，本文件只接线。 */
 import { toast } from '../ui/toast'
 import type { RpcCall } from '../data/fleet-api'
 import { basenameOf, normPath, type Assistant, type Home, type WorkspaceRef } from '../data/home-model'
 import { openConnectFlow } from './connect-flow'
+import { adoptDirectory, pickDirectory } from './home-dir'
+import { logLine, logOn } from '../log'
 
 const BRIDGE = '/im-companion'
+
+/* 家/助理动作的统一出口（成功失败同事件名；失败必带原文）——两条只认字面事件名与字段名，别改成变量。 */
+export const hLog = (action: string, homeId: string, ok: boolean, message: string): void =>
+  logLine('info', 'home.action', { action, homeId, ok, message })
+export const aLog = (action: string, assistantId: string, ok: boolean, message: string): void =>
+  logLine('info', 'assistant.action', { action, assistantId, ok, message })
+export const msgOf = (e: unknown): string => String((e as Error)?.message ?? e)
 
 type BridgeOk<T> = { ok?: boolean; value?: T; error?: { code?: string; message?: string } } | null
 
@@ -14,6 +24,8 @@ async function bridge<T>(rpc: RpcCall, endpoint: string, payload: Record<string,
   if (!raw || raw.ok !== true || raw.value === undefined) {
     const e = new Error(raw?.error?.message ?? 'host 桥调用失败') as Error & { code?: string }
     e.code = raw?.error?.code
+    /* 端点级失败（老宿主缺端点 / 桥抖动 / 参数被拒）：原文必留，调用方回退行为据此才解释得通。 */
+    logLine('warn', 'bridge.call.fail', { method: endpoint, message: e.message })
     throw e
   }
   return raw.value
@@ -28,10 +40,8 @@ export async function listHomes(rpc: RpcCall): Promise<{ homes: Home[]; assistan
   }
 }
 
-/** 种子落盘（幂等：宿主按规范路径/bot 判重跳过，可重跑；已存在行原样返回映射）。
- * 宿主半**未必是最新**（宿主代码只在插件重载/重启时生效，客户端 Ctrl+F5 不会）：旧宿主没有 `home.seed`，
- * 故失败即回落到「逐行 home.create ＋ assistant.create」（这两个端点早一轮就有），
- * 保证「有家无助理」的空窗不会因为宿主半落后而出现；回落同样幂等（already-exists/already-bound 吞掉）。 */
+/** 种子落盘（幂等：宿主按规范路径/bot 判重跳过，可重跑）。宿主半未必最新（宿主代码只在插件重载/重启时生效），
+ * 旧宿主没有 `home.seed` ⇒ 失败即回落到「逐行 home.create ＋ assistant.create」，保证「有家无助理」空窗不出现。 */
 export async function seedHomes(
   rpc: RpcCall,
   seed: { homes: Home[]; assistants: Assistant[] },
@@ -43,7 +53,8 @@ export async function seedHomes(
       assistants: seed.assistants,
     })
     return { homes: v.homes ?? [], assistants: v.assistants ?? [] }
-  } catch {
+  } catch (e) {
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'homes', action: 'seed-fallback', ok: false, message: msgOf(e) })
     return seedByRows(rpc, seed)
   }
 }
@@ -83,27 +94,28 @@ export async function createHome(
 ): Promise<Home | null> {
   try {
     const v = await bridge<{ home?: Home }>(rpc, 'home.create', input)
-    if (v.home) toast('建家成功', 'check')
+    if (v.home) { toast('建家成功', 'check'); hLog('create', v.home.id, true, '') } else hLog('create', '', false, '宿主未返回家行')
     return v.home ?? null
   } catch (e) {
-    toast('建家失败：' + String((e as Error)?.message ?? e))
+    hLog('create', '', false, msgOf(e)); toast('建家失败：' + msgOf(e))
     return null
   }
 }
 
 /** dsh-im 渠道绑定（connect-flow/binding-commit 同口径重试；本函数不落助理表，由调用方接 assistant.create）。 */
 export async function bindBot(rpc: RpcCall, channel: string, botId: string, workspace: string): Promise<boolean> {
+  const target = channel + '/' + botId
   for (let i = 0; i < 5; i++) {
     try {
       const raw = await rpc('/' + channel, 'bot.workspace.set', { botId, workspace }, AbortSignal.timeout(8000)) as
         { ok?: boolean; error?: { code?: string; message?: string } } | null
-      if (raw && raw.ok === true) return true
+      if (raw && raw.ok === true) { aLog('bind-bot', '', true, target); return true }
       if ((raw?.error as { code?: string })?.code === 'workspace-bot-not-found' && i < 4) {
-        if (i === 0) toast('服务端正在登记新机器人，绑定稍候重试…')
+        if (i === 0) toast('机器人还没就绪，请稍后重试')
         await new Promise((r) => setTimeout(r, 2000))
         continue
       }
-      toast('绑定失败：' + String(raw?.error?.message ?? '绑定失败'))
+      toast('绑定失败：' + String(raw?.error?.message ?? '绑定失败')); aLog('bind-bot', '', false, target + ': ' + String(raw?.error?.message ?? '绑定失败'))
       return false
     } catch (e) {
       const msg = String((e as Error)?.message ?? e)
@@ -111,10 +123,11 @@ export async function bindBot(rpc: RpcCall, channel: string, botId: string, work
         await new Promise((r) => setTimeout(r, 2000))
         continue
       }
-      toast('绑定失败：' + msg)
+      toast('绑定失败：' + msg); aLog('bind-bot', '', false, target + ': ' + msg)
       return false
     }
   }
+  aLog('bind-bot', '', false, target + ': 重试 5 次仍未成功')
   return false
 }
 
@@ -124,10 +137,10 @@ export async function createAssistant(
 ): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.create', input)
-    if (v.assistant) toast('建助理并绑定成功', 'check')
+    if (v.assistant) { toast('建助理并绑定成功', 'check'); aLog('create', v.assistant.id, true, '') } else aLog('create', '', false, '宿主未返回助理行')
     return v.assistant ?? null
   } catch (e) {
-    toast('建助理失败：' + String((e as Error)?.message ?? e))
+    aLog('create', '', false, msgOf(e)); toast('建助理失败：' + msgOf(e))
     return null
   }
 }
@@ -136,10 +149,10 @@ export async function createAssistant(
 export async function updateHome(rpc: RpcCall, input: { id: string; name?: string | null; avatar?: string | null }): Promise<Home | null> {
   try {
     const v = await bridge<{ home?: Home }>(rpc, 'home.update', input as Record<string, unknown>)
-    if (v.home) toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check')
+    if (v.home) { toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check'); hLog('update', v.home.id, true, '') } else hLog('update', input.id, false, '宿主未返回家行')
     return v.home ?? null
   } catch (e) {
-    toast('家更新失败：' + String((e as Error)?.message ?? e))
+    hLog('update', input.id, false, msgOf(e)); toast('家更新失败：' + msgOf(e))
     return null
   }
 }
@@ -147,10 +160,10 @@ export async function updateHome(rpc: RpcCall, input: { id: string; name?: strin
 export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: string | null; avatar?: string | null }): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.update', input as Record<string, unknown>)
-    if (v.assistant) toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check')
+    if (v.assistant) { toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check'); aLog('update', v.assistant.id, true, '') } else aLog('update', input.id, false, '宿主未返回助理行')
     return v.assistant ?? null
   } catch (e) {
-    toast('助理更新失败：' + String((e as Error)?.message ?? e))
+    aLog('update', input.id, false, msgOf(e)); toast('助理更新失败：' + msgOf(e))
     return null
   }
 }
@@ -158,10 +171,10 @@ export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: 
 export async function createUnbound(rpc: RpcCall, input: { homeId: string; channel: string; name?: string }): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.createUnbound', input as Record<string, unknown>)
-    if (v.assistant) toast('未绑定助理已占位', 'check')
+    if (v.assistant) { toast('已建好助理，还没有绑机器人', 'check'); aLog('create-unbound', v.assistant.id, true, '') } else aLog('create-unbound', '', false, '宿主未返回助理行')
     return v.assistant ?? null
   } catch (e) {
-    toast('建占位失败：' + String((e as Error)?.message ?? e))
+    aLog('create-unbound', '', false, msgOf(e)); toast('建占位失败：' + msgOf(e))
     return null
   }
 }
@@ -170,16 +183,12 @@ export async function removeAssistant(rpc: RpcCall, id: string): Promise<boolean
   try {
     await bridge(rpc, 'assistant.remove', { id })
     toast('助理已删除（机器人连接保留）', 'check')
+    aLog('remove', id, true, '')
     return true
   } catch (e) {
-    toast('删除失败：' + String((e as Error)?.message ?? e))
+    aLog('remove', id, false, msgOf(e)); toast('删除失败：' + msgOf(e))
     return false
   }
-}
-
-export function workspaceChoices(ws: WorkspaceRef[]): { id: string; label: string }[] {
-  return (ws || []).filter((w) => w && w.workspaceId && w.path)
-    .map((w) => ({ id: w.workspaceId, label: (w.title || w.path) + '（' + w.path + '）' }))
 }
 
 /* 绿框写管道编排（从 panel.ts 下沉） */
@@ -204,35 +213,26 @@ export interface DrillOpsBundle {
   bindAssistant(id: string, channel: string, botId: string): Promise<void>
   removeAssistant(id: string): Promise<void>
   connect(homeId: string, anchor: HTMLElement): void
+  pickDirectory(): Promise<string | null>
+  adoptDirectory(dir: string): Promise<WorkspaceRef | null>
 }
 
 export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
   return {
     createHome: async (workspaceId: string) => {
       const rpc = deps.getRpc()
-      if (!rpc) {
-        toast('连接服务不可用')
-        return
-      }
+      if (!rpc) { toast('连接服务不可用'); hLog('create', '', false, '连接服务不可用'); throw new Error('连接服务不可用') }
       const w = deps.getWorkspaces().find((x) => x.workspaceId === workspaceId)
-      if (!w) {
-        toast('没找着这个工作区')
-        return
-      }
-      if (await createHome(rpc, { workspaceId: w.workspaceId, path: w.path, title: w.title })) await deps.reloadHomes()
+      if (!w) { toast('找不到这个工作区'); hLog('create', '', false, '找不到这个工作区：' + workspaceId); throw new Error('找不到这个工作区') }
+      if (!await createHome(rpc, { workspaceId: w.workspaceId, path: w.path, title: w.title })) throw new Error('家的记录没写成功')
+      await deps.reloadHomes()
     },
     createAssistant: async (homeId: string, channel: string, botId: string, userName?: string) => {
       const rpc = deps.getRpc()
-      if (!rpc) {
-        toast('连接服务不可用')
-        return
-      }
+      if (!rpc) { toast('连接服务不可用'); aLog('create', '', false, '连接服务不可用'); return }
       const home = deps.getHome(homeId)
       const bot = deps.getBot(channel, botId)
-      if (!home || !bot) {
-        toast('没找着这个家或机器人')
-        return
-      }
+      if (!home || !bot) { toast('找不到这个家或机器人'); aLog('create', '', false, '找不到这个家或机器人：' + [homeId, channel, botId].join('/')); return }
       if (!await bindBot(rpc, channel, botId, home.path)) return
       const row = await createAssistant(rpc, {
         homeId: home.id, channel, botId, botName: bot.botName ?? '', homeText: '',
@@ -247,50 +247,50 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
     },
     updateHome: async (id, patch) => {
       const rpc = deps.getRpc()
-      if (!rpc) { toast('连接服务不可用'); return }
+      if (!rpc) { toast('连接服务不可用'); hLog('update', id, false, '连接服务不可用'); return }
       if (await updateHome(rpc, { id, ...patch })) await deps.reloadHomes()
     },
     updateAssistant: async (id, patch) => {
       const rpc = deps.getRpc()
-      if (!rpc) { toast('连接服务不可用'); return }
+      if (!rpc) { toast('连接服务不可用'); aLog('update', id, false, '连接服务不可用'); return }
       if (await updateAssistant(rpc, { id, ...patch })) await deps.reloadHomes()
     },
     createUnbound: async (homeId, channel, name) => {
       const rpc = deps.getRpc()
-      if (!rpc) { toast('连接服务不可用'); return }
+      if (!rpc) { toast('连接服务不可用'); aLog('create-unbound', '', false, '连接服务不可用'); return }
       if (await createUnbound(rpc, { homeId, channel, name })) await deps.reloadHomes()
     },
     bindAssistant: async (id, channel, botId) => {
       const rpc = deps.getRpc()
-      if (!rpc) { toast('连接服务不可用'); return }
+      if (!rpc) { toast('连接服务不可用'); aLog('bind', id, false, '连接服务不可用'); return }
       const a = deps.getAssistant(id)
       const bot = deps.getBot(channel, botId)
-      if (!a || !bot) { toast('没找着这个助理或机器人'); return }
+      if (!a || !bot) { toast('找不到这个助理或机器人'); aLog('bind', id, false, '找不到这个助理或机器人：' + channel + '/' + botId); return }
       const home = deps.getHome(a.homeId)
-      if (!home) { toast('没找着这个家'); return }
+      if (!home) { toast('找不到这个家'); aLog('bind', id, false, '找不到这个家：' + a.homeId); return }
       if (!await bindBot(rpc, channel, botId, home.path)) return
       try {
         await bridge<{ assistant?: Assistant }>(rpc, 'assistant.bind', {
           id, channel, botId, botName: bot.botName ?? '', homeText: '',
         })
-        toast('绑定成功', 'check')
+        toast('绑定成功', 'check'); aLog('bind', id, true, '')
         await deps.reloadHomes()
         await deps.refresh()
       } catch (e) {
-        toast('绑定失败：' + String((e as Error)?.message ?? e))
+        toast('绑定失败：' + msgOf(e)); aLog('bind', id, false, msgOf(e))
       }
     },
     removeAssistant: async (id) => {
       const rpc = deps.getRpc()
-      if (!rpc) { toast('连接服务不可用'); return }
+      if (!rpc) { toast('连接服务不可用'); aLog('remove', id, false, '连接服务不可用'); return }
       if (await removeAssistant(rpc, id)) await deps.reloadHomes()
     },
+    /* T8 #121：新建家的「新建工作区」支路——选目录（原生优先）→ DSH 建区＋等投影；落家仍由表单接 createHome。 */
+    pickDirectory: () => pickDirectory(deps.ctx, deps.getRpc()),
+    adoptDirectory: async (dir: string) => (await adoptDirectory(deps.ctx, dir))?.ref ?? null,
     connect: (homeId: string, anchor: HTMLElement) => {
       const home = deps.getHome(homeId)
-      if (!home) {
-        toast('没找着这个家')
-        return
-      }
+      if (!home) { toast('找不到这个家'); hLog('connect', homeId, false, '找不到这个家'); return }
       const name = home.name || basenameOf(home.path) || home.path
       openConnectFlow(deps.ctx, deps.getRpc(), anchor, { name, workspace: home.path }, () => {
         void deps.refresh().then(() => deps.reloadHomes())

@@ -5,6 +5,7 @@
 import { resolveWorkspacePath, type WorkspaceItem } from '../../client/data/header-overlay'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
+import { logLine } from '../../client/log'
 import { SessionHeaderAction } from './panel'
 
 const SLOT = 'conversation.session.header.utilities'
@@ -47,7 +48,10 @@ export function mountSessionHeader(ctx: FeatureCtx): () => void {
   const noop = (): void => {}
   try {
     const slots = ctx.slots
-    if (!slots || typeof slots.inject !== 'function' || typeof slots.register !== 'function') return noop
+    if (!slots || typeof slots.inject !== 'function' || typeof slots.register !== 'function') {
+      logLine('error', 'ui.render.fail', { area: 'session-header', message: '宿主 slots 缺 inject/register ⇒ 呼吸点降级隐藏' })
+      return noop
+    }
     let stop: (() => void) | null = null
     slots.inject(SLOT, () => {
       try {
@@ -63,9 +67,7 @@ export function mountSessionHeader(ctx: FeatureCtx): () => void {
             }),
         )
         if (typeof ret === 'function') stop = ret as () => void
-      } catch {
-        stop = null
-      }
+      } catch (e) { logLine('error', 'ui.render.fail', { area: 'session-header', message: '呼吸点槽位注册失败（降级隐藏）：' + String((e as Error)?.message ?? e) }); stop = null }
     })
     return () => {
       try {
@@ -74,7 +76,5 @@ export function mountSessionHeader(ctx: FeatureCtx): () => void {
         /* 清理失败忽略 */
       }
     }
-  } catch {
-    return noop
-  }
+  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'session-header', message: String((e as Error)?.message ?? e) }); return noop }
 }

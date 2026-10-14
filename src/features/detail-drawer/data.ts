@@ -5,6 +5,7 @@
  * 守卫：读不到（undefined）就不写——盲写覆盖用户引导语是正确性红线。 */
 import { OPEN_DRAWER_EVENT, type HealthKind } from '../../client/data/config'
 import { buildModel } from '../../client/data/model'
+import { logLine, logOn } from '../../client/log'
 import type { AgentPresetCatalog, BotSnap, RpcCall, UpstreamCtx } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 
@@ -130,7 +131,8 @@ export async function fetchRoutes(rpc: RpcCall | null, bots: { channel: string; 
         channel: typeof row.channel === 'string' ? row.channel : undefined,
       }]
     })
-  } catch {
+  } catch (e) {
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'routes-degrade', ok: false, message: 'routes 取数失败，静默空数组兜底（抽屉空席位）：' + String((e as Error)?.message ?? e) })
     return []
   }
 }

@@ -1,6 +1,6 @@
 /** 绿框 L3 助理详情（T6a）：结构逐字照 T4 认可款原型 proto-studio.html 的 viewAsst——
  * 详情卡（头像/名/回落来源/在线 + 家·渠道章 + 命名链 + 机器人块）+ 三组行动作。
- * T6b #114：绑定/改名/配图/删除已启用；T6c 的钮（换工作区·移除渠道）仍走待实现清单。 */
+ * T6b #114：绑定/改名/配图/删除已启用；T6c #115：换工作区·移除渠道已启用。 */
 import { h } from '../dom'
 import { channelLabel } from '../data/config'
 import { huIcon } from './home-icons'
@@ -50,20 +50,20 @@ function botBlock(o: DetailOpts): HTMLElement {
       h('span', { className: 'hu-bic' }, huIcon('bot', 18)),
       h('div', { className: 'hu-txt' },
         h('b', {}, bot.botName || '未命名机器人'),
-        h('small', {}, `${channelLabel(bot.channel)} · 单渠道实例`)),
+        h('small', {}, `${channelLabel(bot.channel)} · 只接一个渠道`)),
       h('span', { className: 'hu-pill dim hu-mono' }, bot.botId)))
     block.appendChild(h('div', { className: 'hu-steps3' },
-      h('span', {}, '助理占位'), h('i', {}),
-      h('span', { style: 'color:var(--hu-accent-deep);font-weight:650' }, '机器人绑定'), h('i', {}),
-      h('span', {}, '改名史跟随')))
+      h('span', {}, '先建助理'), h('i', {}),
+      h('span', { style: 'color:var(--hu-accent-deep);font-weight:650' }, '再绑机器人'), h('i', {}),
+      h('span', {}, '名字跟随机器人')))
   } else {
     block.appendChild(h('div', { className: 'hu-big' },
       h('span', { className: 'hu-bic off' }, huIcon('person', 18)),
       h('div', { className: 'hu-txt' },
         h('b', {}, '还没绑机器人'),
-        h('small', {}, '人先占位、号后到')),
+        h('small', {}, '先建助理，之后再选机器人')),
       pillEl('warn', a.status === 'orphan' ? '失联' : '未绑定')))
-    block.appendChild(h('p', { className: 'hu-fhint' }, '点下面的「绑定机器人」认领一个单渠道实例；显示走家名回落。'))
+    block.appendChild(h('p', { className: 'hu-fhint' }, '点下面的「绑定机器人」给它选一个机器人；名字默认跟随家名。'))
   }
   return block
 }
@@ -95,10 +95,10 @@ export function detailEl(o: DetailOpts): HTMLElement {
   else primary.appendChild(abtn('bind-a', '绑定机器人', o, { cls: 'go', icon: 'link' }))
   primary.appendChild(abtn('detail-a', '详情', o, { icon: 'info' }))
 
-  /* T6b #114 已启用：改名·配图（同一设置弹层）＋删除助理（两步确认，只删行不断连）。
-   * T6c 的动作不画成假按钮：一行待实现清单（真机反馈 2026-10-13）。 */
+  /* T6b #114 已启用：改名·头像（同一设置弹层）＋删除助理（两步确认，只删行不断连）。
+   * T6c #115：换工作区（整户搬，机器人跟随）＋移除渠道（解绑不断连）。 */
   const second = h('div', { className: 'hu-acts' })
-  second.appendChild(abtn('rename-a', '改名·配图', o, { icon: 'pencil' }))
+  second.appendChild(abtn('rename-a', '改名·头像', o, { icon: 'pencil' }))
   const del = h('button', { className: 'hu-abtn', type: 'button', 'data-item-act': 'remove-a' }, huIcon('trash', 14), '删除助理')
   let armed = false
   del.addEventListener('click', () => {
@@ -106,7 +106,9 @@ export function detailEl(o: DetailOpts): HTMLElement {
     o.onAct('remove-a', del)
   })
   second.appendChild(del)
-  const soon = h('p', { className: 'hu-soon' }, '待实现：换工作区 · 移除渠道（#115）')
+  const third = h('div', { className: 'hu-acts' })
+  third.appendChild(abtn('move-a', '换工作区', o, { icon: 'move' }))
+  if (a.status === 'bound') third.appendChild(abtn('unbind-a', '移除渠道', o, { icon: 'unlink' }))
 
-  return h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, card, primary, second, soon)
+  return h('div', { style: 'display:flex;flex-direction:column;gap:10px' }, card, primary, second, third)
 }

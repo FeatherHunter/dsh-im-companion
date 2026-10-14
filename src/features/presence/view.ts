@@ -15,6 +15,7 @@ import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
 import { resolveMotion, systemReduced, type MotionLevel } from './motion'
 import { readMotionOffResult, writeMotionOff } from './prefs'
+import { logLine, logOn } from '../../client/log'
 
 const ROW_SEL = 'div[role="treeitem"][aria-expanded]'
 const LEVEL_ATTR = 'data-presence-level'
@@ -35,8 +36,9 @@ const genAlive = (g: number): boolean => { try { return (window as unknown as Re
 let dotBtn: HTMLElement | null = null
 let dotOwner = 0
 
+/* 关键节点人话（挂载/首次接管）：低频，走 ui.action（area=presence），不套开关守卫。 */
 function info(msg: string): void {
-  try { console.info('[dsh-im-companion] presence：' + msg) } catch { /* 无 console 静默 */ }
+  logLine('debug', 'ui.action', { area: 'presence', action: 'lifecycle', ok: true, message: msg })
 }
 
 function textOf(el: Element): string {
@@ -142,7 +144,7 @@ function ensureDot(gen: number, manual: boolean, onFlip: () => void): void {
       btn.setAttribute('aria-pressed', manual ? 'true' : 'false')
       btn.setAttribute('aria-label', manual ? LABEL_OFF : LABEL_ON)
     } catch { /* 状态同步失败忽略 */ }
-  } catch { /* 建绿点失败就无绿点（fail-closed，动效照常） */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'presence', action: 'dot-fail', ok: false, message: '建绿点/按钮失败（fail-closed，动效照常）：' + String((e as Error)?.message ?? e) }) }
 }
 
 let loggedHit = false
@@ -177,10 +179,11 @@ export function mountPresence(ctx: FeatureCtx): () => void {
         manual = !manual
         prefsDirty = true
         prefsOk = true
+        logLine('debug', 'ui.action', { area: 'presence', action: 'toggle-motion', ok: true, message: manual ? '用户手动关闭动效' : '用户手动开启动效' })
         writeMotionOff(ctx, manual)
         try { repaint() } catch { /* 翻转后重绘失败忽略 */ }
       })
-    } catch { /* 定档失败下次再试 */ }
+    } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'presence', action: 'repaint-fail', ok: false, message: String((e as Error)?.message ?? e) }) }
   }
   /* 偏好回填（#98）：只在读到权威快照（ok:true）时定稿；未知（ok:false）保持默认「动效开」并等下次快照再试——
    * 绝不因读不到就把用户的动效关掉，也绝不把「未知」当「开」定稿。用户先动手则以手为准，不再回填覆盖。 */
@@ -190,7 +193,7 @@ export function mountPresence(ctx: FeatureCtx): () => void {
     try {
       const r = await readMotionOffResult(ctx)
       if (!genAlive(myGen) || prefsDirty) return
-      if (!r.ok) return /* 未知：保持默认，下次快照再试 */
+      if (!r.ok) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'presence', action: 'prefs-unknown', ok: false, message: '偏好读数未知：保持默认动效开，等下次快照再试' }); return /* 未知：保持默认，下次快照再试 */ }
       prefsOk = true
       if (r.off && !manual) {
         manual = true
@@ -220,7 +223,10 @@ export function mountPresence(ctx: FeatureCtx): () => void {
       if (!prefsOk) void tryLoadPrefs()
       repaint()
     })
-  } catch { return noop }
+  } catch (e) {
+    logLine('error', 'feature.mount.fail', { feature: 'presence', message: String((e as Error)?.message ?? e) })
+    return noop
+  }
   try {
     if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
       const mq = window.matchMedia('(prefers-reduced-motion: reduce)')

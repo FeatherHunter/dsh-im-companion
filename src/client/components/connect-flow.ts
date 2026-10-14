@@ -15,6 +15,7 @@ import { getChannelMode } from '../data/dual-mode-capabilities'
 import { dualModeCopy } from './dual-mode-copy'
 import { ensureDualModeStyles } from './dual-mode-styles'
 import { enterDualMode } from './dual-mode-flow'
+import { logLine, logOn } from '../log'
 
 export { commitBinding }
 export type { BindingCommit } from '../data/binding-commit'
@@ -35,11 +36,13 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
   /* #62 纵深守卫：无家不进扫码（主防线在行按钮置灰＋动作层阻断；此处兜住直调）。 */
   if (!target.workspace) {
     toast(firstViewCopy().needHomeForConnect(target.name))
+    logLine('info', 'assistant.action', { action: 'connect', assistantId: '', ok: false, message: '没有可绑的家（' + target.name + '），不发起接入' })
     try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
     return
   }
   if (!rpc) {
     toast('host 桥不可用，无法发起接入')
+    logLine('warn', 'bridge.call.fail', { method: 'connect:provision.begin', message: 'host 桥不可用（rpc 未就绪），无法发起接入' })
     return
   }
   const items: MenuItem[] = CHANNEL_ORDER.map((ch) => ({
@@ -51,6 +54,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
 
   async function run(channel: string): Promise<void> {
     const label = channelLabel(channel)
+    logLine('info', 'assistant.action', { action: 'connect', assistantId: '', ok: true, message: '开始接入 ' + label + '（' + target.name + '）' })
     const title = h('h3', { className: 'af-modal-title' }, '接入渠道')
     const sub = h('div', { className: 'af-modal-sub' }, '为「' + target.name + '」创建 ' + label + ' 机器人')
     const body = h('div', { className: 'af-qr' })
@@ -82,6 +86,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       stopTimers()
       const id = attemptId
       attemptId = undefined
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'connect', action: 'close', ok: true, message: id ? '取消在途轮次 ' + id : '无在途轮次' })
       if (id) void cancelAttempt(id)
     }
     const modal: ModalHandle = showModal([title, sub, body], { onClose: handleClose })
@@ -96,7 +101,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       attemptId = undefined
       if (prev) await cancelAttempt(prev)
       mount(body, [
-        h('div', { className: 'af-loading-row' }, h('span', { className: 'af-spin' }), '正在生成授权二维码…'),
+        h('div', { className: 'af-loading-row' }, h('span', { className: 'af-spin' }), '正在生成授权二维码'),
       ])
       try {
         const raw = await call('provision.begin', { locale: 'zh-CN' })
@@ -107,7 +112,9 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
         renderQr(res.value)
         void poll()
       } catch (e) {
-        if (!finished) renderError(String((e as Error)?.message ?? e))
+        const message = String((e as Error)?.message ?? e)
+        logLine('warn', 'bridge.call.fail', { method: channel + ':provision.begin', message })
+        if (!finished) renderError(message)
       }
     }
 
@@ -140,8 +147,9 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
         if (st.provisioning?.submitted === true && !st.bots.some((b) => b.botId === (st.provisioning?.botId ?? ''))) {
           /* 已扫码提交，等待机器人出现 */
         }
-      } catch {
-        /* 轮询失败忽略 */
+      } catch (e) {
+        if (logOn('debug')) logLine('debug', 'ui.action', { area: 'connect', action: 'poll', ok: false, message: String((e as Error)?.message ?? e) })
+        /* 轮询失败忽略（只留 debug：3s 一轮，绝不进恒落盘通道） */
       }
       if (!finished) {
         if (pollTimer !== undefined) clearTimeout(pollTimer)
@@ -158,6 +166,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       if (!target.workspace) {
         modal.close()
         toast(firstViewCopy().needHomeForConnect(target.name))
+        logLine('info', 'assistant.action', { action: 'connect', assistantId: '', ok: false, message: '扫码成功但家没有工作区，未落绑定（' + target.name + '）' })
         try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
         return
       }
@@ -166,7 +175,9 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
         modal.close()
         await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })
       } catch (e) {
-        toast('绑定工作区失败：' + String((e as Error)?.message ?? e))
+        const msg = String((e as Error)?.message ?? e)
+        logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: false, message: '接入流程未捕获抛出：' + msg })
+        toast('绑定工作区失败：' + msg)
         try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
       }
     }
@@ -227,8 +238,8 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
         const st = await fetchChannelStatus(rpc!, channel)
         for (const b of st.bots) baseline.add(b.botId)
         baselineOk = true
-      } catch {
-        /* 基线未知：识别退化为 provision 匹配 */
+      } catch (e) {
+        if (logOn('debug')) logLine('debug', 'ui.action', { area: 'connect', action: 'baseline', ok: false, message: '基线未知，识别退化为 provision 匹配：' + String((e as Error)?.message ?? e) })
       }
     }
     await refreshBaseline()
@@ -248,7 +259,9 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
             modal.close()
             await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })
           } catch (e) {
-            toast('绑定工作区失败：' + String((e as Error)?.message ?? e))
+            const msg = String((e as Error)?.message ?? e)
+            logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: false, message: '手动链路未捕获抛出：' + msg })
+            toast('绑定工作区失败：' + msg)
             try { onDone() } catch { /* 刷新兜底失败则静默（已如实报错） */ }
           }
         },

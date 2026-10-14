@@ -4,6 +4,7 @@ import { botDisplayLabel, type BotSnap } from '../../client/data/fleet-api'
 import { HEALTH_LABELS, channelLabel, healthOf, type HealthKind } from '../../client/data/config'
 import { channelGlyphSvg } from '../../client/icons'
 import { lastCheckedText } from '../../client/data/bindings'
+import { logLine, logOn } from '../../client/log'
 
 export interface CardChannel {
   channel: string
@@ -209,9 +210,7 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       if (!data) return
       if (!fill(data)) return
       place(row)
-    } catch {
-      /* 展示失败静默 */
-    }
+    } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-badges', action: 'card-fail', ok: false, message: String((e as Error)?.message ?? e) }) }
   }
   const onOver = (ev: unknown): void => {
     try {

@@ -1,5 +1,12 @@
 /** 渠道数据采集：并发 connection.status（9 渠道），RPC 信封解包，统一成 BotSnap。 */
 import { CHANNEL_ORDER, healthOf, type HealthKind } from './config'
+import { logLine } from '../log'
+/** 桥失败去重（method+原文签名）：医生要看见失败，但不能让 15s 轮询每轮刷一遍 warn（T9 #123）。 */
+const failSig = new Map<string, string>()
+function noteBridgeFail(method: string, err: unknown): void {
+  const message = String((err as Error)?.message ?? err)
+  if (failSig.get(method) !== message) { failSig.set(method, message); logLine('warn', 'bridge.call.fail', { method, message }) }
+}
 
 export type RpcCall = (
   channel: string,
@@ -180,15 +187,19 @@ export async function fetchBots(rpc: RpcCall): Promise<{ bots: BotSnap[]; failed
   const catalogs: Record<string, AgentPresetCatalog> = {}
   results.forEach((res, i) => {
     if (res.status === 'fulfilled') {
+      failSig.delete(CHANNEL_ORDER[i] + ':connection.status')
       bots.push(...res.value.bots)
       catalogs[CHANNEL_ORDER[i]] = res.value.catalog
-    } else failed.push(CHANNEL_ORDER[i])
+    } else {
+      /* allSettled 把失败原因吞在 reason 里——这里捞出来记原文（去重），否则诊断只剩一个渠道名。 */
+      noteBridgeFail(CHANNEL_ORDER[i] + ':connection.status', res.reason)
+      failed.push(CHANNEL_ORDER[i])
+    }
   })
   return { bots, failed, catalogs }
 }
 
-/** B1 verdict 延续（connection-stream 落地前各调用方复用）：传输失败的渠道保留上一轮快照
- * 并标 stale（时间冻结、按未知展示），而不是丢弃谎报离线；ok:false 是权威空，不保留。 */
+/** B1 verdict 延续（connection-stream 落地前各调用方复用）：传输失败的渠道保留上一轮快照并标 stale（时间冻结、按未知展示），不丢弃谎报离线；ok:false 是权威空，不保留。 */
 /** 会话路由行（E4 welcome-banner 共用；DetailDrawer 自持版本不动）：读自有通道 routes.list，
  * 任何失败静默 []（调用方渲染“暂无路由”静态态）；session 已由 host 侧脱敏，只做展示。 */
 export interface RouteRow {
@@ -221,7 +232,8 @@ export async function fetchRouteRows(
       if (typeof row.botId === "string") out.botId = row.botId;
       return [out];
     });
-  } catch {
+  } catch (e) {
+    noteBridgeFail('im-companion:routes.list', e)
     return [];
   }
 }
@@ -244,8 +256,7 @@ function toFiniteNumber(v: unknown): number {
   return NaN
 }
 
-/** 上游 expiresAt 归一为毫秒时间戳：秒级（<1e12）自动 ×1000；缺失/非法回退 now+5min。
- * 已过去的值如实保留（调用方正确显示已失效），不静默续期。 */
+/** 上游 expiresAt 归一为毫秒时间戳：秒级（<1e12）自动 ×1000；缺失/非法回退 now+5min；已过去的值如实保留（调用方正确显示已失效），不静默续期。 */
 export function normalizeProvisionTiming(
   prov: Pick<ProvisionState, 'expiresAt' | 'durationMs'> | null | undefined,
   now: number = Date.now(),
@@ -269,8 +280,7 @@ export function fmtCountdown(ms: number): string {
   return mm + ':' + ss
 }
 
-/** 新机器人识别（#49）：provision 上报 botId 优先命中；基线已知时差集唯一认领；基线未知（null，拉取失败）只认 provision；
- * 多新并存/空则 undefined（继续等，绝不张冠李戴）。 */
+/** 新机器人识别（#49）：provision 上报 botId 优先命中；基线已知时差集唯一认领；基线未知（null，拉取失败）只认 provision；多新并存/空则 undefined（继续等，绝不张冠李戴）。 */
 export function resolveNewBotId(
   bots: Pick<BotSnap, 'botId'>[], baseline: ReadonlySet<string> | null, provBotId?: string | null,
 ): string | undefined {

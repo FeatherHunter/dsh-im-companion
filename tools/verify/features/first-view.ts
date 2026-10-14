@@ -24,6 +24,7 @@ try {
     join(REPO, "node_modules", "typescript", "bin", "tsc"),
     ...ENTRIES,
     "--ignoreConfig",
+    "--rootDir", join(REPO, "src"),
     "--outDir", tmp, "--module", "commonjs", "--target", "es2023",
     "--moduleResolution", "bundler", "--skipLibCheck",
     "--declaration", "false", "--sourceMap", "false",
@@ -32,7 +33,9 @@ try {
   console.error("TRANPILE-FAIL " + String((e as any).stdout ?? "") + String((e as any).stderr ?? (e as Error).message));
   process.exit(1);
 }
-const req = createRequire(join(tmp, "components", "run.cjs"));
+/* rootDir 钉死在 src/：T9 起 config/model 链会经 ../log 拉进 src/log-events.ts，
+ * 不钉 rootDir 时 tsc 会把公共根上移到 src/，产物层级随依赖图漂移（曾因此 Cannot find module）。 */
+const req = createRequire(join(tmp, "client", "components", "run.cjs"));
 const copy: any = req("./first-view-copy.js");
 const styles: any = req("./first-view-styles.js");
 
@@ -187,6 +190,7 @@ try {
     join(COMP, "first-view-copy.ts"),
     join(COMP, "dual-mode-copy.ts"),
     "--ignoreConfig",
+    "--rootDir", join(REPO, "src"),
     "--outDir", dmTmp2, "--module", "commonjs", "--target", "es2023",
     "--moduleResolution", "bundler", "--skipLibCheck",
     "--declaration", "false", "--sourceMap", "false",
@@ -195,7 +199,7 @@ try {
   console.error("TRANPILE-FAIL " + String((e as any).stdout ?? "") + String((e as any).stderr ?? (e as Error).message));
   process.exit(1);
 }
-const dmReq2 = createRequire(join(dmTmp2, "components", "run.cjs"));
+const dmReq2 = createRequire(join(dmTmp2, "client", "components", "run.cjs"));
 const dmCopy: any = dmReq2("./dual-mode-copy.js");
 
 test("T4 双模式 8 键中文（T2 定稿一字不差）", () => {

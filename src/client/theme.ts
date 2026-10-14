@@ -1,7 +1,6 @@
 /**
- * Apple 设计令牌 + 全部样式（唯一样式来源）。
- * 所有颜色由 DSH 主题别名（--dsw-alias-*）实时派生：深浅主题自动跟随，
- * 项目自身不出现任何硬编码 #fff / #000 等固定色值。
+ * Apple 设计令牌 + 全部样式（唯一样式来源）。所有颜色由 DSH 主题别名（--dsw-alias-*）实时派生：
+ * 深浅主题自动跟随，项目自身不出现任何硬编码 #fff / #000 等固定色值。
  */
 export const STYLE_ID = 'dsh-im-companion-styles'
 
@@ -24,8 +23,9 @@ const CSS = `
 .af-root,
 .af-menu,
 .af-toast,
-/* #26 追改：showModal 挂 document.body（根外），无此作用域 --af-bg 即透明（接入 QR 弹窗看不清） */
-.af-overlay {
+/* #26/#112：body 级 portal 在 .af-root 之外 ⇒ 必须自带令牌作用域（否则 --af-* 未定义、--hu-* 全失效、弹层整块透明）。 */
+.af-overlay,
+.af-portal {
   ${TOKEN_BLOCK}
   color: var(--af-primary);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",

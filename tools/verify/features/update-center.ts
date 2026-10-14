@@ -108,6 +108,8 @@ try {
 /** 转译产物里的 view.js 要 require 包：建一条 junction 指回本仓 node_modules（照 update-host.ts 范式）。 */
 mkdirSync(join(OUT, 'node_modules'), { recursive: true });
 symlinkSync(join(REPO, 'node_modules', 'dsh-plugin-update'), join(OUT, 'node_modules', 'dsh-plugin-update'), 'junction');
+/* T9 #123：view.ts 现在经 ../../client/log 牵进 `dsh-log/client` ⇒ 产物目录里也得链上它。 */
+symlinkSync(join(REPO, 'node_modules', 'dsh-log'), join(OUT, 'node_modules', 'dsh-log'), 'junction');
 const VIEW_JS = join(OUT, 'features', 'update-center', 'view.js');
 after(() => rmSync(OUT, { recursive: true, force: true }));
 

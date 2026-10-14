@@ -10,6 +10,7 @@ import {
   isForbiddenKey, isTokenLengthOk, manualFieldsFor, normalizeFieldKey, resolveManualBotId,
 } from '../data/dual-mode-capabilities'
 import { dualLang, manualHint, maskPreview, secretPlaceholder, type DualModeCopy } from './dual-mode-copy'
+import { logLine, logOn } from '../log'
 
 export interface ManualCommit {
   (botId: string): Promise<unknown>
@@ -67,6 +68,12 @@ export function renderManualForm(body: HTMLElement, o: ManualFormOpts): () => vo
     errEl.textContent = ''
     errEl.style.display = 'none'
   }
+  /* 本地校验拒收（还没发 rpc）：行内红字＋toast 之外留一条 debug，事后能分清「点了没反应」是谁挡的。 */
+  const reject = (m: string): void => {
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'manual', action: 'submit-reject', ok: false, message: m })
+    failInline(m)
+    o.toast(o.copy.fail(m))
+  }
 
   const submitBtn = makeButton({ kind: 'primary', label: o.copy.manualSubmit, onClick: () => void submit() })
   const cancelBtn = makeButton({ kind: 'ghost', label: lang === 'en' ? 'Cancel' : '取消', onClick: () => { clearSecrets(); o.onCancel() } })
@@ -90,23 +97,23 @@ export function renderManualForm(body: HTMLElement, o: ManualFormOpts): () => vo
     const seenNorm = new Map<string, string>()
     for (const [key, input] of inputs) {
       const norm = normalizeFieldKey(key)
-      if (seenNorm.has(norm)) { const m = '重复字段：' + key; failInline(m); o.toast(o.copy.fail(m)); return }
+      if (seenNorm.has(norm)) { const m = '重复字段：' + key; reject(m); return }
       seenNorm.set(norm, key)
       canon.set(key, input.value)
     }
     const expected = new Set(specs.map((s) => normalizeFieldKey(s.key)))
     for (const norm of seenNorm.keys()) {
-      if (!expected.has(norm)) { const m = '多余字段：' + (seenNorm.get(norm) ?? norm); failInline(m); o.toast(o.copy.fail(m)); return }
+      if (!expected.has(norm)) { const m = '多余字段：' + (seenNorm.get(norm) ?? norm); reject(m); return }
     }
     const payload: Record<string, string> = {}
     for (const s of specs) {
       const raw = canon.get(s.key) ?? ''
       const v = raw.trim()
-      if (!v) { const m = s.key + ' 不能为空'; failInline(m); o.toast(o.copy.fail(m)); return }
-      if (raw.length > s.maxLen || v.length > s.maxLen) { const m = s.key + ' 超长（≤' + s.maxLen + '）'; failInline(m); o.toast(o.copy.fail(m)); return }
-      if (s.pattern && !s.pattern.test(v)) { const m = s.key + ' 格式不对（' + (s.patternHint ?? '格式错误') + '）'; failInline(m); o.toast(o.copy.fail(m)); return }
+      if (!v) { const m = s.key + ' 不能为空'; reject(m); return }
+      if (raw.length > s.maxLen || v.length > s.maxLen) { const m = s.key + ' 超长（≤' + s.maxLen + '）'; reject(m); return }
+      if (s.pattern && !s.pattern.test(v)) { const m = s.key + ' 格式不对（' + (s.patternHint ?? '格式错误') + '）'; reject(m); return }
       if ((o.channel === 'telegram' || o.channel === 'discord') && !isTokenLengthOk(raw, s.maxLen)) {
-        const m = s.key + ' 长度不对（去空后至少 20 位）'; failInline(m); o.toast(o.copy.fail(m)); return
+        const m = s.key + ' 长度不对（去空后至少 20 位）'; reject(m); return
       }
       payload[s.key] = v
       secrets[s.key] = v
@@ -126,6 +133,7 @@ export function renderManualForm(body: HTMLElement, o: ManualFormOpts): () => vo
         const code = res?.error?.code ?? ''
         const msg = res?.error?.message ?? '绑定失败'
         const shown = o.copy.fail((code ? '[' + code + '] ' : '') + msg)
+        logLine('warn', 'bridge.call.fail', { method: o.channel + ':bot.bind-credentials', message: (code ? '[' + code + '] ' : '') + msg })
         failInline(shown)
         o.toast(shown)
         maskAfterFailure()
@@ -135,14 +143,17 @@ export function renderManualForm(body: HTMLElement, o: ManualFormOpts): () => vo
       for (const k of Object.keys(secrets)) secrets[k] = ''
       if (!botId) {
         o.toast('已接入但未识别新机器人：请在列表中为其选择工作区')
+        logLine('info', 'assistant.action', { action: 'bind-credentials', assistantId: '', ok: false, message: '凭据已受理但基线差分没认出新机器人（channel=' + o.channel + '）' })
         o.onCancel()
         return
       }
+      logLine('info', 'assistant.action', { action: 'bind-credentials', assistantId: '', ok: true, message: '认领新机器人 ' + botId + '（channel=' + o.channel + '）' })
       await o.commit(botId)
     } catch (e) {
       if (aborted) return
       const m = e instanceof Error && e.name === 'TimeoutError' ? '请求超时，请重试' : String((e as Error)?.message ?? e)
       const shown = o.copy.fail(m)
+      logLine('warn', 'bridge.call.fail', { method: o.channel + ':bot.bind-credentials', message: m })
       failInline(shown)
       o.toast(shown)
       maskAfterFailure()

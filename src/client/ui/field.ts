@@ -1,6 +1,7 @@
 /** 输入原语：搜索框 + 行内改名编辑器。 */
 import { h } from '../dom'
 import { icon } from '../icons'
+import { logLine, logOn } from '../log'
 
 export interface SearchField {
   el: HTMLElement
@@ -32,9 +33,11 @@ export function makeNameEditor(initial: string, onCommit: (v: string) => void, o
     finished = true
     if (commit) {
       const v = input.value.trim()
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'ui.field', action: v && v !== initial ? 'rename-commit' : 'rename-noop', ok: true, message: '行内改名提交：「' + initial + '」→「' + v + '」（空值/未改视为取消）' })
       if (v && v !== initial) onCommit(v)
       else onCancel()
     } else {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'ui.field', action: 'rename-escape', ok: true, message: 'Escape 取消行内改名：「' + initial + '」' })
       onCancel()
     }
   }

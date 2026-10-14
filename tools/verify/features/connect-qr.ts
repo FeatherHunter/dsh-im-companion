@@ -324,7 +324,7 @@ test('#49 commitBinding：落定/失败/取消/已绑/关联失败', async () =>
       retry: { attempts: 3, gapMs: 1 },
     });
     assert.equal(r.ok, true);
-    assert.ok(r.toasts.includes('登记新机器人'));
+    assert.ok(r.toasts.includes('机器人还没就绪'));
     assert.ok(r.toasts.includes('已接入并绑定工作区'));
     assert.equal(r.calls.filter((c) => c === '/wechat bot.workspace.set').length, 2);
     assert.equal(r.done, 1);
@@ -563,11 +563,11 @@ test('#62 compose-bar：选家前不提交、选家后原子提交', async () =>
   picked = 'D:\\agents\\xiaoshuai';
   byText('选择工作区').dispatchEvent({ type: 'click' });
   await new Promise((r) => setTimeout(r, 20));
-  /* 已选家整行落定：描边卡＋图标＋全路径，按钮变“更换…”。 */
+  /* 已选家整行落定：描边卡＋图标＋全路径，按钮变“更换”。 */
   assert.ok(((bar.el as any).textContent ?? '').includes('D:\\agents\\xiaoshuai'), '应回显所选之家全路径');
   assert.ok(homeRow.classList.contains('af-compose-row--set'), '选定后整行应落定高亮');
   assert.ok((bar.el as any).querySelectorAll('.af-compose-home--set').length === 1, '全路径应整行重点展示');
-  assert.equal(byText('更换')?.textContent, '更换…', '选定后按钮应变更换');
+  assert.equal(byText('更换')?.textContent, '更换', '选定后按钮应变更换');
   assert.ok(!homeRow.classList.contains('af-compose-row--attention'), '选家后高亮应撤');
   assert.equal(reasonEl().style.display, 'none', '就绪后原因行应藏');
   assert.equal((bar.el as any).querySelectorAll('.af-required')[0].style.display, 'none', '选定后必填徽应退');
@@ -655,11 +655,11 @@ test('#62 创建接线：面板创建表单必带选家（T6a 起改钉「建家
    * 选目录新建工作区归后续票。 */
   assert.ok(panel.includes('createDrillOps'), '面板须接线绿框写管道');
   assert.ok(ops.includes('createHome'), '写管道须含建家落盘（工作区必选）');
-  assert.ok(forms.includes('已有工作区'), '建家表单须显式要求选已有工作区');
+  assert.ok(forms.includes('选中的目录会建成 DSH 工作区') && forms.includes('dirField'), '建家表单＝选目录 → DSH 建工作区（T10 #124 唯一支路）');
   assert.ok(forms.includes('属于哪个家') && forms.includes('绑定机器人'), '建助理表单须选家 + 选机器人');
   assert.ok(body.includes('openCreate'), '面板须接线建单入口（＋ / 底部主操作）');
   assert.ok(rows.includes('data-open'), '三级钻取行须带钻取锚点（点行进下一级）');
-  assert.ok(!panel.includes('openDirPicker'), 'T6a 不做选目录新建工作区（归后续票）');
+  assert.ok(!panel.includes('openDirPicker'), '选目录组件住在 home-dir（T10 #124 起建家唯一支路），面板不直连');
 });
 
 // ---- T4 双模式接入（#69，消费 #66 T1 矩阵 + #67 T2 定稿 + #68 T3-A 变体）----

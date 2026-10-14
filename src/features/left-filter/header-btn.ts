@@ -2,6 +2,7 @@
  * 与条带同源（同一 currentFilter）；tooltip 承载三数；激活态着色。绝不动原生三个按钮。
  * 头栏发现走共享唯一锚点（client/dom，第二步：猜错就藏），本文件只保留按钮行为。 */
 import { findWorkspaceHeaderFromNode } from '../../client/dom'
+import { logLine, logOn } from '../../client/log'
 import { FILTERS, FILTER_LABEL, type FilterId, type GroupCount } from './model'
 
 export const HB_CLASS = 'left-filter-hbtn'
@@ -22,7 +23,7 @@ export function headerTip(filter: FilterId, counts: GroupCount): string {
  * 旧注释保留口径：从容器逐级上行，真机列表与头栏之间隔着多层容器；就近优先，头栏排在列表区之前。
  * 验货（有钮无行、宽度像侧栏）不通过即返回空——调用方 fail-closed 不挂按钮。 */
 export function resolveHeader(container: Element): Element | null {
-  try { return findWorkspaceHeaderFromNode(container) } catch { return null }
+  try { return findWorkspaceHeaderFromNode(container) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'anchor-fail', ok: false, message: '头栏锚点解析失败（fail-closed 不挂漏斗钮）：' + String((e as Error)?.message ?? e) }); return null }
 }
 
 export function updateHeaderBtn(btn: Element, filter: FilterId, counts: GroupCount): void {
@@ -49,7 +50,7 @@ export function ensureHeaderBtn(header: Element, filter: FilterId, counts: Group
     }
     updateHeaderBtn(btn, filter, counts)
     return btn
-  } catch { return null }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'header-btn-fail', ok: false, message: '漏斗钮创建失败（fail-closed 不挂）：' + String((e as Error)?.message ?? e) }); return null }
 }
 
 export function removeHeaderBtns(): void {

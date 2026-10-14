@@ -8,6 +8,7 @@ import { makeButton } from './button'
 import { showModal, type ModalHandle } from './modal'
 import type { RpcCall } from '../data/fleet-api'
 import { HOST_CHANNEL } from '../data/meta'
+import { logLine, logOn } from '../log'
 
 export interface DirPickerHandle {
   promise: Promise<string | null>
@@ -59,20 +60,25 @@ export function openDirPicker(
     resolveFn = resolve
   })
   if (native) {
-    const placeholder = h('div', null, '正在打开系统目录选择器…')
+    const placeholder = h('div', null, '正在打开系统目录选择器')
     void (async () => {
       try {
         const raw = await native()
-        resolveFn(raw === null ? null : normalizePick(raw))
+        const picked = raw === null ? null : normalizePick(raw)
+        logLine('info', 'dir.pick', { picked: picked !== null, path: picked ?? '' })
+        resolveFn(picked)
       } catch (e) {
         /* 取消类抛错（宿主取消即抛）：静默收场。真故障才回退内置，保证点击永远有可见反应。 */
         const msg = String((e as Error)?.message ?? e)
         if (/cancel|dismiss|abort|close/i.test(msg)) {
+          /* 取消也是「选目录」的一个结果：与成功同一条 resident 事件（只留 debug 时，开关关着就看不到用户点过）。 */
+          logLine('info', 'dir.pick', { picked: false, path: '', message: '用户取消原生选择器：' + msg })
           resolveFn(null)
           return
         }
-        try { console.warn('[dsh-im-companion] native picker failed, falling back:', e) } catch { /* ignore */ }
+        logLine('warn', 'bridge.call.fail', { method: 'ctx.uiWorkspace.pickDirectory', message: '原生选择器失败，回退内置浏览：' + msg })
         if (!rpc) {
+          logLine('warn', 'bridge.call.fail', { method: 'dir.pick', message: '原生选择器失败且无 rpc，无法回退内置浏览' })
           resolveFn(null)
           return
         }
@@ -82,6 +88,7 @@ export function openDirPicker(
     return { promise, el: placeholder }
   }
   if (!rpc) {
+    logLine('warn', 'bridge.call.fail', { method: 'dir.pick', message: '无原生选择器且无 rpc，选目录没有可开的面板' })
     resolveFn(null)
     return { promise, el: h('div') }
   }
@@ -110,6 +117,7 @@ export function openDirPicker(
   const done = (v: string | null): void => {
     if (settled) return
     settled = true
+    logLine('info', 'dir.pick', { picked: !!v, path: v ?? '' })
     resolveFn(v)
     try { modal?.close() } catch { /* 关闭失败忽略 */ }
   }
@@ -139,6 +147,7 @@ export function openDirPicker(
   async function jump(): Promise<void> {
     const target = goInput.value.trim()
     if (!isAbs(target)) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'dir-picker', action: 'jump-invalid', ok: false, message: '非法绝对路径：' + (target || '(空)') })
       list.replaceChildren(h('div', { className: 'af-error' }, '请输入绝对路径（Windows 如 D:\\agents\\x，macOS/Linux 如 /home/x）'))
       return
     }
@@ -146,9 +155,10 @@ export function openDirPicker(
   }
   async function navigate(path: string): Promise<void> {
     state.path = path
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'dir-picker', action: 'navigate', ok: true, message: path || '(空路径=默认根)' })
     choose.disabled = !path
     bar.replaceChildren(h('span', null, '…'))
-    list.replaceChildren(h('div', { className: 'af-loading-row' }, h('span', { className: 'af-spin' }), '正在读取目录…'))
+    list.replaceChildren(h('div', { className: 'af-loading-row' }, h('span', { className: 'af-spin' }), '正在读取目录'))
     try {
       const raw = await rpc!(HOST_CHANNEL, 'fs.list', { path }, AbortSignal.timeout(5000))
       const res = raw as { ok: boolean; value?: { path: string; parent: string | null; entries: { name: string; path: string }[] }; error?: { message?: string } }
@@ -164,7 +174,7 @@ export function openDirPicker(
           className: 'af-btn ghost sm', type: 'button',
           style: { padding: '0 6px', flex: 'none' }, title: curParent,
           onClick: () => void navigate(curParent),
-        }, '…上级'))
+        }, '上一级'))
       }
       bar.appendChild(h('span', { title: curPath, style: { wordBreak: 'break-all' } }, curPath))
       const rows = res.value.entries.map((e) => {
@@ -182,6 +192,7 @@ export function openDirPicker(
       if (!rows.length) list.replaceChildren(h('div', { className: 'af-loading-row' }, '（此目录下没有子文件夹）'))
       else list.replaceChildren(...rows)
     } catch (e) {
+      logLine('warn', 'bridge.call.fail', { method: 'fs.list', message: '读目录「' + path + '」失败：' + String((e as Error)?.message ?? e) })
       list.replaceChildren(h('div', { className: 'af-error' }, '读取失败：' + String((e as Error)?.message ?? e)))
     }
   }
@@ -199,8 +210,9 @@ export function openDirPicker(
         onClick: () => void navigate(rt),
       }, rt)))
       chips.style.display = 'flex'
-    } catch {
+    } catch (e) {
       /* 取不到盘符即无快捷入口，不影响浏览 */
+      logLine('warn', 'bridge.call.fail', { method: 'fs.roots', message: '盘符入口取数失败（无快捷入口，不影响浏览）：' + String((e as Error)?.message ?? e) })
     }
   })()
   void (async () => {
@@ -212,7 +224,8 @@ export function openDirPicker(
       const rootRaw = await rpc!(HOST_CHANNEL, 'fs.defaultRoot', {}, AbortSignal.timeout(5000))
       const rootRes = rootRaw as { ok: boolean; value?: { path: string } }
       await navigate(rootRes.ok && rootRes.value ? rootRes.value.path : '')
-    } catch {
+    } catch (e) {
+      logLine('warn', 'bridge.call.fail', { method: 'fs.defaultRoot', message: '默认根取数失败，回退空路径：' + String((e as Error)?.message ?? e) })
       await navigate('')
     }
   })()

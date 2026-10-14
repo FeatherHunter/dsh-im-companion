@@ -16,6 +16,8 @@ import { createPanelData } from './panel-data'
 import { createRefresher } from './home-refresh'
 import type { WorkspaceRef } from '../data/home-model'
 import { createDrillOps } from './home-ops'
+import { createMoveOps } from './home-move-ops'
+import { logLine, logOn } from '../log'
 
 /* #56：构建注入的插件版本（tsdown define __PLUGIN_VERSION__，package.json 唯一真相）。 */
 declare const __PLUGIN_VERSION__: string | undefined
@@ -51,17 +53,12 @@ export function FleetPanel(ctx: unknown): HTMLElement {
 
   /* ---------- 静态骨架 ---------- */
   const title = h('h1', { className: 'af-title' }, copy.title)
-  /* #82：副标（IM COMPANION · 辅助插件）整行删除——548px 宽实测单行塞不下，让位给标题与两色版本胶囊。 */
-  /* D 标题不独占行：计数行收起（计数看分段后缀），元素保留隐藏位供 body 兼容。 */
+  /* #82 副标（IM COMPANION · 辅助插件）整行删除——548px 宽实测单行塞不下；D 计数行收起，元素留隐藏位供 body 兼容。 */
   const titleMeta = h('div', { className: 'af-title-meta' }, '')
   titleMeta.hidden = true
-  /* 旧面板遗留的工具栏 ＋ 已退场（T6a 重做）：绿框自带页头 ＋（随层新建家/新建助理）
-   * 与底部上下文主操作，同一个动作不再有第三个入口。 */
-  /* #56 右上组（对标 deck SettingsPage：版本小字可点跳仓库 + Star/Issue 双按钮）。
-   * #78 版本组：自家版本 + 兼容标记（dsh-im）同行成组；
-   * #82 改「两色胶囊」——颜色即身份（用户裁定）：紫=自家 / 蓝白=兼容的 dsh-im，
-   * 文案只留轴名 + 版本号（前缀「兼容 / IM Companion」进悬停）。
-   * 宿主 dsh 胶囊已删（用户裁定 2026-10-01）：宿主兼容口径只留 README 兼容性小节与市场徽章（engines.dsh），面板不再标。
+  /* 旧面板遗留的工具栏 ＋ 已退场（T6a 重做）：绿框页头 ＋ 与底部上下文主操作已覆盖同一动作，不留第三入口。 */
+  /* #56/#78/#82 右上版本组（颜色即身份，用户裁定）：紫=自家 / 蓝白=兼容的 dsh-im，文案只留轴名+版本号，
+   * 「兼容 / IM Companion」前缀进悬停；宿主 dsh 胶囊已删（2026-10-01 裁定，口径只留 README 与市场徽章）。
    * 宽度实测（548px 内容宽）：中 497px / 英 522px，余量 ≥26px → 顶部单行零省略。 */
   const ver = pluginVersion()
   const compat = pluginCompat()
@@ -173,6 +170,8 @@ export function FleetPanel(ctx: unknown): HTMLElement {
   const root = h('div', { className: 'af-root' }, hd, body, promo)
 
   emitUpdateCenterHost(updateCenterHost)
+  /* 装配成功＝骨架已建成、容器已广播（此后才有 load/渲染失败可言）；失败路径由 index.ts 的 panel.mount.fail 记。 */
+  logLine('info', 'panel.mount', { ok: true })
 
   /* ---------- 模块接线 ---------- */
   /* 宿主工作区全名单（adopt/panel.ts listHomes 同款 ctx.get 惰性读法；取不到按空名单，种子跳过）。 */
@@ -191,46 +190,60 @@ export function FleetPanel(ctx: unknown): HTMLElement {
         if (workspaceId && path && !out.some((w) => w.workspaceId === workspaceId)) out.push({ workspaceId, path, title })
       }
       return out
-    } catch {
+    } catch (e) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'workspaces', ok: false, message: 'ctx.get(workspaces) 读不到，按空名单处理：' + String((e as Error)?.message ?? e) })
       return []
     }
   }
   /* 旧动作层（panel-actions：改名/选家/移除/头像）文件冻结保留供 connect-qr 回归；
-   * 绿框写管道（建家/建助理绑机器人/接入）下沉 home-ops（本文件只接线，单真相源＝家表）。 */
+   * 绿框写管道（建家/建助理绑机器人/接入）下沉 home-ops，T6c 搬家/移除/删-clean 下沉 home-move-ops
+   * （本文件只接线，单真相源＝家表；move 系覆盖 drill 的 removeAssistant 做删时解绑）。 */
+  const moveShared = {
+    getRpc: () => rpc,
+    getHome: (id: string) => data.state.homes.find((x) => x.id === id),
+    getAssistant: (id: string) => data.state.assistants.find((x) => x.id === id),
+    refresh: () => data.load(true),
+    reloadHomes: () => data.loadHomes(getWorkspaces),
+  }
   const bodyModule = createPanelBody({
     state: data.state,
     bodyEl: body,
     titleMetaEl: titleMeta,
     headActions,
     getWorkspaces,
-    ops: createDrillOps({
-      ctx,
-      getRpc: () => rpc,
-      getWorkspaces,
-      getHome: (id) => data.state.homes.find((x) => x.id === id),
-      getAssistant: (id) => data.state.assistants.find((x) => x.id === id),
-      getBot: (channel, botId) => data.state.bots.find((b) => b.channel === channel && b.botId === botId),
-      refresh: () => data.load(true),
-      reloadHomes: () => data.loadHomes(getWorkspaces),
-    }),
+    ops: {
+      ...createDrillOps({
+        ctx,
+        getRpc: () => rpc,
+        getWorkspaces,
+        getHome: (id) => data.state.homes.find((x) => x.id === id),
+        getAssistant: (id) => data.state.assistants.find((x) => x.id === id),
+        getBot: (channel, botId) => data.state.bots.find((b) => b.channel === channel && b.botId === botId),
+        refresh: () => data.load(true),
+        reloadHomes: () => data.loadHomes(getWorkspaces),
+      }),
+      ...createMoveOps(moveShared),
+    },
     onRetry: () => void refresh(),
   })
   data.setRender(() => bodyModule.render())
 
   /* ---------- 生命周期（#17：轮询归共享 stream，面板只订阅 + dispose 退订） ---------- */
-  /* 顺序化首屏：先 load（拿到 bots+meta）再 loadHomes（种子一次到位，助理行不等下一轮 15s 轮询）。
-   * 两者并发会造出「有家无助理」的空窗（T6a 验证抓到）。 */
-  void data.load()
-    .then(() => data.loadHomes(getWorkspaces))
+  /* 顺序化首屏：先 load（拿到 bots+meta）再由它读完家表（种子一次到位，助理行不等下一轮 15s 轮询）。
+   * 两者并发会造出「有家无助理」的空窗（T6a 验证抓到）；家表交给 load 的 afterHomes 读，
+   * 好让 panel.load 总账记的是真行数——挂在这一步外面时，总账恒记 homes=0（T9 #123 真机验收实测）。 */
+  void data.load(false, () => data.loadHomes(getWorkspaces))
     .then(() => bodyModule.render())
-    .catch(() => bodyModule.render())
+    .catch((e) => {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'boot', ok: false, message: '首屏链失败，仍渲染空壳：' + String((e as Error)?.message ?? e) })
+      bodyModule.render()
+    })
   ;(root as unknown as { __afDispose?: () => void }).__afDispose = () => {
+    /* 面板卸载（切走设置页 / 热重载）：退订、收 portal、清样式；只留一句「确实拆过」。 */
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'dispose', ok: true, message: '' })
     emitUpdateCenterHost(null)
-    try {
-      data.dispose()
-    } catch {
-      /* 清理失败忽略 */
-    }
+    try { bodyModule.dispose() } catch { /* 收掉挂 document.body 的 portal 弹层：不随面板 DOM 消失，切走设置页会留悬空层 */ }
+    try { data.dispose() } catch { /* 清理失败忽略 */ }
     try {
       stopFirstView()
     } catch {
@@ -262,25 +275,23 @@ function emitUpdateCenterHost(host: HTMLElement | null): void {
     if (typeof window !== 'undefined' && typeof window.CustomEvent === 'function') {
       window.dispatchEvent(new window.CustomEvent<UpdateCenterHostDetail>(UPDATE_CENTER_HOST_EVENT, { detail: { host } }))
     }
-  } catch { /* 派发失败不影响面板 */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'emit-update-host', ok: false, message: '派发失败不影响面板：' + String((e as Error)?.message ?? e) }) }
 }
 
 function emitFleetView(view: FleetViewDetail['view']): void {
+  if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'fleet-view', ok: true, message: view })
   try {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
     window.dispatchEvent(new window.CustomEvent<FleetViewDetail>(FLEET_VIEW_EVENT, { detail: { view } }))
-  } catch {
-    /* 派发失败不影响列表 */
-  }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'fleet-view', ok: false, message: '派发失败不影响列表：' + String((e as Error)?.message ?? e) }) }
 }
 
 function emitAdoptView(): void {
+  if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'adopt-view', ok: true, message: '' })
   try {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
     window.dispatchEvent(new window.CustomEvent(ADOPT_VIEW_EVENT))
-  } catch {
-    /* 派发失败不影响列表 */
-  }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'adopt-view', ok: false, message: '派发失败不影响列表：' + String((e as Error)?.message ?? e) }) }
 }
 
 /* T5（#77 终审返工 F1）：本地 extractRpc 副本已删，直引 data/rpc.extractRpcV2（as 别名，调用点签名零动）；

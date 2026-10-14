@@ -1,9 +1,9 @@
 /** welcome-banner 挂载编排：hero 门控 + 顶层弹窗（与 view 纯渲染分离，为 300 行红线）。
- * 门控 hero 门+可见性门，未绑定零 UI，进门（key=工作区全路径）后内存+持久双记、删光双清；
- * 已绘卡按 hero 节点键控，每轮清扫 hero 已消失的卡；名表每拍重读（改名即时生效）。 */
+ * 门控 hero 门+可见性门，未绑定零 UI，进门（key=工作区全路径）后内存+持久双记、删光双清；已绘卡按 hero 节点键控，每轮清扫 hero 已消失的卡；名表每拍重读。 */
 import { fetchRouteRows, type BotSnap } from "../../client/data/fleet-api";
 import type { AgentMetaDoc } from "../../client/data/meta";
-import { basenameOf, viewName } from "../../client/data/model";
+import { basenameOf, viewName } from "../../client/data/model"
+import { logLine, logOn } from "../../client/log";
 import type { FeatureCtx } from "../protocol";
 import {
   buildBannerModel, copyFor, dailyIdx, displaySub, homeLangOf, matchWorkspaceLabel, pruneWelcomed, segOfHour, summarizeRoutes, welcomedOf,
@@ -16,14 +16,14 @@ import { renderHome } from "./view";
 const DISMISSED = new Set<string>();
 /** 热更新/双挂载代际哨兵（同 left-badges）。 */
 let activeGen = 0;
-/** 决策日志（验收排障用：横幅没出现时看第一条 info 就知道卡在哪一关）。 */
+/** 决策日志（排障用：横幅没出现时看第一条 ui.action/area=welcome-banner 就知道卡在哪一关；ondemand ⇒ 需调试开关开着才落盘）。 */
 const logOnce = new Set<string>();
-function infoOnce(key: string, msg: string): void {
+function noteOnce(key: string, msg: string): void {
   try {
     if (logOnce.has(key)) return;
     logOnce.add(key);
-    console.info("[dsh-im-companion] welcome-banner：" + msg);
-  } catch { /* 无 console 环境静默 */ }
+    logLine('debug', 'ui.action', { area: 'welcome-banner', action: key, ok: true, message: msg });
+  } catch { /* 无日志环境静默 */ }
 }
 
 interface MountState {
@@ -94,13 +94,13 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown, lang: Ho
   if (!heroConfirmed(phaseAttr(heroRoot), text)) return;
   const label = heroWorkspaceLabel(heroRoot);
   if (!label) {
-    infoOnce("no-label", "发现 hero 空态但读不到工作区 chip 文本，已跳过（等 chip 渲染出来会再扫）。");
+    noteOnce("no-label", "发现 hero 空态但读不到工作区 chip 文本，已跳过（等 chip 渲染出来会再扫）。");
     return;
   }
   if (!st.metaReady) return;
   const path = matchWorkspaceLabel(label, candidatesOf(st.bots, st.metaDoc));
   if (!isVisible(heroRoot)) {
-    infoOnce("hidden-hero", "hero 节点仍在 DOM 但不可见（宿主切走空态后的常驻藏匿），已跳过；这是有消息会话不打扰的保证。");
+    noteOnce("hidden-hero", "hero 节点仍在 DOM 但不可见（宿主切走空态后的常驻藏匿），已跳过；这是有消息会话不打扰的保证。");
     removePainted(st, heroRoot);
     return;
   }
@@ -109,7 +109,7 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown, lang: Ho
     return;
   }
   if (!path) {
-    infoOnce("nomatch:" + label, "工作区 \"" + label + "\" 未匹配到已知绑定（快照bots=" + st.bots.length + "），已跳过；若横幅该出未出，把这条日志贴 issue。");
+    noteOnce("nomatch:" + label, "工作区 \"" + label + "\" 未匹配到已知绑定（快照bots=" + st.bots.length + "），已跳过；若横幅该出未出，把这条日志贴 issue。");
     removePainted(st, heroRoot);
     return;
   }
@@ -118,11 +118,11 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown, lang: Ho
     const names = ((st.metaDoc ?? emptyMeta).names ?? {}) as Record<string, unknown>;
     const n = typeof names === "object" ? Object.keys(names).length : -1;
     const hit = !!(names[path] ?? names[basenameOf(path)]);
-    infoOnce("namehit:" + path, "工作区 \"" + path + "\" 名表" + (hit ? "命中" : "未命中") + "（名表共 " + n + " 条；0 条=读到空表，>0 未命中=键对不上）。");
+    noteOnce("namehit:" + path, "工作区 \"" + path + "\" 名表" + (hit ? "命中" : "未命中") + "（名表共 " + n + " 条；0 条=读到空表，>0 未命中=键对不上）。");
   } catch { /* ignore */ }
   const model = path ? buildBannerModel(st.bots, st.metaDoc ?? emptyMeta, path, st.catalogs ?? {}) : null;
   if (!model) {
-    infoOnce("unbound:" + label, "工作区 \"" + label + "\" 未绑定 Agent，零 UI（纯净原生空态）。");
+    noteOnce("unbound:" + label, "工作区 \"" + label + "\" 未绑定 Agent，零 UI（纯净原生空态）。");
     removePainted(st, heroRoot);
     return;
   }
@@ -155,7 +155,7 @@ function paintHero(fctx: FeatureCtx, st: MountState, heroRoot: unknown, lang: Ho
     removePainted(st, heroRoot);
     parent.appendChild(card);
     st.painted.set(heroRoot, { node: card, parent, sig: showSig, path });
-    infoOnce("painted:" + path, "P 弹窗已挂载到顶层（" + path + "，时段=" + seg + "，语言=" + lang + "）。");
+    noteOnce("painted:" + path, "P 弹窗已挂载到顶层（" + path + "，时段=" + seg + "，语言=" + lang + "）。");
   } catch { /* 宿主 DOM 变化即跳过本轮 */ }
 }
 
@@ -238,17 +238,17 @@ export function mountBanner(fctx: FeatureCtx): () => void {
                   try { DISMISSED.delete(p); } catch { /* ignore */ }
                   saveWelcomed(fctx, p, false);
                 }
-                infoOnce("unbound-reset", "有工作区机器人被删光，进门记忆已清除，重绑后 welcome 重现。");
+                noteOnce("unbound-reset", "有工作区机器人被删光，进门记忆已清除，重绑后 welcome 重现。");
               }
             }
-          } catch { /* 剪枝失败不影响展示 */ }
+          } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'welcome-banner', action: 'prune-fail', ok: false, message: '剪枝进门记忆失败，不影响展示：' + String((e as Error)?.message ?? e) }) }
           void fetchRouteRows(fctx.rpc, st.bots.map((b) => ({ channel: b.channel, botId: b.botId })))
             .then((r) => { if (activeGen === gen) { st.routes = r; st.routesOk = true; scanAll(fctx, st, doc); } })
-            .catch(() => undefined);
+            .catch((e: unknown) => { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'welcome-banner', action: 'routes-fail', ok: false, message: 'routes 取数失败，名表按空算（该出未出先看这条）：' + String((e as Error)?.message ?? e) }) });
           scanAll(fctx, st, doc);
-        } catch { /* 单拍异常静默 */ }
+        } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'welcome-banner', action: 'tick-fail', ok: false, message: '单拍扫描异常（本轮跳过，下拍重试）：' + String((e as Error)?.message ?? e) }) }
       });
-    } catch { /* 无订阅即只首扫 */ }
+    } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'welcome-banner', action: 'no-subscribe', ok: false, message: '订阅注册失败，只做首扫、不再随拍刷新：' + String((e as Error)?.message ?? e) }) }
     try {
       void fctx.meta.loadMeta().then((m) => {
         if (activeGen !== gen) return;
@@ -261,13 +261,13 @@ export function mountBanner(fctx: FeatureCtx): () => void {
         } catch { /* 播种失败即内存态 */ }
         st.metaReady = true;
         scanAll(fctx, st, doc);
-      }).catch(() => {
+      }).catch((e: unknown) => {
         if (activeGen !== gen) return;
-        infoOnce("meta-fail", "meta 加载失败，本次降级为内存态（进门记忆不断电但不跨页）。");
+        noteOnce("meta-fail", "meta 加载失败（" + String((e as Error)?.message ?? e) + "），本次降级为内存态（进门记忆不断电但不跨页）。");
         st.metaReady = true;
         scanAll(fctx, st, doc);
       });
-    } catch {
+    } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'welcome-banner', action: 'meta-throw', ok: false, message: 'meta 取数同步抛错，降级内存态：' + String((e as Error)?.message ?? e) })
       st.metaReady = true;
     }
     let obs: { disconnect?: () => void } | null = null;
@@ -279,9 +279,10 @@ export function mountBanner(fctx: FeatureCtx): () => void {
         inst.observe(target as Node, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-phase", "style", "class", "lang"] });
         obs = inst;
       }
-    } catch { /* 无观察即靠订阅节拍重扫 */ }
-    try { scanAll(fctx, st, doc); } catch { /* ignore */ }
+    } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'welcome-banner', action: 'no-observer', ok: false, message: '无 MutationObserver 观察，只靠订阅节拍重扫：' + String((e as Error)?.message ?? e) }) }
+    try { scanAll(fctx, st, doc); } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'welcome-banner', action: 'first-scan-fail', ok: false, message: '首扫失败：' + String((e as Error)?.message ?? e) }) }
     return () => {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'welcome-banner', action: 'unmount', ok: true, message: '卸载：代际 +1 + 退订 + 断观察 + 清已绘卡' })
       try { if (activeGen === gen) activeGen += 1; } catch { /* ignore */ }
       try { unsub(); } catch { /* ignore */ }
       try { if (st.timer !== null && st.timer !== undefined && typeof clearTimeout === "function") clearTimeout(st.timer as never); } catch { /* ignore */ }
@@ -291,7 +292,5 @@ export function mountBanner(fctx: FeatureCtx): () => void {
         for (const key of [...st.painted.keys()]) removePainted(st, key);
       } catch { /* ignore */ }
     };
-  } catch {
-    return noop;
-  }
+  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'welcome-banner', message: '挂载失败，横幅整体不生效：' + String((e as Error)?.message ?? e) }); return noop; }
 }

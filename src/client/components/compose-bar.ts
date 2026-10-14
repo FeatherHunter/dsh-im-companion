@@ -50,7 +50,7 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => un
   const pick = makeButton({
     kind: 'ghost',
     size: 'sm',
-    label: '选择工作区…',
+    label: '选择工作区',
     onClick: () => {
       void opts.pickWorkspace().then((ws) => {
         if (ws) home = ws
@@ -87,7 +87,7 @@ export function makeComposeBar(onCreate: (name: string, workspace: string) => un
     create.title = ready ? '创建' : blockReason(hasName, !!home)
     paintHome()
     homeLabel.title = home || HOME_PLACEHOLDER
-    pick.textContent = home ? '更换…' : '选择工作区…'
+    pick.textContent = home ? '更换' : '选择工作区'
     mark(rowHome, 'af-compose-row--attention', !home)
     mark(rowHome, 'af-compose-row--set', !!home)
     mark(homeLabel, 'af-compose-home--empty', !home)

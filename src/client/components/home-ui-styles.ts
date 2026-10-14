@@ -204,7 +204,11 @@ export const HOME_UI_CSS = `
 .home-ui .hu-err button{font:inherit;font-size:11.5px;color:inherit;background:none;border:1px solid currentColor;border-radius:7px;padding:2px 8px;cursor:pointer;flex:none}
 
 /* ============ popover（锚定，禁底部弹窗） ============ */
-.home-ui.hu-pophost{position:fixed;inset:0;z-index:71;pointer-events:none;display:block}
+/* 宿主（document.body 上的 portal）在支持 Popover API 的宿主里进 top layer——真机实测设置页可能
+ * 落在比 z-index 更高的层（原生 dialog / top layer），只靠 z-index 会被整层盖住、点了像没反应（#112）。 */
+.home-ui.hu-pophost{position:fixed;inset:0;z-index:71;pointer-events:none}
+.home-ui.hu-pophost[popover]{width:100%;height:100%;margin:0;padding:0;border:0;background:transparent;color:inherit;
+  overflow:visible;max-width:none;max-height:none;inset:0}
 .home-ui .hu-scrim{position:fixed;inset:0;z-index:70;background:rgba(16,24,40,.30);animation:huFade var(--hu-t) var(--hu-ease);pointer-events:auto}
 @keyframes huFade{from{opacity:0}to{opacity:1}}
 .home-ui .hu-pop{position:fixed;z-index:71;max-width:calc(100vw - 20px);background:var(--hu-panel);border:1px solid var(--hu-line);border-radius:14px;box-shadow:var(--hu-sh-pop);
@@ -212,14 +216,20 @@ export const HOME_UI_CSS = `
 @keyframes huPopIn{from{opacity:0;transform:scale(.94) translateY(-6px)}to{opacity:1;transform:none}}
 .home-ui .hu-pop .hu-arrow{position:absolute;top:-6px;width:12px;height:12px;background:var(--hu-panel);border-left:1px solid var(--hu-line);border-top:1px solid var(--hu-line);transform:rotate(45deg);border-radius:2px}
 .home-ui .hu-pop .hu-arrow.b{top:auto;bottom:-6px;border-left:0;border-top:0;border-right:1px solid var(--hu-line);border-bottom:1px solid var(--hu-line)}
-.home-ui .hu-ppo{padding:13px 14px;overflow-y:auto;display:flex;flex-direction:column;gap:11px}
+.home-ui .hu-ppo{padding:10px 14px 13px;overflow-y:auto;display:flex;flex-direction:column;gap:11px}
+.home-ui .hu-phead{display:flex;align-items:center;gap:7px;padding:10px 12px 10px 14px;border-bottom:1px solid var(--hu-line-soft)}
+.home-ui .hu-phead>.hu-pbtn-s:first-of-type{margin-left:auto}
 .home-ui .hu-ptitle{font-size:12.5px;font-weight:650;display:flex;align-items:center;gap:7px;color:var(--hu-ink)}
 .home-ui .hu-ptitle .hu-i{color:var(--hu-accent-deep)}
 .home-ui .hu-pfoot{display:flex;justify-content:flex-end;gap:7px;padding:10px 12px;border-top:1px solid var(--hu-line-soft);background:var(--hu-panel-2);flex:none}
 .home-ui .hu-pbtn-s{font:inherit;font-size:12.5px;font-weight:600;height:32px;padding:0 13px;border-radius:8px;cursor:pointer;border:1px solid var(--hu-line);background:var(--hu-panel);color:var(--hu-ink);transition:all var(--hu-t) var(--hu-ease)}
-.home-ui .hu-pbtn-s:hover{background:var(--hu-panel-3)}
+.home-ui .hu-pbtn-s:hover:not([disabled]){background:color-mix(in srgb,var(--hu-ink) 15%,var(--hu-panel))}
 .home-ui .hu-pbtn-s.go{background:var(--hu-accent);border-color:transparent;color:#fff}
 .home-ui .hu-pbtn-s[disabled]{opacity:.5;cursor:not-allowed}
+.home-ui .hu-pbtn-s[disabled]:hover{background:var(--hu-panel)}
+.home-ui .hu-pbtn-s.go[disabled]:hover{background:var(--hu-accent)}
+/* 主按钮（.go）的底色是强调色，普通 :hover 被 .go 的同等特异性盖掉 ⇒ 单独给一条，否则悬停主按钮毫无变化（真机实测）。 */
+.home-ui .hu-pbtn-s.go:hover:not([disabled]){background:color-mix(in srgb,var(--hu-accent) 74%,var(--hu-ink))}
 .home-ui .hu-menu{display:flex;flex-direction:column;gap:2px;padding:5px;min-width:168px}
 .home-ui .hu-menu button{font:inherit;font-size:12.5px;display:flex;align-items:center;gap:9px;text-align:left;background:none;border:0;border-radius:8px;padding:9px 10px;color:var(--hu-ink);cursor:pointer;transition:background var(--hu-t-fast) var(--hu-ease)}
 .home-ui .hu-menu button:hover{background:var(--hu-panel-3)}
@@ -230,11 +240,15 @@ export const HOME_UI_CSS = `
 .home-ui .hu-fld input,.home-ui .hu-fld select{font:inherit;font-size:13px;height:36px;padding:0 10px;color:var(--hu-ink);background:var(--hu-panel);border:1px solid var(--hu-line);border-radius:9px}
 .home-ui .hu-fld input:focus,.home-ui .hu-fld select:focus{outline:0;border-color:var(--hu-accent);box-shadow:var(--hu-ring)}
 .home-ui .hu-fhint{margin:0;font-size:11.5px;color:var(--hu-ink-3);line-height:1.5}
-.home-ui .hu-seg2{position:relative;display:flex;background:var(--hu-panel-3);border-radius:9px;padding:3px;gap:2px}
-.home-ui .hu-seg2 button{position:relative;z-index:1;font:inherit;font-size:12.5px;flex:1;height:28px;border:0;border-radius:7px;background:none;color:var(--hu-ink-2);cursor:pointer}
-.home-ui .hu-seg2 button[aria-selected="true"]{color:var(--hu-ink);font-weight:600}
-.home-ui .hu-seg2 button[disabled]{opacity:.45;cursor:not-allowed}
-.home-ui .hu-seg2 .hu-ind{position:absolute;top:3px;bottom:3px;border-radius:7px;background:var(--hu-panel);box-shadow:var(--hu-sh);transition:transform 280ms var(--hu-spring),width 280ms var(--hu-spring)}
+.home-ui .hu-err{color:var(--hu-bad)}
+/* T8 #121：目录字段＝左侧按钮、右侧虚线输入位，两者等高同排一行（框＝路径位本体；未选＝虚线灰、已选＝实线亮）。
+ * T10 #124：分段（用已有工作区/新建工作区）整体退场——家＝工作区的镜像，建家永远是新建工作区。 */
+.home-ui .hu-dirrow{display:flex;flex-direction:row;gap:9px;align-items:stretch}
+.home-ui .hu-dirpath{flex:1;min-width:0;display:flex;align-items:center;padding:0 10px;background:var(--hu-panel-2);border:1px dashed var(--hu-line);border-radius:9px;cursor:pointer;transition:border-color 160ms}
+.home-ui .hu-dirpath:hover{border-color:color-mix(in srgb, var(--hu-ink) 42%, var(--hu-line))}
+.home-ui .hu-dirpath.picked{border-style:solid}
+.home-ui .hu-dirtext{min-width:0;font-size:11.5px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui .hu-dirpath.picked .hu-dirtext{color:var(--hu-ink)}
 .home-ui .hu-opts{display:flex;flex-direction:column;gap:4px;max-height:190px;overflow:auto;scrollbar-width:thin;scrollbar-color:color-mix(in srgb,var(--hu-ink-3) 45%,transparent) transparent}
 /* 弹层内的列表是唯一保留的内滚区域：用主题令牌画细滚动条，并显式关掉经典滚动条的箭头按钮 */
 .home-ui .hu-opts::-webkit-scrollbar{width:6px;height:6px}
@@ -243,7 +257,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-opts::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--hu-ink-3) 40%,transparent);border-radius:999px}
 .home-ui .hu-opts::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--hu-ink-3) 62%,transparent)}
 .home-ui .hu-opt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;font:inherit;font-size:12.5px;background:var(--hu-panel);border:1px solid var(--hu-line-soft);border-radius:9px;padding:8px 10px;cursor:pointer;color:var(--hu-ink);transition:all var(--hu-t) var(--hu-ease)}
-.home-ui .hu-opt:hover{background:var(--hu-panel-2);border-color:var(--hu-line)}
+.home-ui .hu-opt:hover{background:var(--hu-panel-3);border-color:color-mix(in srgb,var(--hu-ink) 24%,var(--hu-line))}
 .home-ui .hu-opt[aria-selected="true"]{border-color:var(--hu-accent);background:var(--hu-accent-soft);box-shadow:var(--hu-ring)}
 .home-ui .hu-opt[disabled]{opacity:.5;cursor:not-allowed}
 .home-ui .hu-opt .hu-oi{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;background:var(--hu-panel-3);flex:none;font-size:11px;font-weight:650}
@@ -256,6 +270,15 @@ export const HOME_UI_CSS = `
 .home-ui .hu-avopt[aria-selected="true"]{border-color:var(--hu-accent);box-shadow:var(--hu-ring)}
 .home-ui .hu-plink{font:inherit;font-size:12px;text-align:left;background:none;border:0;color:var(--hu-accent-deep);cursor:pointer;padding:2px 0}
 .home-ui .hu-plink.danger{color:var(--hu-bad)}
+/* owner 2026-10-14：弹层里每个可点控件都要有交互反馈（悬停变样 + 按下回弹），不许「看着能点、点了没反应」。 */
+.home-ui .hu-pbtn-s:active:not([disabled]){transform:scale(.97)}
+.home-ui .hu-opt:active:not([disabled]){transform:scale(.995)}
+.home-ui .hu-plink:hover{color:color-mix(in srgb,var(--hu-accent-deep) 70%,var(--hu-ink))}
+.home-ui .hu-plink:active{transform:scale(.98)}
+.home-ui .hu-plink.danger:hover{color:color-mix(in srgb,var(--hu-bad) 78%,var(--hu-ink))}
+.home-ui .hu-avopt:hover:not([aria-selected="true"]){border-color:color-mix(in srgb,var(--hu-ink) 32%,var(--hu-line))}
+.home-ui .hu-avopt:active{transform:scale(.94)}
+.home-ui .hu-dirpath:active{border-color:var(--hu-accent);background:var(--hu-panel-3)}
 
 @media (max-width:470px){.home-ui .hu-hide-narrow{display:none}}
 @media (prefers-reduced-motion:reduce){.home-ui *,.home-ui *::before,.home-ui *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}

@@ -13,6 +13,7 @@ import {
   suggestionLabel, type DeliverySuggestion, type DotKind, type OverlayChannel, type TestSendOutcome,
 } from '../../client/data/header-overlay'
 import { channelLogo, pickerBlock } from './pickers'
+import { logLine, logOn } from '../../client/log'
 
 export interface SessionHeaderDeps {
   sessionId: string
@@ -62,9 +63,9 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
           if (p && typeof (p as Promise<Record<string, string>>).then === 'function') {
             void (p as Promise<Record<string, string>>).then((n) => { if (!disposed) setNames(n ?? {}) }).catch(() => {})
           }
-        } catch { /* 名表失败即回退目录名 */ }
+        } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'session-header', action: 'names-fail', ok: false, message: '自定义名表读取失败（回退目录名）：' + String((e as Error)?.message ?? e) }) }
       })
-    } catch { unsub = null }
+    } catch (e) { logLine('warn', 'bridge.call.fail', { method: 'stream.subscribe', message: '呼吸点订阅失败（停绘）：' + String((e as Error)?.message ?? e) }); unsub = null }
     return () => {
       disposed = true
       try { unsub?.() } catch { /* 清理失败忽略 */ }
@@ -72,7 +73,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   }, [sessionId, subscribe])
   React.useEffect(() => {
     setOpen(false); setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null)
-    try { emit(SESSION_VIEWED_EVENT, { sessionId: sessionId }) } catch { /* 已读回写上报失败不影响展示 */ }
+    try { emit(SESSION_VIEWED_EVENT, { sessionId: sessionId }) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'session-header', action: 'viewed-emit-fail', ok: false, message: '已读回写上报失败（不影响展示）：' + String((e as Error)?.message ?? e) }) }
   }, [sessionId])
   React.useEffect(() => {
     if (!open || typeof document === 'undefined') return
@@ -100,6 +101,8 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   const bot = overlay.mode === 'full' ? overlay.bot : null
   /** 落定一次发送结果：建议列表记属主 Bot；多 Bot 渠道成功追加机器人标识，绝不谎报。 */
   const finish = (outcome: TestSendOutcome, target: BotSnap | null): void => {
+    if (outcome.ok) logLine('debug', 'ui.action', { area: 'session-header', action: 'send-test', ok: true, message: outcome.text + (target ? '（' + botDisplayLabel(target) + '）' : '') })
+    else logLine('warn', 'bridge.call.fail', { method: 'test-send', message: outcome.text })
     setSgList(outcome.suggestions ?? null)
     setSgBot(outcome.suggestions?.length ? target : null)
     let text = outcome.text
@@ -122,6 +125,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   const onSendTest = async (): Promise<void> => {
     if (busy) return
     if (overlay.mode === 'full' && overlay.channels.length > 1) {
+      logLine('debug', 'ui.action', { area: 'session-header', action: 'pick-channel', ok: true, message: '多渠道（' + overlay.channels.length + ' 个），先选发送渠道' })
       setResult(null); setSgList(null); setSgBot(null); setBotPick(null)
       setChPick(overlay.channels)
       return
@@ -139,6 +143,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   const onPickChannel = (channel: string): void => {
     setChPick(null)
     const list = botsInChannel(bots, workspacePath ?? '', channel)
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'session-header', action: 'pick-channel', ok: true, message: '选中渠道 ' + channel + '（该渠道 ' + list.length + ' 个机器人' + (list.length > 1 ? '，继续选机器人' : '，直发') + '）' })
     if (list.length > 1) {
       setResult(null); setSgList(null); setSgBot(null)
       setBotPick(list)
@@ -149,6 +154,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   }
   const onPickBot = (target: BotSnap): void => {
     setBotPick(null)
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'session-header', action: 'pick-bot', ok: true, message: '选中机器人 ' + botDisplayLabel(target) + '，直发测试' })
     void sendViaBot(target)
   }
   const onPickSg = async (sg: DeliverySuggestion): Promise<void> => {
@@ -156,6 +162,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
     if (busy || !target) return
     const rpc = createRpc()
     if (!rpc) {
+      logLine('warn', 'bridge.call.fail', { method: 'send-to-suggestion', message: '无法连接 Host 连接服务（rpc 缺失）' })
       setResult({ ok: false, text: '无法连接 Host 连接服务，稍后重试。' })
       return
     }
@@ -176,6 +183,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
       'aria-label': overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + dotTitle(overlay.dotKind as DotKind),
       onClick: () => {
         setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null)
+        logLine('debug', 'ui.action', { area: 'session-header', action: open ? 'close-detail' : 'open-detail', ok: true, message: '呼吸点详情' + (open ? '收起' : '展开') + (workspacePath ? '：' + workspacePath : '：未绑定') })
         setOpen(!open)
       },
     },
@@ -200,7 +208,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
     ? React.createElement(
       'button',
       { type: 'button', className: 'session-header-btn primary', disabled: busy, onClick: () => void onSendTest() },
-      busy ? '发送中…' : '发测试消息',
+      busy ? '发送中' : '发测试消息',
     )
     : null
   const sgBtns = sgList && sgList.length && overlay.mode === 'full'

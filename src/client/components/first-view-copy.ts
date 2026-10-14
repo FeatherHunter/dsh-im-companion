@@ -110,7 +110,7 @@ const ZH: FirstViewCopy = {
   promoPal: 'dsh-opencode-palette',
   promoPalDesc: 'OpenCode 配色盘',
   states: {
-    loading: '加载中…正在获取助理列表，请稍候。',
+    loading: '正在加载助理列表，请稍候。',
     emptySearchTitle: '没有找到匹配的助理',
     emptySearchSub: '试试换个关键词，或清空搜索看看全部',
     emptyNoneTitle: '还没有助理',
@@ -156,7 +156,7 @@ const EN: FirstViewCopy = {
   promoPal: 'dsh-opencode-palette',
   promoPalDesc: 'OpenCode color palettes',
   states: {
-    loading: 'Loading assistants… please wait.',
+    loading: 'Loading assistants, please wait.',
     emptySearchTitle: 'No matching assistants',
     emptySearchSub: 'Try another keyword, or clear search to see all',
     emptyNoneTitle: 'No assistants yet',

@@ -22,7 +22,7 @@ export function openMoreMenu(view: AgentView, anchor: HTMLElement, cb: RowAction
 
   items.push({ label: '重命名', iconName: 'pencil', onSelect: () => cb.rename() })
   items.push({
-    label: view.workspace ? '更换工作区…' : '选择工作区…',
+    label: view.workspace ? '更换工作区' : '选择工作区',
     iconName: 'folder',
     onSelect: () => cb.pickWorkspace(),
   })

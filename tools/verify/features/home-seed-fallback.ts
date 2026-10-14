@@ -25,6 +25,7 @@ try {
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
     ...ENTRIES,
     '--ignoreConfig',
+    '--rootDir', join(REPO, 'src'),
     '--outDir', tmp, '--module', 'commonjs', '--target', 'es2023',
     '--moduleResolution', 'bundler', '--skipLibCheck',
     '--declaration', 'false', '--sourceMap', 'false',
@@ -37,8 +38,9 @@ try {
   symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction')
 } catch { /* 已存在跳过 */ }
 const req = createRequire(join(tmp, 'run.cjs'))
-const ops: any = req('./components/home-ops.js')
-const model: any = req('./data/home-model.js')
+/* rootDir 已钉死 src ⇒ 产物在 client/ 下（T9 起 data 链牵到 src/log-events.ts，不钉就会随 import 图漂）。 */
+const ops: any = req('./client/components/home-ops.js')
+const model: any = req('./client/data/home-model.js')
 
 // —— 夹具：两个工作区（一区一家）＋各一已归属机器人（一 bot 一助理） ——
 const BRIDGE = '/im-companion'

@@ -1,6 +1,6 @@
-/** DetailDrawer 抽屉容器：事件开合 + 真系统写透 + stream 保活（P0-3）。
- * A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写；host 自持账本弃用不断路。 */
+/** DetailDrawer 抽屉容器：事件开合 + 真系统写透 + stream 保活（P0-3）。A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写。 */
 import { mount } from '../../client/dom'
+import { logLine, logOn } from '../../client/log'
 import { nativePicker, openDirPicker } from '../../client/ui/dir-picker'
 import { showSheet } from '../../client/ui/sheet'
 import { toast } from '../../client/ui/toast'
@@ -30,9 +30,7 @@ export function mountDrawer(fctx: FeatureCtx): () => void {
   try {
     if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => undefined
     window.addEventListener(OPEN_DRAWER_EVENT, onEvent as EventListener)
-  } catch {
-    return () => undefined
-  }
+  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'detail-drawer', message: String((e as Error)?.message ?? e) }); return () => undefined }
   return () => {
     try { window.removeEventListener(OPEN_DRAWER_EVENT, onEvent as EventListener) } catch { /* ignore */ }
   }
@@ -42,6 +40,7 @@ type MetaDoc = Awaited<ReturnType<FeatureCtx['meta']['loadMeta']>>
 type SnapBots = Parameters<typeof buildDrawerModel>[0]
 
 async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
+  logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'open', ok: true, message: '打开 Agent 详情：' + key })
   try {
     currentClose?.()
   } catch {
@@ -51,21 +50,14 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   let meta: MetaDoc | null = null
   try {
     meta = await fctx.meta.loadMeta()
-  } catch {
-    toast('身份配置不可用，稍后重试')
-    return
-  }
+  } catch (e) { logLine('warn', 'bridge.call.fail', { method: 'meta.loadMeta', message: String((e as Error)?.message ?? e) }); toast('身份配置不可用，稍后重试'); return }
   let sheet: ReturnType<typeof showSheet> | null = null
   let closed = false
   let lastBots: SnapBots = []
   let lastCatalogs: Record<string, AgentPresetCatalog> = {}
   let lastRoutes: RouteEntry[] = []
   const closeAll = (): void => {
-    try {
-      sheet?.close()
-    } catch {
-      /* ignore */
-    }
+    try { sheet?.close() } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'close-fail', ok: false, message: String((e as Error)?.message ?? e) }) }
   }
   try {
     sheet = showSheet({
@@ -83,13 +75,11 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         if (currentClose === closeAll) currentClose = null
       },
     })
-  } catch {
+  } catch (e) {
     sheet = null
+    logLine('error', 'ui.render.fail', { area: 'detail-drawer', message: 'showSheet 抛错：' + String((e as Error)?.message ?? e) })
   }
-  if (!sheet) {
-    toast('抽屉打开失败')
-    return
-  }
+  if (!sheet) { logLine('error', 'ui.render.fail', { area: 'detail-drawer', message: '抽屉面板未建出（showSheet 返回空）' }); toast('抽屉打开失败'); return }
   currentClose = closeAll
   let settled = false
   let giveUp: ReturnType<typeof setTimeout> | null = null
@@ -101,14 +91,15 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     if (closed || !sheet) return
     try {
       mount(sheet.panel, renderDrawerContent(loadingModel(key), quietCallbacks(() => closeAll())))
-    } catch {
-      /* keep old frame */
+    } catch (e) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'loading-paint-fail', ok: false, message: String((e as Error)?.message ?? e) })
     }
   }
   try {
     giveUp = setTimeout(() => {
       giveUp = null
       if (!settled && !closed) {
+        logLine('warn', 'stream.fail', { message: '抽屉等 8s 未等到该 Agent 数据（端点空或 key 未命中）：' + key })
         toast('未找到该 Agent 的数据，可点列表右上刷新后重试')
         closeAll()
       }
@@ -141,8 +132,8 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     const sl = bd ? bd.scrollLeft : 0
     try {
       mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, draftPers))
-    } catch {
-      /* keep old frame */
+    } catch (e) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'paint-fail', ok: false, message: '保留旧帧：' + String((e as Error)?.message ?? e) })
     }
     const nb = sheet.panel.querySelector('.detail-drawer-dbody') as HTMLElement | null
     if (nb) { nb.scrollTop = st; nb.scrollLeft = sl }
@@ -161,10 +152,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   const cbs = (model: DrawerModel): DrawerCallbacks => {
     const flipOne = (channel: string, botId: string, which: 'group' | 'direct'): void => {
       const target = model.bots.find((b) => b.channel === channel && b.botId === botId)
-      if (!target || target.ctx === undefined) {
-        toast('本渠道真值尚未读到，稍后再试（防覆盖已有配置）')
-        return
-      }
+      if (!target || target.ctx === undefined) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'toggle-rejected', ok: false, message: '本渠道真值未读到，拒绝翻转（防覆盖已有配置）' }); toast('本渠道真值尚未读到，稍后再试（防覆盖已有配置）'); return }
       const cur = target.ctx
       const on = cur !== null && (which === 'group' ? cur.groupEnabled : cur.directEnabled) === true
       const cfg = ctxPayloadFor(cur, which, !on)
@@ -259,7 +247,9 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
           toast('渠道机器人已移除', 'check')
           await fctx.refresh()
         } catch (e) {
-          toast('移除失败：' + String((e as Error)?.message ?? e))
+          const msg = String((e as Error)?.message ?? e)
+          logLine('warn', 'bridge.call.fail', { method: channel + '/bot.delete', message: msg })
+          toast('移除失败：' + msg)
         }
       })()
     },
@@ -274,7 +264,9 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
           const outcome = await runTestSend(fctx.rpc, bot, model.workspace, model.name)
           toast(outcome.text, outcome.ok ? 'check' : undefined)
         } catch (e) {
-          toast('发送失败：' + String((e as Error)?.message ?? e))
+          const msg = String((e as Error)?.message ?? e)
+          logLine('warn', 'bridge.call.fail', { method: 'test-send', message: msg })
+          toast('发送失败：' + msg)
         }
       })()
     },
@@ -292,7 +284,8 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         if (JSON.stringify(r) !== JSON.stringify(lastRoutes)) { lastRoutes = r; paint() }
       }).catch(() => undefined)
     })
-  } catch {
+  } catch (e) {
+    logLine('warn', 'bridge.call.fail', { method: 'stream.subscribe', message: '抽屉订阅失败即关：' + String((e as Error)?.message ?? e) })
     closeAll()
   }
 }

@@ -1,5 +1,6 @@
 /** DetailDrawer 写透层（drawer 瘦身拆出）：逐渠道写上游真接口＋部分失败透出＋写后刷新；deps 注入可单测。 */
 import type { FeatureCtx } from '../protocol'
+import { logLine } from '../../client/log'
 import { unwrapRpc, type DrawerBot, type DrawerModel } from './data'
 
 export interface WriteDeps {
@@ -39,6 +40,7 @@ export async function writeBots(
   run: (b: DrawerBot) => Promise<void>, note = '，新会话生效',
 ): Promise<void> {
   if (!deps.rpc) {
+    logLine('warn', 'bridge.call.fail', { method: 'detail-drawer.write', message: '连接服务不可用（' + kind + ' 未发出）' })
     deps.notify('连接服务不可用')
     return
   }
@@ -56,8 +58,10 @@ export async function writeBots(
     } catch (e) {
       fails.push(b.channel)
       lastErr = String((e as Error)?.message ?? e)
+      logLine('warn', 'bridge.call.fail', { method: b.channel + ' 写透（' + kind + '）', message: lastErr })
     }
   }
+  logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'write', ok: fails.length === 0, message: kind + '：成功 ' + ok + '/' + model.bots.length + (fails.length ? '，失败渠道 ' + fails.join('、') + '，原因 ' + lastErr : '') })
   if (!fails.length) deps.notify(kind + '已写入真系统' + note, 'check')
   else if (ok > 0) deps.notify(kind + '部分写入（成功 ' + ok + ' 个），失败：' + fails.join('、'))
   else deps.notify(kind + '写入失败：' + lastErr)

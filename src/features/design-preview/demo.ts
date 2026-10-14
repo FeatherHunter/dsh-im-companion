@@ -1,7 +1,8 @@
 /** 组行活性（#57 转正，原 TEMP 演示）：activity.snapshot 真数据 + 真状态徽饰。 */
 /* 时间=会话文件最大 mtime（文件级近似）；方向=粗分；需干预/会话级无真信号，保持缺席。 */
 import { deriveRowStates, fetchActivity, fetchRoutesSafe, routesOf, type RowState } from '../../client/data/activity';
-import { isLineageNode } from '../../client/dom';
+import { isLineageNode } from '../../client/dom'
+import { logLine, logOn } from '../../client/log';
 import { clearSessionMarks, markSessions, sessionAttrProbe } from './sessions';
 import type { BotSnap } from '../../client/data/fleet-api';
 import type { StreamSnapshot } from '../../client/data/connection-stream';
@@ -76,14 +77,14 @@ function paint(groups: Element[], states: RowState[]): void {
       setAttr(row, 'data-dp-act', st.act);
       setAttr(row, 'data-dp-tip', tipFor(st, 0, states.length));
     }
-  } catch (e) { /* 绘制失败下次 */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'design-preview', action: 'paint-fail', ok: false, message: '绘制组行失败：' + String((e as Error)?.message ?? e) }) }
 }
 /* reorder 已拔（暴力重排否决，只高亮不搬 DOM，见 #45）。bubble 已删（2026-09-07 用户裁定：悬浮状态词污染视觉）。 */
 var moving = false;
 export function mountDesignPreview(ctx: FeatureCtx): () => void {
   var noop = function (): void {};
   if (typeof document === 'undefined') return noop;
-  try { console.info('[dsh-im-companion] 组行活性已挂载，等 stream 首轮快照'); } catch (e) { /* 静默 */ }
+  try { logLine('debug', 'ui.action', { area: 'design-preview', action: 'mount', ok: true, message: '组行活性已挂载，等 stream 首轮快照' }) } catch (e) { /* 静默 */ }
   var bots: BotSnap[] = [];
   var hasSnap = false;
   var fetching = false;
@@ -107,7 +108,7 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
       var routes = arr[1] as import('../../client/data/fleet-api').RouteRow[];
       if (disposed) return;
       try {
-        if (!entries.length && lastGood > 0) { fetching = false; return; }
+        if (!entries.length && lastGood > 0) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'design-preview', action: 'empty-keep', ok: true, message: '本轮 entries 空，保留上次绘制（lastGood=' + lastGood + '）' }); fetching = false; return; }
         lastGood = entries.length;
         var hasRoutes = routesOf(bots, routes);
         var groups = collectGroups();
@@ -121,17 +122,17 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
             else if (states[q].act === 'calm') cc++;
             else ck++;
           }
-          console.info('[dsh-im-companion] 活性快照：entries=' + entries.length + ' exec=' + ce + ' seen=' + cs + ' calm=' + cc + ' sink=' + ck);
+          if (logOn('debug')) logLine('debug', 'ui.action', { area: 'design-preview', action: 'snapshot', ok: true, message: '活性快照：entries=' + entries.length + ' exec=' + ce + ' seen=' + cs + ' calm=' + cc + ' sink=' + ck })
         } catch (e) { /* 计数失败忽略 */ }
         moving = true;
         try {
           paint(groups, states);
           markSessions(groups, states);
-        } catch (e) { /* 本轮失败下轮 */ }
+        } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'design-preview', action: 'mark-fail', ok: false, message: '本轮涂色/标记失败，下轮重试：' + String((e as Error)?.message ?? e) }) }
         moving = false;
-      } catch (e) { /* 本轮失败下轮 */ }
+      } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'design-preview', action: 'derive-fail', ok: false, message: '本轮取数/状态推导失败，下轮重试：' + String((e as Error)?.message ?? e) }) }
       fetching = false;
-    }).catch(function () { fetching = false; });
+    }).catch(function (e: unknown) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'design-preview', action: 'fetch-fail', ok: false, message: '活性/routes 取数失败或 8s 超时：' + String((e as Error)?.message ?? e) }); fetching = false; });
   };
   var unsub: (() => void) | null = null;
   try {
@@ -140,7 +141,7 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
       hasSnap = snap.updatedAt > 0;
       if (hasSnap) refresh();
     });
-  } catch (e) { return noop; }
+  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'design-preview', message: '订阅注册失败，组行活性未生效：' + String((e as Error)?.message ?? e) }); return noop; }
   try {
     var getFn2 = (ctx as unknown as { get?: (n: string) => unknown }).get;
     var svc2 = (typeof getFn2 === 'function' ? getFn2('workspaces') : null) as unknown as Record<string, unknown> | null;
@@ -172,7 +173,7 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
   try {
     observer = new MutationObserver(function () { if (!moving) refresh(); });
     observer.observe(document.body ? document.body : document.documentElement, { childList: true, subtree: true });
-  } catch (e) { /* 无 observer 只靠快照 */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'design-preview', action: 'no-observer', ok: false, message: 'MutationObserver 建不起来，只靠 stream 快照：' + String((e as Error)?.message ?? e) }) }
   /* 悬浮气泡已删（2026-09-07 用户裁定："待看/执行中/异常需处理"提示污染视觉，与竖条重复）。
    * data-dp-tip 属性保留（devtools 诊断用），不再渲染可见文字。onKey 保留（5s 兜底刷新节拍）。 */
   var lastKey = 0;
@@ -190,6 +191,7 @@ export function mountDesignPreview(ctx: FeatureCtx): () => void {
   /* 视觉对照器已删（2026-09-07 固化：组行竖条+会话行标题色，V3/V4/V5/V6 淘汰，面板使命完成）。 */
   return function (): void {
     disposed = true;
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'design-preview', action: 'unmount', ok: true, message: '卸载：退订 + 断观察 + 清会话标记' });
     try { if (unsub) unsub(); } catch (e) { /* 忽略 */ }
     try { if (observer) observer.disconnect(); } catch (e) { /* 忽略 */ }
     try { document.removeEventListener('keydown', onKey, true); } catch (e) { /* 忽略 */ }

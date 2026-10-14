@@ -3,6 +3,23 @@
  * T5 落地（#77）：dsh-im 管理 RPC 改道（上游 503a24a）双传输翻译收敛在本文件，
  * 调用点（fleet-api/fetchBots/healthOf/轮询）零改；回包信封语义未变，unwrap/extractBots 照旧。 */
 import type { RpcCall } from './fleet-api'
+import { logLine } from '../log'
+
+/** 两条传输都失败＝真桥故障：记 warn（method 带渠道定位），同键同原文只记一次防轮询刷盘（T9 #123）。
+ * **首选方向与换路的原文都要进 message**：真机验收实测——`/im-companion` 的旧前缀路由已退役、换路必 405，
+ * 只记改道后的那条原文，等于拿「永远不会通的老路由」盖掉首选载体的真因（读日志的人会追错方向）。 */
+const failSig = new Map<string, string>()
+function dirName(d: Direction): string { return d === 'new' ? '新载体' : '旧前缀回退' }
+function noteBridgeFail(method: string, err: unknown, first?: { dir: Direction; err: unknown }): void {
+  const message = String((err as Error)?.message ?? err)
+  const full = first
+    ? dirName(first.dir) + '失败：' + String((first.err as Error)?.message ?? first.err)
+      + '；换路' + dirName(first.dir === 'new' ? 'old' : 'new') + '仍失败：' + message
+    : message
+  if (failSig.get(method) === full) return
+  failSig.set(method, full)
+  logLine('warn', 'bridge.call.fail', { method, message: full })
+}
 
 type RawCall = (ch: string, ep: string, p: Record<string, unknown>, s: AbortSignal) => Promise<unknown>
 
@@ -55,9 +72,16 @@ export async function dualTransportCallV2(
   } catch (err) {
     if (isCallerAbort(signal, err)) throw err
     const second: Direction = first === 'new' ? 'old' : 'new'
-    const value = second === 'new' ? await fresh(signal) : await legacy(signal)
-    dirMemo.set(channel, second)
-    return value
+    try {
+      const value = second === 'new' ? await fresh(signal) : await legacy(signal)
+      dirMemo.set(channel, second)
+      return value
+    } catch (e2) {
+      /* 换路仍失败：**两条原文照记**（这是「桥坏了」与「某个渠道没配」的分界证据），Abort 仍直通不记。 */
+      if (isCallerAbort(signal, e2)) throw e2
+      noteBridgeFail(channel + ':' + endpoint, e2, { dir: first, err })
+      throw e2
+    }
   }
 }
 

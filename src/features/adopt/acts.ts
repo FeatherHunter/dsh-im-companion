@@ -1,5 +1,6 @@
 /** adopt 写管道：绑定写透 + 确认弹窗 + 撤销窗（纯行为，无布局）。 */
 import { h } from '../../client/dom'
+import { logLine, logOn } from '../../client/log'
 import { toast } from '../../client/ui/toast'
 import { channelLabel } from '../../client/data/config'
 import type { AgentMetaDoc } from '../../client/data/meta'
@@ -20,15 +21,19 @@ export function dismissUndo(): void {
 
 export async function setWorkspace(ctx: FeatureCtx, channel: string, botId: string, workspace: string, label: string): Promise<boolean> {
   if (!ctx.rpc) {
+    logLine('debug', 'ui.action', { area: 'adopt', action: 'no-rpc', ok: false, message: label + ' 未发出：连接服务不可用' })
     toast('连接服务不可用')
     return false
   }
   try {
     await ctx.rpc('/' + channel, 'bot.workspace.set', { botId, workspace }, AbortSignal.timeout(8000))
+    logLine('debug', 'ui.action', { area: 'adopt', action: 'set-workspace', ok: true, message: label + ' → ' + workspace + '（botId ' + botId + '）' })
     await ctx.refresh()
     return true
   } catch (e) {
-    toast(label + '失败：' + String((e as Error)?.message ?? e))
+    const msg = String((e as Error)?.message ?? e)
+    logLine('warn', 'bridge.call.fail', { method: channel + '/bot.workspace.set', message: msg })
+    toast(label + '失败：' + msg)
     return false
   }
 }
@@ -48,7 +53,7 @@ export function showUndo(ctx: FeatureCtx, channel: string, botId: string, from: 
     undoEl = h('div', { className: 'adopt-undo', role: 'status' }, msg, btn) as HTMLElement
     document.body.appendChild(undoEl)
     undoTimer = setTimeout(() => { dismissUndo(); toast('撤销超时，绑定已生效') }, UNDO_WINDOW_MS)
-  } catch { /* 提示失败不阻断已落地绑定 */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'adopt', action: 'undo-toast-fail', ok: false, message: '撤销提示失败（绑定已落地）：' + String((e as Error)?.message ?? e) }) }
 }
 
 /* 自有确认框（不复用共享 showModal：其遮罩层级低于本面板，确认框会被压住。行为同源：Esc/点阴影关闭）。 */
@@ -116,11 +121,12 @@ export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string,
     box.addEventListener('mousedown', (e: Event) => { if (e.target === box) close() })
     document.addEventListener('keydown', onKey, true)
     document.body.appendChild(box)
-  } catch { /* 弹层失败则不动（fail-closed） */ }
+  } catch (e) { logLine('error', 'ui.render.fail', { area: 'adopt', message: '换绑确认框未弹出（fail-closed：不动）：' + String((e as Error)?.message ?? e) }) }
 }
 
 export function actDrop(ctx: FeatureCtx, bot: MoveBot, target: { kind: 'workspace'; workspace: string } | { kind: 'empty' }, meta: AgentMetaDoc | null, hooks?: DropHooks): void {
   const v = resolveDrop(bot, target)
+  logLine('debug', 'ui.action', { area: 'adopt', action: 'drop', ok: v.kind === 'bind' || v.kind === 'confirm-move', message: '拖放解析=' + v.kind + '，bot=' + bot.botId + '，to=' + String((v as { to?: string }).to ?? '') })
   if (v.kind === 'bind') {
     void (async () => {
       if (await setWorkspace(ctx, bot.channel, bot.botId, v.to, '绑定')) {
@@ -133,8 +139,10 @@ export function actDrop(ctx: FeatureCtx, bot: MoveBot, target: { kind: 'workspac
   } else if (v.kind === 'confirm-move') {
     askMove(ctx, bot, v.from, v.to, meta, hooks)
   } else if (v.kind === 'noop') {
+    logLine('debug', 'ui.action', { area: 'adopt', action: 'drop-noop', ok: false, message: '目标即原家，未写：' + bot.botId })
     toast('它已经在这里了')
   } else {
+    logLine('debug', 'ui.action', { area: 'adopt', action: 'drop-invalid', ok: false, message: '空白处不可放：' + bot.botId })
     toast('空白处不可放，请拖到分组上')
   }
 }

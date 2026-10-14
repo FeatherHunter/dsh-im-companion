@@ -5,6 +5,7 @@
 import { createMetaStore } from '../data/meta'
 import type { RpcCall } from '../data/fleet-api'
 import type { toast as toastFn } from '../ui/toast'
+import { logLine, logOn } from '../log'
 
 export interface BindingCommit {
   rpc: RpcCall
@@ -28,6 +29,7 @@ const sleep = (ms: number): Promise<void> => new Promise<void>((r) => setTimeout
  * 绝不复活“扫码后再选家、可取消”的旧分叉。 */
 export async function commitBinding(o: BindingCommit): Promise<boolean> {
   if (!o.ws) {
+    logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: false, message: '机器人已就绪但未绑定工作区（ws 为空）' })
     o.toast('机器人已就绪但未绑定工作区：请在该机器人所在卡片用 ⋯ 菜单「选择工作区」完成绑定')
     o.onDone()
     return false
@@ -48,12 +50,14 @@ export async function commitBinding(o: BindingCommit): Promise<boolean> {
     if (res?.error?.code === 'workspace-bot-not-found' && attempt < retry.attempts) {
       if (!announced) {
         announced = true
-        o.toast('服务端正在登记新机器人，绑定稍候重试…')
+        o.toast('机器人还没就绪，请稍后重试')
       }
       await sleep(retry.gapMs)
       continue
     }
-    o.toast('绑定失败：' + (res?.error?.message ?? '绑定失败'))
+    const failMsg = res?.error?.message ?? '绑定失败'
+    logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: false, message: failMsg })
+    o.toast('绑定失败：' + failMsg)
     o.onDone()
     return false
   }
@@ -64,9 +68,13 @@ export async function commitBinding(o: BindingCommit): Promise<boolean> {
       await store.rename(o.ws, o.agentName)
       await store.removeLocal(o.agentName)
     } catch (e) {
-      o.toast('名称关联失败：' + String((e as Error)?.message ?? e) + '（绑定已生效）')
+      /* 半成功：绑定已生效、只有名字关联失败——不改判结果，但必须留证据。 */
+      const m = String((e as Error)?.message ?? e)
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'connect', action: 'name-link', ok: false, message: m })
+      o.toast('名称关联失败：' + m + '（绑定已生效）')
     }
   }
+  logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: true, message: '' })
   o.toast('已接入并绑定工作区', 'check')
   o.onDone()
   return true

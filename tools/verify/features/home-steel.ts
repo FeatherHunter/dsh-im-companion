@@ -17,6 +17,7 @@ const HOST = join(REPO, 'src', 'host');
 const ENTRIES = [
   join(CLIENT, 'data', 'home-model.ts'),
   join(CLIENT, 'data', 'home-edit.ts'),
+  join(CLIENT, 'data', 'home-move.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'home-steel-'));
@@ -39,6 +40,7 @@ try {
 const req = createRequire(join(tmp, 'run.cjs'));
 const model: any = req('./home-model.js');
 const editMod: any = req('./home-edit.js');
+const moveMod: any = req('./home-move.js');
 
 // —— 宿主 home-store 单独转译（真文件 IO，盘换临时目录） ——
 const tmpHost = mkdtempSync(join(tmpdir(), 'home-steel-host-'));
@@ -48,6 +50,7 @@ try {
     join(HOST, 'home-store.ts'),
     join(HOST, 'rpc.ts'),
     '--ignoreConfig',
+    '--rootDir', join(REPO, 'src'),
     '--outDir', tmpHost, '--module', 'commonjs', '--target', 'es2023',
     '--moduleResolution', 'bundler', '--skipLibCheck', '--types', 'node',
     '--declaration', 'false', '--sourceMap', 'false',
@@ -57,7 +60,11 @@ try {
   process.exit(1);
 }
 const reqHost = createRequire(join(tmpHost, 'run.cjs'));
-const homeStore: any = reqHost('./home-store.js');
+/* 宿主产物统一在 <tmpHost>/host/ 下：tsc 的推断 rootDir 会随 import 图漂（T9 起 rpc 链牵到 src/log-events.ts
+ * ⇒ 根上移到 src/），所以上面钉死 --rootDir src，这里也只认这一种落点。 */
+const reqHostFile = (f: string): any => reqHost('./host/' + f);
+try { symlinkSync(join(REPO, 'node_modules'), join(tmpHost, 'node_modules'), 'junction'); } catch { /* 已存在跳过 */ }
+const homeStore: any = reqHostFile('home-store.js');
 
 /* —— 绿框渲染链单独转译：真 panel-body 渲染（DOM 桩），让「呈现」这条断言点的是真 DOM 而不是源码文本 —— */
 const tmpBox = mkdtempSync(join(tmpdir(), 'home-steel-box-'));
@@ -67,6 +74,7 @@ try {
     join(COMP, 'panel-body.ts'),
     join(COMP, 'home-refresh.ts'),
     '--ignoreConfig',
+    '--rootDir', join(REPO, 'src'),
     '--outDir', tmpBox, '--module', 'commonjs', '--target', 'es2023',
     '--moduleResolution', 'bundler', '--skipLibCheck',
     '--declaration', 'false', '--sourceMap', 'false',
@@ -92,20 +100,23 @@ domDoc.defaultView = domWin;
 for (const n of ['HTMLElement', 'HTMLDivElement', 'HTMLSpanElement', 'HTMLButtonElement', 'HTMLInputElement', 'HTMLSelectElement', 'HTMLStyleElement', 'Node', 'Element']) domWin[n] = El;
 (globalThis as any).window = domWin;
 (globalThis as any).document = domDoc;
+/* toast()（ui/toast）直接吃**全局** requestAnimationFrame：桩里补上，别让「点出来的真 DOM」路径因缺环境报错。 */
+(globalThis as any).requestAnimationFrame = (fn: (t?: number) => void): number => setTimeout(() => fn(0), 0) as unknown as number;
 try { (globalThis as any).localStorage = domWin.localStorage; } catch { /* read-only 忽略 */ }
 /* 呈现层若在模块顶自开轮询，真计时器会吊住事件循环 ⇒ 整套挂死而不是报错。
    换成记账假计时器：让「自开轮询」变成一条能读到名字的断言失败（解耦那条会读 intervalCalls）。 */
 const intervalCalls: string[] = [];
 (globalThis as any).setInterval = ((fn: any, ms?: any) => { intervalCalls.push(String(ms ?? '')); return 0 }) as any;
 const boxReq = createRequire(join(tmpBox, 'run.cjs'));
-/* tsc 的推断 rootDir 随 import 图变：两种落点都试，避免换一次 import 就 ENOENT。 */
+/* tsc 的推断 rootDir 随 import 图变：上面已钉死 --rootDir src ⇒ 产物在 client/components/ 下；
+ * 仍两种落点都试，避免再换一次 import 就 ENOENT。 */
 const bodyMod: any = (() => {
-  try { return boxReq('./components/panel-body.js'); } catch { return boxReq('./panel-body.js'); }
+  try { return boxReq('./client/components/panel-body.js'); } catch { return boxReq('./components/panel-body.js'); }
 })();
 /* 弹层逻辑状态（开/关）读 pop 模块：遮罩关闭带 130ms 渐隐，DOM 移除是异步的，
  * “关了没”以 homePopOpen() 为准，数 DOM 会误判（T6b #114 实测）。 */
 const popMod: any = (() => {
-  try { return boxReq('./components/home-pop.js'); } catch { return boxReq('./home-pop.js'); }
+  try { return boxReq('./client/components/home-pop.js'); } catch { return boxReq('./components/home-pop.js'); }
 })();
 
 const H = (o: any) => ({ id: 'h1', workspaceId: 'ws-1', path: 'D:\\agents\\keting', name: '客厅', nameSource: 'system', avatar: null, avatarSource: 'default', createdAt: 1, updatedAt: 1, ...o });
@@ -143,6 +154,8 @@ const tag = (root: any, name: string): any => nodes(root).find((e) => String(e.n
 const txt = (e: any): string => String(e?.textContent ?? '').replace(/\s+/g, ' ').trim();
 const off = (e: any): boolean => e?.disabled === true || !!e?.hasAttribute?.('disabled');
 const clickEl = (e: any): void => { e.dispatchEvent({ type: 'click' }); };
+/** 弹层里的按钮按文案找：按钮从底部行搬进标题栏（owner 2026-10-15）后 DOM 顺序变了，不许再用下标。 */
+const popBtn = (pop: any, label: string): any => (pop ? cls(pop, 'hu-pbtn-s').find((b: any) => txt(b) === label) ?? null : null);
 
 function renderBox(): { bodyEl: any; handle: any } {
   const bodyEl = new El('div', domDoc);
@@ -263,18 +276,23 @@ test('种子幂等键：同规范路径（大小写/斜杠差异）不翻倍', (
   assert.equal(seed.homes.length, 1);
 });
 
-test('缺口判定：空表有料→补；齐→静默；新 bot→补', () => {
+test('缺口判定：任一工作区缺家→补；齐→静默；新 bot→补', () => {
   assert.equal(model.seedGap([W({})], [], [], []), true);
   assert.equal(model.seedGap([], [B({})], [], []), true);
   assert.equal(model.seedGap([], [], [], []), false);
   assert.equal(model.seedGap([W({})], [B({})], [H({})], [A({})]), false);
   assert.equal(model.seedGap([W({})], [B({}), B({ botId: 'b2' })], [H({})], [A({})]), true);
-  /* T6b #114 回退说明：曾收窄为“只补缺家”防删后复活，但与已验收契约冲突——
-   * 缺家工作区必须留给手动建家（create-flow ①③前提），新号自动补是 ② 顺序契约的一环。
-   * 已知局限（删有工作区号会被补回）记入 #114 正文，归 T6c/后续票。 */
+  /* T10 #124（owner 裁定 2026-10-15）：家＝工作区的镜像 ⇒ 任何工作区缺家都要自动补同名家。
+   * 于是「用已有工作区」支路没有存在意义（工作区刚被 DSH 加进来就会被补家），整个分段退场。 */
   assert.equal(model.seedGap(
     [W({}), W({ workspaceId: 'ws-9', path: 'D:\\agents\\new', title: '新区' })],
-    [B({})], [H({})], [A({})]), false, '缺家工作区不自动补（留给手动建家）');
+    [B({})], [H({})], [A({})]), true, '任何缺家工作区都要自动补同名家（T10 #124）');
+  /* T10 #124 验收②的原形：DSH 里新建一个工作区、**没有任何机器人**（旧规则在这里必漏补）。 */
+  assert.equal(model.seedGap(
+    [W({}), W({ workspaceId: 'ws-new', path: 'D:\\agents\\fresh', title: '新房间' })],
+    [], [H({})], []), true, '无机器人的新工作区也必须补家（T10 #124 验收②）');
+  assert.equal(model.seedGap([W({}), W({ workspaceId: 'ws-new', path: 'D:\\agents\\fresh' })], [], [H({}), H({ id: 'h2', workspaceId: 'ws-new', path: 'D:\\agents\\fresh' })], []), false,
+    '补过之后再判＝齐（幂等，不会每轮重种）');
 });
 
 test('T6b 改名配图纯逻辑：user 覆盖/恢复默认/非法拒收（验收①②）', () => {
@@ -329,7 +347,7 @@ test('T6b 占位绑定纯逻辑：只收未绑、一对一、user 名保留（�
 });
 
 test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连（验收①③④）', async () => {
-  const homeEdit: any = reqHost('./home-edit.js');
+  const homeEdit: any = reqHostFile('home-edit.js');
   const dir = mkdtempSync(join(tmpdir(), 'hs-t6b-'));
   const file = join(dir, 'homes.json');
   const r1: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
@@ -569,8 +587,8 @@ test('宿主 RPC：四端点已追加且旧码不动（Added-only）', () => {
 /* 真分发器执行（补掉「只 grep 源码 case」的空档）：走 src/host/rpc.ts 的真 switch，
  * 而不是直接调 home-store 的函数，也不是断言源码里有 "case 'home.seed': {"。 */
 test('宿主分发器真跑：ping → home.create → assistant.create → home.list → 一对一拒绝 → home.seed', async () => {
-  const { AgentMetaStore } = reqHost('./meta-store.js');
-  const { createAgentFleetHandler } = reqHost('./rpc.js');
+  const { AgentMetaStore } = reqHostFile('meta-store.js');
+  const { createAgentFleetHandler } = reqHostFile('rpc.js');
   const dshHome = mkdtempSync(join(tmpdir(), 'home-steel-rpc-'));
   const call = createAgentFleetHandler(new AgentMetaStore(join(dshHome, 'agents.json')), { dshHome });
 
@@ -619,7 +637,7 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   /* 旧 variant-A（home-drill / home-create / home-styles）整体删除，绿框改钉 T4 认可款原型
    * prototypes/home-assistant/proto-studio.html 的文件集合与 DOM（owner 裁定 2026-10-13）。 */
   const GONE = ['home-drill.ts', 'home-create.ts', 'home-styles.ts'];
-  const GREEN = ['home-ui-styles.ts', 'home-icons.ts', 'home-rows.ts', 'home-frame.ts', 'home-detail.ts', 'home-forms.ts', 'home-pop.ts', 'home-ops.ts', 'home-refresh.ts', 'panel-body.ts'];
+  const GREEN = ['home-ui-styles.ts', 'home-icons.ts', 'home-rows.ts', 'home-frame.ts', 'home-detail.ts', 'home-forms.ts', 'home-dir.ts', 'home-dir-form.ts', 'home-pop.ts', 'home-ops.ts', 'home-move-ops.ts', 'home-move-forms.ts', 'home-refresh.ts', 'panel-body.ts'];
   for (const f of GONE) assert.equal(existsSync(join(COMP, f)), false, '旧 variant-A 文件必须已删：' + f);
   for (const f of GREEN) assert.ok(existsSync(join(COMP, f)), '绿框实现文件必须存在：' + f);
 
@@ -707,17 +725,17 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.equal(txt(curCrumb(bodyEl)), 'L2客厅', '当前层＝L2 家（链路条跟着钻取走）');
   assert.equal(txt(foot()), '新建助理', 'L2 底部主操作＝新建助理');
   assert.ok(txt(rows()[0]).includes('已绑') && txt(rows()[0]).includes('小帅'), '已绑助理行：机器人名回落＋已绑章');
-  assert.ok(!off(one(rows()[1], 'hu-ract')) && txt(one(rows()[1], 'hu-ract')) === '绑机器人',
-    '未绑助理的「绑机器人」可用（开绑定弹层，T6b #114）');
+  assert.ok(!off(one(rows()[1], 'hu-ract')) && txt(one(rows()[1], 'hu-ract')) === '绑定机器人',
+    '未绑助理的「绑定机器人」可用（开绑定弹层，T6b #114）');
 
-  /* 点助理行 → L3 详情：T6b #114 接入/详情/改名·配图/删除助理全可用；#115 只留一行清单 */
+  /* 点助理行 → L3 详情：T6b #114 接入/详情/改名·头像/删除助理全可用；T6c #115 换工作区/移除渠道已启用 */
   clickEl(rows()[0]);
   assert.ok(one(bodyEl, 'hu-detail'), 'L3 详情卡 .hu-detail 必须在');
   const acts = cls(bodyEl, 'hu-abtn');
-  assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['接入', '详情', '改名·配图', '删除助理'], 'L3 四枚全可用（已绑助理）');
+  assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['接入', '详情', '改名·头像', '删除助理', '换工作区', '移除渠道'], 'L3 六枚全可用（已绑助理，T6c #115）');
   assert.equal(acts.filter(off).length, 0, 'L3 无禁用钮');
-  assert.ok(txt(one(bodyEl, 'hu-soon')).includes('换工作区') && txt(one(bodyEl, 'hu-soon')).includes('#115') && !txt(one(bodyEl, 'hu-soon')).includes('#114'),
-    '待实现清单只留 #115（换工作区·移除渠道）');
+  assert.deepEqual(acts.map((b) => b.getAttribute('data-item-act')), ['connect-a', 'detail-a', 'rename-a', 'remove-a', 'move-a', 'unbind-a'], '行动作 data-item-act 口径');
+  assert.equal(cls(bodyEl, 'hu-soon').length, 0, '待实现清单退场（#115 落地，无 planned 假按钮）');
   assert.equal(txt(one(one(bodyEl, 'hu-chain'), 'on')), '机器人名', '命名链高亮命中来源（nameSource=bot）');
   assert.equal(txt(foot()), '返回助理列表', 'L3 已绑：底部主操作＝返回助理列表');
 
@@ -727,6 +745,8 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.equal(txt(foot()), '绑定机器人', 'L3 未绑：底部主操作＝绑定机器人');
   assert.ok(!off(foot()), '未绑的绑定钮可用（开绑定弹层）');
   assert.ok(txt(one(bodyEl, 'hu-detail')).includes('还没绑机器人'), 'L3 未绑详情卡走占位文案');
+  const actsU = cls(bodyEl, 'hu-abtn');
+  assert.deepEqual(actsU.filter((b) => !off(b)).map((b) => txt(b)), ['绑定机器人', '详情', '改名·头像', '删除助理', '换工作区'], 'L3 未绑五枚可用（无移除渠道，T6c #115）');
 
   /* 面包屑可向前钻取：点 L1 章回到 L1 */
   clickEl(byAttr(bodyEl, 'data-goto', 'L1')[0]);
@@ -740,12 +760,14 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.ok(txt(one(bodyEl, 'hu-empty')).includes('点下面的「新建助理」'), '空态给出下一步');
   assert.equal(txt(foot()), '新建助理', '空家 L2 底部主操作仍是新建助理');
 
-  /* 建单：L2「新建助理」→ body 级 popover（选家＋选空闲机器人）；L1「新建家」→ 选已有工作区 */
+  /* 建单：L2「新建助理」→ body 级 popover（选家＋选空闲机器人）；L1「新建家」→ 选目录（T10 #124 起唯一支路） */
   clickEl(foot());
   const pop = one(domDoc.body, 'hu-pophost');
   assert.ok(pop && pop.classList.contains('home-ui'), '弹层挂 body portal 且宿主带 .home-ui（作用域不破）');
   assert.ok(one(pop, 'hu-scrim') && one(pop, 'hu-pop') && one(pop, 'hu-ppo'), '弹层结构＝.hu-scrim + .hu-pop > .hu-ppo');
   assert.equal(txt(one(pop, 'hu-ptitle')), '新建助理', '弹层标题＝新建助理');
+  const head = one(pop, 'hu-phead');
+  assert.ok(head && one(head, 'hu-ptitle') && cls(head, 'hu-pbtn-s').length === 2, '标题栏＝标题 + 取消/创建同一行（按钮在弹层右上角，owner 2026-10-15）');
   assert.deepEqual(cls(pop, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['属于哪个家', '绑定机器人', '名字'], '建单字段');
   assert.deepEqual(byAttr(pop, 'data-value', 'b9').map((o) => txt(tag(o, 'b'))), ['野号'], '空闲机器人是候选：已绑的 b1 不进下拉');
   const later = byAttr(pop, 'data-value', '')[0];
@@ -755,8 +777,9 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   clickEl(foot());
   const pop2 = one(domDoc.body, 'hu-pophost');
   assert.equal(txt(one(pop2, 'hu-ptitle')), '新建家', '回 L1 后底部主操作开的是「新建家」');
-  assert.deepEqual(cls(pop2, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['已有工作区'], '建家字段＝已有工作区');
-  assert.deepEqual(byAttr(pop2, 'data-value', 'ws-3').map((o) => txt(tag(o, 'b'))), ['车库'], '只列尚无家的已有工作区（ws-1/ws-2 已占用）');
+  assert.deepEqual(cls(pop2, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['目录'], '建家字段＝目录（T10 #124：分段退场，没有「已有工作区」候选）');
+  assert.equal(String(one(pop2, 'hu-fld').nodeName).toLowerCase(), 'div', '候选列表字段也不用 label 包：label 会把悬停/点击转给内部第一个候选按钮');
+  assert.equal(byAttr(pop2, 'data-value', 'ws-3').length, 0, '不再有「已有工作区」候选列表（分段整段退场）');
   handle.dispose();
 
   /* 装配层接线：绿框样式表安装、家表首读；建单入口归绿框自管（A1 不再直连 openCreate） */
@@ -766,6 +789,282 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.ok(panel.includes('createPanelBody'), '装配层接线绿框 body');
   assert.ok(!panel.includes('openCreate'), 'A1 不再直连建单入口（绿框页头 ＋ 与底部主操作自管）');
   assert.ok(!strip(panel).includes('compose.el'), '旧 compose 新建条退役（文件保留供回归钉）');
+});
+
+test('T7 #112 弹层三处加固：未选目录时创建显式禁用、宿主进 top layer、面板 dispose 回收悬空弹层', async () => {
+  /* 真机实测（#112）：13 个工作区全都有家 ⇒ 点「创建」静默 return（读成「没反应」）；
+   * 且弹层挂在 body，切走设置页后不随面板卸载。这里把三处加固都按「点出来的真 DOM」钉住。
+   * T10 #124（owner 2026-10-15 裁定）：家＝工作区的镜像 ⇒ 分段（用已有工作区/新建工作区）退场，
+   * 建家永远是「选目录 → DSH 新建工作区 → 家永久绑定」。 */
+  const tick = (): Promise<void> => new Promise((r) => { setTimeout(r, 0); });
+  const proto = Object.getPrototypeOf(new El('div', domDoc)) as any;
+  const saved = { showPopover: proto.showPopover, hidePopover: proto.hidePopover, matches: proto.matches };
+  let shown = 0;
+  let hidden = 0;
+  proto.showPopover = function (this: any) { shown += 1; this.setAttribute('data-layer', '1'); };
+  proto.hidePopover = function (this: any) { hidden += 1; this.setAttribute('data-layer', '0'); };
+  proto.matches = function (this: any, sel: string) { return sel === ':popover-open' && this.getAttribute?.('data-layer') === '1'; };
+  try {
+    /* ① 唯一支路（T10 #124）：目录字段 + 底钮；未选目录时「创建」禁用，不许「点了没反应」 */
+    const taken = BOX_HOMES.concat([H({ id: 'h3', workspaceId: 'ws-3', path: 'D:\\agents\\garage', name: '车库' })]);
+    const bodyEl = new El('div', domDoc);
+    const handle = bodyMod.createPanelBody({
+      state: { homes: taken, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
+      bodyEl,
+      titleMetaEl: new El('div', domDoc),
+      getWorkspaces: () => BOX_WS,
+      ops: { createHome: async () => { throw new Error('不该被调用'); }, createAssistant: async () => {}, connect: () => {}, pickDirectory: async () => 'D:\\agents\\newhome' },
+      onRetry: () => {},
+    });
+    handle.render();
+    clickEl(one(bodyEl, 'hu-pbtn'));
+    let pop = one(domDoc.body, 'hu-pop');
+    assert.ok(pop, '底部「新建家」开出弹层');
+    assert.equal(cls(pop, 'hu-seg2').length, 0, '分段退场（T10 #124：家＝工作区的镜像，没有第二条支路）');
+    assert.equal(cls(pop, 'hu-ind').length, 0, '选中滑块随分段一起退场');
+    assert.doesNotMatch(readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8'), /\.hu-seg2/, '样式表不留分段残留');
+    assert.deepEqual(cls(one(pop, 'hu-phead'), 'hu-pbtn-s').map(txt), ['取消', '创建'], '标题栏右＝取消 / 创建（按钮在弹层右上角）');
+    assert.equal(txt(one(pop, 'hu-dirpath')), '还没有选择目录', '未选目录时路径位显式占位');
+    /* owner 2026-10-14：按钮与路径必须**同排一行**（旧版两行：按钮一行 + 虚线占位一行） */
+    assert.equal(cls(pop, 'hu-dirrow').length, 1, '目录字段只有一个行容器');
+    assert.equal(cls(one(pop, 'hu-dirrow'), 'hu-pbtn-s').length, 1, '行内含「选择目录」按钮');
+    assert.equal(cls(one(pop, 'hu-dirrow'), 'hu-dirpath').length, 1, '路径位与按钮同一行，不再另起一行');
+    assert.ok(txt(pop).includes('选中的目录会建成 DSH 工作区'), '提示语讲用户得到什么（结果视角），不讲操作流程');
+    assert.ok(off(popBtn(pop, '创建')), '未选目录时「创建」显式禁用（不再静默 return＝点了像没反应）');
+    assert.ok(!off(popBtn(pop, '取消')), '「取消」仍可用');
+    clickEl(popBtn(pop, '创建'));
+    assert.ok(one(domDoc.body, 'hu-pop'), '点禁用的「创建」不关弹层、不写表（禁用钮派发 click 也不该有事）');
+    /* 选到目录 ⇒ 路径位回填、「创建」解禁（本用例只验弹层自身，不落家） */
+    clickEl(byAttr(pop, 'data-act', 'pick-dir')[0]);
+    await tick();
+    pop = one(domDoc.body, 'hu-pop');
+    assert.equal(txt(one(pop, 'hu-dirpath')), 'D:\\agents\\newhome', '选到的目录回填路径位');
+    assert.ok(!off(popBtn(pop, '创建')), '选到目录后「创建」可用');
+
+    /* ② 有 Popover API 的宿主：portal 宿主进 top layer（z-index 再高也压不过原生 dialog 层） */
+    const host = one(domDoc.body, 'hu-pophost');
+    assert.equal(host.getAttribute('popover'), 'manual', '宿主带 popover="manual"');
+    assert.ok(shown >= 1, 'showPopover 被调用（进 top layer）');
+
+    /* ③ 面板 body dispose ⇒ portal 弹层回收 + 退出 top layer（不留悬空弹层） */
+    handle.dispose();
+    assert.equal(one(domDoc.body, 'hu-pop'), null, 'dispose 后弹层回收');
+    assert.ok(hidden >= 1, 'hidePopover 被调用（退出 top layer）');
+
+    /* ④ 源码级钉两处顺序/守卫（真机语义在 DOM 桩里量不出来）：
+     *    a) 先 showLayer 再 place——宿主带 popover 时未 show 前是 UA display:none，量 pop 只会得 0×0，
+     *       place 会退回 width=300/height=320 的猜测值（落位与箭头都偏）；
+     *    b) 淡出收层前判 popEl——130ms 内重开弹层时宿主是同一个，旧定时器不能把新弹层一起收掉。 */
+    const popSrc = readFileSync(join(COMP, 'home-pop.ts'), 'utf8');
+    assert.ok(popSrc.indexOf('showLayer(host)') < popSrc.indexOf('place(pop, anchor)'), '先提层再量位（showLayer 在 place 之前）');
+    assert.ok(/if \(!popEl\) \{\s*hideLayer\(hostEl\)/.test(popSrc), '淡出收层前判 popEl（不误收新弹层）');
+
+    /* ⑤ body 级 portal 的令牌作用域（#112 真机第二次目验：弹层整块透明＝--af-* 未定义 ⇒ --hu-* 全失效）。
+     *   宿主挂在 .af-root 之外，它的某个类必须落在 theme.ts 令牌作用域选择器表里；两边任何一侧漏了都要红。 */
+    assert.ok(one(domDoc.body, 'af-portal'), 'popover 宿主带 af-portal（令牌作用域钩子）');
+    const themeSrc = readFileSync(join(CLIENT, 'theme.ts'), 'utf8');
+    const scope = themeSrc.slice(themeSrc.indexOf('const CSS = `'), themeSrc.indexOf('${TOKEN_BLOCK}'));
+    const inScope = ['af-portal', 'hu-pophost', 'home-ui']
+      .filter((c) => cls(domDoc.body, c).length > 0 && new RegExp('\\.' + c + '\\s*[,{]').test(scope));
+    assert.ok(inScope.length > 0, '宿主至少一个类在 theme.ts 令牌作用域表里（body 级 portal 必须自带令牌作用域）');
+  } finally {
+    if (saved.showPopover === undefined) delete proto.showPopover; else proto.showPopover = saved.showPopover;
+    if (saved.hidePopover === undefined) delete proto.hidePopover; else proto.hidePopover = saved.hidePopover;
+    if (saved.matches === undefined) delete proto.matches; else proto.matches = saved.matches;
+  }
+});
+
+test('T7 #112 弹层几何纯函数：贴底锚点翻上方、内容变矮不改横向落位、视口夹紧（真机跳位回归）', () => {
+  const placeMod: any = (() => {
+    try { return boxReq('./client/components/home-place.js'); } catch { return boxReq('./components/home-place.js'); }
+  })();
+  const vp = { w: 880, h: 980 };
+  const footAnchor = { left: 42, top: 700, right: 808, bottom: 738, width: 766, height: 38 };
+  const tall = placeMod.computePlacement(vp, footAnchor, { w: 330, h: 330 });
+  const short = placeMod.computePlacement(vp, footAnchor, { w: 330, h: 160 });
+  assert.equal(tall.below, false, '贴底锚点下方放不下 ⇒ 开在锚点上方');
+  assert.equal(short.below, true, '内容变矮后下方放得下 ⇒ 翻到下方（原型行为）');
+  assert.equal(tall.left, 260, '横向落位＝锚点中心对齐');
+  assert.equal(short.left, tall.left, '内容变矮不许改变横向落位（真机「切分段弹层跳走」就是这条被破坏）');
+  assert.ok(tall.top >= 8 && tall.top + 330 <= vp.h - 8, '纵向必须夹在视口内');
+  assert.equal(short.top, 747, '下方落位＝锚点底边 + 缝');
+  /* 面板下沿约束（真机 #112 第二次目验：贴底按钮的弹层半截挂在设置面板外）。 */
+  const bounded = placeMod.computePlacement(vp, footAnchor, { w: 330, h: 160 }, 780);
+  assert.equal(bounded.below, false, '面板下沿装不下 ⇒ 开在锚点上方，不许越出面板');
+  assert.equal(bounded.top, 700 - 9 - 160, '上方落位＝锚点顶边 − 缝 − 弹层高');
+  assert.equal(placeMod.computePlacement(vp, footAnchor, { w: 330, h: 160 }, vp.h).below, true, '面板下沿够宽 ⇒ 仍开下方（行为不回退）');
+  /* 强制上方（owner 2026-10-15：「弹窗需要出现在新建按钮的上面」）——贴底主操作永远开在按钮上方。 */
+  const forced = placeMod.computePlacement(vp, footAnchor, { w: 330, h: 160 }, vp.h, true);
+  assert.equal(forced.below, false, '即使下方放得下，贴底主操作也开在锚点上方');
+  assert.equal(forced.top, 700 - 9 - 160, '强制上方落位＝锚点顶边 − 缝 − 弹层高');
+  const forcedTop = placeMod.computePlacement(vp, { left: 42, top: 100, right: 808, bottom: 138, width: 766, height: 38 }, { w: 330, h: 160 }, undefined, true);
+  assert.equal(forcedTop.top, 8, '上方真放不下 ⇒ 夹到顶边 8px（不翻回按钮下方）');
+  /* 宽度跟锚点走（owner 2026-10-14：弹层要与「＋ 新建家」满宽按钮等宽）。 */
+  assert.equal(placeMod.widthFor(766, 880), 766, '弹层宽度＝锚点宽度（与满宽按钮等宽）');
+  assert.equal(placeMod.widthFor(32, 880), placeMod.POP_MIN_W, '行内小按钮 ⇒ 保底宽度（不压成一条）');
+  assert.equal(placeMod.widthFor(2000, 880), 860, '锚点比视口还宽 ⇒ 夹到视口 − 20');
+  const low = placeMod.computePlacement(vp, { left: 42, top: 100, right: 808, bottom: 138, width: 766, height: 38 }, { w: 330, h: 160 });
+  assert.equal(low.top, 147, '普通情形：开在锚点下方 9px');
+  const tiny = placeMod.computePlacement({ w: 300, h: 200 }, { left: 0, top: 150, right: 300, bottom: 180, width: 300, height: 30 }, { w: 280, h: 400 });
+  assert.equal(tiny.top, 8, '弹层比视口还高 ⇒ 贴顶（不贴屏幕下沿）');
+  const narrow = placeMod.computePlacement({ w: 320, h: 600 }, { left: 0, top: 0, right: 320, bottom: 40, width: 320, height: 40 }, { w: 300, h: 100 });
+  assert.equal(narrow.left, 10, '窄视口：左右夹在留边内');
+  assert.ok(tall.arrowX >= 12 && tall.arrowX <= 330 - 22, '箭头夹在弹层内');
+});
+
+test('T7 #112 锚点被面板重建：弹层收掉，绝不兜底跳位（真机 bug 回归）', () => {
+  const mk = (c: string) => { const e = domDoc.createElement('div'); e.className = c; return e; };
+  const body = [mk('hu-ptitle')];
+  /* ① 解析器取不到锚点 ⇒ 弹层根本不出现（早先会落在「居中 + top:80px」的兜底位，即用户看到的跳位）。 */
+  popMod.openHomePop(() => null, { width: 330, label: '新建家', body, foot: [] });
+  assert.equal(popMod.homePopOpen(), false, '锚点解析不到 ⇒ 不出现弹层');
+  /* ② 锚点游离（面板 render 把它换掉）后重定位 ⇒ 收掉弹层，不跳位。 */
+  const a1 = mk('hu-pbtn'); domDoc.body.appendChild(a1);
+  popMod.openHomePop(() => a1, { width: 330, label: '新建家', body, foot: [] });
+  assert.equal(popMod.homePopOpen(), true, '锚点活着 ⇒ 正常打开');
+  a1.remove();
+  popMod.updateHomePop({ width: 330, label: '新建家', body, foot: [] });
+  assert.equal(popMod.homePopOpen(), false, '锚点已游离 ⇒ 收掉弹层（绝不兜底到默认位置）');
+  /* ③ 解析器每次现取 ⇒ 面板重建后仍能贴住新按钮，弹层不收也不跳，且是同一个节点（不重播入场动画）。 */
+  let cur = mk('hu-pbtn'); domDoc.body.appendChild(cur);
+  popMod.openHomePop(() => cur, { width: 330, label: '新建家', body, foot: [] });
+  const node = popMod.homePopNode();
+  const a2 = mk('hu-pbtn'); domDoc.body.appendChild(a2); cur = a2;
+  popMod.updateHomePop({ width: 330, label: '新建家', body, foot: [] });
+  assert.equal(popMod.homePopOpen(), true, '解析器现取 ⇒ 换掉的锚点也能跟上');
+  assert.equal(popMod.homePopNode(), node, '就地换内容：同一个 .hu-pop 节点');
+  popMod.closeHomePop(true);
+});
+
+test('T8 #121 收养：workspaces.create({path}) → 等投影 → canonical 项（失败/超时不返回半成品）', async () => {
+  const dirMod: any = boxReq('./client/components/home-dir.js');
+  const dir = 'D:\\agents\\newhome';
+  const calls: any[] = [];
+  let rows: any[] = [];
+  const ctxOf = (list: any): any => ({ get: (n: string) => (n === 'workspaces' ? { list } : undefined) });
+  /* ① 成功：create 幂等入参 {path}；投影以尾杠/大小写归一化命中（T1 §3 口径） */
+  const got = await dirMod.adoptDirectory(ctxOf({
+    create: async (input: any) => {
+      calls.push(input);
+      rows = [{ workspaceId: 'ws-9', path: dir + '\\', title: 'newhome' }];
+      return { ok: true, value: { workspace: rows[0], created: true } };
+    },
+    getSnapshot: () => ({ items: rows }),
+  }), dir, 300);
+  assert.deepEqual(calls, [{ path: dir }], 'create 入参＝{path}');
+  assert.equal(got.ref.workspaceId, 'ws-9', '等投影拿到 canonical 项（尾杠归一化命中）');
+  assert.equal(got.created, true, 'created:true 透传');
+  /* ② 失败：ok:false ⇒ null（调用方不落家，不许返回半成品） */
+  const bad = await dirMod.adoptDirectory(ctxOf({
+    create: async () => ({ ok: false, error: { code: 'directory-not-found' } }),
+    getSnapshot: () => ({ items: [] }),
+  }), dir, 300);
+  assert.equal(bad, null, 'create 失败 ⇒ null');
+  assert.match(dirMod.takeDirError(), /建工作区失败/, 'create 失败留明文原因（弹层就地显示，验收 5）');
+  /* ③ 受理但投影迟迟不出现 ⇒ 有界等待后超时返回 null（不吊死、不写半行） */
+  const slow = await dirMod.adoptDirectory(ctxOf({
+    create: async () => ({ ok: true, value: { created: true } }),
+    getSnapshot: () => ({ items: [] }),
+  }), dir, 260);
+  assert.equal(slow, null, '投影超时 ⇒ null（可重试）');
+});
+
+test('T8 #121 新建家「新建工作区」支路：选目录 → 建区 → 落家（三步顺序；已占不写第二行）', async () => {
+  const dir = 'D:\\agents\\newhome';
+  const tick = (): Promise<void> => new Promise((r) => { setTimeout(r, 0); });
+  const taken = BOX_HOMES.concat([H({ id: 'h3', workspaceId: 'ws-3', path: 'D:\\agents\\garage', name: '车库' })]);
+  const mkPanel = (adopted: string[], created: string[], ws: any, picks: number[] = [], failCreate = false): any => {
+    const bodyEl = new El('div', domDoc);
+    const handle = bodyMod.createPanelBody({
+      state: { homes: taken, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
+      bodyEl,
+      titleMetaEl: new El('div', domDoc),
+      getWorkspaces: () => BOX_WS,
+      ops: {
+        createHome: async (id: string) => { created.push(id); if (failCreate) throw new Error('宿主 500') },
+        createAssistant: async () => {},
+        connect: () => {},
+        pickDirectory: async () => { picks.push(1); return dir },
+        adoptDirectory: async (d: string) => { adopted.push(d); return ws; },
+      },
+      onRetry: () => {},
+    });
+    handle.render();
+    return { bodyEl, handle };
+  };
+
+  /* ① 全新目录：选目录（回填路径）→ 创建 ⇒ adopt(目录) → createHome(DSH 回来的 canonical id) */
+  const adopted: string[] = [];
+  const created: string[] = [];
+  const picks: number[] = [];
+  const one1 = mkPanel(adopted, created, { workspaceId: 'ws-9', path: dir, title: 'newhome' }, picks);
+  clickEl(one(one1.bodyEl, 'hu-pbtn'));
+  const pop1 = one(domDoc.body, 'hu-pop');
+  assert.deepEqual(cls(one(pop1, 'hu-phead'), 'hu-pbtn-s').map(txt), ['取消', '创建'], '标题栏右＝取消 / 创建；body 只剩目录字段');
+  assert.equal(cls(pop1, 'hu-fld').length, 1, '「目录」字段只有一个 .hu-fld（dirField 不许再套一层，否则标签渲染两遍）');
+  assert.equal(String(one(pop1, 'hu-fld').nodeName).toLowerCase(), 'div', '目录字段不用 label 包：真机实测 label 会把悬停/点击/焦点转给内部第一个按钮（点框开两次选择器＋按钮假焦点感）');
+  /* owner 2026-10-14：虚线输入位＝右侧的路径框本体（与左侧按钮等高同排），不是整行外壳 */
+  const dirCss = readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8');
+  assert.match(dirCss, /\.hu-dirpath\{[^}]*border:1px dashed/, '虚线输入位落在右侧路径框上');
+  assert.doesNotMatch(dirCss, /\.hu-dirrow\{[^}]*border:/, '行容器自身不画框（框＝路径位本体）');
+  assert.match(dirCss, /\.hu-dirrow\{[^}]*align-items:stretch/, '左右等高：行容器 stretch');
+  assert.match(dirCss, /\.hu-dirpath\.picked\{[^}]*border-style:solid/, '选到目录后框转实线');
+  assert.match(dirCss, /\.hu-err\{[^}]*color:/, '失败原因行有自己的颜色（灰字原文要看得见）');
+  /* owner 2026-10-14：弹层里每个可点控件都要有交互反馈（hover 变样 / 按下回弹），不许「看着能点、点了没反应」 */
+  for (const sel of ['hu-pbtn-s', 'hu-opt', 'hu-plink', 'hu-avopt', 'hu-dirpath']) {
+    assert.match(dirCss, new RegExp('\\.' + sel + ':(hover|active)'), '可点控件缺交互态：' + sel);
+  }
+  assert.equal(String(one(pop1, 'hu-dirpath').className).includes('picked'), false, '未选目录时框是虚线态');
+  assert.ok(off(popBtn(pop1, '创建')), '未选目录时「创建」禁用');
+  clickEl(byAttr(pop1, 'data-act', 'pick-dir')[0]);
+  await tick();
+  const pop2 = one(domDoc.body, 'hu-pop');
+  assert.equal(txt(one(pop2, 'hu-dirpath')), dir, '所选目录回填到路径位');
+  assert.ok(!off(popBtn(pop2, '创建')), '选到目录后「创建」可用');
+  /* owner 2026-10-14：框＝控件本体，点框（不只按钮）也能开选择器 */
+  clickEl(one(pop2, 'hu-dirpath'));
+  await tick();
+  assert.equal(picks.length, 2, '点框本身（不只按钮）也能开选择器');
+  const popRow = one(domDoc.body, 'hu-pop');
+  clickEl(popBtn(popRow, '创建'));
+  await tick();
+  assert.deepEqual(adopted, [dir], 'adopt 入参＝所选目录');
+  assert.deepEqual(created, ['ws-9'], '落家用 DSH 回来的 canonical workspaceId');
+  assert.equal(one(domDoc.body, 'hu-pop'), null, '创建后弹层关闭');
+  one1.handle.dispose();
+
+  /* ② 选到「已经是工作区、且已经有家」的目录：明文拒绝，不写第二行 */
+  const adopted2: string[] = [];
+  const created2: string[] = [];
+  const one2 = mkPanel(adopted2, created2, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
+  clickEl(one(one2.bodyEl, 'hu-pbtn'));
+  const pop3 = one(domDoc.body, 'hu-pop');
+  clickEl(byAttr(pop3, 'data-act', 'pick-dir')[0]);
+  await tick();
+  clickEl(popBtn(one(domDoc.body, 'hu-pop'), '创建'));
+  await tick();
+  assert.deepEqual(adopted2, [dir], '仍走了收养（目录确实是工作区）');
+  assert.deepEqual(created2, [], '已有家的工作区不写第二行（一家一区）');
+  /* T10 #124：目标已达成就不该报错——直接带用户进那家（弹层收掉、不写第二行）。 */
+  assert.equal(one(domDoc.body, 'hu-pop'), null, '已有家 ⇒ 直接进那家（关弹层、不报错）');
+  one2.handle.dispose();
+
+  /* ③ 落家失败（宿主写表报错）：弹层不关、灰字原文留在弹层里、不跳详情（验收 5「失败不脏、可重试」） */
+  const adopted3: string[] = [];
+  const created3: string[] = [];
+  const one3 = mkPanel(adopted3, created3, { workspaceId: 'ws-9', path: dir, title: 'newhome' }, [], true);
+  clickEl(one(one3.bodyEl, 'hu-pbtn'));
+  const pop4 = one(domDoc.body, 'hu-pop');
+  clickEl(byAttr(pop4, 'data-act', 'pick-dir')[0]);
+  await tick();
+  clickEl(popBtn(one(domDoc.body, 'hu-pop'), '创建'));
+  await tick();
+  const pop5 = one(domDoc.body, 'hu-pop');
+  assert.ok(pop5, '落家失败时弹层不关（就地可重试）');
+  assert.match(txt(one(pop5, 'hu-err')), /家的记录没写成功/, '失败原因以灰字原文留在弹层里');
+  assert.ok(!off(popBtn(pop5, '创建')), '失败后「创建」恢复可点（可重试）');
+  assert.deepEqual(created3, ['ws-9'], '失败也如实记录尝试过的 canonical id（日志可追）');
+  one3.handle.dispose();
 });
 
 test('首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰条行），顶部不出报错横条', () => {
@@ -811,7 +1110,7 @@ test('上部区域定稿：搜索/分段退场，三个面板动作并进绿框�
 
 test('刷新：两个真相源各读一遍（渠道先、家表后），在途去重，忙态成对且失败不锁死', async () => {
   const refresher: any = (() => {
-    try { return boxReq('./components/home-refresh.js'); } catch { return boxReq('./home-refresh.js'); }
+    try { return boxReq('./client/components/home-refresh.js'); } catch { return boxReq('./components/home-refresh.js'); }
   })();
   /* 行为断言（不读源码文本）：给定一个可挂起的 load，连点两下只能跑一轮。 */
   const order: string[] = [];
@@ -900,7 +1199,10 @@ test('解耦：新文件不引特性、不自开轮询、不直写 localStorage'
   const files = [
     join(CLIENT, 'data', 'home-model.ts'),
     join(CLIENT, 'data', 'home-edit.ts'),
+    join(CLIENT, 'data', 'home-move.ts'),
     join(COMP, 'home-ops.ts'),
+    join(COMP, 'home-move-ops.ts'),
+    join(COMP, 'home-move-forms.ts'),
     join(COMP, 'home-ui-styles.ts'),
     join(COMP, 'home-icons.ts'),
     join(COMP, 'home-rows.ts'),
@@ -933,7 +1235,7 @@ test('解耦：新文件不引特性、不自开轮询、不直写 localStorage'
  * 行为断言而非源码 grep：给 crumbs/chip 装假布局矩形，跑**真 slideTab**，量它落到 tab 上的宽高位移。 */
 test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移），宽高取自 chip 实测矩形', () => {
   const frame: any = (() => {
-    try { return boxReq('./components/home-frame.js'); } catch { return boxReq('./home-frame.js'); }
+    try { return boxReq('./client/components/home-frame.js'); } catch { return boxReq('./components/home-frame.js'); }
   })();
   const rafQueue: Array<() => void> = [];
   const prevRaf = (globalThis as any).requestAnimationFrame;
@@ -1017,6 +1319,99 @@ test('面包屑默认路径：无焦点时二级/三级 chip＝列表第一个�
   clickEl(h2);
   assert.deepEqual(crumbInfo(empty.bodyEl).map((c) => c.label), ['家', '书房基地', '机器人'], '空家：L3 没有可预显的助理');
   assert.equal(goto(empty.bodyEl, 'L3').getAttribute('aria-disabled'), 'true', '没有下一级时必须显式禁用');
+});
+
+test('T6c 搬家纯逻辑：只换家、目标须在且无墓碑、同家拒收（验收①）', () => {
+  const homes = [H({ id: 'h1' }), H({ id: 'h2' }), H({ id: 'h3', tombstone: { at: 9, reason: 'ws-gone' } })];
+  const mv: any = moveMod.applyMove(A({ id: 'a1', homeId: 'h1' }), 'h2', homes);
+  assert.ok(mv && mv.homeId === 'h2' && mv.botId === 'b1' && mv.status === 'bound', '已绑整户搬：只换 homeId');
+  const mvU: any = moveMod.applyMove(A({ id: 'a2', homeId: 'h1', status: 'unbound', botId: null }), 'h2', homes);
+  assert.ok(mvU && mvU.homeId === 'h2' && mvU.status === 'unbound', '未绑也能换家');
+  assert.equal(moveMod.applyMove(A({ id: 'a1', homeId: 'h1' }), 'h1', homes), null, '同家拒收');
+  assert.equal(moveMod.applyMove(A({ id: 'a1', homeId: 'h1' }), 'h9', homes), null, '目标家不存在拒收');
+  assert.equal(moveMod.applyMove(A({ id: 'a1', homeId: 'h1' }), 'h3', homes), null, '墓碑家拒收');
+  assert.equal(moveMod.applyMove(A({ id: 'a1', homeId: 'h1' }), '', homes), null, '空目标拒收');
+});
+
+test('T6c 解绑纯逻辑：只收已绑、user 名保留、bot 头像清零、orphan 留 boundAt（验收②）', () => {
+  const u: any = moveMod.applyUnbind(A({ id: 'a1', name: '小帅', nameSource: 'bot', avatar: null, avatarSource: 'bot', boundAt: 8 }), false);
+  assert.ok(u && u.status === 'unbound' && u.botId === null && u.boundAt === null
+    && u.name === '' && u.nameSource === 'home' && u.avatar === null && u.avatarSource === 'default');
+  const o: any = moveMod.applyUnbind(A({ id: 'a1', boundAt: 8 }), true);
+  assert.ok(o && o.status === 'orphan' && o.boundAt === 8, '孤儿回落留 boundAt 供认领审计');
+  const keep: any = moveMod.applyUnbind(A({ id: 'a1', name: '专属', nameSource: 'user', avatar: '2', avatarSource: 'user' }), false);
+  assert.ok(keep && keep.name === '专属' && keep.nameSource === 'user' && keep.avatar === '2', 'user 改名与配图保留');
+  assert.equal(moveMod.applyUnbind(A({ id: 'a2', status: 'unbound', botId: null }), false), null, '未绑拒收');
+  assert.equal(moveMod.applyUnbind(A({ id: 'a3', status: 'orphan', botId: null }), false), null, '孤儿拒收二次解绑');
+});
+
+test('T6c 孤儿判定：bound 失踪即回落、失败渠道不误伤、未绑不参（验收②）', () => {
+  const as = [A({ id: 'a1' }), A({ id: 'a2', channel: 'qq', botId: 'q1' }), A({ id: 'a3', status: 'unbound', botId: null })];
+  assert.deepEqual(moveMod.findOrphans(as, [{ channel: 'feishu', botId: 'b1' }], []), ['a2'], 'qq 号失踪→回落');
+  assert.deepEqual(moveMod.findOrphans(as, [{ channel: 'feishu', botId: 'b1' }], ['qq']), [], '失败渠道 fail-closed');
+  assert.deepEqual(moveMod.findOrphans(as, [{ channel: 'feishu', botId: 'b1' }, { channel: 'qq', botId: 'q1' }], []), [], '齐→静默');
+});
+
+test('T6c 宿主搬家/解绑：落盘真写、键集合仍是 T3、重复解绑拒收（验收①②④）', async () => {
+  const moveHost: any = reqHostFile('home-move.js');
+  const dir = mkdtempSync(join(tmpdir(), 'hs-t6c-'));
+  const file = join(dir, 'homes.json');
+  const r1: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
+  const r2: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-2', path: 'D:\\agents\\shufang', title: '书房' });
+  const ca: any = await homeStore.createAssistantRow(file, { homeId: r1.home.id, channel: 'feishu', botId: 'b1', botName: '小帅', homeText: '' });
+  const mv: any = await moveHost.moveAssistantRow(file, { id: ca.assistant.id, targetHomeId: r2.home.id });
+  assert.equal(mv.ok, true);
+  assert.ok(mv.row.homeId === r2.home.id && mv.row.botId === 'b1' && mv.row.status === 'bound', '搬家不断绑');
+  assert.deepEqual(Object.keys(mv.row).sort(), Object.keys(A({})).sort(), '搬家行仍是 T3 键集合');
+  assert.equal((await moveHost.moveAssistantRow(file, { id: ca.assistant.id, targetHomeId: r2.home.id })).code, 'bad-request', '同家拒收');
+  assert.equal((await moveHost.moveAssistantRow(file, { id: ca.assistant.id, targetHomeId: 'h9' })).code, 'not-found', '坏目标拒收');
+  const un: any = await moveHost.unbindAssistantRow(file, { id: ca.assistant.id, orphan: false });
+  assert.ok(un.ok && un.row.status === 'unbound' && un.row.botId === null && un.row.boundAt === null);
+  assert.equal((await moveHost.unbindAssistantRow(file, { id: ca.assistant.id, orphan: false })).code, 'bad-request', '重复解绑拒收');
+  const ca2: any = await homeStore.createAssistantRow(file, { homeId: r1.home.id, channel: 'qq', botId: 'q1', botName: '野号', homeText: '' });
+  const or: any = await moveHost.unbindAssistantRow(file, { id: ca2.assistant.id, orphan: true });
+  assert.ok(or.ok && or.row.status === 'orphan' && or.row.boundAt !== null, '孤儿回落留 boundAt');
+});
+
+test('T6c 宿主分发器真跑：assistant.move → assistant.unbind → 失败码（验收①②）', async () => {
+  const { AgentMetaStore } = reqHostFile('meta-store.js');
+  const { createAgentFleetHandler } = reqHostFile('rpc.js');
+  const dshHome = mkdtempSync(join(tmpdir(), 'home-steel-rpc-t6c-'));
+  const call = createAgentFleetHandler(new AgentMetaStore(join(dshHome, 'agents.json')), { dshHome });
+  const c1: any = await call('home.create', { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
+  const c2: any = await call('home.create', { workspaceId: 'ws-2', path: 'D:\\agents\\shufang', title: '书房' });
+  const a1: any = await call('assistant.create', { homeId: c1.value.home.id, channel: 'feishu', botId: 'b1', botName: '小帅', homeText: '' });
+  const mv: any = await call('assistant.move', { id: a1.value.assistant.id, targetHomeId: c2.value.home.id });
+  assert.equal(mv.ok, true, JSON.stringify(mv.error ?? {}));
+  assert.equal(mv.value.assistant.homeId, c2.value.home.id, '分发器搬家换家不断绑');
+  const mv2: any = await call('assistant.move', { id: a1.value.assistant.id, targetHomeId: 'h9' });
+  assert.ok(mv2.ok === false && mv2.error.code === 'not-found', '坏目标走失败通道');
+  const un: any = await call('assistant.unbind', { id: a1.value.assistant.id, orphan: false });
+  assert.equal(un.ok, true, JSON.stringify(un.error ?? {}));
+  assert.ok(un.value.assistant.status === 'unbound' && un.value.assistant.botId === null, '分发器解绑清号');
+  const l1: any = await call('home.list', {});
+  assert.equal(l1.value.assistants.length, 1, '搬家解绑不增不减行');
+});
+
+test('T6c 编排顺序：已绑先远端跟随再落表、写后先读表再刷新（验收①③）', () => {
+  const src = readFileSync(join(COMP, 'home-move-ops.ts'), 'utf8');
+  assert.ok(src.indexOf('bindBot') < src.indexOf("'assistant.move'"), '搬家先 bot.workspace.set 再落表');
+  assert.ok(src.indexOf("'assistant.remove'") > src.indexOf("''"), '删时先清空工作区再删行');
+  assert.ok(src.indexOf('reloadHomes') < src.lastIndexOf('refresh()'), '写后先读表再刷新');
+  assert.ok(!strip(src).includes('bot.delete'), '搬家/移除/删除一律不断连接');
+});
+
+test('T6c 换工作区弹层：点开列出别家、确认走搬家管道（验收①）', () => {
+  const { bodyEl } = renderBox();
+  clickEl(rowsOf(bodyEl)[0]);
+  clickEl(rowsOf(bodyEl)[0]);
+  const mv = byAttr(bodyEl, 'data-item-act', 'move-a')[0];
+  assert.ok(mv && !off(mv), '换工作区可用');
+  clickEl(mv);
+  const pop = cls(domDoc.body, 'hu-pop')[0];
+  assert.ok(pop && txt(pop).includes('换工作区'), '点开搬家弹层');
+  assert.ok(txt(pop).includes('书房基地'), '候选列出别家（当前家除外）');
+  popMod.closeHomePop(true);
 });
 
 console.log('features/home-steel: ALL PASS');

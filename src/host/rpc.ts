@@ -8,6 +8,8 @@ import { collectRoutes } from './routes.js'
 import { collectActivity } from './activity.js'
 import { createAssistantRow, createHomeRow, homesFileFor, loadHomesDoc, seedDocs } from './home-store.js'
 import { bindAssistantRow, createUnboundRow, removeAssistantRow, updateAssistantRow, updateHomeRow } from './home-edit.js'
+import { moveAssistantRow, unbindAssistantRow } from './home-move.js'
+import { withRpcLog, type HostLogHandle, type LogPhoneRegistry } from './log.js'
 
 export type RpcPayload = Record<string, unknown>
 
@@ -27,6 +29,10 @@ export interface UpdateHostSurface {
 export interface AgentFleetHandlerOptions {
   dshHome?: string
   update?: () => UpdateHostSurface | null
+  /** 日志（T9 #123）：取成提供函数——让位分支上它一直是 null，那个实例不建日志、不碰日志目录。 */
+  log?: () => HostLogHandle | null
+  /** dsh-log 的电话注册表：命中即转给它（电话名与入参形状全归包，本仓不拼字符串）。 */
+  logPhones?: LogPhoneRegistry | null
 }
 
 const ok = (value: unknown): RpcResult => ({ ok: true, value })
@@ -54,9 +60,11 @@ async function listDirectories(dir: string): Promise<{ name: string; path: strin
 
 
 export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetHandlerOptions = {}): (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null) => Promise<RpcResult> {
-  return async (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null): Promise<RpcResult> => {
+  const dispatch = async (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null): Promise<RpcResult> => {
     if (signal?.aborted) return fail('cancelled', '已取消')
     const p = payload ?? {}
+    /* 日志电话（logBatch/logExport/logClear/logGetSwitch/logSetSwitch/logQuery）优先于业务端点表。 */
+    if (opts.logPhones?.has(endpoint)) return ok(await opts.logPhones.get(endpoint)!(p as never))
     const dshHome = typeof opts.dshHome === 'string' && opts.dshHome ? opts.dshHome : path.join(homedir(), '.dsh')
     try {
       switch (endpoint) {
@@ -249,6 +257,21 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           if (!r.ok) return fail(r.code, r.message)
           return ok({})
         }
+        // ── T6c #115 追加（Added-only，只追加 case）：搬家 / 解绑（显式移除·孤儿回落），旧码不动。
+        case 'assistant.move': {
+          const r: any = await moveAssistantRow(homesFileFor(dshHome), {
+            id: String(p.id ?? ''), targetHomeId: String(p.targetHomeId ?? ''),
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ assistant: r.row })
+        }
+        case 'assistant.unbind': {
+          const r: any = await unbindAssistantRow(homesFileFor(dshHome), {
+            id: String(p.id ?? ''), orphan: p.orphan === true,
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ assistant: r.row })
+        }
         // ── T7 #90 追加 → T5 #110 加第四电话：更新系统四通电话（电话名即端点名，票面定死；键由包的 `update.phoneNames` 给出，不另拼字符串）。
         // 回包是本仓 RpcResult 信封：成功把包载荷原样放 `value`（M5 起不再注入 autoCheck）；
         // 包失败（`{ok:false,error,errorKind}`）走失败通道，翻译在 `src/host/update.ts` 的 `reply`，本文件不认识包字段。
@@ -269,4 +292,6 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
       return fail('internal', String((e as Error)?.message ?? e))
     }
   }
+  /* 逐调用一条日志：成功 debug（高频默认不落盘）、失败 error（恒落盘带原因码）。 */
+  return withRpcLog(dispatch, opts.log)
 }

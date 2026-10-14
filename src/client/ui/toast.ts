@@ -1,10 +1,12 @@
 /** 轻提示（底部浮出，2.4s 自动消失）。 */
 import { h } from '../dom'
 import { icon, type IconName } from '../icons'
+import { logLine } from '../log'
 
 let current: HTMLElement | null = null
 
 export function toast(message: string, iconName?: IconName): void {
+  logLine('debug', 'ui.action', { area: 'ui.toast', action: iconName ?? 'plain', ok: true, message: '用户可见提示：' + message })
   try {
     current?.remove()
   } catch {

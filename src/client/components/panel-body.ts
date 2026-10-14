@@ -4,22 +4,26 @@
  *   页头（返回 / 层级图标 / 标题副标 / ⋯ / ＋）→ 三级 chip 面包屑（液签）→ 行列表 → 底部主操作随层。
  * 导航＝钻取（点行进下一级），不是展开树；TAB/面包屑可向前钻取（跟随悬停或聚焦行）。
  * 旧 buildModel 列表退役（data/model.ts 保留：抽屉/徽标/会话头仍读它，verify 照旧）。
- * T6b #114：改名/配图/占位绑定/删助理已接线（未绑定不可接入，删助理只删行不断连）。 */
+ * T6b #114：改名/配图/占位绑定/删助理已接线（未绑定不可接入，删助理只删行不断连）。
+ * T6c #115：换工作区/移除渠道已接线（删助理走 clean 版：先清空工作区再删行，防种子复活）。 */
 import { h, clear } from '../dom'
 import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, type Level } from './home-frame'
 import { bindAsstPop, newAsstPop, newHomePop, renameAsstPop, renameHomePop, type FormOps } from './home-forms'
+import { moveAsstPop, unbindAsstPop } from './home-move-forms'
+import type { MoveOps } from './home-move-ops'
 import { closeHomePop } from './home-pop'
 import { skeletonRows, viewOf, type RowView } from './home-rows'
 import { stageCrumbOpts, stageHead, stageList, type StageCtx } from './home-stage'
 import type { PanelState } from './panel-data'
+import { logLine, logOn } from '../log'
 
 export interface PanelBodyDeps {
   state: PanelState
   bodyEl: HTMLElement
   getWorkspaces(): WorkspaceRef[]
-  ops: FormOps & { connect(homeId: string, anchor: HTMLElement): void }
+  ops: FormOps & MoveOps & { connect(homeId: string, anchor: HTMLElement): void }
   onRetry(): void
   titleMetaEl?: HTMLElement
   /** 面板级动作簇（船 / 串门搬家 / 刷新）由装配层交进来，放进绿框页头右侧与 ＋ 同行。 */
@@ -37,7 +41,9 @@ function emitDrawer(key: string): void {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
     const detail: OpenDrawerDetail = { key }
     window.dispatchEvent(new window.CustomEvent(OPEN_DRAWER_EVENT, { detail }))
-  } catch { /* 派发失败静默 */ }
+  } catch (e) {
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel.body', action: 'open-drawer', ok: false, message: '派发失败，抽屉打不开：' + String((e as Error)?.message ?? e) })
+  }
 }
 
 export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
@@ -104,13 +110,30 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     onToggleEmpty: () => { showEmpty = !showEmpty; render() },
   })
 
-  /** 行动作（T6b #114）：接入 / 详情 / 绑定 / 改名·配图 / 删除（只删行不断连）。
-   * 未绑定點接入直接拒收（fail-closed，不产生脏数据）；接入只收已绑。 */
+  /** 锚点一律**现取**（T7 #112 真机 bug）：面板每次数据刷新都 clear 重建（见 render），捕获的元素随即游离、
+   * rect 全 0 ⇒ 弹层会掉进兜底位置跳到窗口左上。底部主操作按类名现取；行动作按钮优先用还活着的原按钮，
+   * 被换掉后按 data-item-act/data-id 找回新的；都找不到返回 null ⇒ 弹层自行收掉（绝不兜底跳位）。 */
+  const live = (el: HTMLElement): boolean => (typeof el.isConnected === 'boolean' ? el.isConnected : !!el.parentNode)
+  const anchorOf = (): HTMLElement | null => (deps.bodyEl.querySelector('.hu-pbtn') as HTMLElement | null) ?? null
+  const actAnchor = (kind: string, id: string, btn: HTMLElement) => (): HTMLElement | null => {
+    if (live(btn)) return btn
+    const sel = `[data-item-act="${kind}"]` + (id ? `[data-id="${id}"]` : '')
+    return (deps.bodyEl.querySelector(sel) as HTMLElement | null) ?? null
+  }
+  const liveAnchor = (btn: HTMLElement | null) => (): HTMLElement | null => (btn && live(btn) ? btn : null)
+
+  /** 行动作（T6b #114＋T6c #115）：接入 / 详情 / 绑定 / 改名·头像 / 删除（clean 版）/ 换工作区 / 移除渠道。
+   * 未绑定點接入直接拒收（fail-closed，不产生脏数据）；接入只收已绑。
+   * 每个前置拒收都落一条 ok:false＋原因——「点了没反应」在日志里必须能定位到是被谁挡的。 */
   function act(kind: string, id: string, anchor: HTMLElement): void {
     const v = view()
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel.body', action: 'act:' + kind, ok: true, message: 'id=' + id })
     if (kind === 'connect-a' || kind === 'connect') {
       const a = v.assistants.find((x) => x.id === id)
-      if (a && a.status !== 'bound') return
+      if (a && a.status !== 'bound') {
+        logLine('info', 'assistant.action', { action: 'connect', assistantId: id, ok: false, message: '助理还没绑定机器人，接入被拒收（fail-closed）' })
+        return
+      }
       deps.ops.connect(a ? a.homeId : selHome, anchor)
     } else if (kind === 'detail-a') {
       const a = v.assistants.find((x) => x.id === id)
@@ -118,29 +141,58 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
       emitDrawer(home ? home.path : '')
     } else if (kind === 'bind-a') {
       const a = v.assistants.find((x) => x.id === id)
-      if (!a || a.status === 'bound') return
-      bindAsstPop(anchor, { view: v, ops: deps.ops, asstId: a.id, onDone: () => render() })
+      if (!a || a.status === 'bound') {
+        logLine('info', 'assistant.action', { action: 'bind', assistantId: id, ok: false, message: a ? '已经绑过机器人，无需再绑' : '助理不在表里（可能刚被删），绑定弹层不开' })
+        return
+      }
+      bindAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: a.id, onDone: () => render() })
     } else if (kind === 'rename-h' || kind === 'more-home') {
-      if (!v.homes.some((x) => x.id === id)) return
-      renameHomePop(anchor, { view: v, ops: deps.ops, homeId: id, onDone: () => render() })
+      if (!v.homes.some((x) => x.id === id)) {
+        logLine('info', 'home.action', { action: 'update', homeId: id, ok: false, message: '家不在表里（可能刚被删），设置弹层不开' })
+        return
+      }
+      renameHomePop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, homeId: id, onDone: () => render() })
     } else if (kind === 'rename-a' || kind === 'more-asst') {
-      if (!v.assistants.some((x) => x.id === id)) return
-      renameAsstPop(anchor, { view: v, ops: deps.ops, asstId: id, onDone: () => render() })
+      if (!v.assistants.some((x) => x.id === id)) {
+        logLine('info', 'assistant.action', { action: 'update', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），设置弹层不开' })
+        return
+      }
+      renameAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: id, onDone: () => render() })
     } else if (kind === 'remove-a') {
       void deps.ops.removeAssistant(id).then(() => render())
+    } else if (kind === 'move-a') {
+      const a = v.assistants.find((x) => x.id === id)
+      if (!a) {
+        logLine('info', 'assistant.action', { action: 'move', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），搬家弹层不开' })
+        return
+      }
+      moveAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: a.id, onDone: () => render() })
+    } else if (kind === 'unbind-a') {
+      const a = v.assistants.find((x) => x.id === id)
+      if (!a || a.status !== 'bound') {
+        logLine('info', 'assistant.action', { action: 'unbind', assistantId: id, ok: false, message: a ? '还没绑定机器人，无需移除渠道' : '助理不在表里（可能刚被删）' })
+        return
+      }
+      unbindAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: a.id, onDone: () => render() })
     }
   }
 
   function openHomeSettings(anchor: HTMLElement): void {
-    if (!selHome || !view().homes.some((x) => x.id === selHome)) return
-    renameHomePop(anchor, { view: view(), ops: deps.ops, homeId: selHome, onDone: () => render() })
+    if (!selHome || !view().homes.some((x) => x.id === selHome)) {
+      logLine('info', 'home.action', { action: 'update', homeId: selHome, ok: false, message: '没有选中的家（或它已不在表里），设置弹层不开' })
+      return
+    }
+    renameHomePop(liveAnchor(anchor), { view: view(), ops: deps.ops, homeId: selHome, onDone: () => render() })
   }
 
   function openBindForL3(): void {
     const a = view().assistants.find((x) => x.id === selAsst)
-    if (!a || a.status === 'bound') { go('L2'); return }
-    const anchor = (deps.bodyEl.querySelector('.hu-pbtn') as HTMLElement | null) ?? null
-    bindAsstPop(anchor, { view: view(), ops: deps.ops, asstId: a.id, onDone: () => render() })
+    if (!a || a.status === 'bound') {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel.body', action: 'bind-for-l3', ok: false, message: a ? '已绑定，退回 L2' : '助理不在表里，退回 L2' })
+      go('L2')
+      return
+    }
+    bindAsstPop(anchorOf, { view: view(), ops: deps.ops, asstId: a.id, onDone: () => render() })
   }
 
   function setFocus(id: string): void {
@@ -157,7 +209,6 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
   function openCreate(): void {
     if (level === 'L3') return
     const v = view()
-    const anchor = (deps.bodyEl.querySelector('.hu-pbtn') as HTMLElement | null) ?? null
     const form = { view: v, ops: deps.ops, selHome, onDone: (next: 'L2' | 'L3', homeId: string, workspaceId?: string) => {
       const fresh = view()
       if (next === 'L2') {
@@ -175,8 +226,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
       level = next
       render()
     } }
-    if (channelMode() || level === 'L2') newAsstPop(anchor, form)
-    else newHomePop(anchor, form)
+    if (channelMode() || level === 'L2') newAsstPop(anchorOf, form)
+    else newHomePop(anchorOf, form)
   }
 
   function render(): void {
@@ -189,7 +240,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
      * 曾经的「家表读取失败」横条会一闪而过：`state.failed` 是**失败端点数组**（空数组也 truthy），
      * 只要家表还没读完就会命中错误分支；现在未就绪一律骨架，读失败也不再往顶部塞横条。 */
     if (!state.homesReady) {
-      const info = { title: '家', sub: '正在读取家表…' }
+      const info = { title: '家', sub: '正在加载' }
       root.appendChild(headEl({
         level: 'L1', title: info.title, sub: info.sub,
         onBack: () => go('L1'), onMore: () => undefined,

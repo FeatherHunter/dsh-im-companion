@@ -15,14 +15,30 @@ const SRC = join(REPO, 'src', 'client', 'data');
 const FILES = ['config.ts', 'fleet-api.ts', 'bindings.ts', 'header-overlay.ts', 'model.ts', 'meta.ts'];
 
 const stage = mkdtempSync(join(tmpdir(), 'session-header-src-'));
+/* T9 起 data 链新增 `../log` 依赖（里面是裸包名 dsh-log/client + type-only 回指 data/fleet-api）。
+ * 本套件只验纯数据逻辑 ⇒ 给 staged 副本配一个同名 no-op 替身，让转译树自洽；
+ * 真日志链（入队/批量/落盘/清单漂移）由 tools/verify/log-pipeline.ts 单独验。 */
+const LOG_STUB = [
+  "export type LogLevel = 'error' | 'warn' | 'info' | 'debug'",
+  'export function initLog(_rpc?: unknown): void {}',
+  'export function logLine(_level: LogLevel, _event: string, _fields?: Record<string, unknown>): void {}',
+  'export function logOn(_level: LogLevel): boolean { return false }',
+  'export function flushLogs(): void {}',
+  'export function reconcileLogSwitch(): void {}',
+  'export function droppedLogs(): number { return 0 }',
+  '',
+].join('\n');
+writeFileSync(join(stage, 'log.ts'), LOG_STUB);
 for (const f of ['icons.ts']) {
   writeFileSync(join(stage, f), readFileSync(join(REPO, 'src', 'client', f), 'utf8'));
 }
 for (const f of FILES) {
   const raw = readFileSync(join(SRC, f), 'utf8');
   // 仅测试副本：将 bundler 风格 extensionless 改写为 nodenext 可解（产物代码不动）。
-  const fixed = raw.replace(/\.\/([A-Za-z0-9_-]+)(['"])/g, (m, name, q) =>
-    String(name).endsWith('.js') ? m : './' + name + '.js' + q);
+  const fixed = raw
+    .replace(/from '\.\.\/log'/g, "from './log'")
+    .replace(/\.\/([A-Za-z0-9_-]+)(['"])/g, (m, name, q) =>
+      String(name).endsWith('.js') ? m : './' + name + '.js' + q);
   writeFileSync(join(stage, f), fixed);
 }
 const tmp = mkdtempSync(join(tmpdir(), 'session-header-'));

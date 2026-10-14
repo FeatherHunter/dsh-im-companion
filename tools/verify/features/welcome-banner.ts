@@ -3,7 +3,7 @@
 // 覆盖 P 时辰：时段映射、十五句文案锁死、copy 回绕、诚实 sub 模板、路由计数、
 // 横幅模型（身份/预设标签/上下文/缺席回 null）、路由读取静默失败、样式 wb- 命名空间、注册表收录、
 // hero 门/可见性门/未绑定零 UI/卸载即净。
-import { mkdtempSync, rmSync, readFileSync as readSrcFile } from "node:fs";
+import { mkdtempSync, rmSync, symlinkSync, readFileSync as readSrcFile } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
@@ -33,6 +33,8 @@ const ENTRIES = [
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), "e4-welcome-banner-"));
+/* T9 起 data/overlay 链会经 ../log 拉进 `dsh-log/client`（裸包名）⇒ 临时目录里得有一条 node_modules 通道。 */
+try { symlinkSync(join(REPO, "node_modules"), join(tmp, "node_modules"), "junction"); } catch { /* 已存在跳过 */ }
 try {
   execFileSync(process.execPath, [
     join(REPO, "node_modules", "typescript", "bin", "tsc"),

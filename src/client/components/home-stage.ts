@@ -121,7 +121,7 @@ export function stageList(c: StageCtx): HTMLElement {
       chs.forEach((ch) => list.appendChild(channelRow(v, ch, { selected: c.selChannel === ch, flash: c.flashId === ch, ...rowOpts })))
     } else {
       const items = v.assistants.filter((a) => a.channel === c.selChannel && match(asstName(v, a)))
-      if (!items.length) list.appendChild(emptyEl('这个渠道下还没有助理', '点下面的「新建助理」选一个空闲机器人', 'person'))
+      if (!items.length) list.appendChild(emptyEl('这个渠道下还没有助理', '点下面的「新建助理」给它选一个机器人', 'person'))
       items.forEach((a) => list.appendChild(asstRow(v, a, { selected: c.selAsst === a.id, flash: c.flashId === a.id, ...rowOpts })))
     }
     return list
@@ -131,7 +131,7 @@ export function stageList(c: StageCtx): HTMLElement {
     if (!items.length) {
       list.appendChild(v.homes.length
         ? emptyEl('没有匹配的家', '换个关键词，或者点右上角新建一个家', 'search')
-        : emptyEl('还没有家', '家和工作区一一对应：点下面的「新建家」选一个已有工作区', 'home'))
+        : emptyEl('还没有家', '点下面的「新建家」，选一个工作区认成家', 'home'))
       return list
     }
     const rowOf = (x: (typeof items)[number]): HTMLElement => homeRow(v, x, { selected: c.selHome === x.id, flash: c.flashId === x.id, ...rowOpts })
@@ -153,7 +153,7 @@ export function stageList(c: StageCtx): HTMLElement {
   const items = (home ? asstOfHome(v, home.id) : []).filter((a) => match(asstName(v, a)))
   if (!items.length) {
     list.appendChild(home
-      ? emptyEl('这个家还没有助理', '助理是机器人的人名片：点下面的「新建助理」选一个空闲机器人', 'person')
+      ? emptyEl('这个家还没有助理', '点下面的「新建助理」，给这个家添一位助理', 'person')
       : emptyEl('没有选中家', '回到上一级挑一个家', 'home'))
   }
   items.forEach((a) => list.appendChild(asstRow(v, a, { selected: c.selAsst === a.id, flash: c.flashId === a.id, ...rowOpts })))

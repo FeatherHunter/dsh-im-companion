@@ -28,6 +28,13 @@
 |---|---|---|---|
 | `更新系统-0.2.0升级与发布侧自动跟随.md`（#99） | 0.2.0 真身差异表（按包名解析目标包 / 反推使用范围 / 三出口 / 13 码表与快照逐字未变 / 仍不发 `.d.ts`）+ 本仓删除 `update-reader.ts`·`update-paths.ts`·`UPDATE_ERROR_CODES` 的解耦账 + 发布侧三条闸门 + `npm run check` 读数 | **有效** | **0.2.0 基线取代 §A 全部 0.1.1 读数**：`更新系统-更新包真身核查.md`、`更新系统-宿主接线取证.md`、`更新系统-T4决策档案.md` §H 的 `readerOverrides` 三件套、`审查-R3/R4/R6` 的「必需注入」结论，**只对 0.1.1 成立**，别再当现状引用。§4 列了 4 项未做（发布 0.1.18、真机验收、logCtx 落点、共享副本冲突） |
 
+## A3. #122（dsh-log 接入）与 #105 收尾：2026-10-15 取证
+
+| 文件 | 一句话结论 | 是否仍有效 | 被谁取代 / 备注 |
+|---|---|---|---|
+| `T9-客户端traceId贯通取证.md`（#125） | 两端信封都没有 id 字段；`traceId` 只在客户端进程内、宿主写路径不搬迁保留字 ⇒ 在桥内层 `payload` 加可选 `traceId`、宿主并入日志 fields 即贯通，属本仓 Added-only（非契约变更）；`logCtx` 线索排除 | **有效** | #125 的实现依据；含 8 条未证实项（首要是 `log.why().traceId` 首次业务调用可能为 null） |
+| `排查-更新中心unknown-profile根因.md`（#126） | `unknown-profile` 抛自 0.13.0 `dist/host.js:245`：判据要求 target 包目录含 `\node_modules\<包名>`，而 desktop profile 是 Junction（realpath 出 profile）⇒ 开发态必现、真机真安装不命中；本仓侧无缺陷 | **有效** | 取代 `审查-R3` 对 `unknown-profile` 的归因与行号（基线 0.1.1）；README:556 的 `readerOverrides.targetPackageDir` 药方实测对 Junction 无效 |
+
 ## B. 本 effort：审查 R1–R10
 
 | 文件 | 一句话结论 | 是否仍有效 | 被谁取代 / 备注 |

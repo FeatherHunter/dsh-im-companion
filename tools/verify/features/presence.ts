@@ -3,7 +3,7 @@
 // static（手动/系统）；跨边界只读覆盖 B1 既有呼吸（B1 文件零触碰，摘除即恢复原生）。
 // #98 搬家（用户裁定 2026-09-24）：开关从 body 右下角悬浮胶囊改挂左栏筛选条（收起钮左侧）；
 // 偏好经 ctx.rpc('meta.motion.set') 落盘、读回走既有 meta.get 快照；条带缺席 fail-closed 不画。
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -28,6 +28,8 @@ const ENTRIES = [
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'e1-presence-'));
+/* T9 起 data 链会经 ../log 拉进 `dsh-log/client`（裸包名）⇒ 临时目录里得有一条 node_modules 通道。 */
+try { symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction'); } catch { /* 已存在跳过 */ }
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),

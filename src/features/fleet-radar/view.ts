@@ -10,6 +10,7 @@ import { FLEET_VIEW_EVENT, OPEN_DRAWER_EVENT, type FleetViewDetail, type OpenDra
 import { showSheet } from '../../client/ui/sheet'
 import { channelGlyphSvg } from '../../client/icons'
 import { makeEmpty } from '../../client/ui/empty'
+import { logLine, logOn } from '../../client/log'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
@@ -31,8 +32,8 @@ function emitDrawer(key: string): void {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
     const evt = drillEventFor(key)
     window.dispatchEvent(new window.CustomEvent<OpenDrawerDetail>(evt.name, { detail: evt.detail }))
-  } catch {
-    /* 派发失败不影响展示 */
+  } catch (e) {
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'fleet-radar', action: 'drill-dispatch-fail', ok: false, message: '钻取事件派发失败（不影响展示）：' + String((e as Error)?.message ?? e) })
   }
 }
 
@@ -156,8 +157,8 @@ export function mountRadarView(fctx: FeatureCtx, root: HTMLElement, opts: { onCl
         onRefresh: () => void fctx.refresh().catch(() => {}),
         onClose: () => opts.onClose(),
       })
-    } catch {
-      /* 渲染失败保留旧帧 */
+    } catch (e) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'fleet-radar', action: 'paint-fail', ok: false, message: '渲染失败保留旧帧：' + String((e as Error)?.message ?? e) })
     }
   }
   /* 系统语言切换即时跟随：locale 插件改 html lang 属性即重绘；无监听环境靠下次 paint 跟随。 */
@@ -177,16 +178,16 @@ export function mountRadarView(fctx: FeatureCtx, root: HTMLElement, opts: { onCl
       updatedAt = snap?.updatedAt ?? 0
       paint()
     })
-  } catch {
-    /* 订阅失败则停在加载态 */
+  } catch (e) {
+    logLine('error', 'feature.mount.fail', { feature: 'fleet-radar', message: '弹窗内订阅 stream 失败（停在加载态）：' + String((e as Error)?.message ?? e) })
   }
   try {
     void fctx.meta.loadMeta().then((m) => {
       if (m) meta = m
       paint()
-    }).catch(() => paint())
-  } catch {
-    /* meta 不可用按空表展示 */
+    }).catch((e) => { logLine('warn', 'bridge.call.fail', { method: 'meta.get', message: '雷达读身份配置失败（按空表展示）：' + String((e as Error)?.message ?? e) }); paint() })
+  } catch (e) {
+    logLine('warn', 'bridge.call.fail', { method: 'meta.get', message: '雷达读身份配置不可用（按空表展示）：' + String((e as Error)?.message ?? e) })
   }
   return () => {
     dead = true
@@ -199,19 +200,20 @@ let currentClose: (() => void) | null = null
 
 /** 开雷达弹窗（宽版居中，一次放下 9 列；重复点击先关旧窗）。 */
 export function openRadar(fctx: FeatureCtx): void {
+  logLine('debug', 'ui.action', { area: 'fleet-radar', action: 'open', ok: true, message: '打开舰队雷达弹窗' })
   try {
     try { currentClose?.() } catch { /* ignore */ }
     currentClose = null
     if (typeof document === 'undefined') return
     const sheet = showSheet({ overlayClass: 'fleet-radar-overlay', panelClass: 'fleet-radar-modal', label: '舰队雷达' })
-    if (!sheet) return
+    if (!sheet) { logLine('error', 'ui.render.fail', { area: 'fleet-radar', message: '雷达弹窗未建出（showSheet 返回空）' }); return }
     const dispose = mountRadarView(fctx, sheet.panel, { onClose: () => sheet.close() })
     currentClose = () => {
       try { dispose() } catch { /* ignore */ }
       try { sheet.close() } catch { /* ignore */ }
     }
-  } catch {
-    /* 开窗失败静默（列表不受影响） */
+  } catch (e) {
+    logLine('error', 'ui.render.fail', { area: 'fleet-radar', message: '开雷达弹窗失败（列表不受影响）：' + String((e as Error)?.message ?? e) })
   }
 }
 
@@ -228,9 +230,7 @@ export function mountRadar(fctx: FeatureCtx): () => void {
   try {
     if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => undefined
     window.addEventListener(FLEET_VIEW_EVENT, onEvent as EventListener)
-  } catch {
-    return () => undefined
-  }
+  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'fleet-radar', message: '开窗事件监听注册失败：' + String((e as Error)?.message ?? e) }); return () => undefined }
   return () => {
     try { window.removeEventListener(FLEET_VIEW_EVENT, onEvent as EventListener) } catch { /* ignore */ }
   }

@@ -7,6 +7,7 @@ import { extractRpcV2 } from './data/rpc'
 import { getSharedStream, resetSharedStream } from './data/connection-stream'
 import { createMetaStore, type MetaStore } from './data/meta'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
+import { flushLogs, initLog, logLine, reconcileLogSwitch } from './log'
 
 /* 注：workspaces 经 ctx.get 惰性可选查找（无需声明）；uiWorkspace 必须声明（官方 directory-picker-native 同款），否则宿主不注入原生目录服务。 */
 export const inject = ['slots', 'connection', 'uiWorkspace']
@@ -20,6 +21,11 @@ export function apply(ctx: any): void {
   /* T5 opt-in（#77）：经 dualTransportCallV2 双传输；旧 extractRpc 冻结保留，回滚切回即复原。 */
   const rpc = extractRpcV2(ctx)
   const stream = getSharedStream(rpc)
+  /* T9 #123：日志出口＝`dsh-log/client`（客户端只入队，宿主是唯一落盘者，经自有桥转发电话）。
+   * resident 事件在调试开关关着时也落盘 ⇒ 事后只看磁盘日志就能判定；initLog 失败降级为无日志，不抛。 */
+  initLog(rpc)
+  reconcileLogSwitch()
+  logLine('info', 'client.start', { features: FEATURES.length })
   let metaCache: MetaStore | null = null
   void createMetaStore(rpc).then((m) => {
     metaCache = m
@@ -57,10 +63,14 @@ export function apply(ctx: any): void {
         if (typeof stop === 'function') stopFeatures.push(stop)
       }
       for (const s of f.slots ?? []) stopFeatures.push(s.mount(featureCtx))
-    } catch {
+    } catch (e) {
       /* 单个特性失败不影响其他 */
+      logLine('error', 'feature.mount.fail', { feature: (f as { id?: string }).id ?? 'unknown', message: String((e as Error)?.message ?? e) })
     }
   }
+  /* 页面隐藏时立刻冲刷（默认 250ms 批量节拍；切走页面不能丢最后几条）。 */
+  const flushOnHide = (): void => { try { flushLogs() } catch { /* 静默 */ } }
+  try { window.addEventListener('visibilitychange', flushOnHide) } catch { /* 无 window 环境 */ }
 
   const FleetSettingsTab: React.FC = () => {
     const ref = React.useRef<HTMLDivElement | null>(null)
@@ -73,7 +83,8 @@ export function apply(ctx: any): void {
         panel = FleetPanel(ctx)
         mount.appendChild(panel)
       } catch (e) {
-        console.error('[dsh-im-companion] mount error', e)
+        /* 不再 console：统一走 dsh-log（T9 #123），面板里另有可见的失败卡。 */
+        logLine('error', 'panel.mount.fail', { message: String((e as Error)?.message ?? e) })
         const box = document.createElement('div')
         box.textContent = 'IM机器人增强 加载失败：' + String((e as Error)?.message ?? e)
         box.style.cssText = 'padding:20px;color:var(--dsw-alias-state-error-primary);'
@@ -110,6 +121,9 @@ export function apply(ctx: any): void {
       /* 清理失败忽略 */
     }
     disposeStyles()
+    logLine('info', 'client.unload')
+    try { window.removeEventListener('visibilitychange', flushOnHide) } catch { /* 无 window 环境 */ }
+    flushLogs()
   }, 'dsh-im-companion: styles+features')
   /* SessionHeader Header 浮层已收编为特性（src/features/session-header，#18）：此处只保留设置面板装配。 */
   ctx.slots.inject('settings.section', () =>

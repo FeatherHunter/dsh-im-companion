@@ -233,6 +233,22 @@ test('T5 passthrough：/im-companion 经新载体（/api + im-companion）+ deli
   proof('passthrough', '自有桥与 delivery 均经新载体');
 });
 
+test('T9 #123 桥双失败：两条原文都进 message（退役老路由不许盖掉首选真因）', async () => {
+  const logMod: any = req('./client/log.js');
+  const lines: { event: string; fields: any }[] = [];
+  const orig = logMod.logLine;
+  logMod.logLine = (_lvl: string, event: string, fields: any): void => { lines.push({ event, fields }); };
+  try {
+    const raw = async (ch: string): Promise<unknown> => { throw new Error(ch === '/api' ? '新载体炸了' : '老路由 405'); };
+    await assert.rejects(dualTransportCallV2(raw, '/wecom-app', 'connection.status', {}, AbortSignal.timeout(5000)));
+  } finally { logMod.logLine = orig; }
+  const hit = lines.find((l) => l.event === 'bridge.call.fail');
+  assert.ok(hit, '双失败必须记一条 bridge.call.fail');
+  assert.match(String(hit!.fields.message), /新载体炸了/, '首选方向原文在');
+  assert.match(String(hit!.fields.message), /老路由 405/, '换路原文在');
+  proof('bridge-fail-both', '首选与换路原文都在 message 里');
+});
+
 test('T5 contract：冻结 extractRpc 仍旧直调一次 / extractRpcV2 走新载体一次', async () => {
   const seen: Seen[] = [];
   const ctx = { connection: { rpc: { call: async (ch: string, ep: string, p: unknown) => { seen.push({ ch, ep, p }); return { ok: true, value: {} }; } } } };

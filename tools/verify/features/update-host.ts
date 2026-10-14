@@ -17,7 +17,7 @@
 //   包就"看不见"这个假使用范围（它会解析到本仓的 package.json，再反推不出范围 ⇒ unknown-profile）。
 import test, { after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { cpSync, lstatSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -53,6 +53,8 @@ mkdirSync(PROFILE_MODULES, { recursive: true });
 cpSync(join(REPO, 'node_modules', 'dsh-plugin-update'), PKG_DIR, { recursive: true });
 mkdirSync(join(BUILD, 'node_modules'), { recursive: true });
 symlinkSync(PKG_DIR, join(BUILD, 'node_modules', 'dsh-plugin-update'), 'junction');
+/* T9 #123：宿主链现在还要 `dsh-log/host` + `dsh-log/node`（src/host/log.ts）⇒ 产物目录里也得链上它。 */
+symlinkSync(join(REPO, 'node_modules', 'dsh-log'), join(BUILD, 'node_modules', 'dsh-log'), 'junction');
 
 /** 删夹具里的插件目录：**先判链接再删**（junction 用 unlink，绝不递归跟随到目标去）。 */
 function clearPluginDir(): void {
@@ -99,6 +101,7 @@ function installPluginOutside(version = '1.2.3'): void {
 const HOST = join(BUILD, 'host');
 const load = async (name: string): Promise<any> => import(pathToFileURL(join(HOST, name)).href);
 const update: any = await load('update.js');
+const updatePre: any = await load('update-precheck.js');
 const rpcMod: any = await load('rpc.js');
 const metaMod: any = await load('meta-store.js');
 const hostEntry: any = await import(pathToFileURL(join(BUILD, 'index.js')).href);
@@ -138,6 +141,7 @@ let homeSeq = 0;
 type HostOpts = {
   readJob?: () => any; registry?: any;
   readerOverrides?: Record<string, unknown>; homeDir?: string;
+  onPrecheck?: (v: any) => void;
 };
 function makeHost(opts: HostOpts = {}) {
   const registry = opts.registry ?? fakeRegistry();
@@ -148,7 +152,7 @@ function makeHost(opts: HostOpts = {}) {
   const overrides: Record<string, unknown> = { fetchImpl: registry.fetchImpl, ...opts.readerOverrides };
   if (opts.readJob) overrides.readJob = opts.readJob;
   const bridge = update.createUpdateHostBridge({
-    ctx: {}, dshHome: home, readerOverrides: overrides, logger,
+    ctx: {}, dshHome: home, readerOverrides: overrides, logger, onPrecheck: opts.onPrecheck,
   });
   const handle = rpcMod.createAgentFleetHandler(store, { update: () => bridge });
   return { home, registry, store, bridge, handle, warns };
@@ -283,6 +287,65 @@ test('T7-3 link: 说明符 → source-install 且 manual 为 null；版本号说
   assert.equal(patched.value.snapshot.blockedReason, 'source-install', '补上 profileDir ⇒ 判据齐全，落源安装');
   assert.equal(patched.value.manual, null, '源安装仍不给命令');
   proof('source-install', 'link: ⇒ source-install/manual=null；版本号 ⇒ 给命令；越界 ⇒ unknown-profile（+profileDir 口子）');
+});
+
+/* ---------- ③b #126 只读预检：开发态实装 ⇒ 判得出 + 留痕，失败语义一字不改 ---------- */
+test('T7-3b 只读预检：unknown-profile 时判出「开发态实装」并留痕一次，失败仍原样透传', async () => {
+  // 纯函数：与包内判据（tryInferProfileDir）逐字同形——marker 现算（installMarker），避免两处字面量漂移
+  const marker = updatePre.installMarker('dsh-im-companion');
+  const realDir = 'C:\\u\\.dsh\\profiles\\web' + marker;
+  /* Windows 的 realpath 会把盘符/目录名大小写归一（D:\temp ↔ D:\Temp）⇒ 比路径用大小写无关形态。 */
+  const sameDir = (a: unknown, b: string): boolean => typeof a === 'string' &&
+    (process.platform === 'win32' ? a.toLowerCase() === b.toLowerCase() : a === b);
+  assert.equal(
+    updatePre.inferProfileFromDir(realDir, 'dsh-im-companion'),
+    'C:\\u\\.dsh\\profiles\\web', '真目录形状：marker 之前那段就是使用范围');
+  assert.equal(
+    updatePre.inferProfileFromDir('D:\\dsh-plugin\\dsh-im-companion', 'dsh-im-companion'), null,
+    'Junction realpath 落在仓库 ⇒ 认不出使用范围（包据此诚实抛 unknown-profile）');
+  const dev = updatePre.judgeInstallDir('D:\\dsh-plugin\\dsh-im-companion', 'dsh-im-companion');
+  assert.equal(dev.mode, 'dev-source', '开发态实装判定：' + JSON.stringify(dev));
+  assert.match(dev.message, /预期/, '结论里写明这是预期而非缺陷');
+  assert.equal(dev.profileDir, null, '认不出范围就不许编一个出来');
+  const good = updatePre.judgeInstallDir(realDir, 'dsh-im-companion');
+  assert.equal(good.mode, 'profile-install');
+  assert.match(good.message, /可用/, '真安装形态：预期可用');
+  const unknown = updatePre.judgeInstallDir(null, 'dsh-im-companion');
+  assert.equal(unknown.mode, 'unknown', '解析不出目标包 ⇒ unknown（不猜）');
+  assert.match(unknown.message, /没能归因/, '判不出不许写成「预期」（诚实口径）');
+
+  // 漂移门：本仓判据必须与**包的真行为**一致（包改 tryInferProfileDir ⇒ 这里红）
+  installPlugin({ version: '1.2.3' });
+  const realInstall = await updatePre.precheckInstall('dsh-im-companion');
+  assert.equal(realInstall.mode, 'profile-install', '真安装形态：包这边可用 ⇒ 本仓也判可用：' + JSON.stringify(realInstall));
+  assert.ok(sameDir(realInstall.dir, realpathSync(PLUGIN_DIR)), '解析出的就是夹具里那个真目录：' + String(realInstall.dir));
+
+  // 接线：越界实装（与 Junction 同形：realpath 落在使用范围之外）⇒ 判定一次并留痕
+  installPluginOutside('1.2.3');
+  const outside = await updatePre.precheckInstall('dsh-im-companion');
+  assert.equal(outside.mode, 'dev-source', '越界实装：包回 unknown-profile ⇒ 本仓也判 dev-source');
+  assert.ok(sameDir(outside.dir, realpathSync(OUTSIDE_DIR)), '解析出的是 realpath 后的范围外目录：' + String(outside.dir));
+  const seen: any[] = [];
+  const h = makeHost({ onPrecheck: (v) => seen.push(v) });
+  const st: any = await h.handle(STATUS, {});
+  assert.equal(st.ok, false, '预检不改语义：仍回失败信封');
+  assert.equal(st.error.code, 'unknown-profile', '原因码原样透传：' + JSON.stringify(st.error));
+  await settle();
+  assert.equal(seen.length, 1, '判定一次并留痕');
+  assert.equal(seen[0].mode, 'dev-source', '判出开发态实装：' + JSON.stringify(seen[0]));
+  await h.handle(STATUS, {});
+  await settle();
+  assert.equal(seen.length, 1, '每次装配至多一行（不随面板挂载刷屏）');
+
+  // 对照：按版本号装在使用范围内的形态 ⇒ 状态电话成功，预检一次都不触发
+  installPlugin({ version: '1.2.3' });
+  const seen2: any[] = [];
+  const h2 = makeHost({ onPrecheck: (v) => seen2.push(v) });
+  const ok: any = await h2.handle(STATUS, {});
+  assert.equal(ok.ok, true, '真安装形态可用：' + JSON.stringify(ok.error ?? ''));
+  await settle();
+  assert.equal(seen2.length, 0, '可用形态不写预检行');
+  proof('precheck', 'dev-source 判定 + 与包真行为双向钉住 + 留痕一次 + 失败语义不变 + 可用形态零触发');
 });
 
 /* ---------- ④ 偏好落盘保留（M5 起无调度器）：meta.update.set 只写盘，meta.get 可读 ---------- */

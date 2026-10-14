@@ -1,8 +1,7 @@
-/** left-filter 叠加视图：订阅 stream 快照 → 顶部筛选条 + 整组藏显。
- * 隐藏单元见 dom-scope（最小独占祖先；扁平退化带会话兄弟），绝不写行内节点；重渲染换节点由 observer 重算。
- * 搜索态（button[role=treeitem] 结果行）按归属名二次映射，实现叠加 AND。无自有轮询。
- * 行悬停无原生 title（2026-09-04 用户裁定）：原生“助理：…”气泡与自画卡打架，永久退役，悬停只留自画卡。 */
+/** left-filter 叠加视图：订阅 stream 快照 → 顶部筛选条 + 整组藏显。隐藏单元见 dom-scope（最小独占祖先；扁平退化带会话兄弟），绝不写行内节点。
+ * 搜索态（button[role=treeitem] 结果行）按归属名二次映射，实现叠加 AND。无自有轮询；行悬停无原生 title（2026-09-04 用户裁定，只留自画卡）。 */
 import { makeSegmented, type SegHandle } from '../../client/ui/segmented'
+import { logLine, logOn } from '../../client/log'
 import { isPlausibleListContainer } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
@@ -28,8 +27,9 @@ let stripOwner = 0
 let lastSig = ''
 let lastContainer: Element | null = null
 
+/* 关键节点人话（挂载/首次命中）：低频，走 ui.action（area=left-filter），不套开关守卫。 */
 function info(msg: string): void {
-  try { console.info('[dsh-im-companion] left-filter：' + msg) } catch { /* 无 console 静默 */ }
+  logLine('debug', 'ui.action', { area: 'left-filter', action: 'lifecycle', ok: true, message: msg })
 }
 
 function collect(sel: string): Element[] {
@@ -61,13 +61,15 @@ function tuneLabels(host: Element | null): void {
   } catch { /* 调整失败忽略 */ }
 }
 
+/* 判定依据留痕（谁可见/谁被藏 + 名字清单）：每次重绘都会走到，高频 ⇒ 只许 debug 且套开关守卫。 */
 function logReasons(filter: FilterId, vis: string[], hidden: string[]): void {
   const sig = filter + '>' + vis.join(',') + '|' + hidden.join(',')
   if (sig === lastReasonSig) return
   lastReasonSig = sig
   try {
+    if (!logOn('debug')) return
     const short = (ls: string[]): string => ls.length <= 8 ? ls.join('、') : ls.slice(0, 8).join('、') + '…等' + ls.length + '个'
-    console.info('[dsh-im-companion] left-filter：' + FILTER_LABEL[filter] + ' ' + vis.length + ' → [' + short(vis) + ']' + (hidden.length ? '；藏起 ' + hidden.length + ' → [' + short(hidden) + ']' : ''))
+    logLine('debug', 'ui.action', { area: 'left-filter', action: 'filter-reasons', ok: true, message: FILTER_LABEL[filter] + ' ' + vis.length + ' → [' + short(vis) + ']' + (hidden.length ? '；藏起 ' + hidden.length + ' → [' + short(hidden) + ']' : '') })
   } catch { /* 日志失败忽略 */ }
 }
 
@@ -95,6 +97,7 @@ function ensureStrip(container: Element, gen: number): void {
       strip.setAttribute('role', 'tablist')
       const seg = makeSegmented(FILTERS.map((f) => ({ id: f, label: segLabel(f, 0) })), currentFilter, (id) => {
         currentFilter = id as FilterId
+        logLine('debug', 'ui.action', { area: 'left-filter', action: 'pick-filter', ok: true, message: FILTER_LABEL[currentFilter] })
         scheduleRepaint(latestBots)
       })
       stripSeg = seg
@@ -106,14 +109,12 @@ function ensureStrip(container: Element, gen: number): void {
     if (strip.parentNode !== container) container.insertBefore(strip, container.firstChild)
     try { ensureCollapseBtn(strip) } catch { /* 复用条带补钮 */ }
     try { stripSeg?.setValue(currentFilter); stripSeg?.relayout() } catch { /* 首绘布局失败下次再试 */ }
-  } catch { /* 建条失败就无条带（fail-closed 条带，行保持全显） */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'strip-fail', ok: false, message: '建条失败（fail-closed，行保持全显）：' + String((e as Error)?.message ?? e) }) }
 }
 
 let latestBots: BotSnap[] = []
 
-/* #94 单组树修正：只有 1 个分组时 hideRootsFor 会爬到应用根，容器验货（380px 宽度门）必判死 ⇒ 条带静默消失。
- * 官方真列表容器是 role="tree" 那个节点（dsh-client-ui-workspace: treeBody > list[role=tree]）：
- * 结构可信即认，不再让绝对宽度尺子否掉真身。 */
+/* #94 单组树修正：仅 1 个分组时 hideRootsFor 爬到应用根、宽度门必判死 ⇒ 条带静默消失；官方真容器是 role="tree"（结构可信即认）。 */
 function listAncestorOf(seed: Element | null): Element | null {
   let node: Element | null = seed
   for (let i = 0; i < 12 && node; i++) {
@@ -159,8 +160,7 @@ function paint(bots: BotSnap[], gen: number): void {
       return tag === 'body' || tag === 'html' ? null : el
     } catch { return null }
   }
-  /* 条带锚点：隐藏根的父级（列表），搜索态取结果行的父级（结果列表）。
-   * 单组树兜底：隐藏根即列表容器本身（上无父级），条带改锚容器顶部，否则单工作区用户永无条带与空提示。 */
+  /* 条带锚点：隐藏根的父级（列表），搜索态取结果行父级；单组树兜底改锚容器顶部（否则单工作区用户永无条带）。 */
   const firstRoots = groups.length > 0 ? allRoots[0] : []
   let validContainer = okParent(firstRoots.length > 0 ? firstRoots[0].parentElement : null)
     ?? (results.length > 0 ? okParent(results[0].parentElement) : null)
@@ -171,19 +171,19 @@ function paint(bots: BotSnap[], gen: number): void {
     const structural = listAncestorOf(seed)
     if (structural && structural !== validContainer) validContainer = structural
   }
-  /* 头锚优先：从行种子找头栏（行比容器稳定；容器首装时易取大，行才是真身）。
-   * 头钮挂载不依赖条带验货——头钮常在，条带可藏（2026-09-07 真机回归：验货失败早退曾连带摘掉漏斗）。 */
+  /* 头锚优先：从行种子找头栏（行比容器稳定）；头钮挂载不依赖条带验货（验货失败早退曾连带摘掉漏斗）。 */
   const seedForHeader = groups.length > 0 ? groups[0] : results.length > 0 ? results[0] : validContainer
   const header = seedForHeader ? resolveHeader(seedForHeader) : null
   const sig = currentFilter + '|' + counts.all + '/' + counts.bound + '/' + counts.unbound + '|' + visKeys.join(',') + '|' + hiddenSections.length + '/' + hiddenResults.length + '|h:' + (header ? '1' : '0')
   const mountHead = (): void => {
     if (!header) return
-    try { ensureHeaderBtn(header, currentFilter, counts, () => { currentFilter = nextFilter(currentFilter); scheduleRepaint(latestBots, activeGen) }) } catch { /* 头按钮失败不影响条带 */ }
+    try { ensureHeaderBtn(header, currentFilter, counts, () => { currentFilter = nextFilter(currentFilter); logLine('debug', 'ui.action', { area: 'left-filter', action: 'cycle-filter', ok: true, message: FILTER_LABEL[currentFilter] }); scheduleRepaint(latestBots, activeGen) }) } catch { /* 头按钮失败不影响条带 */ }
   }
   /* 第三步验货：容器混入行外原生按钮或超宽即猜大了→条带 fail-closed（摘条带、还原），但头钮照常挂。 */
   try {
     if (validContainer && !containerOk(validContainer)) {
       if (sig === lastSig && validContainer === lastContainer) return
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'container-reject', ok: false, message: '容器验货未过 ⇒ 条带 fail-closed 摘除（头钮照挂）' })
       lastSig = sig
       if (lastContainer && lastContainer !== validContainer) removeHint(lastContainer)
       lastContainer = validContainer
@@ -199,7 +199,7 @@ function paint(bots: BotSnap[], gen: number): void {
   if (lastContainer && lastContainer !== validContainer) removeHint(lastContainer)
   lastContainer = validContainer
   restoreAll()
-  if (!validContainer) { removeStrip(); return }
+  if (!validContainer) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'no-container', ok: false, message: '无有效容器 ⇒ 只摘条带不绘制（等结构稳定再试）' }); removeStrip(); return }
   ensureStrip(validContainer, gen)
   mountHead()
   const key = counts.all + '/' + counts.bound + '/' + counts.unbound
@@ -231,7 +231,7 @@ function scheduleRepaint(bots: BotSnap[], gen?: number): void {
   if (gen !== undefined) pendingGen = gen
   const run = (): void => {
     rafQueued = false
-    try { paint(latestBots, pendingGen) } catch { /* 绘制失败下次再试 */ }
+    try { paint(latestBots, pendingGen) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'paint-fail', ok: false, message: String((e as Error)?.message ?? e) }) }
   }
   try {
     if (typeof requestAnimationFrame === 'function') {
@@ -266,18 +266,21 @@ export function mountLeftFilter(ctx: FeatureCtx): () => void {
       if (!hasSnap) return
       scheduleRepaint(bots, myGen)
     })
-  } catch { return noop }
+  } catch (e) {
+    logLine('error', 'feature.mount.fail', { feature: 'left-filter', message: String((e as Error)?.message ?? e) })
+    return noop
+  }
   try {
     if (typeof MutationObserver !== 'undefined') {
       observer = new MutationObserver(() => { if (hasSnap) scheduleRepaint(bots, myGen) })
       observer.observe(document.body ?? document.documentElement, { childList: true, subtree: true })
     }
-  } catch { /* 无 observer 就只靠快照重绘 */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'no-observer', ok: false, message: 'MutationObserver 不可用，只靠快照重绘：' + String((e as Error)?.message ?? e) }) }
   const totalTimer = (): void => {
     try {
       const n = collect(GROUP_SEL).length + collect(RESULT_SEL).length
       if (!loggedHit && n > 0) { loggedHit = true; info('命中 ' + n + ' 行，开始过滤') }
-      if (n !== lastTotal) { lastTotal = n; try { console.debug('[dsh-im-companion] left-filter：目标行 ' + n) } catch { /* 静默 */ } }
+      if (n !== lastTotal) { lastTotal = n; if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'target-rows', ok: true, message: '目标行 ' + n }) }
     } catch { /* 统计失败忽略 */ }
   }
   try { totalTimer() } catch { /* 忽略 */ }

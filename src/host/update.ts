@@ -24,6 +24,7 @@
  * 而包的默认值只看 `DSH_HOME` 环境变量与家目录），传它才能保证更新落盘与本仓 `meta.json` 同源。
  */
 import { createHostUpdate } from 'dsh-plugin-update'
+import { precheckInstall, type InstallVerdict } from './update-precheck.js'
 import type { RpcResult } from './rpc.js'
 
 export const UPDATE_PLUGIN_ID = 'dsh-im-companion'
@@ -54,6 +55,8 @@ export interface UpdateHostOptions {
   logCtx?: UpdateLogContext
   /** 测试/门禁缝：透传给包的 readerOverrides（仅取值，不含任何解析逻辑）。 */
   readerOverrides?: Record<string, unknown>
+  /** #126 只读预检的落痕口：判出「开发态实装 ⇒ 更新中心预期不可用」时回调（每次装配至多一次）。 */
+  onPrecheck?: (verdict: InstallVerdict) => void
 }
 
 export interface UpdateHostBridge {
@@ -90,8 +93,22 @@ export function createUpdateHostBridge(options: UpdateHostOptions): UpdateHostBr
 
   // 四个端点按包自己拼的电话名建表（不另拼字符串）；键名即端点名，`rpc.ts` 的 case 逐字对齐。
   // 四通全直通（version 由调用方给，包内做 tarball 取数；缺 version 时包回失败码，不抛）。
+  /* #126 只读预检：`unknown-profile` 是「开发态实装」的预期答复 ⇒ 只读判定一次并留痕；
+   * 回包**原样**返回（失败照旧透传：不降级成成功、不隐藏红字——诚实性 P0 判据）。 */
+  let precheckLogged = false
+  const statusCall = packageHost.handlers[phone.updateStatus]
+  const statusWithDevInstallNote = async (payload?: unknown): Promise<unknown> => {
+    const raw = await statusCall(asRecord(payload) ?? {})
+    const row = asRecord(raw)
+    if (!precheckLogged && row?.ok === false && row.error === 'unknown-profile' && options.onPrecheck) {
+      precheckLogged = true
+      options.onPrecheck(await precheckInstall(TARGET_PACKAGE_NAME))
+    }
+    return raw
+  }
+
   const handlers: Record<string, (payload?: unknown) => Promise<unknown>> = {
-    [phone.updateStatus]: (payload?: unknown) => packageHost.handlers[phone.updateStatus](asRecord(payload) ?? {}),
+    [phone.updateStatus]: statusWithDevInstallNote,
     [phone.updateCheck]: (payload?: unknown) => packageHost.handlers[phone.updateCheck](asRecord(payload) ?? {}),
     [phone.updateInstall]: (payload?: unknown) => packageHost.handlers[phone.updateInstall](asRecord(payload) ?? {}),
     [phone.updateChangelog]: (payload?: unknown) => packageHost.handlers[phone.updateChangelog](asRecord(payload) ?? {}),

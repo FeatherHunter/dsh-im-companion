@@ -7,6 +7,7 @@
  *  `MOTION_CHANNEL` 自持常量（值与 `client/data/meta.ts` 同，取舍同 #90：不引他人模块、不引 A1 私有）。
  *  零轮询；feature 不直写 localStorage（九律 ③：本地镜像走 MetaStore 接口，feature 只调接口）。 */
 import type { FeatureCtx } from '../protocol'
+import { logLine, logOn } from '../../client/log'
 
 /** 自有桥渠道前缀（与 `client/data/meta.ts` 内常量同值；各持一份，避免跨模块 import）。 */
 export const MOTION_CHANNEL = '/im-companion'
@@ -48,8 +49,9 @@ export async function readMotionOffResult(ctx: FeatureCtx | null | undefined): P
       const doc = await meta.loadMeta()
       return { ok: true, off: pickOff(doc) }
     }
-  } catch {
-    /* meta 未就绪（client 入口 metaCache 异步中）→ 落到下面的直读，不算失败 */
+  } catch (e) {
+    /* meta 未就绪（client 入口 metaCache 异步中）→ 落到下面的直读，不算失败；留 debug 痕便于判「为何总在读」。 */
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'presence', action: 'meta-not-ready', ok: false, message: 'ctx.meta.loadMeta 未就绪，转直读宿主：' + String((e as Error)?.message ?? e) })
   }
   // ② 直读宿主（绕开 metaCache 竞态：rpc 同步就绪，重启后首帧即能读到盘上真值）。
   try {
@@ -65,8 +67,9 @@ export async function readMotionOffResult(ctx: FeatureCtx | null | undefined): P
       }
       return { ok: true, off: pickOff(doc) }
     }
-  } catch {
-    /* 直读失败 → 未知 */
+  } catch (e) {
+    /* 直读失败 → 未知：不因读失败把用户动效关掉；留 debug 痕（此路径每个快照都会试一次）。 */
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'presence', action: 'prefs-read-fail', ok: false, message: '直读 meta.get 失败，动效偏好未知：' + String((e as Error)?.message ?? e) })
   }
   return { ok: false, off: false }
 }
@@ -87,13 +90,17 @@ export function writeMotionOff(ctx: FeatureCtx | null | undefined, off: boolean)
     const rpc = (ctx as unknown as { rpc?: unknown } | null | undefined)?.rpc
     if (typeof rpc === 'function') {
       const call = rpc as (channel: string, endpoint: string, payload: Record<string, unknown>, signal: AbortSignal) => Promise<unknown>
-      void call(MOTION_CHANNEL, MOTION_ENDPOINT, { manualReduced: off }, timeoutSignal(RPC_TIMEOUT_MS)).catch(() => undefined)
+      void call(MOTION_CHANNEL, MOTION_ENDPOINT, { manualReduced: off }, timeoutSignal(RPC_TIMEOUT_MS)).catch((e: unknown) => {
+        logLine('warn', 'bridge.call.fail', { method: MOTION_ENDPOINT, message: String((e as Error)?.message ?? e) })
+      })
     }
-  } catch { /* 无桥环境静默：开关仍翻转，仅不落盘 */ }
+  } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'presence', action: 'no-bridge', ok: false, message: '无 rpc 桥：动效偏好不落 host 盘（剩本地镜像）：' + String((e as Error)?.message ?? e) }) }
   try {
     const meta = (ctx as unknown as { meta?: { setMotion?: (off: boolean) => Promise<unknown> } } | null | undefined)?.meta
     if (meta && typeof meta.setMotion === 'function') {
-      void meta.setMotion(off).catch(() => undefined)
+      void meta.setMotion(off).catch((e: unknown) => {
+        if (logOn('debug')) logLine('debug', 'ui.action', { area: 'presence', action: 'mirror-fail', ok: false, message: '本地镜像未写入（host 那份已发出）：' + String((e as Error)?.message ?? e) })
+      })
     }
   } catch { /* meta 未就绪就跳过本地镜像（host 那份已发出） */ }
 }

@@ -34,7 +34,8 @@ const REPO = process.env.HCF_REPO || process.cwd()
 const CLIENT = join(REPO, 'src', 'client')
 const HOST = join(REPO, 'src', 'host')
 const TSC = join(REPO, 'node_modules', 'typescript', 'bin', 'tsc')
-const FLAGS = ['--ignoreConfig', '--module', 'commonjs', '--target', 'es2023', '--moduleResolution', 'bundler', '--skipLibCheck', '--declaration', 'false', '--sourceMap', 'false']
+/* rootDir 钉死 src：T9 起客户端链会牵到 src/log-events.ts，不钉时产物层级随 import 图漂。 */
+const FLAGS = ['--ignoreConfig', '--rootDir', join(REPO, 'src'), '--module', 'commonjs', '--target', 'es2023', '--moduleResolution', 'bundler', '--skipLibCheck', '--declaration', 'false', '--sourceMap', 'false']
 
 function transpile(entries: string[], extra: string[] = []): string {
   const out = mkdtempSync(join(tmpdir(), 'hcf-ts-'))
@@ -80,11 +81,11 @@ const React: any = reqRepo('react')
 const ReactDOMClient: any = reqRepo('react-dom/client')
 const reqClient = createRequire(join(tmpClient, 'run.cjs'))
 const reqHost = createRequire(join(tmpHost, 'run.cjs'))
-const panelMod: any = reqClient('./components/panel.js')
-const popMod: any = reqClient('./components/home-pop.js')
-const streamMod: any = reqClient('./data/connection-stream.js')
-const hostMod: any = reqHost('./rpc.js')
-const storeMod: any = reqHost('./home-store.js')
+const panelMod: any = reqClient('./client/components/panel.js')
+const popMod: any = reqClient('./client/components/home-pop.js')
+const streamMod: any = reqClient('./client/data/connection-stream.js')
+const hostMod: any = reqHost('./host/rpc.js')
+const storeMod: any = reqHost('./host/home-store.js')
 
 /* ---------- 夹具：DSH 5 个工作区（3 家有家、2 家空闲）＋ 5 个机器人（3 已绑、2 未绑） ---------- */
 const KETING = 'D:\\agents\\keting'
@@ -272,13 +273,31 @@ async function boot({ freeWs = false }: { freeWs?: boolean } = {}) {
     createAssistant: (payload: Record<string, unknown>) => handler('assistant.create', payload, AbortSignal.timeout(8000)),
     bind: (channel: string, botId: string, workspace: string) => bindWorkspace(channel, botId, workspace),
   }
+  /* T10 #124（owner 2026-10-15 裁定）：建家＝「选目录 → DSH 建工作区 → 家永久绑定」，没有复用支路。
+   * 夹具给 workspaces 一个真能 create 的假服务（adoptDirectory 走产品真实现），原生选择器给一个还没建区的目录。 */
+  const NEWDIR = 'D:\\agents\\brandnew'
   const ctx = {
     logger: () => ({ info: () => {}, warn: () => {}, error: () => {} }),
     effect(fn: any) { const d = fn(); if (typeof d === 'function') d() },
-    get(name: string) { return name === 'workspaces' ? { list: { getSnapshot: () => ({ items: workspaces }) } } : undefined },
+    get(name: string) {
+      if (name !== 'workspaces') return undefined
+      return {
+        list: {
+          getSnapshot: () => ({ items: workspaces }),
+          create: async (input: { path: string }) => {
+            const path = String(input?.path ?? '')
+            const hit = workspaces.find((w: any) => w.path === path)
+            if (hit) return { ok: true, value: { workspace: hit, created: false } }
+            const row = { workspaceId: 'ws-9', path, title: '新房间' }
+            workspaces.push(row)
+            return { ok: true, value: { workspace: row, created: true } }
+          },
+        },
+      }
+    },
     slots: { inject: (_n: string, fn: any) => fn(), register: (_o: any, Comp: any) => Comp },
     connection: { rpc: { call } },
-    uiWorkspace: { pickDirectory: async () => null },
+    uiWorkspace: { pickDirectory: async () => NEWDIR },
     emit() {},
   }
 
@@ -322,47 +341,43 @@ async function boot({ freeWs = false }: { freeWs?: boolean } = {}) {
 }
 test.after(() => disposeShared())
 
-/* ---------- ① 建家点击级 ---------- */
-test('①建家点击级：L1 底部「新建家」→弹层点选尚无家的已有区→「创建」 → rpc 带对区、宿主落盘多一行、L1 出现新家名', async () => {
-  const b = await boot({ freeWs: true })
+/* ---------- ① 建家点击级（T10 #124：选目录 → DSH 建工作区 → 落家） ---------- */
+test('①建家点击级：L1 底部「新建家」→ 选目录（DSH 建区＋等投影）→「创建」 → rpc 带 canonical 区、宿主多一行、L1 出现新家名', async () => {
+  const b = await boot()
   try {
     assert.deepEqual(readDoc(b.homesFile).homes.map((h: any) => h.workspaceId), ['ws-1', 'ws-2', 'ws-3'], '前提：3 家有家')
     assert.equal(rowsOf(b.panel()).length, 3, 'L1 先有 3 个家行')
 
     clickPrimary(b.panel(), '新建家')
     await waitFor('建家弹层出现', () => popTitle() === '新建家')
-    assert.ok(popText().includes('已有工作区'), '弹层必须是「已有工作区」这组字段：' + popText().slice(0, 200))
-    assert.equal(popBoxes().length, 1, '建家弹层只有一组候选（.hu-opts）')
-    const box = popBoxes()[0]
-    assert.deepEqual(boxValues(box), ['ws-4', 'ws-5'], '候选=尚无家的两个区（有家的区不得混进来）')
-    assert.ok(boxLabels(box)[1].includes(EMPTY), '候选里要有 D:\\agents\\empty：' + boxLabels(box)[1])
+    assert.ok(popText().includes('选中的目录会建成 DSH 工作区'), '唯一支路＝选目录（T10 #124 分段退场）：' + popText().slice(0, 200))
+    assert.equal(popBoxes().length, 0, '建家弹层不再有候选列表（「用已有工作区」整段退场）')
+    const okBtn = all(popNode()).find((x: any) => x.tagName === 'BUTTON' && String(x.textContent).trim() === '创建')
+    assert.ok(okBtn?.hasAttribute('disabled'), '未选目录时「创建」显式禁用（不许点了没反应）')
 
-    const picked = clickOpt(box, 'ws-5') /* 点选「空房间」（是第二个候选，不是第一个——传错区必炸） */
-    assert.equal(attr(picked, 'aria-selected'), 'true', '点选即选中')
-    assert.equal(attr(boxOpts(box)[0], 'aria-selected'), 'false', '旧选中位必须落下去（单选）')
+    clickPop('选择目录')
+    await waitFor('路径回填', () => popText().includes('brandnew'))
 
     clickPop('创建')
-
-    /* 先钉 rpc：写请求必须带点选的那个区（先断言写、再等刷新，传错区的变异会命中这条而不是等超时）。 */
+    /* 先钉 rpc：写请求必须带 DSH 回的 canonical 区（夹具假 workspaces.create 回 ws-9）。 */
     await waitFor('home.create 到达宿主', () => b.calls.filter((c) => c.endpoint === 'home.create').length === 1)
     const creates = b.calls.filter((c) => c.endpoint === 'home.create')
-    assert.deepEqual(creates[0].payload, { workspaceId: 'ws-5', path: EMPTY, title: '空房间' }, 'rpc 必须带点选的那个区')
+    assert.deepEqual(creates[0].payload, { workspaceId: 'ws-9', path: 'D:\\agents\\brandnew', title: '新房间' }, 'rpc 带 DSH 回的 canonical 区')
     assert.equal((creates[0].reply as any).ok, true)
-    assert.ok(!popNode(), '创建后弹层必须收掉')
+    await waitFor('创建后弹层收掉（落家 → 刷新 → 进新家）', () => !popNode())
 
     const disk = readDoc(b.homesFile)
     assert.equal(disk.homes.length, 4, '宿主表多出 1 行（3→4）')
-    const row = disk.homes.find((h: any) => h.workspaceId === 'ws-5')
-    assert.ok(row && row.path === EMPTY && row.name === '空房间', '新行是点选的那个区：' + JSON.stringify(row))
-    assert.equal(disk.homes.filter((h: any) => h.workspaceId === 'ws-5').length, 1, '同区只许一家')
-    assert.ok(!disk.homes.some((h: any) => h.workspaceId === 'ws-4'), '没动别的空闲区（不得把家建到别的区）')
+    const row = disk.homes.find((h: any) => h.workspaceId === 'ws-9')
+    assert.ok(row && row.path === 'D:\\agents\\brandnew' && row.name === '新房间', '新行是新建的那个区：' + JSON.stringify(row))
+    assert.equal(disk.homes.filter((h: any) => h.workspaceId === 'ws-9').length, 1, '同区只许一家')
 
     /* 建完即落到新家的 L2（原型钻取：建家 → 进新家），再返回 L1 看列表。 */
-    await waitFor('落到新家 L2', () => headTitle(b.panel()).includes('空房间'))
+    await waitFor('落到新家 L2', () => headTitle(b.panel()).includes('新房间'))
     assert.equal(rowsOf(b.panel()).length, 0, 'L2 不该有家行')
     clickBack(b.panel())
-    await waitFor('回到 L1（家行 3→4、新家名可见）', () => rowsOf(b.panel()).length === 4 && b.text().includes('空房间'))
-    assert.ok(rowsOf(b.panel()).some((r) => String(r.textContent).includes('空房间')), '新家出现在列表里')
+    await waitFor('回到 L1（家行 3→4、新家名可见）', () => rowsOf(b.panel()).length === 4 && b.text().includes('新房间'))
+    assert.ok(rowsOf(b.panel()).some((r) => String(r.textContent).includes('新房间')), '新家出现在列表里')
     assert.equal(b.calls.filter((c) => c.endpoint === 'home.create').length, 1, '一次点击一次 home.create')
   } finally { await b.dispose() }
 })
@@ -432,43 +447,34 @@ test('②建助理点击级：点家钻进 L2→「新建助理」→弹层点�
   } finally { await b.dispose() }
 })
 
-/* ---------- ③ 点击级幂等 ---------- */
-test('③点击级幂等：重进建单再提交同一个 → 第二次被 already-exists/already-bound 吞掉，行数不翻倍', async () => {
-  /* 阶段 A：家（重进建单确认客户端守卫 → 陈旧弹层重提同一个区） */
-  const a = await boot({ freeWs: true })
+/* ---------- ③ 点击级幂等（T10 #124：同一目录重提不落第二行） ---------- */
+test('③点击级幂等：同一目录重提 → DSH 侧复用（created:false）＋客户端查表拒绝，行数不翻倍', async () => {
+  /* 阶段 A：家（选同一目录两次：第一次新建并落家，第二次复用但已有家 ⇒ 明文拒绝、不再写） */
+  const a = await boot()
   try {
     clickPrimary(a.panel(), '新建家')
     await waitFor('建家弹层', () => popTitle() === '新建家')
-    assert.deepEqual(boxValues(popBoxes()[0]), ['ws-4', 'ws-5'], '第一轮候选=两个空闲区')
-    clickOpt(popBoxes()[0], 'ws-5')
+    clickPop('选择目录')
+    await waitFor('路径回填', () => popText().includes('brandnew'))
     clickPop('创建')
     await waitFor('新家落盘（宿主 3→4）', () => readDoc(a.homesFile).homes.length === 4)
     assert.equal(a.calls.filter((c) => c.endpoint === 'home.create').length, 1)
-    await waitFor('落到新家 L2', () => headTitle(a.panel()).includes('空房间'))
+    await waitFor('落到新家 L2', () => headTitle(a.panel()).includes('新房间'))
     clickBack(a.panel())
-    await waitFor('回到 L1（家行 3→4）', () => rowsOf(a.panel()).length === 4 && a.text().includes('空房间'))
+    await waitFor('回到 L1（家行 3→4）', () => rowsOf(a.panel()).length === 4 && a.text().includes('新房间'))
 
+    /* 重进建单、选同一个目录：DSH 侧 created:false ⇒ 复用；客户端查表发现该区已有家 ⇒ 直接带用户进那家（不写第二行）。 */
     clickPrimary(a.panel(), '新建家')
     await waitFor('重进建单', () => popTitle() === '新建家')
-    assert.deepEqual(boxValues(popBoxes()[0]), ['ws-4'], '已建家的区不再进候选（客户端一道守卫）')
-
-    /* 陈旧弹层：它是照着「ws-4 还空闲」渲染的，另一窗口先把 ws-4 抢走（真宿主写，不进 calls）。 */
-    const before = readDoc(a.homesFile).homes.length
-    const won = await a.elsewhere.createHome({ workspaceId: 'ws-4', path: GARAGE, title: '车库' })
-    assert.equal((won as any).ok, true, '另一窗口先建成 ws-4')
-    assert.equal(readDoc(a.homesFile).homes.length, before + 1)
-
-    /* 重提同一个区（弹层里 picked 仍是 ws-4）→ 宿主必须拒。 */
+    clickPop('选择目录')
+    await waitFor('路径回填', () => popText().includes('brandnew'))
     clickPop('创建')
-    await waitFor('第二次 home.create 被答复', () => a.calls.filter((c) => c.endpoint === 'home.create').length === 2)
-    const second = a.calls.filter((c) => c.endpoint === 'home.create')[1]
-    assert.deepEqual(second.payload, { workspaceId: 'ws-4', path: GARAGE, title: '车库' }, '重提的还是那个区')
-    assert.equal((second.reply as any).ok, false, '第二次必须被宿主拒（不是静默新增）')
-    assert.equal((second.reply as any).error.code, 'already-exists', '拒码=already-exists')
+    await waitFor('回到已有家（L2 新房间）', () => headTitle(a.panel()).includes('新房间'))
+    assert.ok(!popNode(), '已有家时弹层收掉（目标已达成，不是报错停在弹层里）')
+    assert.equal(a.calls.filter((c) => c.endpoint === 'home.create').length, 1, '第二次没再写家（客户端一道守卫）')
     const disk = readDoc(a.homesFile)
-    assert.equal(disk.homes.length, before + 1, '重提没往宿主家表里多写一行（3 种子 + ws-5 + 另一窗口的 ws-4）')
-    assert.equal(disk.homes.filter((h: any) => h.workspaceId === 'ws-4').length, 1, '同区只许一家')
-    assert.equal(rowsOf(a.panel()).length, 4, 'L1 家行不翻倍（4 家 4 行，重提没多出行）')
+    assert.equal(disk.homes.length, 4, '宿主家表不翻倍（3 种子 + 新建的那个区）')
+    assert.equal(disk.homes.filter((h: any) => h.workspaceId === 'ws-9').length, 1, '同区只许一家')
     assert.ok(a.calls.every((c) => c.endpoint !== 'home.seed'), '全程不该走种子路径（否则翻倍是种子干的）')
   } finally { await a.dispose() }
 

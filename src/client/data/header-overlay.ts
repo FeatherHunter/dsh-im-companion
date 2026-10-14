@@ -7,6 +7,7 @@ import { channelColor, channelLabel, healthOf, HEALTH_LABELS, type HealthKind } 
 import type { BotSnap, RpcCall } from './fleet-api'
 import { EMPTY_META } from './meta'
 import { viewName } from './model'
+import { logLine } from '../log'
 
 /** 发测试消息意图事件名：detail = { workspace, agent, botId, channel, targetId }（只读意图，见组件）。 */
 export const SEND_TEST_EVENT = 'dsh-im-companion:send-test'
@@ -175,8 +176,16 @@ function unwrapValue(raw: unknown): unknown {
 }
 
 async function callDelivery(rpc: RpcCall, endpoint: string, payload: Record<string, unknown>): Promise<unknown> {
-  const raw = await rpc(DELIVERY_CHANNEL, endpoint, payload, AbortSignal.timeout(RPC_TIMEOUT_MS))
-  return unwrapValue(raw)
+  try {
+    const raw = await rpc(DELIVERY_CHANNEL, endpoint, payload, AbortSignal.timeout(RPC_TIMEOUT_MS))
+    return unwrapValue(raw)
+  } catch (e) {
+    /* 投递链唯一收口：端点名 + 错误码 + 原文都留下（调用方只把文案给用户，日志才是查证处）。 */
+    const m = String((e as Error)?.message ?? e)
+    const c = String((e as { code?: string })?.code ?? '')
+    logLine('warn', 'bridge.call.fail', { method: DELIVERY_CHANNEL.slice(1) + ':' + endpoint, message: c ? '[' + c + '] ' + m : m })
+    throw e
+  }
 }
 
 /** 列出已聊会话建议（无目标时的草稿测试来源，不存任何东西）。 */

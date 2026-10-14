@@ -101,10 +101,10 @@ export function onlineTagEl(bot: BotSnap | null): HTMLElement {
   return h('span', { className: `hu-online${on ? '' : ' off'}` }, dotEl(on), on ? '在线' : '离线')
 }
 
-/** 家状态章（原型 homePill）：待重连 / 暂存 / 无。 */
+/** 家状态章（原型 homePill）：已删除 / 没有工作区 / 无。 */
 export function homePillEl(home: Home): HTMLElement | null {
-  if (home.tombstone) return pillEl('bad', '待重连')
-  if (!home.workspaceId) return pillEl('dim', '暂存')
+  if (home.tombstone) return pillEl('bad', '已删除')
+  if (!home.workspaceId) return pillEl('dim', '没有工作区')
   return null
 }
 
@@ -223,7 +223,7 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
     h('span', { className: 'hu-acts2' },
       a.status === 'bound'
         ? textBtn('connect-a', '接入', { cls: 'connect', id: a.id })
-        : textBtn('bind-a', '绑机器人', { id: a.id }),
+        : textBtn('bind-a', '绑定机器人', { id: a.id }),
       iconBtn('more-asst', '更多', 'more')))
   wireRow(el, opts, a.id)
   return el

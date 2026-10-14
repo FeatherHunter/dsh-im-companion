@@ -16,7 +16,7 @@ export interface HeadOpts {
   actions?: HTMLElement | null
 }
 
-/** 页头：L1 无返回；L2/L3 有返回；⋯ 在 L2 开家设置（改名·配图，T6b #114）。
+/** 页头：L1 无返回；L2/L3 有返回；⋯ 在 L2 开家设置（改名·头像，T6b #114）。
  * 页头**不再有 ＋**（owner 裁定 2026-10-13）：它与底部主操作同效、同屏、同时可见，
  * 而在 L3 还点了没反应 —— 一个动作一个入口，建单归底部主操作（随层：新建家 / 新建助理）。
  * 页头只留「面板级动作」（去舰队 / 串门搬家 / 刷新），两个区各管一类，语义不再重叠。 */
@@ -33,7 +33,7 @@ export function headEl(o: HeadOpts): HTMLElement {
   if (o.actions) head.appendChild(o.actions)
   if (o.level === 'L2') {
     const more = h('button', {
-      className: 'hu-ibtn', type: 'button', 'aria-label': '更多操作', 'data-tip': '家设置（改名·配图）',
+      className: 'hu-ibtn', type: 'button', 'aria-label': '更多操作', 'data-tip': '家设置（改名·头像）',
     }, huIcon('more', 15))
     more.addEventListener('click', () => o.onMore(more))
     head.appendChild(more)
