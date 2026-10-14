@@ -12,7 +12,7 @@ import { toast } from '../ui/toast'
 import { logLine, logOn } from '../log'
 import { avatarSrc, clearAvatarImage, hasImage, onAvatarImage, uploadAvatarImage } from './home-avatar'
 import { aLog, hLog, msgOf } from './home-ops'
-import { avatarStyle } from './home-identity'
+import { avatarStyle, imageCover } from './home-identity'
 
 const ACCEPT = 'image/png,image/jpeg,image/webp'
 /** 选择器入口上限：先挡住手滑选中的巨型文件，别把它读进内存（票面口径的 2 MB 是**存盘**上限）。 */
@@ -80,7 +80,7 @@ export async function commitAvatarFile(id: string, kind: Kind, file: FileLike | 
 /** 图片格的底色/内容：有图用图（cover），无图用「图」字 ＋ id 派生色相（与列表头像同一套色相口径）。 */
 function cellStyle(id: string, url: string | null): string {
   const base = avatarStyle(id + ':img', null)
-  return url ? base + ';background-image:url("' + url + '");background-size:cover;background-position:center' : base
+  return url ? base + ';' + imageCover(url) : base
 }
 
 /** 图片格：`{cell}` 塞进头像色板行（第 8 格），`{clear}` 由调用方摆在色板行下面（有图时才有）。 */

@@ -38,7 +38,9 @@ export interface MoveOps {
   unbindAssistant(id: string): Promise<void>
   /** 删助理（T6c clean 版，覆盖 drill 旧版）：已绑先清空工作区再删行，防种子复活；不断连接。 */
   removeAssistant(id: string): Promise<void>
-  /** 重绑（T10b #127「选择工作区」）：家改指新工作区；已绑助理先远端跟随（新目录）再落表，失败回滚。 */
+  /** 重绑（T10b #127「选择工作区」）：家改指新工作区；已绑助理先远端跟随（新目录）再落表，失败回滚。
+   *  **失败一律 throw（带原文）**：调用方是孤儿家弹层，它要就地显示拒绝原因（如宿主回的「该工作区已有家」）
+   *  并把按钮恢复可点；静默 return 会让「点了没反应」重新长出来（T8 #121 A 款修法同口径）。 */
   rebindHome(homeId: string, workspaceId: string, path: string): Promise<void>
   /** 删除家（T10b #127）：先清各已绑助理的远端工作区（fail-closed），再打墓碑＋级联删助理行；机器人不断连。 */
   removeHome(homeId: string): Promise<void>
@@ -134,20 +136,21 @@ export function createMoveOps(deps: MoveDeps): MoveOps {
      * 落表失败回滚远端；写后先 reloadHomes 再 refresh。远端一律 fail-closed：清不动就不动表（不留半行）。 */
     rebindHome: async (homeId, workspaceId, path) => {
       const rpc = deps.getRpc()
-      if (!rpc) { toast('连接服务不可用'); aLog('rebind-home', homeId, false, '连接服务不可用'); return }
+      if (!rpc) { toast('连接服务不可用'); aLog('rebind-home', homeId, false, '连接服务不可用'); throw new Error('连接服务不可用') }
       const home = deps.getHome(homeId)
-      if (!home) { toast('找不到这个家'); aLog('rebind-home', homeId, false, '找不到这个家'); return }
-      if (home.tombstone) { toast('家已删除，不能再重绑'); aLog('rebind-home', homeId, false, '家已删除'); return }
+      if (!home) { toast('找不到这个家'); aLog('rebind-home', homeId, false, '找不到这个家'); throw new Error('找不到这个家') }
+      if (home.tombstone) { toast('家已删除，不能再重绑'); aLog('rebind-home', homeId, false, '家已删除'); throw new Error('家已删除，不能再重绑') }
       const bound = deps.getAssistants().filter((a): a is Assistant & { botId: string } => a.homeId === homeId && a.status === 'bound' && !!a.botId)
       for (const a of bound) {
-        if (!await bindBot(rpc, a.channel, a.botId, path)) return
+        /* 远端先跟随；切不过去就中止——表一行不写（fail-closed），弹层拿到原文可重试。 */
+        if (!await bindBot(rpc, a.channel, a.botId, path)) throw new Error('远端工作区没切过去，已中止：家的记录一行没写')
       }
       try {
         await bridge(rpc, 'home.rebind', { id: homeId, workspaceId, path })
       } catch (e) {
         for (const a of bound) { try { await bindBot(rpc, a.channel, a.botId, home.path) } catch { /* 回滚尽力 */ } }
         toast('重绑失败，已恢复原样：' + msgOf(e)); aLog('rebind-home', homeId, false, '重绑失败并已回滚远端：' + msgOf(e))
-        return
+        throw new Error(msgOf(e))
       }
       toast('已重绑到新工作区', 'check'); aLog('rebind-home', homeId, true, '→ ' + path)
       await deps.reloadHomes()
@@ -155,14 +158,14 @@ export function createMoveOps(deps: MoveDeps): MoveOps {
     },
     removeHome: async (homeId) => {
       const rpc = deps.getRpc()
-      if (!rpc) { toast('连接服务不可用'); aLog('remove-home', homeId, false, '连接服务不可用'); return }
+      if (!rpc) { toast('连接服务不可用'); aLog('remove-home', homeId, false, '连接服务不可用'); throw new Error('连接服务不可用') }
       const home = deps.getHome(homeId)
-      if (!home) { toast('找不到这个家'); aLog('remove-home', homeId, false, '找不到这个家'); return }
+      if (!home) { toast('找不到这个家'); aLog('remove-home', homeId, false, '找不到这个家'); throw new Error('找不到这个家') }
       const all = deps.getAssistants().filter((a) => a.homeId === homeId)
       const bound = all.filter((a): a is Assistant & { botId: string } => a.status === 'bound' && !!a.botId)
       /* 先清远端：家要没了，机器人还指着老目录＝看不见的脏状态；清不动就中止（表一行不写）。 */
       for (const a of bound) {
-        if (!await bindBot(rpc, a.channel, a.botId, '')) return
+        if (!await bindBot(rpc, a.channel, a.botId, '')) throw new Error('远端工作区没清掉，已中止：家的记录一行没写')
       }
       try {
         await bridge(rpc, 'home.remove', { id: homeId })
@@ -171,7 +174,7 @@ export function createMoveOps(deps: MoveDeps): MoveOps {
       } catch (e) {
         for (const a of bound) { try { await bindBot(rpc, a.channel, a.botId, home.path) } catch { /* 回滚尽力 */ } }
         toast('删除失败，已恢复原样：' + msgOf(e)); aLog('remove-home', homeId, false, msgOf(e))
-        return
+        throw new Error(msgOf(e))
       }
       await deps.reloadHomes()
       await deps.refresh()

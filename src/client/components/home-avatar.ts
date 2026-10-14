@@ -31,11 +31,11 @@ const pending = new Map<string, string>()
 /** 一次性「图到了叫我」回调（弹层是常驻 portal，不随面板重渲染 ⇒ 它得自己补图）。 */
 const listeners = new Map<string, Set<(url: string) => void>>()
 let scheduled = false
-let getRpc: (() => RpcCall) | null = null
+let getRpc: (() => RpcCall | null) | null = null
 let onChange: (() => void) | null = null
 
 /** 面板装配时接一次（panel.ts 一行）：取 rpc 的提供函数 ＋ 「图到了就重渲染」回调。 */
-export function bindAvatarTransport(port: { getRpc: () => RpcCall; onChange: () => void }): void {
+export function bindAvatarTransport(port: { getRpc: () => RpcCall | null; onChange: () => void }): void {
   getRpc = port.getRpc
   onChange = port.onChange
 }

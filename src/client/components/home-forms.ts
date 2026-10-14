@@ -4,6 +4,7 @@ import { channelLabel } from '../data/config'
 import { dirField, runDirCreate } from './home-dir-form'
 import { huIcon } from './home-icons'
 import { avatarStyle, initialsOf } from './home-identity'
+import { avatarImageCell } from './home-avatar-form'
 import { closeHomePop, homePopOpen, openHomePop, updateHomePop, type AnchorRef } from './home-pop'
 import { freeBots, type Assistant, type Home, type WorkspaceRef } from '../data/home-model'
 import type { BotSnap } from '../data/fleet-api'
@@ -160,8 +161,14 @@ export interface EditDeps {
   onDone: () => void
 }
 
-/** 配图行：默认＋6 色（avatar "1".."6"，见 home-identity.hueOf；改名不换色）。 */
-function avatarRow(name: string, id: string, current: string | null, onPick: (v: string | null) => void): HTMLElement {
+/** 配图行：默认＋6 色（avatar "1".."6"，见 home-identity.hueOf；改名不换色）＋第 8 格「上传图片」（T11 #128）。
+ *  返回 `{row, clear}` 两件：色板行由调用方塞进「头像」字段，`clear`（有图时才有）单摆在色板行下面。
+ *  `onCommitted` 在图片真落盘后回调——图片**点了就落**（不攒进「确定」的补丁），故调用方应关弹层并重读，
+ *  否则弹层里那份旧 `avatar` 快照会反手把刚落的图覆盖回预设色。 */
+function avatarRow(
+  name: string, id: string, kind: 'home' | 'assistant', current: string | null,
+  onPick: (v: string | null) => void, onCommitted: () => void,
+): { row: HTMLElement; clear: HTMLElement | null } {
   const wrap = h('div', { className: 'hu-avrow' })
   const opts: Array<string | null> = [null, '1', '2', '3', '4', '5', '6']
   opts.forEach((v) => {
@@ -177,7 +184,9 @@ function avatarRow(name: string, id: string, current: string | null, onPick: (v:
     })
     wrap.appendChild(b)
   })
-  return wrap
+  const img = avatarImageCell({ id, kind, current, onCommitted })
+  wrap.appendChild(img.cell)
+  return { row: wrap, clear: img.clear }
 }
 
 /** 家设置：改名＋配图＋恢复默认（T6b 验收①②）。 */
@@ -188,7 +197,7 @@ export function renameHomePop(anchor: AnchorRef, deps: EditDeps & { homeId: stri
   const input = h('input', { type: 'text', placeholder: homeName(deps.view, home), 'aria-label': '家名字' }) as HTMLInputElement
   input.value = cur
   let avatar: string | null = home.avatar ?? null
-  const pick = avatarRow(homeName(deps.view, home), home.id, avatar, (v) => { avatar = v })
+  const av = avatarRow(homeName(deps.view, home), home.id, 'home', avatar, (v) => { avatar = v }, () => { closeHomePop(true); deps.onDone() })
   const reset = h('button', { className: 'hu-plink', type: 'button' }, '恢复默认名（跟随工作区）')
   reset.addEventListener('click', () => {
     closeHomePop(true)
@@ -205,7 +214,7 @@ export function renameHomePop(anchor: AnchorRef, deps: EditDeps & { homeId: stri
   openHomePop(anchor, {
     width: 330, label: '家设置',
     title: h('div', { className: 'hu-ptitle' }, huIcon('pencil', 15), '家设置'),
-    body: [field('名字', input), reset, field('头像', pick, 'div')],
+    body: [field('名字', input), reset, field('头像', av.row, 'div'), ...(av.clear ? [av.clear] : [])],
     foot: footBtns(ok),
   })
 }
@@ -218,7 +227,7 @@ export function renameAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: stri
   const input = h('input', { type: 'text', placeholder: asstName(deps.view, a), 'aria-label': '助理名字' }) as HTMLInputElement
   input.value = cur
   let avatar: string | null = a.avatar ?? null
-  const pick = avatarRow(asstName(deps.view, a), a.id, avatar, (v) => { avatar = v })
+  const av = avatarRow(asstName(deps.view, a), a.id, 'assistant', avatar, (v) => { avatar = v }, () => { closeHomePop(true); deps.onDone() })
   const reset = h('button', { className: 'hu-plink', type: 'button' }, '恢复默认名（跟随机器人/家）')
   reset.addEventListener('click', () => {
     closeHomePop(true)
@@ -242,7 +251,7 @@ export function renameAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: stri
   openHomePop(anchor, {
     width: 330, label: '助理设置',
     title: h('div', { className: 'hu-ptitle' }, huIcon('pencil', 15), '助理设置'),
-    body: [field('名字', input), reset, field('头像', pick, 'div'), del],
+    body: [field('名字', input), reset, field('头像', av.row, 'div'), ...(av.clear ? [av.clear] : []), del],
     foot: footBtns(ok),
   })
 }

@@ -18,8 +18,8 @@ import type { WorkspaceRef } from '../data/home-model'
 import { createDrillOps } from './home-ops'
 import { createMoveOps } from './home-move-ops'
 import { createConfigButton } from './config-pop'
+import { bindAvatarTransport } from './home-avatar'
 import { logLine, logOn } from '../log'
-
 /* #56：构建注入的插件版本（tsdown define __PLUGIN_VERSION__，package.json 唯一真相）。 */
 declare const __PLUGIN_VERSION__: string | undefined
 /* #78：构建注入的 dsh-im 兼容信息（tsdown define __DSH_IM_COMPAT__，package.json.dshImCompat 唯一真相）。 */
@@ -110,14 +110,11 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     'aria-label': copy.feedbackTitle,
   }, icon('feedback', 18))
   /* 页头是**防御性布局**：标题是身份（不许被压），徽标带是附加信息（不许换行、不许把标题挤没）。
-   * 2026-10-13 真机两连（owner）：
-   *   ① 首次事故——更新失败横幅 + 两枚版本胶囊把「IM机器人增强」压成「IM 机器人⋯」；
-   *   ② 我当时的处置（标题 flex:0 0 auto + 右组可换行）换来的是**页头变两行**，owner 直接否掉：
-   *      「需要做到一行装得下，文字也不会变成省略号（起码标题不能变）」。
-   * 正解不是让谁换行，而是**把单行预算做够**：#78 的「不换行」不变，右组仍 flex:none，
-   * 左块仍留 ellipsis 兜底；预算从内容侧省——标题 20px（theme）、更新入口按钮收紧
-   * （first-view-styles 的 .af-hd-right .dsh-upd-entry-btn）。真机 ~543px 实测单行余量 ≈74px。
-   * 故这里不再写任何行内 flex 覆盖：CSS 就是唯一真相（行内 style 曾把 nowrap 顶成 wrap）。 */
+   * 2026-10-13 真机两连（owner）：① 更新失败横幅 + 两枚版本胶囊把「IM机器人增强」压成「IM 机器人⋯」；
+   * ② 我当时的处置（标题 flex:0 0 auto + 右组可换行）换来的是**页头变两行**，owner 直接否掉：
+   * 「需要做到一行装得下，文字也不会变成省略号（起码标题不能变）」。正解不是让谁换行，而是**把单行预算做够**：
+   * #78 的「不换行」不变、右组仍 flex:none、左块仍留 ellipsis 兜底，预算从内容侧省（标题 20px、
+   * .af-hd-right .dsh-upd-entry-btn 收紧）；真机 ~543px 实测单行余量 ≈74px。故这里不写任何行内 flex 覆盖。 */
   const hdRight = h('div', { className: 'af-hd-right' }, verBox, updateCenterHost, starLink, feedbackLink)
   const hd = h('div', { className: 'af-hd' },
     h('div', { className: 'af-hd-left' }, title, titleMeta), hdRight)
@@ -229,6 +226,9 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     onRetry: () => void refresh(),
   })
   data.setRender(() => bodyModule.render())
+  /* T11 #128：头像图片通道接通（rpc 供取图/上传、onChange 供「图到了重渲染」）。不接这行，上传必抛
+   * 「头像通道未接通」且 `avatar.get` 一次都不发——渲染侧只见回落款。 */
+  bindAvatarTransport({ getRpc: () => rpc, onChange: () => bodyModule.render() })
 
   /* ---------- 生命周期（#17：轮询归共享 stream，面板只订阅 + dispose 退订） ---------- */
   /* 顺序化首屏：先 load（拿到 bots+meta）再由它读完家表（种子一次到位，助理行不等下一轮 15s 轮询）。

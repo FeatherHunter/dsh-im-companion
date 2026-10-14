@@ -4,13 +4,15 @@
 import { h } from '../dom'
 import { channelLabel } from '../data/config'
 import { huIcon, type HuIconName } from './home-icons'
-import { avatarStyle, initialsOf } from './home-identity'
+import { avatarStyle, imageCover, initialsOf } from './home-identity'
+import { avatarSrc } from './home-avatar'
 import { botKey, buildIndex, type FleetIndex } from './home-index'
 import {
   basenameOf, resolveAssistantDisplay, resolveHomeDisplay,
   type Assistant, type Display, type Home, type WorkspaceRef,
 } from '../data/home-model'
 import { isOrphanHome } from '../data/home-orphan'
+import { orphanRowActs } from './home-orphan-row'
 import type { BotSnap } from '../data/fleet-api'
 
 /** 原型回落文案（proto-studio 的 homeFrom/asstFrom）。 */
@@ -79,9 +81,13 @@ export function asstName(view: RowView, a: Assistant): string {
  *  `id` 与 `name` 分开传：身份来自 id，显示来自 name——两者不许混用。 */
 export function avatarEl(id: string, name: string, avatar: string | null, opts: { round?: boolean; small?: boolean; iconName?: HuIconName } = {}): HTMLElement {
   const cls = `hu-av${opts.round ? ' round' : ''}${opts.small ? ' sm' : ''}`
-  const el = h('span', { className: cls, style: opts.iconName ? 'background:var(--hu-accent-soft);color:var(--hu-accent-deep)' : avatarStyle(id, avatar) })
+  /* T11 #128：有图用图、无图回落预设色＋首字母——判定单点＝`home-avatar.avatarSrc`（列表/详情共用本函数，
+   * 故「列表与详情一致」是结构保证）。图未取回时 `img` 为 null ⇒ 先画回落款，取回后 onChange 重渲染换图。 */
+  const img = opts.iconName ? null : avatarSrc(id, avatar)
+  const tint = opts.iconName ? 'background:var(--hu-accent-soft);color:var(--hu-accent-deep)' : avatarStyle(id, avatar)
+  const el = h('span', { className: cls, style: img ? imageCover(img) : tint })
   if (opts.iconName) el.appendChild(huIcon(opts.iconName, 15))
-  else el.textContent = initialsOf(name)
+  else if (!img) el.textContent = initialsOf(name)
   return el
 }
 
@@ -184,28 +190,34 @@ function wireRow(el: HTMLElement, opts: RowOpts, id: string): void {
   }
 }
 
-/** 家行（原型 rowsHomes）：头像 + 名 + 家状态章 + 在线汇总 / N 位助理 · 回落来源 / 助理清单。 */
+/** 家行（原型 rowsHomes）：头像 + 名 + 家状态章 + 在线汇总 / N 位助理 · 回落来源 / 助理清单。
+ *  孤儿家（工作区已不在）只剩两条出路：重绑 or 删除——正常家永远看不到「删除家」（#127 验收④）。 */
 export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElement {
   const d = homeDisplay(view, home)
   const list = asstOfHome(view, home.id)
   const names = list.length ? `助理：${list.map((a) => asstName(view, a)).join('、')}` : ''
   const nm = h('span', { className: 'hu-nm' }, h('b', {}, d.text))
-  const pill = homePillEl(home, isOrphanHome(home, view.workspaces))
+  const orphan = isOrphanHome(home, view.workspaces)
+  const pill = homePillEl(home, orphan)
   if (pill) nm.appendChild(pill)
   const onlineEl = homeOnlineTag(view, list)
   if (onlineEl) nm.appendChild(onlineEl)
   const txt = h('span', { className: 'hu-txt' }, nm,
     h('span', { className: 'hu-sub' }, `${list.length} 位助理 · ${d.from}`))
   if (names) txt.appendChild(h('span', { className: 'hu-names' }, names))
+  const acts = h('span', { className: 'hu-acts2' })
+  if (orphan) orphanRowActs(acts, home.id, opts.onItemAct)
+  else {
+    acts.appendChild(iconBtn('rename-h', '重命名', 'pencil'))
+    acts.appendChild(iconBtn('more-home', '更多', 'more'))
+  }
   const el = h('div', {
     className: `hu-row${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}`,
     role: 'button', tabindex: 0, 'data-open': 'L2', 'data-id': home.id, 'aria-label': `家 ${d.text}`,
   },
     avatarEl(home.id, d.text, home.avatar),
     txt,
-    h('span', { className: 'hu-acts2' },
-      iconBtn('rename-h', '重命名', 'pencil'),
-      iconBtn('more-home', '更多', 'more')))
+    acts)
   wireRow(el, opts, home.id)
   return el
 }

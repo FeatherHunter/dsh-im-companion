@@ -109,6 +109,8 @@ export const HOME_UI_CSS = `
 .home-ui .hu-ract:active{transform:scale(.94)}
 .home-ui .hu-ract.connect{border-color:var(--hu-accent);background:var(--hu-accent-soft);color:var(--hu-accent-deep);font-weight:600}
 .home-ui .hu-ract.icon{width:26px;padding:0;justify-content:center}
+/* 危险动作（T10b #127「删除家」）：与 .hu-abtn.danger 同口径——孤儿家才出现，正常家没有这个入口。 */
+.home-ui .hu-ract.danger{color:var(--hu-bad);border-color:var(--hu-bad);background:var(--hu-bad-soft)}
 /* 未实现钮（T6b/T6c）：语义化禁用——**常态对比度** + 虚线边，不再 opacity .45（深色下读起来像坏了）。
    悬停仍出 tooltip 说明归属票号。 */
 .home-ui .hu-ract.planned,.home-ui .hu-abtn.planned,.home-ui .hu-ibtn.planned,.home-ui .hu-pbtn.planned{

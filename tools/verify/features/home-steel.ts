@@ -411,7 +411,9 @@ test('T6b 绿框呈现：家设置弹层改名＋配图、绑定弹层可开（�
   const pop = cls(domDoc.body, 'hu-pop')[0];
   assert.ok(pop, '点重命名→家设置弹层');
   assert.ok(txt(pop).includes('家设置'));
-  assert.equal(cls(pop, 'hu-avopt').length, 7, '配图行＝默认＋6 色');
+  assert.equal(cls(pop, 'hu-avopt').length, 8, '配图行＝默认＋6 色＋图片格（T11 #128 收编）');
+  assert.equal(cls(pop, 'hu-avimg-cell').length, 1, '图片格在色板行里（第 8 格）');
+  assert.ok(!txt(pop).includes('清除图片'), '无图时不出现「清除图片」（回落预设色＝默认态）');
   assert.ok(txt(pop).includes('恢复默认'));
   clickEl(cls(domDoc.body, 'hu-scrim')[0]);
   assert.equal(popMod.homePopOpen(), false, '点遮罩→弹层逻辑关闭（DOM 渐隐 130ms 后移除）');
@@ -1421,6 +1423,158 @@ test('T6c 换工作区弹层：点开列出别家、确认走搬家管道（验�
   assert.ok(pop && txt(pop).includes('换工作区'), '点开搬家弹层');
   assert.ok(txt(pop).includes('书房基地'), '候选列出别家（当前家除外）');
   popMod.closeHomePop(true);
+});
+
+test('T10b #127 孤儿家：行内两动作只给孤儿家，重绑走 T8 收养链，删除家两步确认（验收①③④）', async () => {
+  const tick = (): Promise<void> => new Promise((r) => { setTimeout(r, 0) });
+  const dir = 'D:\\agents\\newhome';
+  const gone = H({ id: 'h9', workspaceId: 'ws-gone', path: 'D:\\agents\\gone', name: '走丢的家', nameSource: 'system' });
+  /* 孤儿家带一位助理：L1 会把「0 助理的空家」折叠成一行（呈现策略），带助理才直接出现在列表里。 */
+  const goneAsst = A({ id: 'a9', homeId: 'h9', channel: 'qq', botId: 'q9', status: 'bound', name: '小九', nameSource: 'bot' });
+  const picked: string[] = [];
+  const adopted: string[] = [];
+  const rebound: any[] = [];
+  const removed: string[] = [];
+  let nextPick = dir;
+  const bodyEl = new El('div', domDoc);
+  const handle = bodyMod.createPanelBody({
+    state: { homes: BOX_HOMES.concat([gone]), assistants: BOX_ASSTS.concat([goneAsst]), bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
+    bodyEl,
+    titleMetaEl: new El('div', domDoc),
+    getWorkspaces: () => BOX_WS,
+    ops: {
+      createHome: async () => {}, createAssistant: async () => {}, connect: () => {},
+      pickDirectory: async () => { picked.push(nextPick); return nextPick },
+      adoptDirectory: async (d: string) => {
+        adopted.push(d);
+        return d === 'D:\\agents\\nowhere' ? null : { workspaceId: 'ws-9', path: dir, title: 'newhome' };
+      },
+      rebindHome: async (id: string, wsId: string, path: string) => { rebound.push([id, wsId, path]) },
+      removeHome: async (id: string) => { removed.push(id) },
+    },
+    onRetry: () => {},
+  });
+  handle.render();
+  const rowById = (id: string): any => rowsOf(bodyEl).filter((r) => r.getAttribute('data-id') === id)[0];
+  /* ④ 正常家（工作区在）一个删除/重绑入口都不画——这是结构保证：按钮由 isOrphanHome 决定 */
+  const normal = rowById('h1');
+  assert.ok(normal && !txt(normal).includes('工作区已不在'), '正常家不显示孤儿态');
+  assert.equal(byAttr(normal, 'data-item-act', 'rebind-home').length, 0, '正常家没有「选择工作区」');
+  assert.equal(cls(normal, 'hu-ract').filter((b: any) => txt(b) === '删除家').length, 0, '正常家没有「删除家」');
+  /* ① 孤儿家：灰字章 ＋ 两个动作 */
+  const orow = rowById('h9');
+  assert.ok(orow && txt(orow).includes('工作区已不在'), '孤儿家显示「工作区已不在」');
+  const rebindBtn = byAttr(orow, 'data-item-act', 'rebind-home')[0];
+  const delBtn = cls(orow, 'hu-ract').filter((b: any) => txt(b) === '删除家')[0];
+  assert.ok(rebindBtn && txt(rebindBtn) === '选择工作区' && !off(rebindBtn), '孤儿家有「选择工作区」且可用');
+  assert.ok(delBtn && !off(delBtn), '孤儿家有「删除家」且可用');
+  assert.ok(String(delBtn.className).includes('danger'), '删除家是危险款（.hu-ract.danger 有样式）');
+  /* ② 「选择工作区」：选目录 → 收养（唯一实现）→ home.rebind；成功后关弹层并重渲染 */
+  clickEl(rebindBtn);
+  const pop1 = one(domDoc.body, 'hu-pop');
+  assert.ok(pop1 && txt(pop1).includes('选择工作区'), '点开重绑弹层');
+  assert.deepEqual(cls(one(pop1, 'hu-phead'), 'hu-pbtn-s').map(txt), ['取消', '重绑'], '取消/重绑在标题栏右上角（owner 2026-10-15 裁定）');
+  assert.ok(off(popBtn(pop1, '重绑')), '未选目录时「重绑」禁用');
+  clickEl(byAttr(pop1, 'data-act', 'pick-dir')[0]);
+  await tick();
+  const pop2 = one(domDoc.body, 'hu-pop');
+  assert.equal(txt(one(pop2, 'hu-dirpath')), dir, '所选目录回填到路径位');
+  assert.ok(!off(popBtn(pop2, '重绑')), '选到目录后「重绑」可用');
+  clickEl(popBtn(pop2, '重绑'));
+  await tick();
+  assert.deepEqual(picked, [dir], '先走选目录');
+  assert.deepEqual(adopted, [dir], '再走 T8 收养链（不新开第二条支路）');
+  assert.deepEqual(rebound, [['h9', 'ws-9', dir]], '最后 home.rebind 指向 DSH 回来的 canonical 工作区');
+  assert.equal(one(domDoc.body, 'hu-pop'), null, '成功后弹层关闭');
+  /* ②b 客户端提前判重（与宿主同一把尺）：选到「已经是别人的家」的目录 ⇒ 明文说清是谁的家，不收养、不落表 */
+  nextPick = 'D:\\agents\\keting';
+  clickEl(byAttr(rowById('h9'), 'data-item-act', 'rebind-home')[0]);
+  clickEl(byAttr(one(domDoc.body, 'hu-pop'), 'data-act', 'pick-dir')[0]);
+  await tick();
+  clickEl(popBtn(one(domDoc.body, 'hu-pop'), '重绑'));
+  await tick();
+  const dupErr = one(one(domDoc.body, 'hu-pop'), 'hu-err');
+  assert.ok(dupErr && txt(dupErr).includes('这个目录已经有家了：客厅'), '提前判重：明文说清那个目录是谁的家');
+  assert.deepEqual(adopted, [dir], '判重拦在收养之前（不会白建一个工作区）');
+  assert.deepEqual(rebound, [['h9', 'ws-9', dir]], '家表一行没动');
+  /* ②c 收养没成（DSH 建区失败）⇒ 弹层留着、灰字原文、可重试 */
+  nextPick = 'D:\\agents\\nowhere';
+  clickEl(byAttr(one(domDoc.body, 'hu-pop'), 'data-act', 'pick-dir')[0]);
+  await tick();
+  clickEl(popBtn(one(domDoc.body, 'hu-pop'), '重绑'));
+  await tick();
+  const popErr = one(domDoc.body, 'hu-pop');
+  assert.ok(popErr && one(popErr, 'hu-err'), '建区没成 ⇒ 弹层不关、灰字留在弹层里（可重试）');
+  assert.deepEqual(rebound, [['h9', 'ws-9', dir]], '收养没成就一行没写');
+  clickEl(popBtn(popErr, '取消'));
+  /* ③ 「删除家」两步确认：首点只布防（不发请求），次点才真删 */
+  const orow2 = rowById('h9');
+  const del2 = cls(orow2, 'hu-ract').filter((b: any) => txt(b) === '删除家')[0];
+  clickEl(del2);
+  assert.deepEqual(removed, [], '首点只布防：不发 home.remove');
+  assert.equal(txt(del2), '再点一次确认删除', '首点后文案变成二次确认');
+  clickEl(del2);
+  await tick();
+  assert.deepEqual(removed, ['h9'], '次点才真删（只发一次）');
+  handle.dispose();
+});
+
+test('T10b #127 重绑/删家编排：失败一律 throw 带原文、远端先跟随、写后先读表再刷新（验收②③）', async () => {
+  const { createMoveOps } = boxReq('./client/components/home-move-ops.js');
+  const home = H({ id: 'h9', workspaceId: 'ws-gone', path: 'D:\\agents\\gone' });
+  const as = [A({ id: 'a1', homeId: 'h9', channel: 'feishu', botId: 'b1', status: 'bound' })];
+  const calls: Array<{ ep: string; p: any }> = [];
+  const mkOps = (reply: (ep: string, p: any) => any): any => createMoveOps({
+    getRpc: () => async (_path: string, ep: string, p: any) => { calls.push({ ep, p }); return reply(ep, p) },
+    getHome: () => home, getAssistant: () => undefined, getAssistants: () => as,
+    reloadHomes: async () => { calls.push({ ep: 'reloadHomes', p: null }) },
+    refresh: async () => { calls.push({ ep: 'refresh', p: null }) },
+  });
+  /* ① 成功：已绑助理先远端跟随（bot.workspace.set 新目录）→ home.rebind → 写后 reloadHomes → refresh */
+  const okOps = mkOps(() => ({ ok: true, value: {} }));
+  await okOps.rebindHome('h9', 'ws-9', 'D:\\agents\\newhome');
+  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set', 'home.rebind', 'reloadHomes', 'refresh'], '顺序铁律：远端跟随 → 落表 → 读表 → 刷新');
+  assert.equal(calls[0].p.workspace, 'D:\\agents\\newhome', '远端切到新目录');
+  assert.deepEqual(calls[1].p, { id: 'h9', workspaceId: 'ws-9', path: 'D:\\agents\\newhome' });
+  /* ② 宿主判重（该工作区已有家）：把原文 throw 出来给弹层显示，且远端回滚到老目录 */
+  calls.length = 0;
+  const dup = mkOps((ep) => (ep === 'home.rebind'
+    ? { ok: false, error: { code: 'already-exists', message: '该工作区已有家' } }
+    : { ok: true, value: {} }));
+  await assert.rejects(() => dup.rebindHome('h9', 'ws-1', 'D:\\agents\\keting'), /该工作区已有家/, 'already-exists 原文抛给弹层（不静默）');
+  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set', 'home.rebind', 'bot.workspace.set'], '落表失败 ⇒ 回滚远端（两边都不脏）');
+  assert.equal(calls[2].p.workspace, 'D:\\agents\\gone', '回滚回原目录');
+  /* ③ 远端切不过去：中止在落表之前——家表一行不写 */
+  calls.length = 0;
+  const badRemote = mkOps((ep) => (ep === 'bot.workspace.set' ? { ok: false, error: { message: '渠道 502' } } : { ok: true, value: {} }));
+  await assert.rejects(() => badRemote.rebindHome('h9', 'ws-9', 'D:\\agents\\newhome'), /远端工作区没切过去/, 'fail-closed：远端清不动就不动表');
+  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set'], '一行没写（home.rebind 从未发出）');
+  /* ④ 删家：先清远端（空目录）→ home.remove 一次 → 读表 → 刷新 */
+  calls.length = 0;
+  const delOps = mkOps(() => ({ ok: true, value: {} }));
+  await delOps.removeHome('h9');
+  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set', 'home.remove', 'reloadHomes', 'refresh'], '删家顺序：清远端 → 打墓碑 → 读表 → 刷新');
+  assert.equal(calls[0].p.workspace, '', '删家前把机器人工作区清空（不留看不见的脏指向）');
+  assert.deepEqual(calls[1].p, { id: 'h9' }, 'home.remove 只带 id（墓碑＋级联由宿主做）');
+  /* ④b 删家落表失败：原文抛出（不静默）＋回滚远端＋不读表不刷新 */
+  calls.length = 0;
+  const delFail = mkOps((ep) => (ep === 'home.remove' ? { ok: false, error: { message: '写盘失败' } } : { ok: true, value: {} }));
+  await assert.rejects(() => delFail.removeHome('h9'), /写盘失败/, '删家失败也抛原文（界面不许装作删掉了）');
+  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set', 'home.remove', 'bot.workspace.set'], '失败 ⇒ 回滚远端，且不读表不刷新');
+  /* ④c 删家前远端清不动：fail-closed——墓碑一行不打 */
+  calls.length = 0;
+  const delBadRemote = mkOps((ep) => (ep === 'bot.workspace.set' ? { ok: false, error: { message: '渠道 502' } } : { ok: true, value: {} }));
+  await assert.rejects(() => delBadRemote.removeHome('h9'), /远端工作区没清掉/, '清不动远端就不打墓碑');
+  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set'], 'home.remove 从未发出（一行没写）');
+  /* ⑤ 无 rpc / 家已墓碑：如实拒绝，不发任何请求 */
+  calls.length = 0;
+  const noRpc: any = createMoveOps({
+    getRpc: () => null, getHome: () => home, getAssistant: () => undefined, getAssistants: () => as,
+    reloadHomes: async () => {}, refresh: async () => {},
+  });
+  await assert.rejects(() => noRpc.rebindHome('h9', 'ws-9', 'D:\\x'), /连接服务不可用/);
+  await assert.rejects(() => noRpc.removeHome('h9'), /连接服务不可用/, '删家同样如实拒绝（两条路一个口径）');
+  assert.deepEqual(calls, [], '没有连接就一个请求都不发');
 });
 
 console.log('features/home-steel: ALL PASS');

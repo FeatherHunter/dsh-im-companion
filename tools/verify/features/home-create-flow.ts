@@ -204,7 +204,8 @@ function disposeShared(): void {
 }
 
 /* ---------- 每 test 一套新夹具：新 homes.json ＋ 新桥 handler ＋ 新 stream ＋ 新 React 根 ---------- */
-async function boot({ freeWs = false }: { freeWs?: boolean } = {}) {
+/* T8 #121 收尾：pickCancel＝原生选择器被用户取消（返回 null）；createFails＝DSH 建工作区失败（明文回错）。 */
+async function boot({ freeWs = false, pickCancel = false, createFails = false }: { freeWs?: boolean; pickCancel?: boolean; createFails?: boolean } = {}) {
   const dshHome = mkdtempSync(join(tmpdir(), 'hcf-dsh-'))
   const homesFile = storeMod.homesFileFor(dshHome)
   /* 只有建家测试才暴露「尚无家」的空闲区：建助理点击成功后会瞬时触发一次缺口种子 sweep
@@ -289,6 +290,7 @@ async function boot({ freeWs = false }: { freeWs?: boolean } = {}) {
           getSnapshot: () => ({ items: workspaces }),
           create: async (input: { path: string }) => {
             const path = String(input?.path ?? '')
+            if (createFails) return { ok: false, error: { code: 'directory-not-found', message: '目录不存在' } }
             const hit = workspaces.find((w: any) => w.path === path)
             if (hit) return { ok: true, value: { workspace: hit, created: false } }
             const row = { workspaceId: 'ws-9', path, title: '新房间' }
@@ -300,7 +302,7 @@ async function boot({ freeWs = false }: { freeWs?: boolean } = {}) {
     },
     slots: { inject: (_n: string, fn: any) => fn(), register: (_o: any, Comp: any) => Comp },
     connection: { rpc: { call } },
-    uiWorkspace: { pickDirectory: async () => NEWDIR },
+    uiWorkspace: { pickDirectory: async () => (pickCancel ? null : NEWDIR) },
     emit() {},
   }
 
@@ -360,6 +362,7 @@ test('①建家点击级：L1 底部「新建家」→ 选目录（DSH 建区＋
 
     clickPop('选择目录')
     await waitFor('路径回填', () => popText().includes('brandnew'))
+    assert.equal(all(doc.body).filter((e) => hasCls(e, 'af-dirbar')).length, 0, '原生选择器在场 ⇒ 不开内置浏览（原生优先，T8 #121 验收②）')
 
     clickPop('创建')
     /* 先钉 rpc：写请求必须带 DSH 回的 canonical 区（夹具假 workspaces.create 回 ws-9）。 */
@@ -550,6 +553,47 @@ test('④一对一：已被绑走的机器人不进新建助理候选（候选�
     assert.deepEqual(readDoc(b.homesFile).assistants.map((x: any) => x.botId).sort(), ['bot_aaaa', 'q_2222', 'wx_1111'])
     assert.equal(b.calls.filter((c) => c.endpoint === 'assistant.create').length, 0, '只看不写')
     assert.equal(readDoc(b.homesFile).assistants.length, 3, '宿主助理表未被动过')
+  } finally { await b.dispose() }
+})
+
+/* ---------- ⑤ 选目录：原生优先 + 取消静默（T8 #121 验收②） ---------- */
+test('⑤选目录点击级：有原生选择器就不开内置浏览；用户取消 ⇒ 静默（不报错、不发请求、弹层照旧）', async () => {
+  const b = await boot({ pickCancel: true })
+  try {
+    clickPrimary(b.panel(), '新建家')
+    await waitFor('建家弹层出现', () => popTitle() === '新建家')
+    assert.equal(all(doc.body).filter((e) => hasCls(e, 'af-dirbar')).length, 0, '原生选择器在场 ⇒ 不开内置浏览（原生优先）');
+    const before = b.calls.length
+    clickPop('选择目录')
+    await sleep(30)
+    assert.ok(popNode(), '取消后弹层不关（选目录是用户的自由动作）');
+    assert.equal(all(popNode()).filter((e) => hasCls(e, 'hu-err')).length, 0, '取消不报错、不留灰字');
+    const okBtn = all(popNode()).find((x: any) => x.tagName === 'BUTTON' && String(x.textContent).trim() === '创建')
+    assert.ok(okBtn?.hasAttribute('disabled'), '取消后「创建」仍显式禁用（没选到目录）');
+    assert.equal(b.calls.length, before, '取消一个请求都不发');
+    assert.equal(readDoc(b.homesFile).homes.length, 3, '取消不动家表');
+  } finally { await b.dispose() }
+})
+
+/* ---------- ⑥ 建区失败：弹层不关、灰字原文、可重试、一行没写（T8 #121 验收⑤） ---------- */
+test('⑥建区失败点击级：DSH 建工作区失败 ⇒ 弹层不关、灰字原文留在弹层、按钮可重试、一行没写', async () => {
+  const b = await boot({ freeWs: true, createFails: true })
+  try {
+    const before = readDoc(b.homesFile).homes.length
+    clickPrimary(b.panel(), '新建家')
+    await waitFor('建家弹层出现', () => popTitle() === '新建家')
+    clickPop('选择目录')
+    await waitFor('路径回填', () => popText().includes('brandnew'))
+    clickPop('创建')
+    await waitFor('灰字原文出现', () => all(popNode() ?? doc.body).some((e) => hasCls(e, 'hu-err')))
+    assert.ok(popNode(), '失败时弹层不关（就地可重试）');
+    const err = all(popNode()).find((e) => hasCls(e, 'hu-err'))
+    assert.match(String(err.textContent), /建工作区失败/, '灰字原文＝DSH 的失败原因：' + String(err.textContent))
+    assert.match(String(err.textContent), /目录不存在/, '原文带底层 message（不吞细节）')
+    const okBtn = all(popNode()).find((x: any) => x.tagName === 'BUTTON' && String(x.textContent).trim() === '创建')
+    assert.ok(!okBtn?.hasAttribute('disabled'), '失败后「创建」恢复可点（可重试）')
+    assert.equal(readDoc(b.homesFile).homes.length, before, '一行没写（失败不脏）')
+    assert.equal(b.calls.filter((c) => c.endpoint === 'home.create').length, 0, 'home.create 从未发出（连尝试都没有）')
   } finally { await b.dispose() }
 })
 

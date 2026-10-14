@@ -55,6 +55,10 @@ let registered: { opts: any; Comp: any } | null = null;
 /* 家/助理小表（内存镜像宿主 home-store 判重口径）：面板首读空表即种子迁移，故此处必须有真幂等语义，
  * 否则「首读→种子→回填」这条链在验证里跑不通（T6a 绿框真相源）。 */
 const homeDb: { homes: any[]; assistants: any[] } = { homes: [], assistants: [] };
+/* T11 #128：头像图片的「文件侧」内存镜像（真宿主落在 <配置目录>/avatars/<stem>.<ext>）。
+ * 不补这三个端点，接线后客户端取图会被打成 unknown ep ⇒ 负缓存 ⇒ 真机看不到图。 */
+const avatarFiles: Record<string, string> = {};
+const rowOf = (id: string): any => homeDb.homes.find((x) => x.id === id) ?? homeDb.assistants.find((x) => x.id === id) ?? null;
 const normP = (p: string) => String(p ?? '').replace(/\\/g, '/').replace(/\/+$/, '').trim().toLowerCase();
 /* 宿主工作区名单（面板经 ctx.get('workspaces') 惰性读取；含一个无人之家以验「一区一家」）。 */
 const workspaceItems = [
@@ -159,6 +163,35 @@ function bridgeReply(ep: string, p: any): unknown {
     if (i < 0) return { ok: false, error: { code: 'not-found', message: '助理不存在', details: {} } };
     homeDb.assistants.splice(i, 1);
     return { ok: true, value: {} };
+  }
+  /* T11 #128：头像图片三端点（内存镜像宿主 home-avatar 的形状：`img:<stem>.<ext>` 标记 ＋ 文件另存）。
+   * 值域口径不变：`home.update`/`assistant.update` 仍只收 1-6，图片只走 avatar.set。 */
+  if (ep === 'avatar.get') {
+    const ids = Array.isArray(p?.ids) ? p.ids.map((x: unknown) => String(x ?? '')) : [];
+    const images: Record<string, string> = {};
+    for (const id of ids) if (id && avatarFiles[id]) images[id] = avatarFiles[id];
+    return { ok: true, value: { images } };
+  }
+  if (ep === 'avatar.set') {
+    const id = String(p?.id ?? '');
+    const row = rowOf(id);
+    if (!row) return { ok: false, error: { code: 'not-found', message: '没有这行（家/助理）：' + id, details: {} } };
+    const url = String(p?.dataUrl ?? '');
+    const m = /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/=]+)$/.exec(url);
+    if (!m) return { ok: false, error: { code: 'bad-request', message: '图片格式不支持（只收 png/jpg/webp 的 data URL）', details: {} } };
+    const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+    const marker = 'img:' + id.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 40) + '.' + ext;
+    avatarFiles[id] = url;
+    row.avatar = marker; row.avatarSource = 'user';
+    return { ok: true, value: { row, avatar: marker } };
+  }
+  if (ep === 'avatar.clear') {
+    const id = String(p?.id ?? '');
+    const row = rowOf(id);
+    if (!row) return { ok: false, error: { code: 'not-found', message: '没有这行（家/助理）：' + id, details: {} } };
+    delete avatarFiles[id];
+    row.avatar = null; row.avatarSource = 'default';
+    return { ok: true, value: { row } };
   }
   return { ok: false, error: { code: 'bad-request', message: 'unknown ' + ep, details: {} } };
 }

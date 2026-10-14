@@ -43,3 +43,8 @@ export function avatarStyle(id: string, avatar: string | null = null): string {
   const fg = `color-mix(in srgb, hsl(${hue} 66% 44%) 62%, var(--hu-ink))`
   return `background:${bg};color:${fg}`
 }
+
+/** 用户上传图片的铺满画法（T11 #128）：列表行与弹层预览共用，免两处各写一份 CSS 串。 */
+export function imageCover(url: string): string {
+  return `background-image:url("${url}");background-size:cover;background-position:center`
+}

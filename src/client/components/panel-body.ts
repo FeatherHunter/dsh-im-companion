@@ -4,14 +4,14 @@
  *   页头（返回 / 层级图标 / 标题副标 / ⋯ / ＋）→ 三级 chip 面包屑（液签）→ 行列表 → 底部主操作随层。
  * 导航＝钻取（点行进下一级），不是展开树；TAB/面包屑可向前钻取（跟随悬停或聚焦行）。
  * 旧 buildModel 列表退役（data/model.ts 保留：抽屉/徽标/会话头仍读它，verify 照旧）。
- * T6b #114：改名/配图/占位绑定/删助理已接线（未绑定不可接入，删助理只删行不断连）。
- * T6c #115：换工作区/移除渠道已接线（删助理走 clean 版：先清空工作区再删行，防种子复活）。 */
+ * T6b #114／T6c #115：改名配图/占位绑定/删助理、换工作区/移除渠道已接线（删助理走 clean 版，防种子复活）。 */
 import { h, clear } from '../dom'
 import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, type Level } from './home-frame'
 import { bindAsstPop, newAsstPop, newHomePop, renameAsstPop, renameHomePop, type FormOps } from './home-forms'
 import { moveAsstPop, unbindAsstPop } from './home-move-forms'
+import { orphanHomeAct } from './home-orphan-forms'
 import type { MoveOps } from './home-move-ops'
 import { closeHomePop } from './home-pop'
 import { skeletonRows, viewOf, type RowView } from './home-rows'
@@ -110,9 +110,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     onToggleEmpty: () => { showEmpty = !showEmpty; render() },
   })
 
-  /** 锚点一律**现取**（T7 #112 真机 bug）：面板每次数据刷新都 clear 重建（见 render），捕获的元素随即游离、
-   * rect 全 0 ⇒ 弹层会掉进兜底位置跳到窗口左上。底部主操作按类名现取；行动作按钮优先用还活着的原按钮，
-   * 被换掉后按 data-item-act/data-id 找回新的；都找不到返回 null ⇒ 弹层自行收掉（绝不兜底跳位）。 */
+  /** 锚点一律**现取**（T7 #112 真机 bug）：面板刷新会 clear 重建，捕获的元素随即游离、rect 全 0 ⇒ 弹层跳到窗口左上。
+   * 底部主操作按类名现取；行动作优先用还活着的原按钮，被换掉后按 data-item-act/data-id 找回新的，找不到就收掉（绝不兜底跳位）。 */
   const live = (el: HTMLElement): boolean => (typeof el.isConnected === 'boolean' ? el.isConnected : !!el.parentNode)
   const anchorOf = (): HTMLElement | null => (deps.bodyEl.querySelector('.hu-pbtn') as HTMLElement | null) ?? null
   const actAnchor = (kind: string, id: string, btn: HTMLElement) => (): HTMLElement | null => {
@@ -122,12 +121,13 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
   }
   const liveAnchor = (btn: HTMLElement | null) => (): HTMLElement | null => (btn && live(btn) ? btn : null)
 
-  /** 行动作（T6b #114＋T6c #115）：接入 / 详情 / 绑定 / 改名·头像 / 删除（clean 版）/ 换工作区 / 移除渠道。
-   * 未绑定點接入直接拒收（fail-closed，不产生脏数据）；接入只收已绑。
-   * 每个前置拒收都落一条 ok:false＋原因——「点了没反应」在日志里必须能定位到是被谁挡的。 */
+  /** 行动作（T6b #114＋T6c #115）：接入 / 详情 / 绑定 / 改名·头像 / 删除（clean 版）/ 换工作区 / 移除渠道；
+   * 未绑定点接入直接拒收（fail-closed）；每个前置拒收都落一条 ok:false＋原因——「点了没反应」必须能定位到被谁挡的。 */
   function act(kind: string, id: string, anchor: HTMLElement): void {
     const v = view()
     if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel.body', action: 'act:' + kind, ok: true, message: 'id=' + id })
+    /* T10b #127 孤儿家两动作（选择工作区 / 删除家）：自成一文件，这里只留一行入口（本文件余量只剩这一行）。 */
+    if (orphanHomeAct(kind, id, anchor, { view: v, ops: deps.ops, onDone: render })) return
     if (kind === 'connect-a' || kind === 'connect') {
       const a = v.assistants.find((x) => x.id === id)
       if (a && a.status !== 'bound') {
