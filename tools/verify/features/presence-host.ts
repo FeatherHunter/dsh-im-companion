@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { parse as parseYaml } from 'yaml';
 
 const REPO = process.cwd();
 const BUILD = mkdtempSync(join(tmpdir(), 't98-presence-host-'));
@@ -37,13 +38,15 @@ after(() => {
 });
 
 let seq = 0;
-/** 一盘一档：<FIXTURE>/r<n>/meta.json 为真存储文件；handler 用真分发器（dshHome 指向同一临时家目录）。 */
+/** 一盘一档：<FIXTURE>/r<n>/meta.yaml 为真存储文件；handler 用真分发器（dshHome 指向同一临时家目录）。 */
 function makeStore(seed?: string) {
   const n = ++seq;
   const home = join(FIXTURE, 'r' + n);
-  const file = join(home, 'meta.json');
+  const file = join(home, 'meta.yaml'); // T12 #129：写路径只产出 YAML
+  const legacy = join(home, 'meta.json');
   mkdirSync(home, { recursive: true });
-  if (seed !== undefined) writeFileSync(file, seed, 'utf8');
+  /* 种子一律写**旧** .json（迁移未跑完的场景）：顺带钉死「.yaml 缺席时诚实回落读旧文件」。 */
+  if (seed !== undefined) writeFileSync(legacy, seed, 'utf8');
   const store = new metaMod.AgentMetaStore(file);
   const handler = rpcMod.createAgentFleetHandler(store, { dshHome: home });
   return { store, handler, file };
@@ -75,8 +78,8 @@ test('#98 host：写 → 读 → 盘上真值（meta.motion.set + meta.get）', 
   assert.equal(write.ok, true, '合法写入回 ok');
   const got: any = await handler('meta.get', {});
   assert.deepEqual(got.value.motion, { manualReduced: true }, '快照读回已关');
-  const onDisk = JSON.parse(readFileSync(file, 'utf8'));
-  assert.deepEqual(onDisk.motion, { manualReduced: true }, '盘上真值（meta.json）已落');
+  const onDisk = parseYaml(readFileSync(file, 'utf8'));
+  assert.deepEqual(onDisk.motion, { manualReduced: true }, '盘上真值（meta.yaml）已落');
   const back: any = await handler('meta.motion.set', { manualReduced: false });
   assert.equal(back.ok, true);
   assert.deepEqual((await handler('meta.get', {}) as any).value.motion, { manualReduced: false }, '可翻回动效开');
@@ -108,8 +111,13 @@ test('#98 host：换一个 store 实例重读同一文件 → 偏好仍在（跨
 test('#98 契约对齐：客户端写的端点名 = 宿主的 case 名（字符串钉）', () => {
   const prefsSrc = readFileSync(join(REPO, 'src', 'features', 'presence', 'prefs.ts'), 'utf8');
   const rpcSrc = readFileSync(join(REPO, 'src', 'host', 'rpc.ts'), 'utf8');
+  const metaSrc = readFileSync(join(REPO, 'src', 'host', 'rpc-meta.ts'), 'utf8');
   assert.match(prefsSrc, /MOTION_ENDPOINT = 'meta\.motion\.set'/);
-  assert.match(rpcSrc, /case 'meta\.motion\.set': \{/);
+  /* T12 #129：`meta.*` 的 case 块整体搬去 `rpc-meta.ts`（rpc.ts 顶 300 行红线）⇒ 钉子跟到新文件；
+   * 再加一条「rpc.ts 仍派发」与「rpc.ts 里不得再长回一份字面 case」，否则搬迁会变成两份真相。 */
+  assert.match(metaSrc, /case 'meta\.motion\.set': \{/);
+  assert.ok(rpcSrc.includes('handleMetaCase(endpoint, p, store)'), 'rpc.ts 仍派发 meta.* 给 rpc-meta');
+  assert.ok(!rpcSrc.includes("case 'meta.motion.set'"), '字面 case 只许有一份（rpc-meta.ts）');
   assert.match(prefsSrc, /MOTION_CHANNEL = '\/im-companion'/);
   const prefsCode = prefsSrc.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
   assert.ok(!/localStorage/.test(prefsCode), '九律 ③：偏好不得直写 localStorage（注释里提到不算）');

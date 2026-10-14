@@ -113,7 +113,10 @@ const BOTS = [
 const BOUND = [['bot_aaaa', 'feishu', '小帅'], ['wx_1111', 'weixin', '微信助手'], ['q_2222', 'qq', 'Q仔']] as const
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
-const readDoc = (file: string) => JSON.parse(readFileSync(file, 'utf8'))
+/* T12 #129：配置文件已改 YAML（`storeMod.homesFileFor` 给的就是 homes.yaml）⇒ 读盘换 YAML 解析。
+ * 注入注释块是注释行，YAML 解析器天然忽略；此处若仍拿 JSON.parse 硬啃，夹具会红在解析而非产品行为上。 */
+const yamlMod: any = reqRepo('yaml')
+const readDoc = (file: string) => yamlMod.parse(readFileSync(file, 'utf8'))
 
 function all(root: any): any[] {
   const out: any[] = []

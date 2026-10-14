@@ -55,6 +55,8 @@ mkdirSync(join(BUILD, 'node_modules'), { recursive: true });
 symlinkSync(PKG_DIR, join(BUILD, 'node_modules', 'dsh-plugin-update'), 'junction');
 /* T9 #123：宿主链现在还要 `dsh-log/host` + `dsh-log/node`（src/host/log.ts）⇒ 产物目录里也得链上它。 */
 symlinkSync(join(REPO, 'node_modules', 'dsh-log'), join(BUILD, 'node_modules', 'dsh-log'), 'junction');
+/* T12 #129：配置层现在 import 'yaml'（src/host/config-yaml.ts ← meta-store / home-store / rpc）⇒ 同样得链。 */
+symlinkSync(join(REPO, 'node_modules', 'yaml'), join(BUILD, 'node_modules', 'yaml'), 'junction');
 
 /** 删夹具里的插件目录：**先判链接再删**（junction 用 unlink，绝不递归跟随到目标去）。 */
 function clearPluginDir(): void {
@@ -146,7 +148,7 @@ type HostOpts = {
 function makeHost(opts: HostOpts = {}) {
   const registry = opts.registry ?? fakeRegistry();
   const home = opts.homeDir ?? mkdtempSync(join(FIXTURE, 'home' + (++homeSeq) + '-'));
-  const store = new metaMod.AgentMetaStore(join(home, 'meta.json'));
+  const store = new metaMod.AgentMetaStore(join(home, 'meta.yaml'));
   const warns: string[] = [];
   const logger = { info: (): void => {}, warn: (m: string): void => { warns.push(m); } };
   const overrides: Record<string, unknown> = { fetchImpl: registry.fetchImpl, ...opts.readerOverrides };

@@ -65,6 +65,10 @@ const reqHost = createRequire(join(tmpHost, 'run.cjs'));
 const reqHostFile = (f: string): any => reqHost('./host/' + f);
 try { symlinkSync(join(REPO, 'node_modules'), join(tmpHost, 'node_modules'), 'junction'); } catch { /* 已存在跳过 */ }
 const homeStore: any = reqHostFile('home-store.js');
+/* —— T12 #129：配置文件已改 YAML（写路径只产出 YAML ＋ 顶部注入注释块）⇒ 夹具读盘一律走 YAML 解析。
+ * 仍拿 `JSON.parse` 硬啃的话，夹具红在解析（`# ---` 不是 JSON）而不是产品行为上。 —— */
+const yamlMod: any = reqHost('yaml');
+const readDoc = (file: string): any => yamlMod.parse(readFileSync(file, 'utf8'));
 
 /* —— 绿框渲染链单独转译：真 panel-body 渲染（DOM 桩），让「呈现」这条断言点的是真 DOM 而不是源码文本 —— */
 const tmpBox = mkdtempSync(join(tmpdir(), 'home-steel-box-'));
@@ -349,7 +353,7 @@ test('T6b 占位绑定纯逻辑：只收未绑、一对一、user 名保留（�
 test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连（验收①③④）', async () => {
   const homeEdit: any = reqHostFile('home-edit.js');
   const dir = mkdtempSync(join(tmpdir(), 'hs-t6b-'));
-  const file = join(dir, 'homes.json');
+  const file = join(dir, 'homes.yaml');
   const r1: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
   const hid = r1.home.id;
   const uh: any = await homeEdit.updateHomeRow(file, { id: hid, name: '湖畔', avatar: '2' });
@@ -366,7 +370,7 @@ test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连�
   assert.equal(c.ok, true);
   assert.ok(c.row.botId === null && c.row.status === 'unbound' && c.row.boundAt === null);
   assert.equal((await homeEdit.createUnboundRow(file, { homeId: 'nope', channel: 'qq' })).code, 'not-found');
-  let doc: any = JSON.parse(readFileSync(file, 'utf8'));
+  let doc: any = readDoc(file);
   assert.deepEqual(Object.keys(doc.homes[0]).sort(), Object.keys(H({})).sort(), '改名配图不发明字段');
   assert.deepEqual(Object.keys(doc.assistants[0]).sort(), Object.keys(A({})).sort(), '占位不发明字段');
   const b: any = await homeStore.createAssistantRow(file, { homeId: hid, channel: 'feishu', botId: 'b1', botName: '小帅', homeText: '' });
@@ -464,7 +468,7 @@ test('T6b 两步删除：首点布防、次点真删且只走行删除（验收�
 test('全程只走 T3 模型，不另发明字段（验收④）：产出行与落盘行的键集合都钉死（可执行）', async () => {
   /* 旧的写法只 grep 源码文本（读文件找 "extra"/"customField"），既不执行也不看落盘结果。
    * 这里改成可执行断言：T3 记录（H/A 夹具）的键集合就是唯一合法集合，
-   * 纯逻辑产出的行、以及真正写进 homes.json 的行，多一个字段都算「另发明」。 */
+   * 纯逻辑产出的行、以及真正写进 homes.yaml 的行，多一个字段都算「另发明」。 */
   const HOME_KEYS = Object.keys(H({})).sort();
   const ASST_KEYS = Object.keys(A({})).sort();
   const home: any = model.createHome({ workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' }, 1);
@@ -475,17 +479,17 @@ test('全程只走 T3 模型，不另发明字段（验收④）：产出行与�
   assert.deepEqual(Object.keys(asst).sort(), ASST_KEYS, '纯逻辑助理行键集合必须等于 T3');
 
   const dir = mkdtempSync(join(tmpdir(), 'home-steel-shape-'));
-  const file = join(dir, 'homes.json');
+  const file = join(dir, 'homes.yaml');
   const r1: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
   assert.equal(r1.ok, true);
   /* 每次写完立刻读盘断言——若只等两次写之后再读，未知字段会被下一次 load 的净化顺手抹掉，
    * 断言就成了「测不到」的空转（这是真踩到的：先加的 extraField 被下一轮 load 洗掉了）。 */
-  let doc: any = JSON.parse(readFileSync(file, 'utf8'));
+  let doc: any = readDoc(file);
   assert.equal(doc.version, 2, '新表版本号是 2');
   assert.deepEqual(Object.keys(doc.homes[0]).sort(), HOME_KEYS, '落盘家行键集合必须等于 T3');
   const r2: any = await homeStore.createAssistantRow(file, { homeId: r1.home.id, channel: 'feishu', botId: 'b1', botName: '小帅', homeText: '客厅' });
   assert.equal(r2.ok, true);
-  doc = JSON.parse(readFileSync(file, 'utf8'));
+  doc = readDoc(file);
   assert.deepEqual(Object.keys(doc.homes[0]).sort(), HOME_KEYS, '落盘家行键集合必须等于 T3');
   assert.deepEqual(Object.keys(doc.assistants[0]).sort(), ASST_KEYS, '落盘助理行键集合必须等于 T3');
 
@@ -508,7 +512,7 @@ test('宿主：建家幂等 + 建助理一对一 + 落盘可读', async () => {
   const { tmpdir: td } = await import('node:os');
   const { join: j } = await import('node:path');
   const dir = mk(j(td(), 'hs-'));
-  const file = j(dir, 'homes.json');
+  const file = j(dir, 'homes.yaml');
   const r1: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
   assert.equal(r1.ok, true);
   const r2: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
@@ -533,7 +537,7 @@ test('宿主：加载保留 unbound/orphan/tombstone（T6b/c 数据不丢）', a
   const { tmpdir: td } = await import('node:os');
   const { join: j } = await import('node:path');
   const dir = mk(j(td(), 'hs-keep-'));
-  const file = j(dir, 'homes.json');
+  const file = j(dir, 'homes.yaml');
   writeFileSync(file, JSON.stringify({
     version: 2,
     homes: [{ id: 'h1', workspaceId: null, path: 'D:\\gone', name: '旧家', nameSource: 'system', avatar: null, avatarSource: 'default', createdAt: 1, updatedAt: 1, tombstone: { at: 2, reason: 'ws deleted' } }],
@@ -555,7 +559,7 @@ test('宿主种子：批量落盘＋id 回填＋重跑不翻倍', async () => {
   const { tmpdir: td } = await import('node:os');
   const { join: j } = await import('node:path');
   const dir = mk(j(td(), 'hs-seed-'));
-  const file = j(dir, 'homes.json');
+  const file = j(dir, 'homes.yaml');
   const seed: any = model.buildSeed(
     [W({}), W({ workspaceId: 'ws-2', path: 'D:\\agents\\ali', title: '阿梨窝' })],
     [B({}), B({ channel: 'qq', botId: 'q1', workspace: 'D:\\agents\\ali', botName: 'Q' })],
@@ -578,7 +582,11 @@ test('宿主 RPC：四端点已追加且旧码不动（Added-only）', () => {
   assert.match(rpcSrc, /case 'home\.create': \{/);
   assert.match(rpcSrc, /case 'assistant\.create': \{/);
   assert.match(rpcSrc, /case 'home\.seed': \{/);
-  assert.ok(rpcSrc.includes("case 'meta.get':"), '旧 case 仍在');
+  /* T12 #129：`meta.*` 的 case 块整体搬去 `rpc-meta.ts`（rpc.ts 顶 300 行红线）——「旧码不动」的钉子
+   * 因此从「字面 case 在 rpc.ts」改成「rpc.ts 仍派发给它」＋「case 块在新文件里一字未改」。 */
+  const metaRpcSrc = readFileSync(join(REPO, 'src', 'host', 'rpc-meta.ts'), 'utf8');
+  assert.ok(rpcSrc.includes('handleMetaCase(endpoint, p, store)'), '旧 meta 派发仍在（搬到 rpc-meta 后原位接线）');
+  assert.ok(metaRpcSrc.includes("case 'meta.get':"), '旧 case 仍在（rpc-meta.ts）');
   const metaSrc = readFileSync(join(REPO, 'src', 'host', 'meta-store.ts'), 'utf8');
   assert.ok(metaSrc.includes('version: 1'), '旧表 version:1 不动');
   assert.ok(!metaSrc.includes('homes.json'), '旧文件不碰新表文件');
@@ -613,8 +621,8 @@ test('宿主分发器真跑：ping → home.create → assistant.create → home
 
   const s: any = await call('home.seed', { homes: [H({ id: 'h9' })], assistants: [A({ id: 'a9', homeId: 'h9' })] });
   assert.equal(s.ok, true, JSON.stringify(s.error ?? {}));
-  const file = join(dshHome, 'integrations', 'dsh-im-companion', 'homes.json');
-  const doc: any = JSON.parse(readFileSync(file, 'utf8'));
+  const file = join(dshHome, 'integrations', 'dsh-im-companion', 'homes.yaml');
+  const doc: any = readDoc(file);
   assert.equal(doc.homes.length, 1, '同规范路径不翻倍（一区一家）');
   assert.equal(doc.assistants.length, 1, '同 channel+botId 不翻倍');
   assert.deepEqual(Object.keys(doc.homes[0]).sort(), Object.keys(H({})).sort(), '分发器落盘行仍是 T3 键集合');
@@ -1180,11 +1188,12 @@ test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行
     '页头不得再写行内 flex 覆盖：行内 style 曾把 CSS 的 nowrap 顶成 wrap（真机两行的直接原因）');
 });
 
-test('旧面板能力保留：工具栏三钮顺序＋事件制＋文案一字不动', () => {
+test('旧面板能力保留：工具栏四钮顺序（T12 追加「配置」）＋事件制＋文案一字不动', () => {
   const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
   /* 工具栏 ＋ 已退场（T6a 重做）：同一个「新建」不再有第三个入口——绿框页头 ＋（随层）
-   * 与底部上下文主操作接管；棘轮在此显式释放，理由写进断言名与注释（2026-10-13）。 */
-  assert.ok(panel.includes('radarBtn, adoptBtn, refreshBtn'), '按钮顺序（舰队、串门搬家、刷新）');
+   * 与底部上下文主操作接管；棘轮在此显式释放，理由写进断言名与注释（2026-10-13）。
+   * T12 #129 再追加一枚「配置」（复制路径 / 在文件浏览器打开）：插在串门搬家与刷新之间。 */
+  assert.ok(panel.includes('radarBtn, adoptBtn, createConfigButton(rpc), refreshBtn'), '按钮顺序（舰队、串门搬家、配置、刷新）');
   assert.ok(!panel.includes('plusBtn'), '工具栏不得再留 ＋ 入口');
   assert.ok(panel.includes('ADOPT_VIEW_EVENT'), '串门搬家事件保留');
   assert.ok(panel.includes('FLEET_VIEW_EVENT'), '舰队事件保留');
@@ -1355,7 +1364,7 @@ test('T6c 孤儿判定：bound 失踪即回落、失败渠道不误伤、未绑�
 test('T6c 宿主搬家/解绑：落盘真写、键集合仍是 T3、重复解绑拒收（验收①②④）', async () => {
   const moveHost: any = reqHostFile('home-move.js');
   const dir = mkdtempSync(join(tmpdir(), 'hs-t6c-'));
-  const file = join(dir, 'homes.json');
+  const file = join(dir, 'homes.yaml');
   const r1: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\keting', title: '客厅' });
   const r2: any = await homeStore.createHomeRow(file, { workspaceId: 'ws-2', path: 'D:\\agents\\shufang', title: '书房' });
   const ca: any = await homeStore.createAssistantRow(file, { homeId: r1.home.id, channel: 'feishu', botId: 'b1', botName: '小帅', homeText: '' });
