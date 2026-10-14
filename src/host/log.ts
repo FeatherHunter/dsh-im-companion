@@ -69,22 +69,28 @@ export async function createHostLogFor(dshHome: string): Promise<HostLogHandle |
 }
 
 /** rpc 分发器的日志包装（放在这里，免得 `src/host/rpc.ts` 顶到 300 行红线）：
- *  逐调用一条——成功 `debug`（高频，默认不落盘），失败 `error`（恒落盘，带原因码）。 */
+ *  逐调用一条——成功 `debug`（高频，默认不落盘），失败 `error`（恒落盘，带原因码）。
+ *  T9 #125：`traceId`（客户端链 id，可选第 4 参）并入两条行的 fields ⇒ 宿主机侧行与客户端行动作同链；
+ *  空值一律**不加键**（`host.rpc.fail` 是 resident，调试开关关着也落盘 ⇒ 默认档位下贯通即成立）。 */
 export function withRpcLog<P, T extends { ok: boolean; error?: { code?: string } }>(
-  dispatch: (endpoint: string, payload: P, signal?: AbortSignal | null) => Promise<T>,
+  dispatch: (endpoint: string, payload: P, signal?: AbortSignal | null, traceId?: string | null) => Promise<T>,
   log?: () => HostLogHandle | null,
-): (endpoint: string, payload: P, signal?: AbortSignal | null) => Promise<T> {
-  return async (endpoint, payload, signal) => {
+): (endpoint: string, payload: P, signal?: AbortSignal | null, traceId?: string | null) => Promise<T> {
+  return async (endpoint, payload, signal, traceId) => {
     const started = Date.now()
-    const result = await dispatch(endpoint, payload, signal)
+    const result = await dispatch(endpoint, payload, signal, traceId)
     const handle = log?.() ?? null
     if (handle) {
+      /* 链 id（#125）：**语义行也带**——不是方案第 4 步的字面要求，而是验收标准第 3 条的要求：
+       * 成功动作在默认档位下**只有语义行**落盘（`host.rpc.call` 是 debug+ondemand，开关关着不落），
+       * 不带上它，「按 traceId 同时取回客户端行与宿主行」在成功路径上就只剩客户端半边。 */
+      const trace = typeof traceId === 'string' && traceId ? { traceId } : {}
       /* 语义行（建家/绑定/搬家/删除/更新结果…）：成功 info、失败 error，带定位字段与错误原文。 */
       const detail = describeCall(endpoint, payload && typeof payload === 'object' ? payload as Record<string, unknown> : {}, result)
-      if (detail) handle.log(detail.level, detail.event, detail.fields)
+      if (detail) handle.log(detail.level, detail.event, { ...detail.fields, ...trace })
       const code = result.ok ? '' : String(result.error?.code ?? '')
       handle.log(result.ok ? 'debug' : 'error', result.ok ? 'host.rpc.call' : 'host.rpc.fail',
-        { method: endpoint, ok: result.ok, latencyMs: Date.now() - started, code })
+        { method: endpoint, ok: result.ok, latencyMs: Date.now() - started, code, ...trace })
     }
     return result
   }

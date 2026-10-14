@@ -10,6 +10,7 @@ import {
   basenameOf, resolveAssistantDisplay, resolveHomeDisplay,
   type Assistant, type Display, type Home, type WorkspaceRef,
 } from '../data/home-model'
+import { isOrphanHome } from '../data/home-orphan'
 import type { BotSnap } from '../data/fleet-api'
 
 /** 原型回落文案（proto-studio 的 homeFrom/asstFrom）。 */
@@ -29,9 +30,10 @@ export interface RowView {
   index: FleetIndex
 }
 
-/** 唯一装配缝：视图只能由这里产出（索引与四个数组永远同源）。 */
+/** 唯一装配缝：视图只能由这里产出（索引与四个数组永远同源）。
+ *  T10b #127：墓碑家（用户点过「删除家」）不进列表/计数/钻取；索引仍含它——助理命名回落要读家名。 */
 export function viewOf(homes: Home[], assistants: Assistant[], bots: BotSnap[], workspaces: WorkspaceRef[]): RowView {
-  return { homes, assistants, bots, workspaces, index: buildIndex(homes, assistants, bots, workspaces) }
+  return { homes: homes.filter((h) => !h.tombstone), assistants, bots, workspaces, index: buildIndex(homes, assistants, bots, workspaces) }
 }
 
 export function wsOf(view: RowView, home: Home): WorkspaceRef | null {
@@ -101,9 +103,11 @@ export function onlineTagEl(bot: BotSnap | null): HTMLElement {
   return h('span', { className: `hu-online${on ? '' : ' off'}` }, dotEl(on), on ? '在线' : '离线')
 }
 
-/** 家状态章（原型 homePill）：已删除 / 没有工作区 / 无。 */
-export function homePillEl(home: Home): HTMLElement | null {
+/** 家状态章（原型 homePill）：已删除 / 工作区已不在 / 没有工作区 / 无。
+ *  `orphan` 由调用方按活工作区快照判（T10b #127）——唯一判据在 `data/home-orphan.isOrphanHome`。 */
+export function homePillEl(home: Home, orphan = false): HTMLElement | null {
   if (home.tombstone) return pillEl('bad', '已删除')
+  if (orphan) return pillEl('dim', '工作区已不在')
   if (!home.workspaceId) return pillEl('dim', '没有工作区')
   return null
 }
@@ -186,7 +190,7 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
   const list = asstOfHome(view, home.id)
   const names = list.length ? `助理：${list.map((a) => asstName(view, a)).join('、')}` : ''
   const nm = h('span', { className: 'hu-nm' }, h('b', {}, d.text))
-  const pill = homePillEl(home)
+  const pill = homePillEl(home, isOrphanHome(home, view.workspaces))
   if (pill) nm.appendChild(pill)
   const onlineEl = homeOnlineTag(view, list)
   if (onlineEl) nm.appendChild(onlineEl)

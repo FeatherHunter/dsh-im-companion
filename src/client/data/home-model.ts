@@ -269,11 +269,12 @@ export function buildSeed(
 }
 
 /** 缺口判定（每轮快照后内存比对，零 IO）：**任一工作区没有家**即补（T10 #124：家＝工作区的镜像），
- * 以及「某 bot 的工作区有家但没有 bound 行」。判重口径与宿主 `seedDocs` 一致（规范路径），
- * tombstone 行同样算「已占用」——否则删掉的家会被每轮 sweep 反复补回（宿主判重也会命中它）。
+ * 以及「某 bot 的工作区有家但没有 bound 行」。判重口径与宿主 `seedDocs` 一致（规范路径）。
+ * T10b #127 订正：**墓碑行（用户「删除家」）不进 rows**——删掉的家不再占名额、也不会被每轮 sweep 补回；
+ * 宿主判重同样忽略墓碑（createHomeRow/seedDocs），故工作区重建时补到的是**全新家**，而不是那块墓碑。
  * 已知局限：删掉「有工作区」的助理后快照仍会把它当新号补回（复活）；真修需删行留痕或删时解绑，归 T6c/后续票。 */
 export function seedGap(workspaces: WorkspaceRef[], bots: BotRef[], homes: Home[], assistants: Assistant[]): boolean {
-  const rows = homes || []
+  const rows = (homes || []).filter((h) => !h.tombstone)
   /* 空表有料（历史契约）：家表空而工作区/机器人有货 ⇒ 补一次（buildSeed 按有工作区的号建家）。 */
   if (!rows.length && ((workspaces || []).length || (bots || []).length)) return true
   for (const w of workspaces || []) {

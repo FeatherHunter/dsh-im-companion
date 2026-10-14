@@ -26,6 +26,15 @@ function compatField(key: string, fields: readonly string[]): Record<string, str
   return Object.fromEntries(fields.map((f) => [f, String(raw[f] ?? '')]))
 }
 
+/* #130：构建身份（日志行自证「出自哪一版产物」）：版本 + 打包时刻（UTC 秒），与宿主侧同形（src/build-id.ts）。 */
+function buildStamp(): string {
+  try {
+    return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+  } catch {
+    return ''
+  }
+}
+
 const CLIENT_EXTERNALS = [
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client',
   'cordis',
@@ -44,6 +53,7 @@ const clientBundle: UserConfig = {
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
     __PLUGIN_VERSION__: JSON.stringify(pluginVersion()),
+    __BUILD_STAMP__: JSON.stringify(buildStamp()),
     __DSH_IM_COMPAT__: JSON.stringify(compatField('dshImCompat', ['verified', 'range'])),
   },
   deps: {

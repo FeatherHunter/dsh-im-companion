@@ -1,10 +1,10 @@
 /** 家/助理新表宿主薄封装（T3 #116 · 契约 §3 家/助理新表行：新表新名、旧 Agent 码不动、映射隔离）。
- * 存储：与 meta.json 同目录的 homes.json（{version:2,homes[],assistants[]}），旧表一字不动。
+ * 存储：与 meta.yaml 同目录的 homes.yaml（{version:2,homes[],assistants[]}，T12 #129 起 YAML；旧表一字不动）。
  * T6a 范围：list / createHome（选已有区，幂等键=规范路径）/ createAssistant（同时绑，严格一对一）。
  * 不做：头像文件化、未绑定占位、搬家、迁移（旧 names/avatars/locals 封存只读，迁移归 T6c/后续）。
  * 语义冻结遵 src/features/home-assistant/model.ts（形状一致，字段名同速记， host/client 分构建各持一份）。 */
-import { promises as fs } from 'node:fs'
 import path from 'node:path'
+import { configDirFor, parseConfigText, readConfigText, renderConfigText, titleForFile, writeConfigTextAtomic } from './config-yaml.js'
 
 export interface HomeRow {
   id: string
@@ -61,8 +61,11 @@ function sanitize(v: unknown, max: number): string {
   return typeof v === 'string' ? v.slice(0, max) : ''
 }
 
+/** 头像值域（读表清洗的**唯一放行口**）：预设色码 `1`..`6`（T6b）∪ 图片标记 `img:<文件名>`（T11 #128，
+ *  文件名由 `home-avatar.ts` 生成：`[A-Za-z0-9_-]{1,64}` ＋ png/jpg/webp 后缀，无斜杠 ⇒ 不可能目录穿越）。
+ *  这里少认一种，重启后那张图就会被清洗成「没图」——加值域必须同时改这条。 */
 function isAvatarCode(v: unknown): v is string {
-  return typeof v === 'string' && /^[1-6]$/.test(v)
+  return typeof v === 'string' && (/^[1-6]$/.test(v) || /^img:[A-Za-z0-9_-]{1,64}\.(png|jpg|webp)$/.test(v))
 }
 
 function cleanHome(r: unknown): HomeRow | null {
@@ -125,13 +128,13 @@ function cleanAssistant(r: unknown, homeIds: Set<string>): AssistantRow | null {
 }
 
 export function homesFileFor(dshHome: string): string {
-  return path.join(dshHome, 'integrations', 'dsh-im-companion', 'homes.json')
+  return path.join(configDirFor(dshHome), 'homes.yaml')
 }
 
 export async function loadHomesDoc(file: string): Promise<HomesDoc> {
   try {
-    const raw = await fs.readFile(file, 'utf8')
-    const parsed = JSON.parse(raw) as { homes?: unknown[]; assistants?: unknown[] } | null
+    const read = await readConfigText(file) // homes.yaml；迁移没跑完时回落同名 homes.json
+    const parsed = (read ? parseConfigText(read.text) : null) as { homes?: unknown[]; assistants?: unknown[] } | null
     if (!parsed || typeof parsed !== 'object') return { ...EMPTY, homes: [], assistants: [] }
     const homes = Array.isArray(parsed.homes) ? parsed.homes.map(cleanHome).filter((x): x is HomeRow => !!x) : []
     const ids = new Set(homes.map((h) => h.id))
@@ -150,22 +153,14 @@ export async function modifyHomesDoc<T>(file: string, fn: (doc: HomesDoc) => T |
   writeQueue = writeQueue.then(async () => {
     const doc = await loadHomesDoc(file)
     out = await fn(doc)
-    await fs.mkdir(path.dirname(file), { recursive: true })
-    const tmp = file + '.tmp'
-    await fs.writeFile(tmp, JSON.stringify(doc, null, 2), 'utf8')
-    await fs.rename(tmp, file)
+    await writeConfigTextAtomic(file, renderConfigText(doc, titleForFile(file)))
   })
   await writeQueue
   return out
 }
 
 async function persistDoc(file: string, doc: HomesDoc): Promise<void> {
-  writeQueue = writeQueue.then(async () => {
-    await fs.mkdir(path.dirname(file), { recursive: true })
-    const tmp = file + '.tmp'
-    await fs.writeFile(tmp, JSON.stringify(doc, null, 2), 'utf8')
-    await fs.rename(tmp, file)
-  })
+  writeQueue = writeQueue.then(() => writeConfigTextAtomic(file, renderConfigText(doc, titleForFile(file))))
   await writeQueue
 }
 
@@ -179,7 +174,8 @@ export async function createHomeRow(
   if (!wsId || !p) return { ok: false, code: 'bad-request', message: 'workspaceId 与 path 必填' }
   const doc = await loadHomesDoc(file)
   const np = normPath(p)
-  const dup = doc.homes.find((h) => normPath(h.path) === np || (h.workspaceId && h.workspaceId === wsId))
+  /* T10b #127 判重口径：墓碑行（用户「删除家」）**不占名额**——否则工作区重建时会被旧墓碑挡住。 */
+  const dup = doc.homes.find((h) => !h.tombstone && (normPath(h.path) === np || (h.workspaceId && h.workspaceId === wsId)))
   if (dup) return { ok: false, code: 'already-exists', message: '该工作区已有家' }
   const base = p.split(/[\\/]+/).filter(Boolean).pop() ?? p
   const name = title === 'default-workspace' ? '默认工作区' : title || base
@@ -235,7 +231,8 @@ export async function seedDocs(
     const p = sanitize(r.path, 2048).trim()
     if (!wsId || !p) continue
     const np = normPath(p)
-    const hit = doc.homes.find((h) => normPath(h.path) === np || (h.workspaceId && h.workspaceId === wsId))
+    /* T10b #127：命中判重同样跳过墓碑——删掉的家不会被 seed 复活，重建工作区得到的是全新家。 */
+    const hit = doc.homes.find((h) => !h.tombstone && (normPath(h.path) === np || (h.workspaceId && h.workspaceId === wsId)))
     if (hit) {
       if (typeof r.id === 'string' && r.id) idMap.set(r.id, hit.id)
       outHomes.push(hit)

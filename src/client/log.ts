@@ -52,6 +52,12 @@ export function logLine(level: LogLevel, event: string, fields?: Record<string, 
   } catch { /* 静默 */ }
 }
 
+/** 当前会话链 id（T9 #125）：给自有桥请求带上，让宿主行与触发动作用同一个 traceId。
+ *  无链（尚未写过日志 / 实例建不起来）返回 null——调用方必须「null 不加键」，不许编造空串。 */
+export function currentTraceId(): string | null {
+  try { return log?.why().traceId ?? null } catch { return null }
+}
+
 /** 此刻该级别是否记（只给非 resident 的高频明细用）。 */
 export function logOn(level: LogLevel): boolean {
   try { return log?.isEnabled(level) === true } catch { return false }

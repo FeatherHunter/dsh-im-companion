@@ -3,7 +3,9 @@
  * T5 落地（#77）：dsh-im 管理 RPC 改道（上游 503a24a）双传输翻译收敛在本文件，
  * 调用点（fleet-api/fetchBots/healthOf/轮询）零改；回包信封语义未变，unwrap/extractBots 照旧。 */
 import type { RpcCall } from './fleet-api'
-import { logLine } from '../log'
+import { buildLogQueryPhoneName, buildPhoneNames } from 'dsh-log/client'
+import { LOG_PLUGIN_ID } from '../../log-events'
+import { currentTraceId, logLine } from '../log'
 
 /** 两条传输都失败＝真桥故障：记 warn（method 带渠道定位），同键同原文只记一次防轮询刷盘（T9 #123）。
  * **首选方向与换路的原文都要进 message**：真机验收实测——`/im-companion` 的旧前缀路由已退役、换路必 405，
@@ -94,6 +96,28 @@ export function extractRpc(ctx: unknown): RpcCall | null {
     (call as (ch: string, ep: string, p: Record<string, unknown>, s: AbortSignal) => Promise<unknown>)(channel, endpoint, payload, signal)
 }
 
+/** 日志电话名单（**包自拼名字，本仓不拼字符串**）：电话入参是包自己的语义面，不同义于桥元数据——
+ * `logQuery` 的 `traceId` 是**过滤条件**，桥上再塞一把同名键等于把「查全部」静默收窄成「只查当前链」
+ * ⇒ 电话调用一律不加键，入参逐字节原样；宿主侧另有一道对称的「电话不摘键」（`src/index.ts`）。
+ * 拼不出名字（前缀非法等）就退化成空集：多一把键也只对业务端点有害（但那正是要的），电话侧由宿主放行兜底。 */
+const LOG_PHONE_NAMES: ReadonlySet<string> = (() => {
+  try {
+    return new Set<string>([...Object.values(buildPhoneNames(LOG_PLUGIN_ID)), buildLogQueryPhoneName(LOG_PLUGIN_ID)])
+  } catch { return new Set<string>() }
+})()
+
+/** T9 #125：自有桥的业务请求带上当前会话链 id（宿主日志行与触发动作用同一个 traceId）。
+ * 四条纪律：① 只给自有桥（`'/im-companion'`）加——上游 dsh-im 渠道的载荷不掺本仓字段；
+ * ② 日志电话不加（见 `LOG_PHONE_NAMES`）；③ 载荷里已有 `traceId` 键就**不覆盖**——显式传的那把
+ * 是调用方语义（`logQuery` 的过滤条件），桥只在「本来没有」时补当前链；④ 无链（`null`）不加键，不许编造空串。
+ * 键名与语义见 `docs/features-contract.md` §4「桥内层 payload 的可选 traceId」；宿主必须先摘掉再用。 */
+function withTraceId(channel: string, endpoint: string, payload: Record<string, unknown>): Record<string, unknown> {
+  if (channel !== '/im-companion' || LOG_PHONE_NAMES.has(endpoint)) return payload
+  if (Object.hasOwn(payload, 'traceId')) return payload
+  const tid = currentTraceId()
+  return tid ? { ...payload, traceId: tid } : payload
+}
+
 /** T5 opt-in 出口：与 extractRpc 同签名，内层经 dualTransportCallV2；
  * 调用点（index.ts/panel.ts）显式切此函数，fleet-api 其下零动。 */
 export function extractRpcV2(ctx: unknown): RpcCall | null {
@@ -101,5 +125,6 @@ export function extractRpcV2(ctx: unknown): RpcCall | null {
   const call = conn?.rpc?.call
   if (typeof call !== 'function') return null
   const raw = call as RawCall
-  return (channel, endpoint, payload, signal) => dualTransportCallV2(raw, channel, endpoint, payload, signal)
+  return (channel, endpoint, payload, signal) =>
+    dualTransportCallV2(raw, channel, endpoint, withTraceId(channel, endpoint, payload), signal)
 }

@@ -1,6 +1,5 @@
-/** 后端 Agent 元数据存储：持久化到 ~/.dsh/integrations/dsh-im-companion/meta.json。 */
-import { promises as fs } from 'node:fs'
-import path from 'node:path'
+/** 后端 Agent 元数据存储：持久化到 ~/.dsh/integrations/dsh-im-companion/meta.yaml（T12 #129 起 YAML）。 */
+import { parseConfigText, readConfigText, renderConfigText, titleForFile, writeConfigTextAtomic } from './config-yaml.js'
 
 export interface LocalAgent {
   name: string
@@ -105,8 +104,8 @@ export class AgentMetaStore {
 
   private async read(): Promise<void> {
     try {
-      const raw = await fs.readFile(this.file, 'utf8')
-      const parsed = JSON.parse(raw) as Partial<AgentMetaDoc> | null
+      const read = await readConfigText(this.file) // meta.yaml；迁移没跑完时回落同名 meta.json
+      const parsed = (read ? parseConfigText(read.text) : null) as Partial<AgentMetaDoc> | null
       if (parsed && typeof parsed === 'object') {
         this.doc = {
           version: 1,
@@ -131,12 +130,7 @@ export class AgentMetaStore {
 
   private async persist(): Promise<void> {
     const doc = this.snapshot()
-    this.writeQueue = this.writeQueue.then(async () => {
-      await fs.mkdir(path.dirname(this.file), { recursive: true })
-      const tmp = this.file + '.tmp'
-      await fs.writeFile(tmp, JSON.stringify(doc, null, 2), 'utf8')
-      await fs.rename(tmp, this.file)
-    })
+    this.writeQueue = this.writeQueue.then(() => writeConfigTextAtomic(this.file, renderConfigText(doc, titleForFile(this.file))))
     await this.writeQueue
   }
 

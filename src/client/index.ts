@@ -8,6 +8,22 @@ import { getSharedStream, resetSharedStream } from './data/connection-stream'
 import { createMetaStore, type MetaStore } from './data/meta'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
 import { flushLogs, initLog, logLine, reconcileLogSwitch } from './log'
+import { formatBuildId } from '../build-id'
+
+/* #130 构建身份：版本与打包时刻都在打包期注入（tsdown define），与宿主侧同形（`<版本>@<时刻>`）。
+ * 两段都取不到（源码直引 / harness 打包）⇒ 回空串，绝不编造一个假版本。 */
+declare const __PLUGIN_VERSION__: string | undefined
+declare const __BUILD_STAMP__: string | undefined
+
+function clientBuildId(): string {
+  try {
+    const v = typeof __PLUGIN_VERSION__ === 'string' ? __PLUGIN_VERSION__ : ''
+    const at = typeof __BUILD_STAMP__ === 'string' ? __BUILD_STAMP__ : ''
+    return formatBuildId(v, at)
+  } catch {
+    return ''
+  }
+}
 
 /* 注：workspaces 经 ctx.get 惰性可选查找（无需声明）；uiWorkspace 必须声明（官方 directory-picker-native 同款），否则宿主不注入原生目录服务。 */
 export const inject = ['slots', 'connection', 'uiWorkspace']
@@ -25,7 +41,7 @@ export function apply(ctx: any): void {
    * resident 事件在调试开关关着时也落盘 ⇒ 事后只看磁盘日志就能判定；initLog 失败降级为无日志，不抛。 */
   initLog(rpc)
   reconcileLogSwitch()
-  logLine('info', 'client.start', { features: FEATURES.length })
+  logLine('info', 'client.start', { features: FEATURES.length, build: clientBuildId() })
   let metaCache: MetaStore | null = null
   void createMetaStore(rpc).then((m) => {
     metaCache = m

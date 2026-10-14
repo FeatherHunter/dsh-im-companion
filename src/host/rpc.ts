@@ -3,13 +3,17 @@ import { promises as fs } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import type { AgentMetaStore } from './meta-store.js'
-import { isUpdateIntervalHours } from './meta-store.js'
 import { collectRoutes } from './routes.js'
 import { collectActivity } from './activity.js'
 import { createAssistantRow, createHomeRow, homesFileFor, loadHomesDoc, seedDocs } from './home-store.js'
 import { bindAssistantRow, createUnboundRow, removeAssistantRow, updateAssistantRow, updateHomeRow } from './home-edit.js'
 import { moveAssistantRow, unbindAssistantRow } from './home-move.js'
+import { rebindHomeRow, removeHomeRow } from './home-orphan.js'
+import { avatarPhone } from './home-avatar.js'
 import { withRpcLog, type HostLogHandle, type LogPhoneRegistry } from './log.js'
+import { handleMetaCase } from './rpc-meta.js'
+import { configDirFor, listConfigFiles } from './config-yaml.js'
+import { openDir } from './open-dir.js'
 
 export type RpcPayload = Record<string, unknown>
 
@@ -57,9 +61,10 @@ async function listDirectories(dir: string): Promise<{ name: string; path: strin
     .slice(0, 300)
   return entries.map((d) => ({ name: d.name, path: path.join(dir, d.name) }))
 }
-
-
-export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetHandlerOptions = {}): (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null) => Promise<RpcResult> {
+/** 桥分发器。T9 #125 起多收一个**独立**的第 4 参 `traceId`（客户端会话链 id，随桥内层 payload 下来）：
+ * 它**只进日志行**（`withRpcLog` 的 fields），不是任何端点的入参——入口 `src/index.ts` 已把它从 payload 摘掉，
+ * 分发器这一层（以及其下所有端点）**看不见**它，故 300 行分发主体一字未动。 */
+export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetHandlerOptions = {}): (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null, traceId?: string | null) => Promise<RpcResult> {
   const dispatch = async (endpoint: string, payload: RpcPayload | null | undefined, signal?: AbortSignal | null): Promise<RpcResult> => {
     if (signal?.aborted) return fail('cancelled', '已取消')
     const p = payload ?? {}
@@ -67,96 +72,13 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
     if (opts.logPhones?.has(endpoint)) return ok(await opts.logPhones.get(endpoint)!(p as never))
     const dshHome = typeof opts.dshHome === 'string' && opts.dshHome ? opts.dshHome : path.join(homedir(), '.dsh')
     try {
+      /* `meta.*` 端点块已整体搬去 `rpc-meta.ts`（T12 #129：本文件顶 300 行红线，腾行给配置两通电话）。
+       * 搬家 ≠ 改行为：它命中就回结果，不是 `meta.*` 回 null 交下面主 switch。 */
+      const meta = await handleMetaCase(endpoint, p, store)
+      if (meta) return meta
       switch (endpoint) {
         case 'ping':
           return ok({ pong: Date.now() })
-        case 'meta.get':
-          return ok(store.snapshot())
-        case 'meta.rename': {
-          const key = String(p.key ?? '')
-          const name = String(p.name ?? '')
-          if (!key || !name) return fail('bad-request', 'key 与 name 必填')
-          await store.rename(key, name)
-          return ok({})
-        }
-        case 'meta.avatar.set': {
-          const key = String(p.key ?? '')
-          const dataUrl = String(p.dataUrl ?? '')
-          if (!key || !dataUrl) return fail('bad-request', 'key 与 dataUrl 必填')
-          await store.setAvatar(key, dataUrl)
-          return ok({})
-        }
-        case 'meta.avatar.clear': {
-          const key = String(p.key ?? '')
-          if (!key) return fail('bad-request', 'key 必填')
-          await store.clearAvatar(key)
-          return ok({})
-        }
-        case 'meta.local.add': {
-          const name = String(p.name ?? '')
-          if (!name) return fail('bad-request', 'name 必填')
-          await store.addLocal(name)
-          return ok({})
-        }
-        case 'meta.local.remove': {
-          const name = String(p.name ?? '')
-          if (!name) return fail('bad-request', 'name 必填')
-          await store.removeLocal(name)
-          return ok({})
-        }
-        case 'meta.local.rename': {
-          const from = String(p.from ?? '')
-          const to = String(p.to ?? '')
-          if (!from || !to) return fail('bad-request', 'from/to 必填')
-          await store.renameLocal(from, to)
-          return ok({})
-        }
-        case 'meta.local.workspace': {
-          const name = String(p.name ?? '')
-          const workspace = String(p.workspace ?? '')
-          if (!name) return fail('bad-request', 'name 必填')
-          await store.setLocalWorkspace(name, workspace)
-          return ok({})
-        }
-        case 'meta.preset.set': {
-          const key = String(p.key ?? '')
-          const preset = String(p.preset ?? '')
-          if (!key || !preset) return fail('bad-request', 'key 与 preset 必填')
-          await store.setPreset(key, preset)
-          return ok({})
-        }
-        case 'meta.ctx.set': {
-          const key = String(p.key ?? '')
-          if (!key || typeof p.enabled === 'undefined' || typeof p.level === 'undefined') {
-            return fail('bad-request', 'key/enabled/level 必填')
-          }
-          await store.setCtx(key, { enabled: p.enabled, level: p.level })
-          return ok({})
-        }
-        case 'meta.welcomed.set': {
-          const workspace = String(p.workspace ?? '')
-          if (!workspace || typeof p.seen === 'undefined') {
-            return fail('bad-request', 'workspace/seen 必填')
-          }
-          await store.setWelcomed(workspace, p.seen === true)
-          return ok({})
-        }
-        // ── T7 #90 追加 → T5 #110 M5 起只落盘保留（调度器已删，写后不再重排定时器）。
-        // **读**走既有 `meta.get` 的全量快照 `store.snapshot()`，不新增读端点。
-        // 校验与 `meta.rename` 同款：非法值回既有 `fail('bad-request', …)` 信封。
-        case 'meta.update.set': {
-          if (typeof p.autoCheckEnabled !== 'boolean' || !isUpdateIntervalHours(p.intervalHours)) {
-            return fail('bad-request', 'autoCheckEnabled 必须布尔，intervalHours ∈ {6,12,24,168}')
-          }
-          await store.setUpdate({ autoCheckEnabled: p.autoCheckEnabled, intervalHours: p.intervalHours })
-          return ok({})
-        }
-        // ── #98 追加：动效开关偏好写入（**读**走既有 `meta.get` 全量快照，不新增读端点；与 #90 同款）。
-        case 'meta.motion.set': {
-          if (typeof p.manualReduced !== 'boolean') return fail('bad-request', 'manualReduced 必须是布尔')
-          await store.setMotion({ manualReduced: p.manualReduced })
-          return ok({})
-        }
         case 'routes.list': {
           const bots = Array.isArray(p.bots) ? p.bots as { channel?: unknown; botId?: unknown }[] : null
           if (!bots) return fail('bad-request', 'bots 数组必填')
@@ -272,6 +194,20 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           if (!r.ok) return fail(r.code, r.message)
           return ok({ assistant: r.row })
         }
+        // ── T10b #127 追加（Added-only，只追加 case）：孤儿家两通电话——重绑到新工作区 / 删除家（墓碑＋级联清助理行）。
+        case 'home.rebind': {
+          const r: any = await rebindHomeRow(homesFileFor(dshHome), {
+            id: String(p.id ?? ''), workspaceId: String(p.workspaceId ?? ''), path: String(p.path ?? ''),
+            ...(p.name !== undefined ? { name: String(p.name ?? '') } : {}),
+          })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ home: r.row })
+        }
+        case 'home.remove': {
+          const r: any = await removeHomeRow(homesFileFor(dshHome), { id: String(p.id ?? '') })
+          if (!r.ok) return fail(r.code, r.message)
+          return ok({ home: r.row })
+        }
         // ── T7 #90 追加 → T5 #110 加第四电话：更新系统四通电话（电话名即端点名，票面定死；键由包的 `update.phoneNames` 给出，不另拼字符串）。
         // 回包是本仓 RpcResult 信封：成功把包载荷原样放 `value`（M5 起不再注入 autoCheck）；
         // 包失败（`{ok:false,error,errorKind}`）走失败通道，翻译在 `src/host/update.ts` 的 `reply`，本文件不认识包字段。
@@ -285,8 +221,18 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           if (typeof call !== 'function') return fail('bad-request', '未知端点: ' + endpoint)
           return surface.reply(await call(p))
         }
+        // ── T12 #129 追加（Added-only，只追加 case）：配置目录两通电话——面板「复制路径」「在文件浏览器打开」。
+        // 客户端只说意图，平台配方（explorer / open / xdg-open）全在 `src/host/open-dir.ts`，本文件不认平台。
+        case 'config.path':
+          return ok({ dir: configDirFor(dshHome), files: await listConfigFiles(configDirFor(dshHome)) })
+        case 'config.openDir': {
+          const opened = await openDir(configDirFor(dshHome))
+          return opened.ok ? ok({ opener: opened.opener }) : fail('open-failed', opened.message)
+        }
         default:
-          return fail('bad-request', '未知端点: ' + endpoint)
+          /* T11 #128：头像族（avatar.get/set/clear）挂这里——一个入口收一族端点，分发主体不再按端点膨胀；
+           * `avatarPhone` 只认 `avatar.` 前缀，别的端点回 null 走原路（未知端点仍是 bad-request）。 */
+          return (await avatarPhone(endpoint, homesFileFor(dshHome), p)) ?? fail('bad-request', '未知端点: ' + endpoint)
       }
     } catch (e) {
       return fail('internal', String((e as Error)?.message ?? e))

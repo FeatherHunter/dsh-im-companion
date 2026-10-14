@@ -17,6 +17,7 @@ import { createRefresher } from './home-refresh'
 import type { WorkspaceRef } from '../data/home-model'
 import { createDrillOps } from './home-ops'
 import { createMoveOps } from './home-move-ops'
+import { createConfigButton } from './config-pop'
 import { logLine, logOn } from '../log'
 
 /* #56：构建注入的插件版本（tsdown define __PLUGIN_VERSION__，package.json 唯一真相）。 */
@@ -155,7 +156,8 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     iconName: 'home', label: copy.adopt, title: copy.adopt,
     onClick: () => emitAdoptView(),
   })
-  const headActions = h('div', { className: 'hu-head-acts' }, radarBtn, adoptBtn, refreshBtn)
+  /* T12 #129 配置入口（复制路径 / 在文件浏览器打开）：弹层自管，面板只放一枚按钮。 */
+  const headActions = h('div', { className: 'hu-head-acts' }, radarBtn, adoptBtn, createConfigButton(rpc), refreshBtn)
   /* T6a 钢线：＋ 按当前钻取层级开建单（L1 建家选已有区 / L2 建助理选绑机器人）；
    * 旧 compose 新建条（LocalAgent）退役，文件保留供 connect-qr 回归钉。 */
   const body = h('div', { className: 'af-body' })
@@ -222,7 +224,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
         refresh: () => data.load(true),
         reloadHomes: () => data.loadHomes(getWorkspaces),
       }),
-      ...createMoveOps(moveShared),
+      ...createMoveOps({ ...moveShared, getAssistants: () => data.state.assistants }),
     },
     onRetry: () => void refresh(),
   })

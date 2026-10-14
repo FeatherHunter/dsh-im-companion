@@ -19,7 +19,7 @@ export const msgOf = (e: unknown): string => String((e as Error)?.message ?? e)
 
 type BridgeOk<T> = { ok?: boolean; value?: T; error?: { code?: string; message?: string } } | null
 
-async function bridge<T>(rpc: RpcCall, endpoint: string, payload: Record<string, unknown>): Promise<T> {
+export async function bridge<T>(rpc: RpcCall, endpoint: string, payload: Record<string, unknown>): Promise<T> {
   const raw = await rpc(BRIDGE, endpoint, payload, AbortSignal.timeout(8000)) as BridgeOk<T>
   if (!raw || raw.ok !== true || raw.value === undefined) {
     const e = new Error(raw?.error?.message ?? 'host 桥调用失败') as Error & { code?: string }

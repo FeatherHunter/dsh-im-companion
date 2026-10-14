@@ -90,6 +90,19 @@ export function describeCall(endpoint: string, payload: Record<string, unknown>,
     }
     case 'imc.updateChangelog':
       return { level: 'debug', event: 'update.changelog', fields: { ok: okFlag, version: str(rec(value.snapshot).latestVersion ?? value.version) } }
+    /* T11 #128 头像图片：一族三端点，语义落到「哪一行的头像变了」。
+     * 家/助理的判定：成功看回包 row（助理行才带 homeId），失败回包里没有 row ⇒ 认客户端带来的 `kind`
+     * （picker 天然知道自己开在家设置还是助理设置；宿主侧不读它，只给日志用）。 */
+    case 'avatar.set':
+    case 'avatar.clear': {
+      const avRow = rec(value.row)
+      const asst = typeof avRow.homeId === 'string' || str(p.kind) === 'assistant'
+      const fields: Record<string, unknown> = asst ? { assistantId: str(avRow.id ?? p.id) } : { homeId: str(avRow.id ?? p.id) }
+      fields.changed = endpoint === 'avatar.set' ? 'avatarImage' : 'avatarImage.clear'
+      fields.ok = okFlag
+      fields.message = message
+      return { level, event: asst ? 'assistant.update' : 'home.update', fields }
+    }
     default:
       return null
   }

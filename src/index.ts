@@ -5,6 +5,9 @@ import { AgentMetaStore } from './host/meta-store.js'
 import { createAgentFleetHandler } from './host/rpc.js'
 import { createUpdateHostBridge } from './host/update.js'
 import { createHostLogFor, type HostLogHandle, type LogPhoneRegistry } from './host/log.js'
+import { hostBuildId } from './host/build-id.js'
+import { configDirFor } from './host/config-yaml.js'
+import { migrateConfigToYaml } from './host/config-migrate.js'
 import type { InstallVerdict } from './host/update-precheck.js'
 
 export const name = 'dsh-im-companion'
@@ -29,10 +32,30 @@ function logPrecheck(handle: HostLogHandle, v: InstallVerdict): void {
   })
 }
 
+/** #125（T9 收尾）：从桥内层业务载荷里取出客户端链 id，并把该键**摘掉**再交给分发器。
+ * `traceId` 是桥的**元数据**（契约 §4「桥内层 payload 的可选 traceId」），不是业务入参：
+ * 不摘的话它会漏进端点与语义行——`home.update` 的 `changedKeys()` 是通用 diff，用户真写了
+ * 名叫 traceId 的字段时，语义字段 `changed` 会凭空多一项（污染日志语义）。
+ * 非对象载荷 / 无键 / 非字符串 ⇒ traceId 为空串（`withRpcLog` 据此不加字段），载荷原样透传。
+ * **只对业务端点摘**：日志电话的入参是包自己的语义面（`logQuery` 的 `traceId` 是过滤条件），
+ * 由调用点按电话注册表放行原样透传。 */
+function takeTraceId(payload: unknown): { traceId: string; payload: unknown } {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return { traceId: '', payload }
+  const rec = payload as Record<string, unknown>
+  if (!Object.hasOwn(rec, 'traceId')) return { traceId: '', payload }
+  const { traceId: raw, ...rest } = rec
+  return { traceId: typeof raw === 'string' ? raw : '', payload: rest }
+}
+
 export function apply(ctx: any, config: any = {}) {
   const logger = typeof ctx?.logger === 'function' ? ctx.logger(name) : (ctx?.logger ?? console)
   const dshHome = String(config.dshHome ?? process.env.DSH_HOME ?? path.join(homedir(), '.dsh'))
-  const store = new AgentMetaStore(path.join(dshHome, 'integrations', 'dsh-im-companion', 'meta.json'))
+  const configDir = configDirFor(dshHome)
+  /* T12 #129 首次启动迁移：homes.json / meta.json → 同名 .yaml（幂等，旧文件留一份 .bak）。
+   * 与建日志库是两件互不依赖的异步事：读路径对旧 .json 有诚实回落 ⇒ 这里 fire-and-forget，
+   * 迁移结果等日志句柄就绪后补记（resident，出问题只看磁盘日志即可判定）。 */
+  const migration = migrateConfigToYaml(configDir).catch(() => [])
+  const store = new AgentMetaStore(path.join(configDir, 'meta.yaml'))
   void store.load()
 
   // 更新系统接线（T7 #90 → T5 M5 起无定时器）：`update` 是**提供函数**，让位分支上它一直是 null ⇒
@@ -63,7 +86,13 @@ export function apply(ctx: any, config: any = {}) {
           || !Object.hasOwn(call, 'payload')) {
           return reply(rpcId, { ok: false, error: { code: 'gateway/bad-request', message: 'Invalid companion request.', details: {} } })
         }
-        try { return reply(rpcId, await handler(call.method, call.payload, request.signal)) }
+        /* #125：链 id 走独立实参（payload 里的那份已摘掉）——业务端点入参面与今天逐字节一致。
+         * 日志电话例外：电话入参是包自己的语义面（`logQuery` 的 `traceId` 是过滤条件）⇒ 原样透传、不摘键，
+         * 也不给它的日志行带链（电话调用不是业务动作）。注册表在建库后才填：那段窗口内按业务端点处理，
+         * 只影响「摘掉一把电话自己会忽略的键」，不会改电话行为。 */
+        const phoneCall = logPhones.has(call.method)
+        const taken = phoneCall ? { traceId: '', payload: call.payload } : takeTraceId(call.payload)
+        try { return reply(rpcId, await handler(call.method, taken.payload, request.signal, taken.traceId)) }
         catch { return new Response('companion handler failed', { status: 500 }) }
       },
     })
@@ -91,9 +120,21 @@ export function apply(ctx: any, config: any = {}) {
       if (!handle) return
       hostLog = handle
       handle.registerPhones(logPhones)
-      handle.log('info', 'host.start', { route: ROUTE_PATH, dshHome })
+      /* #130：构建身份进启动行——`import.meta.url` ＝运行中的本产物（lib/index.js）⇒ 读回它的 mtime 与包版本。
+       * 一份日志据此自证「出自哪一版」，不再依赖事后 stat 库内文件（产物会被并发会话覆写）。 */
+      handle.log('info', 'host.start', { route: ROUTE_PATH, dshHome, build: hostBuildId(import.meta.url) })
       handle.log('info', 'host.log.init', { dir: handle.dir, ok: true, reason: '' })
       handle.log('info', 'host.ready', { route: ROUTE_PATH })
+      /* T12 #129：迁移结果补记（`no-json` 是「本来就没旧文件」的常态，不留噪音；跃迁与异常必落盘）。 */
+      void migration.then((rows) => {
+        for (const r of rows) {
+          if (!r.migrated && r.reason === 'no-json') continue
+          handle.log('info', 'config.migrate', {
+            dir: configDir, from: r.name + '.json', to: r.name + '.yaml', ok: r.migrated,
+            message: r.reason + (r.backup ? ' backup=' + r.backup : ''),
+          })
+        }
+      })
       /* #126 预检若早于建库落地，判定先缓存、这里补记（绝不静默丢行）。 */
       if (pendingPrecheck) { logPrecheck(handle, pendingPrecheck); pendingPrecheck = null }
     })
