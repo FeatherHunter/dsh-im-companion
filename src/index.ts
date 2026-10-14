@@ -8,6 +8,7 @@ import { createHostLogFor, type HostLogHandle, type LogPhoneRegistry } from './h
 import { hostBuildId } from './host/build-id.js'
 import { configDirFor } from './host/config-yaml.js'
 import { migrateConfigToYaml } from './host/config-migrate.js'
+import { setHomeStoreLog } from './host/home-store.js'
 import type { InstallVerdict } from './host/update-precheck.js'
 
 export const name = 'dsh-im-companion'
@@ -120,6 +121,9 @@ export function apply(ctx: any, config: any = {}) {
       if (!handle) return
       hostLog = handle
       handle.registerPhones(logPhones)
+      /* 家表存储的读回失败/拒写要能事后从磁盘日志判定（2026-10-15 事故复盘）：
+       * 库就绪后把出口注进去，home-store 不再需要自己建库（单写者纪律）。 */
+      setHomeStoreLog((level, event, fields) => handle.log(level, event, fields))
       /* #130：构建身份进启动行——`import.meta.url` ＝运行中的本产物（lib/index.js）⇒ 读回它的 mtime 与包版本。
        * 一份日志据此自证「出自哪一版」，不再依赖事后 stat 库内文件（产物会被并发会话覆写）。 */
       handle.log('info', 'host.start', { route: ROUTE_PATH, dshHome, build: hostBuildId(import.meta.url) })

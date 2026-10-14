@@ -2,44 +2,26 @@
  * 存储：与 meta.yaml 同目录的 homes.yaml（{version:2,homes[],assistants[]}，T12 #129 起 YAML；旧表一字不动）。
  * T6a 范围：list / createHome（选已有区，幂等键=规范路径）/ createAssistant（同时绑，严格一对一）。
  * 不做：头像文件化、未绑定占位、搬家、迁移（旧 names/avatars/locals 封存只读，迁移归 T6c/后续）。
- * 语义冻结遵 src/features/home-assistant/model.ts（形状一致，字段名同速记， host/client 分构建各持一份）。 */
+ * 语义冻结遵 src/features/home-assistant/model.ts（形状一致，字段名同速记， host/client 分构建各持一份）。
+ *
+ * 分层（2026-10-15 事故复盘后拆开）：**跟盘打交道**的活（读回/判态/写闸/行清洗/留痕）在
+ * `home-store-io.ts`；本文件只放**家的领域动作**（建家/建助理/seed 批量）与进程内写串行队列。
+ * 拆的直接原因：行数红线 300 与数据保护闸撞在一起（见 home-store-io.ts 顶部的事故复盘口径）。 */
 import path from 'node:path'
-import { configDirFor, parseConfigText, readConfigText, renderConfigText, titleForFile, writeConfigTextAtomic } from './config-yaml.js'
+import { configDirFor } from './config-yaml.js'
+import {
+  assertWritable, cleanAssistant, cleanHome, isAvatarCode, loadHomesDocState, writeGuarded,
+  type AssistantRow, type HomeRow, type HomesDoc, type HomesLoadState,
+} from './home-store-io.js'
 
-export interface HomeRow {
-  id: string
-  workspaceId: string | null
-  path: string
-  name: string
-  nameSource: 'user' | 'system'
-  avatar: string | null
-  avatarSource: 'user' | 'bot' | 'default'
-  createdAt: number
-  updatedAt: number
-  tombstone?: { at: number; reason: string }
+export {
+  ConfigReadFailedError, isAvatarCode, loadHomesDoc, loadHomesDocState, setHomeStoreLog, writableFrom,
+} from './home-store-io.js'
+export type { AssistantRow, HomeRow, HomesDoc, HomesLoadState } from './home-store-io.js'
+
+export function homesFileFor(dshHome: string): string {
+  return path.join(configDirFor(dshHome), 'homes.yaml')
 }
-
-export interface AssistantRow {
-  id: string
-  homeId: string
-  channel: string
-  botId: string | null
-  status: 'unbound' | 'bound' | 'orphan'
-  name: string
-  nameSource: 'user' | 'home' | 'bot'
-  avatar: string | null
-  avatarSource: 'user' | 'bot' | 'home' | 'default'
-  createdAt: number
-  boundAt: number | null
-}
-
-export interface HomesDoc {
-  version: 2
-  homes: HomeRow[]
-  assistants: AssistantRow[]
-}
-
-const EMPTY: HomesDoc = { version: 2, homes: [], assistants: [] }
 
 /** 进程内写串行（meta-store.ts 同款 writeQueue 口径）：读-改-写跨 await，
  * 并发 create 若交错会丢一次写入；单用户连点由视图 creating 守卫挡，宿主侧再串行一道。 */
@@ -61,107 +43,29 @@ function sanitize(v: unknown, max: number): string {
   return typeof v === 'string' ? v.slice(0, max) : ''
 }
 
-/** 头像值域（读表清洗的**唯一放行口**）：预设色码 `1`..`6`（T6b）∪ 图片标记 `img:<文件名>`（T11 #128，
- *  文件名由 `home-avatar.ts` 生成：`[A-Za-z0-9_-]{1,64}` ＋ png/jpg/webp 后缀，无斜杠 ⇒ 不可能目录穿越）。
- *  这里少认一种，重启后那张图就会被清洗成「没图」——加值域必须同时改这条。 */
-function isAvatarCode(v: unknown): v is string {
-  return typeof v === 'string' && (/^[1-6]$/.test(v) || /^img:[A-Za-z0-9_-]{1,64}\.(png|jpg|webp)$/.test(v))
-}
-
-function cleanHome(r: unknown): HomeRow | null {
-  const o = r as Record<string, unknown> | null
-  if (!o || typeof o !== 'object') return null
-  const id = sanitize(o.id, 64)
-  const p = sanitize(o.path, 2048)
-  if (!id || !p) return null
-  const ws = typeof o.workspaceId === 'string' ? sanitize(o.workspaceId, 256) || null : null
-  const name = sanitize(o.name, 64) || p
-  const av = o.avatar
-  const avatar = isAvatarCode(av) ? av : null
-  const avSrc = o.avatarSource === 'user' && avatar ? 'user' : avatar === null && o.avatarSource === 'bot' ? 'bot' : 'default'
-  const tomb = o.tombstone as { at?: unknown; reason?: unknown } | null | undefined
-  const tombstone = tomb && typeof tomb === 'object' && typeof tomb.at === 'number' && typeof tomb.reason === 'string'
-    ? { at: tomb.at, reason: tomb.reason.slice(0, 256) }
-    : undefined
-  return {
-    id,
-    workspaceId: ws,
-    path: p,
-    name,
-    nameSource: o.nameSource === 'user' ? 'user' : 'system',
-    avatar,
-    avatarSource: avSrc as HomeRow['avatarSource'],
-    createdAt: typeof o.createdAt === 'number' ? o.createdAt : Date.now(),
-    updatedAt: typeof o.updatedAt === 'number' ? o.updatedAt : Date.now(),
-    ...(tombstone ? { tombstone } : {}),
-  }
-}
-
-function cleanAssistant(r: unknown, homeIds: Set<string>): AssistantRow | null {
-  const o = r as Record<string, unknown> | null
-  if (!o || typeof o !== 'object') return null
-  const id = sanitize(o.id, 64)
-  const homeId = sanitize(o.homeId, 64)
-  const channel = sanitize(o.channel, 64)
-  if (!id || !homeId || !channel || !homeIds.has(homeId)) return null
-  // T6a 只建 bound（createAssistantRow 仍要求 botId 必填），但加载必须保留
-  // unbound/orphan（一等状态，T6b/c 数据），否则重读会静默丢数据。
-  const botId = typeof o.botId === 'string' && o.botId ? sanitize(o.botId, 256) : null
-  const status = o.status === 'unbound' ? 'unbound' : o.status === 'orphan' ? 'orphan' : 'bound'
-  if (status === 'bound' && !botId) return null
-  const aav = o.avatar
-  const aavatar = isAvatarCode(aav) ? aav : null
-  const aavSrc = o.avatarSource === 'user' && aavatar ? 'user' : aavatar === null && o.avatarSource === 'bot' ? 'bot' : o.avatarSource === 'home' ? 'home' : 'default'
-  return {
-    id,
-    homeId,
-    channel,
-    botId,
-    status,
-    name: sanitize(o.name, 64) || botId || '未命名助理',
-    nameSource: o.nameSource === 'user' ? 'user' : o.nameSource === 'home' ? 'home' : 'bot',
-    avatar: aavatar,
-    avatarSource: aavSrc as AssistantRow['avatarSource'],
-    createdAt: typeof o.createdAt === 'number' ? o.createdAt : Date.now(),
-    boundAt: typeof o.boundAt === 'number' ? o.boundAt : status === 'bound' ? Date.now() : null,
-  }
-}
-
-export function homesFileFor(dshHome: string): string {
-  return path.join(configDirFor(dshHome), 'homes.yaml')
-}
-
-export async function loadHomesDoc(file: string): Promise<HomesDoc> {
-  try {
-    const read = await readConfigText(file) // homes.yaml；迁移没跑完时回落同名 homes.json
-    const parsed = (read ? parseConfigText(read.text) : null) as { homes?: unknown[]; assistants?: unknown[] } | null
-    if (!parsed || typeof parsed !== 'object') return { ...EMPTY, homes: [], assistants: [] }
-    const homes = Array.isArray(parsed.homes) ? parsed.homes.map(cleanHome).filter((x): x is HomeRow => !!x) : []
-    const ids = new Set(homes.map((h) => h.id))
-    const assistants = Array.isArray(parsed.assistants)
-      ? parsed.assistants.map((r) => cleanAssistant(r, ids)).filter((x): x is AssistantRow => !!x)
-      : []
-    return { version: 2, homes, assistants }
-  } catch {
-    return { ...EMPTY, homes: [], assistants: [] }
-  }
-}
-
-/** 读-改-写串行口（T6b #114：改名/配图/占位/绑定/删除共用；与下同队列防交错）。 */
+/** 读-改-写串行口（T6b #114：改名/配图/占位/绑定/删除共用；与下同队列防交错）。
+ *  两道闸见 home-store-io.ts：**fail-closed**（读回不可信 ⇒ 抛错拒写）＋ **dirty 守卫**（文本没变不写）。 */
 export async function modifyHomesDoc<T>(file: string, fn: (doc: HomesDoc) => T | Promise<T>): Promise<T> {
   let out!: T
-  writeQueue = writeQueue.then(async () => {
-    const doc = await loadHomesDoc(file)
+  const job = writeQueue.then(async () => {
+    const { doc, state, original } = await loadHomesDocState(file)
+    assertWritable(file, state)
     out = await fn(doc)
-    await writeConfigTextAtomic(file, renderConfigText(doc, titleForFile(file)))
+    await writeGuarded(file, doc, state, original)
   })
-  await writeQueue
+  /* 队列自身必须挂兜底 catch：`job` 会被存回 writeQueue，而调用方 try/catch 接走的是**另一条**
+   * await 链（`await job`）。若不加这行，拒绝会同时以「无人接管的 writeQueue」形态冒成
+   * unhandledRejection —— 拒写这道闸本意是**保护数据**，不能反过来把进程搞崩。
+   * （2026-10-15 探针实测：不加则 `node` 直接以 ConfigReadFailedError 退出码 1 崩掉。） */
+  writeQueue = job.catch(() => {})
+  await job
   return out
 }
 
-async function persistDoc(file: string, doc: HomesDoc): Promise<void> {
-  writeQueue = writeQueue.then(() => writeConfigTextAtomic(file, renderConfigText(doc, titleForFile(file))))
-  await writeQueue
+async function persistDoc(file: string, doc: HomesDoc, state: HomesLoadState = 'ok', original: string | null = null): Promise<void> {
+  const job = writeQueue.then(() => writeGuarded(file, doc, state, original))
+  writeQueue = job.catch(() => {})
+  await job
 }
 
 export async function createHomeRow(
@@ -172,7 +76,8 @@ export async function createHomeRow(
   const p = sanitize(input.path, 2048).trim()
   const title = sanitize(input.title, 256).trim()
   if (!wsId || !p) return { ok: false, code: 'bad-request', message: 'workspaceId 与 path 必填' }
-  const doc = await loadHomesDoc(file)
+  const { doc, state, original } = await loadHomesDocState(file)
+  assertWritable(file, state)
   const np = normPath(p)
   /* T10b #127 判重口径：墓碑行（用户「删除家」）**不占名额**——否则工作区重建时会被旧墓碑挡住。 */
   const dup = doc.homes.find((h) => !h.tombstone && (normPath(h.path) === np || (h.workspaceId && h.workspaceId === wsId)))
@@ -185,7 +90,7 @@ export async function createHomeRow(
     avatar: null, avatarSource: 'default', createdAt: now, updatedAt: now,
   }
   doc.homes.push(home)
-  await persistDoc(file, doc)
+  await persistDoc(file, doc, state, original)
   return { ok: true, home }
 }
 
@@ -197,7 +102,8 @@ export async function createAssistantRow(
   const channel = sanitize(input.channel, 64).trim()
   const botId = sanitize(input.botId, 256).trim()
   if (!homeId || !channel || !botId) return { ok: false, code: 'bad-request', message: 'homeId/channel/botId 必填' }
-  const doc = await loadHomesDoc(file)
+  const { doc, state, original } = await loadHomesDocState(file)
+  assertWritable(file, state)
   if (!doc.homes.some((h) => h.id === homeId)) return { ok: false, code: 'not-found', message: '家不存在' }
   if (doc.assistants.some((a) => a.botId === botId && a.channel === channel && a.status === 'bound')) {
     return { ok: false, code: 'already-bound', message: '该机器人已被绑定（一对一）' }
@@ -212,7 +118,7 @@ export async function createAssistantRow(
     avatar: null, avatarSource: 'default', createdAt: now, boundAt: now,
   }
   doc.assistants.push(assistant)
-  await persistDoc(file, doc)
+  await persistDoc(file, doc, state, original)
   return { ok: true, assistant }
 }
 
@@ -223,7 +129,8 @@ export async function seedDocs(
   file: string,
   input: { homes: HomeRow[]; assistants: AssistantRow[] },
 ): Promise<{ homes: HomeRow[]; assistants: AssistantRow[] }> {
-  const doc = await loadHomesDoc(file)
+  const { doc, state, original } = await loadHomesDocState(file)
+  assertWritable(file, state)
   const idMap = new Map<string, string>()
   const outHomes: HomeRow[] = []
   for (const r of input.homes || []) {
@@ -286,6 +193,9 @@ export async function seedDocs(
     })
   }
   doc.assistants.push(...outAssistants)
-  await persistDoc(file, doc)
+  await persistDoc(file, doc, state, original)
   return { homes: outHomes, assistants: outAssistants }
 }
+
+/* 行清洗（cleanHome / cleanAssistant）从 io 层再导出：`rpc.ts` 与若干验证物按老路径引用它们。 */
+export { cleanAssistant, cleanHome }

@@ -39,6 +39,15 @@ export const LOG_EVENTS: Record<string, LogEventSpec> = {
   /* T12 #129 配置迁移（homes/meta .json → .yaml，幂等）：**状态跃迁**——只在真迁移/异常时落盘，
    * `no-json`（本来就没旧文件）不留行，免得每次启动两条噪音。`message` 带 reason 与备份名。 */
   'config.migrate': { level: 'info', kind: 'resident', fields: ['dir', 'from', 'to', 'ok', 'message'] },
+  /* 家表读回的**诚实态**留痕（2026-10-15 事故复盘新增）。
+   * 由来：`loadHomesDoc` 原先「读不到/解析不出 ⇒ 静默回空表」，而 `modifyHomesDoc` / `persistDoc`
+   * **无条件落盘** ⇒ 空表被反复重写，且磁盘上不留任何痕迹（真机事故里空 `homes.yaml` 每 4–6 分钟
+   * 被同样内容重写一次，事后无从判定「本来就没有」还是「刚丢的」）。
+   * 级别由调用方按态给：`ok`=debug（高频，开关关着不落）、`missing`=info（首装常态，但必须留时间线）、
+   * `read-failed`/`parse-failed`=warn（异常态）。resident ⇒ 关键态在调试开关关着时也落盘。 */
+  'config.io': { level: 'warn', kind: 'resident', fields: ['op', 'file', 'state', 'message'] },
+  /* 数据保护闸真的拦下一次写（读回不可信 ⇒ 拒绝落盘）。error 恒放行；只在拒绝时落，不会刷盘。 */
+  'config.write.reject': { level: 'error', kind: 'resident', fields: ['op', 'file', 'state', 'message'] },
 
   /* ── 领域写操作（家的三级模型：家 → 助理 → 机器人）────────────── */
   /* 带 `traceId`（#125）：语义行由 `withRpcLog` 统一并链 id。理由见 `src/host/log.ts`——
