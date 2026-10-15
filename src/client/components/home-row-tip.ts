@@ -9,6 +9,7 @@
  */
 import { h } from '../dom'
 import { avatarStyle, imageCover, initialsOf } from './home-identity'
+import { ensureHomeRowStyles } from './home-row-styles'
 
 export interface TipData {
   id: string
@@ -41,15 +42,29 @@ function wireOnce(): void {
   } catch { /* 桩环境无事件系统：气泡本就只在真机出现，忽略 */ }
 }
 
+function connected(el: HTMLElement): boolean {
+  const flag = (el as unknown as { isConnected?: boolean }).isConnected
+  return typeof flag === 'boolean' ? flag : !!el.parentNode
+}
+
 function ensureBox(): HTMLElement {
-  if (box && (box as unknown as { isConnected?: boolean }).isConnected !== false) return box
+  if (box && connected(box)) return box
+  const doc = (globalThis as unknown as { document?: { body?: HTMLElement } }).document
+  /* 热重载/插件重载后旧盒子会留在 body 里（本模块变量已重置）：认领它而不是再叠一个，
+   * 否则 reco 越多、游离裸盒越多（#136 左下角裸字即此物缺样式时的样子）。 */
+  const adopted = doc?.body?.querySelector?.('.hu-tiphost') as unknown as HTMLElement | null
+  if (adopted && connected(adopted)) { box = adopted; return box }
   box = h('div', { className: 'home-ui hu-tiphost', role: 'tooltip' })
-  const body = (globalThis as unknown as { document?: { body?: HTMLElement } }).document?.body
-  body?.appendChild(box)
+  doc?.body?.appendChild(box)
   return box
 }
 
 function paint(a: HTMLElement, data: TipData): void {
+  /* 锚点已游离（120ms 延迟里条带被重画/面板被刷新）⇒ 不画：零 rect 会把气泡钉到 (8,8)，
+   * 且旧悬停已无意义（#136 把关）。 */
+  if (!connected(a)) return
+  /* 条带每次重画都换掉芯片：旧悬停随旧芯片一起作废，先收再画（#136 左下角滞留即此漏）。 */
+  hideAsstTip()
   const el = ensureBox()
   el.textContent = ''
   el.appendChild(h('span', {
@@ -82,6 +97,9 @@ function paint(a: HTMLElement, data: TipData): void {
 export function showAsstTip(a: HTMLElement, data: TipData): void {
   wireOnce()
   hideAsstTip()
+  /* 样式兜底：认领来的旧盒子可能正处在样式被卸掉的窗口期（热重载/插件重载），先重装再画，
+   * 裸盒（无气泡 chrome、单行裸字）不许再出现（#136 左下角）。 */
+  try { ensureHomeRowStyles() } catch { /* 样式装不上也不挡显示 */ }
   anchor = a
   const set = (globalThis as unknown as { setTimeout?: typeof setTimeout }).setTimeout
   if (typeof set !== 'function') { paint(a, data); return }

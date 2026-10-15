@@ -39,6 +39,42 @@ export interface StripOpts {
 
 interface Ctx { o: StripOpts; badge: HTMLElement }
 const CTX = new WeakMap<HTMLElement, Ctx>()
+/* 还活着的条带（有助理才进）：窗口宽度/字体/缩放变了之后重判一遍的登记簿。
+ * 面板每次 render 都重建行 ⇒ 旧条带游离，重判时顺手摘掉（不泄漏）。 */
+const LIVE = new Set<HTMLElement>()
+let resizeArmed = false
+
+function connected(el: HTMLElement): boolean {
+  const flag = (el as unknown as { isConnected?: boolean }).isConnected
+  return typeof flag === 'boolean' ? flag : !!el.parentNode
+}
+
+/** 所有活条带按当前宽度重判（窗口 resize/字体就绪后走它；`fits` 是留给验证物的接缝）。
+ *  游离（已被面板刷新换掉）的只摘不判。 */
+export function refitStrips(fits?: (el: HTMLElement) => boolean): void {
+  for (const s of [...LIVE]) {
+    if (!connected(s)) { LIVE.delete(s); continue }
+    applyFit(s, fits)
+  }
+}
+
+function armResize(): void {
+  if (resizeArmed) return
+  resizeArmed = true
+  try {
+    const w = globalThis as unknown as { addEventListener?: (t: string, f: () => void) => void }
+    const raf = (globalThis as unknown as { requestAnimationFrame?: (cb: () => void) => unknown }).requestAnimationFrame
+    let queued = false
+    w.addEventListener?.('resize', () => {
+      /* rAF 节流：一次 resize 风暴只重判一轮（每条带只是一次 paint＋量宽，本来就很轻）。 */
+      if (queued) return
+      queued = true
+      const run = (): void => { queued = false; refitStrips() }
+      if (typeof raf === 'function') raf(run)
+      else run()
+    })
+  } catch { /* 桩环境无事件系统：首帧 fit 照常，不跟窗宽 */ }
+}
 
 /** 状态点三态（类名显式写出 on/off/none：断言与样式都不靠「默认就是绿」这种隐含约定）。 */
 const dotClass = (on: boolean | null): string => 'hu-cdot' + (on === true ? ' on' : on === false ? ' off' : ' none')
@@ -121,5 +157,8 @@ export function homeStrip(o: StripOpts): HTMLElement {
   CTX.set(strip, ctx)
   paint(strip, ctx, 'full', o.assts.length)
   scheduleFit(strip)
+  /* 进登记簿＋装窗宽跟随：挂载时只判一次不够，窗口/字体/缩放变了必须重判（原型那根宽度条就是干这个的）。 */
+  LIVE.add(strip)
+  armResize()
   return strip
 }

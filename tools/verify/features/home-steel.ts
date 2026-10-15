@@ -749,6 +749,15 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.equal(cls(bodyEl, 'hu-ract').length, 4, 'L1 家行两枚行动作 ×2 行');
   assert.ok(cls(bodyEl, 'hu-ract').every((b) => !off(b)), '家行的重命名/更多全部可用');
   assert.ok(cls(bodyEl, 'hu-ract').every((b) => !b.classList.contains('planned')), 'L1 不再有 planned 假按钮');
+  /* T13 #135 键盘把关：焦点在行上回车＝进 L2；焦点落在行内按钮（「＋ 建助理」）上回车＝只触发按钮，
+   * 行不许顺手钻取（一键两事：又开弹层又进 L2）。 */
+  rows()[1].dispatchEvent({ type: 'keydown', key: 'Enter', target: one(rows()[1], 'hu-add') });
+  assert.deepEqual(ttl(), { b: '家', small: '2 个 · 每个家对应一个工作区' }, '按钮上回车不钻取（仍在 L1）');
+  assert.equal(txt(foot()), '新建家', '按钮上回车不钻取（底部仍是新建家）');
+  rows()[0].dispatchEvent({ type: 'keydown', key: 'Enter', target: rows()[0] });
+  assert.deepEqual(rows().map((r) => r.getAttribute('data-open')), ['L3', 'L3'], '行上回车＝进 L2（助理行）');
+  clickEl(byAttr(bodyEl, 'data-goto', 'L1')[0]);
+  assert.deepEqual(ttl(), { b: '家', small: '2 个 · 每个家对应一个工作区' }, '面包屑回 L1（键盘测试复位，后续流程继续）');
 
   /* 点家行 → L2（钻取，不是展开）：页头换家名、返回键出现、行变助理、底部换「新建助理」 */
   clickEl(rows()[0]);

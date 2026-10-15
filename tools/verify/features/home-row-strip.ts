@@ -136,6 +136,70 @@ test('T13 #135 三级降级：完整 → 收起（只留头像＋点）→ 裁�
   assert.equal(cls(empty, 'hu-add').length, 1, '空家条带不受降级影响');
 });
 
+test('T13 #135 窗宽跟随 refitStrips：活条带一起重判，游离条带只摘不判', () => {
+  const host = domDoc.body;
+  const a = strip.homeStrip({ homeId: 'h1', orphan: false, path: '', assts: LIST });
+  const b = strip.homeStrip({ homeId: 'h2', orphan: false, path: '', assts: LIST });
+  host.appendChild(a); host.appendChild(b);
+  strip.refitStrips(fakeFits(120));
+  for (const el of [a, b]) {
+    assert.equal(el.getAttribute('data-rung'), 'trim', '窄窗下两条活条带一起被裁剪');
+    assert.equal(txt(one(el, 'hu-cnt')), '3 助理', '重判后徽章仍报总数');
+  }
+  strip.refitStrips(fakeFits(999));
+  assert.equal(a.getAttribute('data-rung'), 'full', '变宽后长回完整档（登记簿不是一次性快照）');
+  strip.refitStrips(fakeFits(50));
+  assert.equal(cls(a, 'hu-chip').length, 0, '极窄下活条带一枚头像都不留');
+  assert.equal(txt(one(a, 'hu-cnt')), '3 助理', '只剩徽章也必须说清总数');
+  /* 游离条带（面板刷新后被换掉的那种：从没挂进 DOM）⇒ 只摘不判，不抛、档位不动 */
+  const ghost = strip.homeStrip({ homeId: 'hg', orphan: false, path: '', assts: LIST });
+  assert.equal(ghost.parentNode, null, '前置：没挂进 DOM 就是游离');
+  strip.refitStrips(fakeFits(50));
+  assert.equal(ghost.getAttribute('data-rung'), 'full', '游离条带不参与重判（保持原档，且已被摘掉）');
+  host.removeChild(a); host.removeChild(b);
+});
+
+test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重装', async () => {
+  const tip: any = createRequire(join(tmp, 'run.cjs'))('./client/components/home-row-tip.js');
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const boxes = (): any[] => (domDoc.body.querySelectorAll('.hu-tiphost') as any[]);
+  const shown = (): any[] => boxes().filter((b) => b.classList.contains('on'));
+  const enter = (chip: any): void => chip.dispatchEvent({ type: 'pointerenter' });
+  const host = domDoc.body;
+  const el = strip.homeStrip({ homeId: 'h1', orphan: false, path: '', assts: LIST });
+  host.appendChild(el);
+  const chips = cls(el, 'hu-chip');
+  assert.equal(chips.length, 3, '前置：三枚芯片都在');
+  /* ① 正常悬停 ⇒ 亮起，内容＝头像首字母＋名字＋状态·渠道 */
+  enter(chips[0]); await sleep(200);
+  assert.equal(boxes().length, 1, 'body 里永远只有一个气泡盒（不叠盒）');
+  assert.equal(shown().length, 1, '悬停 120ms 后亮起');
+  assert.ok(txt(shown()[0]).includes('小美') && txt(shown()[0]).includes('在线'), '气泡报名字＋状态');
+  /* ② 换一枚 ⇒ 还是同一个盒（内容换掉，不另起） */
+  enter(chips[1]); await sleep(200);
+  assert.equal(boxes().length, 1, '换芯片不另起盒');
+  assert.ok(txt(shown()[0]).includes('dsh-prompt'), '内容跟着换到新芯片');
+  /* ③ 延迟窗口里锚点被重画换掉（游离）⇒ 到点也不画（零 rect 钉 (8,8) 的漏堵死） */
+  tip.hideAsstTip();
+  chips[2].remove();
+  enter(chips[2]); await sleep(200);
+  assert.equal(shown().length, 0, '游离锚点到点也不画');
+  /* ④ 样式被卸掉（热重载/插件重载窗口）⇒ 下次悬停先重装，裸盒不许出现 */
+  const styles = (domDoc.head?.childNodes ?? []).filter((n: any) =>
+    String(n.nodeName).toLowerCase() === 'style' && String(n.getAttribute?.('id') ?? (n as any).id ?? '') === 'af-feature-home-row-l1');
+  assert.equal(styles.length, 1, '前置：新表样式在 head 里');
+  domDoc.head.removeChild(styles[0]);
+  const el2 = strip.homeStrip({ homeId: 'h9', orphan: false, path: '', assts: LIST });
+  host.appendChild(el2);
+  enter(cls(el2, 'hu-chip')[0]); await sleep(200);
+  const back = (domDoc.head?.childNodes ?? []).filter((n: any) =>
+    String(n.nodeName).toLowerCase() === 'style' && String(n.getAttribute?.('id') ?? (n as any).id ?? '') === 'af-feature-home-row-l1');
+  assert.equal(back.length, 1, '悬停时样式先重装（认领的旧盒也不会裸奔）');
+  assert.equal(shown().length, 1, '重装后气泡照常亮起');
+  host.removeChild(el2);
+  tip.hideAsstTip();
+});
+
 test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（契约 §6）、类前缀 hu-', () => {
   /* 桩的 getElementById 只认属性，而 installTag 写的是 `.id` 属性位（真 DOM 会反射）⇒ 这里直接扫 head。 */
   const styles = (domDoc.head?.childNodes ?? []).filter((n: any) => String(n.nodeName).toLowerCase() === 'style');
@@ -157,5 +221,12 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   assert.ok(!rowsSrc.includes('位助理 · ${d.from}'), '老家行副标「N 位助理 · 来源」不许长回来');
   assert.ok(!rowsSrc.includes('zeroDotEl'), '老空心标记不许长回来（零态＝「＋ 建助理」）');
   assert.ok(rowsSrc.includes('homeStrip({'), '家行第二段走 homeStrip（唯一入口）');
+  /* B 原型收敛版还原钉子（owner：列表还原原型）：主动作高亮、行悬停无投影、骨架两段同几何 */
+  const orphanSrc = readFileSync(join(COMP, 'home-orphan-row.ts'), 'utf8');
+  assert.ok(orphanSrc.includes('hu-ract strong'), '「选择工作区」挂 .strong（B 原型 accent 高亮主动作）');
+  assert.ok(css.includes('.home-ui .hu-ract.strong'), '基表没有 .strong 档 ⇒ 新表必须自带（否则类名无样式）');
+  assert.ok(css.includes('.home-ui .hu-row.hrow:hover'), '家行悬停只换边框＋底色（老投影在这里不出现，还原型）');
+  assert.ok(rowsSrc.includes('hu-sstrip'), '骨架行两段式（上段身份＋下段条带灰条，与真行同几何）');
+  assert.ok(css.includes('.home-ui .hu-sstrip'), '骨架条带样式与新表同注册（不回基表添行）');
 });
 

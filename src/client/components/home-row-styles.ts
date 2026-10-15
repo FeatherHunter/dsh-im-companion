@@ -14,6 +14,10 @@ export const HOME_ROW_STYLE_ID = 'home-row-l1'
 export const HOME_ROW_CSS = `
 /* 家行＝两段：上段身份（头像/名字/动作），下段条带（助理 / 空家入口 / 孤儿警示）。 */
 .home-ui .hu-row.hrow{display:block;padding:10px 11px}
+/* B 原型收敛版的行悬停＝只换边框＋底色（老 .hu-row 的投影在这里不出现，还原型） */
+.home-ui .hu-row.hrow:hover{box-shadow:none}
+/* 孤儿家主动作「选择工作区」：accent 高亮（B 原型 .hu-ract.strong，基表没有这档，落在这里） */
+.home-ui .hu-ract.strong{color:var(--hu-accent-deep);border-color:var(--hu-accent);background:var(--hu-accent-soft);font-weight:600}
 .home-ui .hu-btop{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center}
 /* 手改过名才挂的来源 tag（默认命名规则不写出来 —— owner 2026-10-15） */
 .home-ui .hu-scr{font-size:10px;font-weight:600;color:var(--hu-ink-2);background:var(--hu-neutral);border-radius:5px;padding:1px 6px;flex:none}
@@ -33,13 +37,13 @@ export const HOME_ROW_CSS = `
 .home-ui .hu-cdot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--hu-ink-3)}
 .home-ui .hu-cdot.on{background:var(--af-success)}
 .home-ui .hu-cdot.off{background:var(--hu-bad)}
-.home-ui .hu-cdot.none{background:none;border:1.5px solid var(--hu-ink-3);opacity:.7;box-sizing:border-box}
+.home-ui .hu-cdot.none{background:none;border:1.5px solid var(--hu-ink-3);opacity:.6;box-sizing:border-box}
 .home-ui .hu-chip .hu-cav .hu-cdot{position:absolute;right:-1px;bottom:-1px;border:1.5px solid var(--hu-panel-2)}
 
 /* ---- 空家：＋ 建助理（零态即入口；可点控件必须给足交互反馈）---- */
-.home-ui .hu-add{display:inline-flex;align-items:center;gap:4px;flex:none;font:inherit;font-size:11px;font-weight:650;cursor:pointer;
+.home-ui .hu-add{display:inline-flex;align-items:center;gap:4px;flex:none;font:inherit;font-size:10.5px;font-weight:650;cursor:pointer;
   color:var(--hu-accent-deep);background:transparent;border:1px dashed color-mix(in srgb,var(--hu-accent) 50%,transparent);
-  border-radius:999px;padding:3px 10px;transition:background var(--hu-t) var(--hu-ease),border-color var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease)}
+  border-radius:999px;padding:2.5px 9px;transition:background var(--hu-t) var(--hu-ease),border-color var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease)}
 .home-ui .hu-add:hover{background:var(--hu-accent-soft);border-color:var(--hu-accent);border-style:solid}
 .home-ui .hu-add:active{transform:scale(.95)}
 
@@ -54,7 +58,14 @@ export const HOME_ROW_CSS = `
 .home-ui .hu-warnline .hu-path{flex:1;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10.5px;color:var(--hu-ink-3);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .home-ui .hu-pill.alert{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;flex:none;
-  color:var(--hu-bad);background:var(--hu-bad-soft);border:1px solid color-mix(in srgb,var(--hu-bad) 58%,transparent)}
+  color:color-mix(in srgb,var(--hu-bad) 62%,var(--hu-ink));background:color-mix(in srgb,var(--hu-bad) 24%,transparent);border:1px solid color-mix(in srgb,var(--hu-bad) 58%,transparent)}
+
+/* ---- 骨架行跟两段式家行同几何（上段头像/名条/动作 ＋ 下段条带灰条）：首屏灰条→真行只换内容不换几何 ---- */
+.home-ui .hu-row.hrow.hu-srow{pointer-events:none;cursor:default}
+.home-ui .hu-row.hrow.hu-srow:hover{border-color:var(--hu-line-soft);background:var(--hu-panel);box-shadow:none}
+.home-ui .hu-sstrip{display:flex;align-items:center;gap:6px;margin-top:9px;padding-top:9px;border-top:1px solid var(--hu-line-soft);min-height:30px;overflow:hidden}
+.home-ui .hu-sk-chip{width:64px;height:22px}
+.home-ui .hu-sk-cnt{width:52px;height:20px}
 
 /* ---- 键盘可达：条带里的可点件必须给焦点环（与既有 focus-visible 口径一致）---- */
 .home-ui .hu-add:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
@@ -73,9 +84,17 @@ export const HOME_ROW_CSS = `
 
 let installed = false
 
+/** 样式标签还在不在（只认 flag 不够：热重载/插件重载可能卸掉标签，#136 左下角裸字即此）。 */
+function styleAlive(): boolean {
+  try {
+    const d = (globalThis as unknown as { document?: { getElementById?: (id: string) => unknown } }).document
+    return !!d?.getElementById?.('af-feature-' + HOME_ROW_STYLE_ID)
+  } catch { return true }
+}
+
 /** 幂等装配（首次画家行时调一次就够）：`installFeatureStyles` 按 id 复用同一 <style>，热重载安全。 */
 export function ensureHomeRowStyles(): void {
-  if (installed) return
+  if (installed && styleAlive()) return
   installed = true
   installFeatureStyles(HOME_ROW_STYLE_ID, HOME_ROW_CSS)
 }

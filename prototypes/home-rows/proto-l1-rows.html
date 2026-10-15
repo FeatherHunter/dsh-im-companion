@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>L1 家行 · 三套方案（IM机器人增强）</title>
+<style>
+/* ============================================================================
+   取色与规则来源：真机绿框 src/client/components/home-ui-styles.ts（逐字摘录 .hu-row / .hu-av /
+   .hu-pill / .hu-dot / .hu-ract 等），颜色令牌按真机深色主题（--af-*）实测取色。
+   新增的候选样式一律挂 x- 前缀，只在本原型生效，不冒充已实现的东西。
+   ============================================================================ */
+:root{
+  --af-bg:#150f10; --af-surface:#1b1416; --af-surface-2:#241b1d;
+  --af-primary:#f3eae8; --af-secondary:#b7a8a6; --af-tertiary:#8c7e7c;
+  --af-hairline:rgba(255,255,255,.07); --af-hairline-strong:rgba(255,255,255,.14);
+  --af-accent:#ff9a76; --af-warn:#ffb454; --af-danger:#ff6b6b; --af-success:#5fd39a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#0f0a0b;color:var(--af-primary);
+  font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.pagehead{max-width:1560px;margin:0 auto;padding:26px 22px 6px}
+.pagehead h1{margin:0 0 6px;font-size:19px;letter-spacing:-.01em}
+.pagehead p{margin:0 0 10px;color:var(--af-secondary);font-size:12.5px;max-width:1000px}
+.pagehead code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;background:var(--af-surface-2);border:1px solid var(--af-hairline);border-radius:5px;padding:1px 5px;color:var(--af-primary)}
+.quotes{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0 4px}
+.quote{background:var(--af-surface);border:1px solid var(--af-hairline);border-radius:10px;padding:9px 11px;font-size:12px;color:var(--af-secondary);max-width:490px}
+.quote b{display:block;color:var(--af-accent);font-size:11px;font-weight:700;margin-bottom:3px;letter-spacing:.02em}
+.solve{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 0}
+.solve span{font-size:11px;color:var(--af-secondary);background:var(--af-surface);border:1px solid var(--af-hairline);border-radius:999px;padding:3px 9px}
+.solve span i{color:var(--af-success);font-style:normal;font-weight:700}
+
+.grid{display:grid;grid-template-columns:repeat(3,minmax(430px,1fr));gap:18px;max-width:1560px;margin:0 auto;padding:16px 22px 8px;align-items:start}
+.col{background:var(--af-bg);border:1px solid var(--af-hairline);border-radius:16px;padding:14px 13px 16px}
+.colhead{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}
+.colhead .tag{font-size:11px;font-weight:800;letter-spacing:.06em;color:#1a1113;background:var(--af-accent);border-radius:6px;padding:2px 7px}
+.colhead .tag.b{background:#8fd0ff}.colhead .tag.c{background:#c6b0ff}
+.colhead h2{margin:0;font-size:14.5px;letter-spacing:-.01em}
+.colsub{margin:2px 0 12px;font-size:11.5px;color:var(--af-secondary);min-height:32px}
+.notes{margin:12px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:5px}
+.notes li{font-size:11px;color:var(--af-secondary);padding-left:15px;position:relative;line-height:1.45}
+.notes li::before{content:"";position:absolute;left:4px;top:6px;width:5px;height:5px;border-radius:50%;background:var(--af-accent)}
+.notes li.k::before{background:var(--af-success)}
+.colfoot{margin-top:11px;border-top:1px dashed var(--af-hairline);padding-top:9px;font-size:11px;color:var(--af-tertiary)}
+
+/* ---- 真机绿框 CSS（逐字摘录，保证观感与真机一致）---- */
+.home-ui{
+  --hu-panel:var(--af-bg); --hu-panel-2:var(--af-surface); --hu-panel-3:var(--af-surface-2);
+  --hu-ink:var(--af-primary); --hu-ink-2:var(--af-secondary); --hu-ink-3:var(--af-tertiary);
+  --hu-line:var(--af-hairline-strong); --hu-line-soft:var(--af-hairline);
+  --hu-accent:var(--af-accent); --hu-accent-deep:var(--af-accent);
+  --hu-accent-soft:color-mix(in srgb, var(--af-accent) 12%, transparent);
+  --hu-warn:var(--af-warn); --hu-warn-soft:color-mix(in srgb, var(--af-warn) 12%, transparent);
+  --hu-bad:var(--af-danger); --hu-bad-soft:color-mix(in srgb, var(--af-danger) 12%, transparent);
+  --hu-neutral:color-mix(in srgb, var(--af-secondary) 12%, transparent);
+  --hu-r:10px; --hu-r-lg:14px; --hu-sh:0 1px 2px rgba(16,24,40,.05);
+  --hu-t:160ms; --hu-ease:cubic-bezier(.2,.7,.2,1);
+  display:flex;flex-direction:column;color:var(--hu-ink);font-feature-settings:"tnum" 1}
+.home-ui .hu-fbody{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);border-radius:14px}
+.home-ui .hu-row{position:relative;display:grid;grid-template-columns:36px 1fr auto;gap:13px;align-items:center;width:100%;text-align:left;
+  background:var(--hu-panel);border:1px solid var(--hu-line-soft);border-radius:var(--hu-r);padding:9px 10px;cursor:pointer;
+  transition:border-color var(--hu-t) var(--hu-ease);min-height:56px}
+.home-ui .hu-row:hover{border-color:color-mix(in srgb, var(--hu-accent) 55%, var(--hu-line));background:var(--hu-panel-3)}
+.home-ui .hu-row .hu-txt{min-width:0;overflow:hidden}
+.home-ui .hu-row .hu-nm{display:flex;align-items:baseline;gap:7px;min-width:0;overflow:hidden}
+.home-ui .hu-row .hu-nm b{font-size:13.5px;font-weight:620;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;margin-right:1px}
+.home-ui .hu-row .hu-sub{display:block;margin-top:5px;font-size:11.5px;line-height:1.4;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui .hu-names{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui .hu-acts2{display:flex;align-items:center;gap:5px;flex:none;padding-left:2px}
+.home-ui .hu-dots{display:inline-flex;align-items:center;gap:4px;flex:none;align-self:center;padding-left:1px}
+.home-ui .hu-dots .hu-dot.on{background:var(--af-success);box-shadow:none}
+.home-ui .hu-dots .hu-dot.off{background:var(--hu-bad);box-shadow:none}
+.home-ui .hu-av{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:650;font-size:14px;letter-spacing:-.02em;flex:none}
+.home-ui .hu-av.round{border-radius:50%}
+.home-ui .hu-pill{font-size:10.5px;font-weight:600;border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none;align-self:center}
+.home-ui .hu-pill.warn{color:var(--hu-warn);background:var(--hu-warn-soft)}
+.home-ui .hu-pill.dim{color:var(--hu-ink-2);background:var(--hu-neutral)}
+.home-ui .hu-dot{width:7px;height:7px;border-radius:50%;flex:none}
+.home-ui .hu-dot.zero{background:none;border:1.5px solid var(--hu-ink-3);opacity:.55;box-sizing:border-box}
+.home-ui .hu-ract{font:inherit;font-size:11.5px;height:26px;padding:0 9px;display:inline-flex;align-items:center;gap:5px;background:var(--hu-panel);border:1px solid var(--hu-line);
+  border-radius:7px;color:var(--hu-ink-3);cursor:pointer;white-space:nowrap;flex:none}
+.home-ui .hu-ract.icon{width:26px;padding:0;justify-content:center}
+.home-ui .hu-ract.danger{color:var(--hu-bad);border-color:var(--hu-bad);background:var(--hu-bad-soft)}
+.home-ui .hu-ract.strong{color:var(--hu-accent-deep);border-color:var(--hu-accent);background:var(--hu-accent-soft);font-weight:600}
+.home-ui .hu-i{width:15px;height:15px;display:block;flex:none}
+
+/* ---- 现状参照：真机今天长这样（用于对照）---- */
+.before .hu-row{opacity:.95;border-style:dashed}
+
+/* ---- 新方案共用零件（x- 前缀）---- */
+.x-cnt{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:1.5px 8px;border-radius:999px;
+  background:color-mix(in srgb,var(--af-accent) 15%,transparent);color:var(--af-accent);flex:none;line-height:1.6}
+.x-cnt.zero{background:transparent;color:var(--hu-ink-3);border:1px dashed color-mix(in srgb,var(--hu-ink-3) 60%,transparent);font-weight:600}
+.x-cnt.one{background:color-mix(in srgb,var(--af-accent) 15%,transparent)}
+.x-cnt.many{background:color-mix(in srgb,var(--af-accent) 24%,transparent)}
+.x-alert{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;letter-spacing:.01em;border-radius:999px;padding:2px 8px;flex:none;
+  color:#ffd9a1;background:color-mix(in srgb,var(--af-warn) 24%,transparent);border:1px solid color-mix(in srgb,var(--af-warn) 55%,transparent)}
+.x-tag{font-size:10px;font-weight:600;color:var(--hu-ink-2);background:var(--hu-neutral);border-radius:5px;padding:1px 6px;flex:none}
+.x-stack{display:inline-flex;align-items:center;flex:none}
+.x-stack>*{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;
+  border:2px solid var(--hu-panel);margin-left:-7px;background:#3a2d30}
+.x-stack>*:first-child{margin-left:0}
+.x-stack.sm>*{width:18px;height:18px;font-size:8px}
+.x-stack .more{background:var(--hu-neutral);color:var(--hu-ink-2);font-size:9px}
+.x-add{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:650;color:var(--hu-accent-deep);
+  background:transparent;border:1px dashed color-mix(in srgb,var(--af-accent) 50%,transparent);border-radius:999px;padding:1.5px 8px;flex:none}
+.x-on{width:7px;height:7px;border-radius:50%;flex:none;background:var(--af-success)}
+.x-off{width:7px;height:7px;border-radius:50%;flex:none;background:var(--hu-bad)}
+.x-none{width:7px;height:7px;border-radius:50%;flex:none;border:1.5px solid var(--hu-ink-3);opacity:.6}
+.photo{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f7c26b'/%3E%3Cstop offset='.55' stop-color='%23e98b6d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23s)'/%3E%3Ccircle cx='44' cy='17' r='8' fill='%23fff2d0' opacity='.95'/%3E%3Cpath d='M0 40 L16 30 L30 42 L42 32 L56 44 L64 39 L64 64 L0 64Z' fill='%233c3350'/%3E%3Cpath d='M0 50 L20 42 L38 52 L52 46 L64 52 L64 64 L0 64Z' fill='%23241f30'/%3E%3C/svg%3E");
+  background-size:cover;background-position:center}
+
+/* ---- 方案 A：徽章化（信息重排，最小改动）---- */
+.sA .hu-row{min-height:60px}
+.sA .x-line{display:flex;align-items:center;gap:7px;margin-top:6px}
+.sA .x-bar{position:absolute;left:0;top:8px;bottom:8px;width:4px;border-radius:0 4px 4px 0;background:transparent}
+.sA .hu-row.orphan .x-bar{background:var(--af-warn)}
+.sA .hu-row.orphan{background:color-mix(in srgb,var(--af-warn) 8%,var(--hu-panel));border-color:color-mix(in srgb,var(--af-warn) 30%,var(--hu-line-soft))}
+
+/* ---- 方案 B：助理条带（卡片内第二段）---- */
+.sB .hu-row{display:block;padding:10px 11px}
+.sB .x-btop{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center}
+.sB .x-btop .hu-nm{align-items:center}
+.sB .x-strip{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:9px;padding-top:9px;border-top:1px solid var(--hu-line-soft)}
+.sB .x-chip{display:inline-flex;align-items:center;gap:6px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);
+  border-radius:999px;padding:3px 9px 3px 3px;font-size:11px;font-weight:600;color:var(--hu-ink)}
+.sB .x-chip .av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;flex:none}
+.sB .x-chip small{color:var(--hu-ink-3);font-weight:500;font-size:10px}
+.sB .x-chip.unbound{border-style:dashed;color:var(--hu-ink-2)}
+.sB .x-slot{display:inline-flex;align-items:center;gap:6px;border:1px dashed color-mix(in srgb,var(--af-accent) 45%,transparent);
+  color:var(--hu-accent-deep);border-radius:999px;padding:5px 11px;font-size:11px;font-weight:650}
+.sB .hu-row.orphan{background:color-mix(in srgb,var(--af-warn) 7%,var(--hu-panel));border-color:color-mix(in srgb,var(--af-warn) 38%,var(--hu-line-soft))}
+.sB .x-warnline{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--af-warn) 26%,transparent);font-size:11px;color:var(--hu-ink-2)}
+.sB .x-warnline .p{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:var(--hu-ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+
+/* ---- 方案 C：状态优先（色条 + 头像簇 + 大计数）---- */
+.sC .hu-row{grid-template-columns:4px 36px 1fr auto;gap:11px;padding:9px 10px 9px 0;overflow:hidden}
+.sC .x-cbar{width:4px;align-self:stretch;border-radius:0 4px 4px 0;background:var(--af-success);opacity:.85}
+.sC .hu-row.orphan .x-cbar{background:var(--af-warn)}
+.sC .hu-row.nows .x-cbar{background:var(--hu-ink-3);opacity:.5}
+.sC .hu-row.nows .hu-av{filter:grayscale(.4);opacity:.85}
+.sC .hu-row.orphan{background:color-mix(in srgb,var(--af-warn) 8%,var(--hu-panel))}
+.sC .x-cright{display:flex;align-items:center;gap:9px;padding-right:2px}
+.sC .x-num{min-width:26px;height:26px;border-radius:9px;display:grid;place-items:center;font-size:13px;font-weight:800;
+  background:var(--hu-accent-soft);color:var(--hu-accent);border:1px solid color-mix(in srgb,var(--af-accent) 32%,transparent)}
+.sC .x-num.zero{background:transparent;color:var(--hu-ink-3);border:1px dashed color-mix(in srgb,var(--hu-ink-3) 55%,transparent);font-weight:600}
+.sC .x-stack2{display:inline-flex}
+.sC .x-stack2>*{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:10px;font-weight:700;
+  border:2px solid var(--hu-panel);margin-left:-9px}
+.sC .x-stack2>*:first-child{margin-left:0}
+.sC .x-stack2 .more{background:var(--hu-neutral);color:var(--hu-ink-2)}
+.sC .x-legend{display:flex;align-items:center;gap:6px}
+
+/* ---- 底部对照表 ---- */
+.compare{max-width:1560px;margin:8px auto 40px;padding:0 22px}
+.compare h2{font-size:14px;margin:18px 0 10px}
+table{width:100%;border-collapse:collapse;background:var(--af-surface);border:1px solid var(--af-hairline);border-radius:12px;overflow:hidden;font-size:12px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--af-hairline);vertical-align:top}
+th{color:var(--af-accent);font-size:11px;letter-spacing:.02em;background:rgba(255,255,255,.02)}
+tr:last-child td{border-bottom:0}
+td b{color:var(--af-primary)}
+.howto{margin-top:16px;background:linear-gradient(180deg,rgba(255,154,118,.14),rgba(255,154,118,.05));border:1px solid color-mix(in srgb,var(--af-accent) 35%,transparent);border-radius:12px;padding:13px 15px;font-size:12.5px}
+.howto b{color:var(--af-accent)}
+</style>
+</head>
+<body>
+<div class="pagehead">
+  <h1>L1 家行 · 三套方案</h1>
+  <p>你提的三点，三套方案都解决了；差别在<b>信息层级</b>与<b>视觉重量</b>——选你更想要的那种手感。下面是真机深色主题、真机绿框样式（逐字摘的 <code>home-ui-styles.ts</code>）渲染出来的效果，不是示意图。</p>
+  <div class="quotes">
+    <div class="quote"><b>① 状态不够醒目</b>「工作区已不在」现在是一枚灰底灰字的章，扫一眼看不见。</div>
+    <div class="quote"><b>② 计数与默认规则</b>「0 位助理」是纯文本、不成形；「跟随工作区名」是默认规则，不必写出来。</div>
+    <div class="quote"><b>③ 家有助理时</b>L1 的 item 应把已有助理的头像与必要信息带出来。</div>
+  </div>
+  <div class="solve">
+    <span><i>✓</i> 孤儿态改成彩色警示章 ＋ 卡片层面给暗示</span>
+    <span><i>✓</i> 计数变成有形状的徽章（0 也成形）</span>
+    <span><i>✓</i> 去掉「跟随工作区名/跟随目录名」，只有你改过名才标</span>
+    <span><i>✓</i> 助理头像直接进 L1 行</span>
+  </div>
+</div>
+
+<div class="grid">
+  <section class="col">
+    <div class="colhead"><span class="tag">A</span><h2>徽章化</h2></div>
+    <div class="colsub">最小的改动：一行主信息 ＋ 一行「头像叠堆 ＋ 计数章」。状态用警示章 ＋ 左侧细色条。</div>
+    <div class="home-ui sA"><div class="hu-fbody" id="listA"></div></div>
+    <ul class="notes">
+      <li>「工作区已不在」→ <b>琥珀警示章</b>（加 ⚠ ＋ 描边），并在卡片左侧加 3px 琥珀细条、底色淡淡染一层。</li>
+      <li>「0 位助理」→ <b>计数章</b>；0 时是虚线空章 ＋ 一枚「＋ 建助理」虚线动作胶囊（零态也有去处）。</li>
+      <li>删除「跟随工作区名／跟随目录名」；只有你手动改过名才挂一枚灰 tag「你取的名」。</li>
+      <li>助理头像以 20px <b>叠堆</b>出现在副标行首（最多 3 个 ＋「+N」）。</li>
+    </ul>
+    <div class="colfoot">改动量：小（行结构不动，只换副标内容 ＋ 加两枚章）。风险最低，观感最接近今天。</div>
+  </section>
+
+  <section class="col">
+    <div class="colhead"><span class="tag b">B</span><h2>助理条带</h2></div>
+    <div class="colsub">家卡变两段式：上面是「头像＋名字＋计数」，下面一条 <b>助理条带</b>（头像＋名＋在线点）。</div>
+    <div class="home-ui sB"><div class="hu-fbody" id="listB"></div></div>
+    <ul class="notes">
+      <li>助理从「一行灰字『助理：dsh-log』」升级成 <b>芯片</b>：圆头像 ＋ 名字 ＋ 在线点；未绑定的芯片虚线。</li>
+      <li>空家不写「0 位助理」，直接给 <b>虚线添加位</b>「这个家还没有助理 · 建一个」——零态就是入口。</li>
+      <li>孤儿家：条带位置换成<b>琥珀提示行</b>（⚠ ＋ 原目录路径 ＋ 行内「选择工作区 / 删除家」）。</li>
+      <li>名字旁的「跟随…」全删；计数只在 Chip 数量上体现，不再单独写一句。</li>
+    </ul>
+    <div class="colfoot">改动量：中（卡片从单行 grid 变成两段，行高会变，但信息最完整）。助理多的家最好看。</div>
+  </section>
+
+  <section class="col">
+    <div class="colhead"><span class="tag c">C</span><h2>状态优先</h2></div>
+    <div class="colsub">整卡按状态着色：左侧 4px 色条 ＋ 孤儿底染；右侧常驻<b>头像簇 ＋ 大计数方块</b>，一眼看规模。</div>
+    <div class="home-ui sC"><div class="hu-fbody" id="listC"></div></div>
+    <ul class="notes">
+      <li>状态做成<b>整行编码</b>：绿条＝正常、琥珀条＝工作区已不在、灰条＝没有工作区；孤儿整卡淡琥珀底。</li>
+      <li>计数做成 <b>26px 数字方块</b>（0 是虚线空心方块），右侧与头像簇并排——「这个家多大」不用读字。</li>
+      <li>副标只剩必要信息（在线数／原目录），默认命名规则一个字都不写；改过名才挂 tag。</li>
+      <li>助理头像 26px 叠堆在右侧（最多 3 ＋「+N」），与头像簇一起构成「规模感」。</li>
+    </ul>
+    <div class="colfoot">改动量：中偏大（要改行模板与间距），但状态区分最强，长列表里最好扫。</div>
+  </section>
+</div>
+
+<div class="compare">
+  <h2>对照（同一批数据，三种画法）</h2>
+  <table>
+    <tr><th style="width:78px">方案</th><th>① 状态醒目</th><th>② 计数 / 默认规则</th><th>③ 助理在 L1</th><th>改动量</th><th>最适合</th></tr>
+    <tr>
+      <td><b>A 徽章化</b></td>
+      <td>彩色警示章 ＋ 细色条（够用）</td>
+      <td>计数章；默认规则删除；零态＝虚线章＋建助理胶囊</td>
+      <td>20px 叠堆头像（名字要悬停/进 L2 才看全）</td>
+      <td>小</td><td>想尽快落地、不想动布局</td>
+    </tr>
+    <tr>
+      <td><b>B 助理条带</b></td>
+      <td>警示章 ＋ 条带换成琥珀提示行（含路径与按钮）</td>
+      <td>不写计数句；零态＝虚线添加位（天然是入口）</td>
+      <td>芯片：头像＋名字＋在线点，全部可读</td>
+      <td>中</td><td>关心「这个家里都有谁」</td>
+    </tr>
+    <tr>
+      <td><b>C 状态优先</b></td>
+      <td>整行色条 ＋ 底色（最强）</td>
+      <td>大数字方块；副标只留在线段落</td>
+      <td>26px 头像簇 ＋ 数字并列（规模感最强）</td>
+      <td>中偏大</td><td>家多、要一眼扫状态与规模</td>
+    </tr>
+  </table>
+  <div class="howto">
+    <b>怎么回我：</b>直接说 <b>A / B / C</b> 就行；也可以组合（例：「B 的助理条带 ＋ C 的状态色条」）。
+    另外两件小事请顺便确认：<b>①</b> 第 8 格（虚线「图」框，在头像行第二行）点开传图后，是不是<b>立刻</b>就变了；<b>②</b> 再传一张或点「清除图片」，图是不是跟着变（改名不改图）。
+  </div>
+</div>
+
+<script>
+const statePill = (h) => {
+  if (h.state === 'orphan') return '<span class="x-alert">⚠ 工作区已不在</span>';
+  if (h.state === 'nows') return '<span class="hu-pill dim">没有工作区</span>';
+  return '';
+};
+const srcTag = (h) => h.source === 'user' ? '<span class="x-tag">你取的名</span>' : '';
+const dot = (on) => on === true ? '<i class="x-on"></i>' : on === false ? '<i class="x-off"></i>' : '<i class="x-none"></i>';
+const av = (a, cls) => `<span class="${cls} ${a.photo ? 'photo' : ''}" style="${a.photo ? '' : 'background:' + a.hue}">${a.photo ? '' : a.av}</span>`;
+
+const HOMES = [
+  { name: 'dsh-1003-verify', av: 'D1', hue: '#6b4fd6', state: 'orphan', source: '跟随目录名', path: 'D:\\agents\\dsh-1003-verify', assts: [] },
+  { name: 'dsh-log', photo: true, state: 'ok', source: '跟随工作区名', assts: [{ av: '', photo: true, n: 'dsh-log', on: true }] },
+  { name: 'dsh-mattpocock-skills-deck', av: 'DM', hue: '#2f7a5f', state: 'ok', source: 'user', assts: [
+    { av: '小', hue: '#b8544e', n: '小美', on: true }, { av: 'DP', hue: '#7a5cc0', n: 'dsh-prompt', on: false }, { av: '未', hue: '#4a6b8a', n: '未命名助理', on: null } ] },
+  { name: 'dsh-plugin-update', av: 'DP', hue: '#2f6b4f', state: 'ok', source: '跟随工作区名', assts: [] },
+  { name: '默认工作区', av: '默', hue: '#8a6b3f', state: 'nows', source: '跟随目录名', assts: [] },
+];
+
+const stack = (list, cls, max = 3) => {
+  if (!list.length) return '';
+  const head = list.slice(0, max).map((a) => av(a, 's-av ' + cls)).join('');
+  const more = list.length > max ? `<span class="more ${cls}">+${list.length - max}</span>` : '';
+  return `<span class="x-stack ${cls === 's-av' ? '' : ''}">${head}${more}</span>`;
+};
+const acts = (h) => h.state === 'orphan'
+  ? '<button class="hu-ract strong">选择工作区</button><button class="hu-ract danger">删除家</button>'
+  : '<button class="hu-ract icon">✎</button><button class="hu-ract icon">⋯</button>';
+
+/* ---------- 方案 A ---------- */
+document.getElementById('listA').innerHTML = HOMES.map((h) => {
+  const n = h.assts.length;
+  const cnt = n === 0 ? '<span class="x-cnt zero">0 助理</span><span class="x-add">＋ 建助理</span>'
+    : `<span class="x-cnt ${n > 1 ? 'many' : 'one'}">${n} 助理</span>`;
+  const stackHtml = n ? `<span class="x-stack sm">${h.assts.slice(0, 3).map((a) => av(a, 'a-s')).join('')}</span>` : '';
+  return `<div class="hu-row ${h.state}">
+    <span class="x-bar"></span>
+    ${av({ av: h.av, hue: h.hue, photo: h.photo }, 'hu-av')}
+    <span class="hu-txt">
+      <span class="hu-nm"><b>${h.name}</b>${statePill(h)}</span>
+      <span class="hu-sub x-line">${stackHtml}${cnt}${srcTag(h)}</span>
+    </span>
+    <span class="hu-acts2">${acts(h)}</span>
+  </div>`;
+}).join('');
+
+/* ---------- 方案 B ---------- */
+document.getElementById('listB').innerHTML = HOMES.map((h) => {
+  const n = h.assts.length;
+  const cnt = n === 0 ? '<span class="x-cnt zero">0 助理</span>' : `<span class="x-cnt ${n > 1 ? 'many' : 'one'}">${n} 助理</span>`;
+  let strip;
+  if (h.state === 'orphan') {
+    strip = `<div class="x-warnline"><span class="x-alert">⚠ 工作区已不在</span><span class="p">${h.path}</span></div>`;
+  } else if (!n) {
+    strip = '<div class="x-strip"><span class="x-slot">＋ 这个家还没有助理 · 建一个</span></div>';
+  } else {
+    strip = `<div class="x-strip">${h.assts.map((a) => `<span class="x-chip${a.on === null ? ' unbound' : ''}">
+        ${av(a, 'av')}${a.n}${dot(a.on)}${a.on === null ? '<small>未绑定</small>' : ''}</span>`).join('')}
+      <span class="x-cnt zero" style="border-style:solid;border-color:transparent;background:transparent;color:var(--hu-ink-3)">共 ${n} 位</span>
+      </div>`;
+  }
+  return `<div class="hu-row ${h.state}">
+    <div class="x-btop">
+      ${av({ av: h.av, hue: h.hue, photo: h.photo }, 'hu-av')}
+      <span class="hu-txt"><span class="hu-nm"><b>${h.name}</b>${h.state === 'orphan' ? '' : statePill(h)}${srcTag(h)}</span></span>
+      <span class="hu-acts2">${acts(h)}</span>
+    </div>${strip}</div>`;
+}).join('');
+
+/* ---------- 方案 C ---------- */
+document.getElementById('listC').innerHTML = HOMES.map((h) => {
+  const n = h.assts.length;
+  const online = h.assts.filter((a) => a.on === true).length;
+  const off = n - online;
+  const parts = [];
+  if (online) parts.push(`${online} 在线`);
+  if (off) parts.push(`${off} 离线/未绑定`);
+  const num = `<span class="x-num ${n === 0 ? 'zero' : ''}">${n}</span>`;
+  const cluster = n ? `<span class="x-stack2">${h.assts.slice(0, 3).map((a) => av(a, 'c-av')).join('')}${n > 3 ? `<span class="more">+${n - 3}</span>` : ''}</span>` : '';
+  const sub = h.state === 'orphan' ? `<span class="hu-sub">${h.path}</span>`
+    : n ? `<span class="hu-sub">${parts.join(' · ')}</span>`
+    : '<span class="hu-sub">还没有助理</span>';
+  return `<div class="hu-row ${h.state}">
+    <span class="x-cbar"></span>
+    ${av({ av: h.av, hue: h.hue, photo: h.photo }, 'hu-av')}
+    <span class="hu-txt"><span class="hu-nm"><b>${h.name}</b>${statePill(h)}${srcTag(h)}</span>${sub}</span>
+    <span class="x-cright">${cluster}${num}${acts(h)}</span>
+  </div>`;
+}).join('');
+</script>
+</body>
+</html>

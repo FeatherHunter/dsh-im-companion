@@ -33,7 +33,7 @@ export const HOME_UI_CSS = `
 .home-ui button:focus-visible,.home-ui input:focus-visible,.home-ui select:focus-visible,.home-ui [tabindex]:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
 
 /* ============ frame ============ */
-.home-ui .hu-fhead{display:flex;align-items:center;gap:8px;padding:11px 10px 3px;flex:none}
+.home-ui .hu-fhead{display:flex;align-items:center;gap:8px;padding:11px 0 3px;flex:none}
 .home-ui .hu-fhead .hu-ttl{min-width:0;flex:1}
 .home-ui .hu-fhead .hu-ttl b{display:block;font-size:15px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-fhead .hu-ttl small{display:block;font-size:11.5px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

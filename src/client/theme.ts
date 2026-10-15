@@ -278,7 +278,7 @@ function installTag(styleId: string, css: string): () => void {
   if (typeof document === 'undefined') return () => {}
   try {
     let style = document.getElementById(styleId)
-    if (!style) { style = document.createElement('style'); style.id = styleId; document.head.appendChild(style) }
+    if (!style) { style = document.createElement('style'); style.id = styleId; try { style.setAttribute('id', styleId) } catch {} document.head.appendChild(style) }
     const prev = Number(style.getAttribute?.('data-gen') || 0)
     const gen = (Number.isFinite(prev) ? prev : 0) + 1
     style.textContent = css

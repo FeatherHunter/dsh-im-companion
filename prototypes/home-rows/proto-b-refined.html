@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>L1 家行 · B 收敛版（＋建助理 / 红警示 / 助理条带降级）</title>
+<style>
+/* ============================================================================
+   收敛版：以「B 助理条带」为底，按 owner 2026-10-15 21:2x 的三条改动：
+   ① 无助理时条带显示 A 方案的「＋ 建助理」虚线胶囊；
+   ② 「工作区已不在」与那枚 ⚠ 标志一律改红（原来琥珀）；
+   ③ 助理条带按可用宽度三级降级：完整芯片 → 只留头像＋点（悬停出名字）→ 多出来的不画，
+      用 A 方案的「N 助理」徽章交代总数。
+   真机绿框样式仍逐字取自 src/client/components/home-ui-styles.ts；颜色令牌走 --af-* 别名
+   （真机是深浅自动跟随，这里只是把深色主题的实际取值填进去当模拟值）。
+   ============================================================================ */
+:root{
+  --af-bg:#150f10; --af-surface:#1b1416; --af-surface-2:#241b1d;
+  --af-primary:#f3eae8; --af-secondary:#b7a8a6; --af-tertiary:#8c7e7c;
+  --af-hairline:rgba(255,255,255,.07); --af-hairline-strong:rgba(255,255,255,.14);
+  --af-accent:#ff9a76; --af-warn:#ffb454; --af-danger:#ff5f5f; --af-success:#5fd39a;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#0f0a0b;color:var(--af-primary);
+  font:13px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif;-webkit-font-smoothing:antialiased}
+.pagehead{max-width:1120px;margin:0 auto;padding:24px 22px 4px}
+.pagehead h1{margin:0 0 6px;font-size:19px;letter-spacing:-.01em}
+.pagehead p{margin:0 0 8px;color:var(--af-secondary);font-size:12.5px;max-width:900px}
+.changes{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0 0}
+.changes div{background:var(--af-surface);border:1px solid var(--af-hairline);border-radius:10px;padding:8px 11px;font-size:12px;color:var(--af-secondary);max-width:340px}
+.changes b{display:block;color:var(--af-accent);font-size:11px;font-weight:700;margin-bottom:3px}
+.ctl{display:flex;align-items:center;gap:11px;margin:16px 0 6px;padding:10px 12px;background:var(--af-surface);border:1px solid var(--af-hairline);border-radius:11px;max-width:660px}
+.ctl label{font-size:12px;color:var(--af-secondary);flex:none}
+.ctl input[type=range]{flex:1;accent-color:var(--af-accent)}
+.ctl .w{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--af-accent);width:74px;text-align:right}
+.ctl .hint{font-size:11px;color:var(--af-tertiary);flex:none}
+
+.stage{max-width:1120px;margin:0 auto;padding:8px 22px 30px;display:flex;gap:18px;align-items:flex-start}
+.panelbox{flex:none}
+.ptitle{font-size:11px;color:var(--af-tertiary);margin:0 0 6px 2px}
+.legend{margin-top:12px;font-size:11.5px;color:var(--af-secondary);background:var(--af-surface);border:1px solid var(--af-hairline);border-radius:11px;padding:10px 12px}
+.legend b{color:var(--af-accent)}
+.legend ol{margin:6px 0 0;padding-left:18px}
+.legend li{margin:3px 0}
+.mode{display:inline-block;font-size:9.5px;font-weight:700;padding:1px 6px;border-radius:999px;margin-left:6px;vertical-align:1px;flex:none;white-space:nowrap}
+.mode.full{background:color-mix(in srgb,var(--af-success) 18%,transparent);color:var(--af-success)}
+.mode.compact{background:color-mix(in srgb,var(--af-accent) 18%,transparent);color:var(--af-accent)}
+.mode.trim{background:color-mix(in srgb,var(--af-danger) 18%,transparent);color:var(--af-danger)}
+.mode.empty{background:color-mix(in srgb,var(--af-secondary) 16%,transparent);color:var(--af-secondary)}
+.mode.orphan{background:color-mix(in srgb,var(--af-danger) 22%,transparent);color:#ffb3b3}
+
+/* ---- 真机绿框 CSS（逐字摘录 .hu-row / .hu-av / .hu-pill / .hu-ract 等）---- */
+.home-ui{
+  --hu-panel:var(--af-bg); --hu-panel-2:var(--af-surface); --hu-panel-3:var(--af-surface-2);
+  --hu-ink:var(--af-primary); --hu-ink-2:var(--af-secondary); --hu-ink-3:var(--af-tertiary);
+  --hu-line:var(--af-hairline-strong); --hu-line-soft:var(--af-hairline);
+  --hu-accent:var(--af-accent); --hu-accent-deep:var(--af-accent);
+  --hu-accent-soft:color-mix(in srgb, var(--af-accent) 12%, transparent);
+  --hu-warn:var(--af-warn); --hu-warn-soft:color-mix(in srgb, var(--af-warn) 12%, transparent);
+  --hu-bad:var(--af-danger); --hu-bad-soft:color-mix(in srgb, var(--af-danger) 12%, transparent);
+  --hu-neutral:color-mix(in srgb, var(--af-secondary) 12%, transparent);
+  --hu-r:10px; --hu-t:160ms; --hu-ease:cubic-bezier(.2,.7,.2,1);
+  display:flex;flex-direction:column;color:var(--hu-ink);font-feature-settings:"tnum" 1}
+.home-ui .hu-fbody{display:flex;flex-direction:column;gap:8px;padding:10px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);border-radius:14px}
+.home-ui .hu-row{position:relative;display:block;width:100%;text-align:left;background:var(--hu-panel);
+  border:1px solid var(--hu-line-soft);border-radius:var(--hu-r);padding:10px 11px;cursor:pointer;transition:border-color var(--hu-t) var(--hu-ease)}
+.home-ui .hu-row:hover{border-color:color-mix(in srgb, var(--hu-accent) 55%, var(--hu-line));background:var(--hu-panel-3)}
+.home-ui .hu-txt{min-width:0;overflow:hidden}
+.home-ui .hu-nm{display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden}
+.home-ui .hu-nm b{font-size:13.5px;font-weight:620;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;margin-right:1px}
+.home-ui .hu-acts2{display:flex;align-items:center;gap:5px;flex:none;padding-left:2px}
+.home-ui .hu-av{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:650;font-size:14px;letter-spacing:-.02em;flex:none}
+.home-ui .hu-pill{font-size:10.5px;font-weight:600;border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none}
+.home-ui .hu-pill.dim{color:var(--hu-ink-2);background:var(--hu-neutral)}
+.home-ui .hu-ract{font:inherit;font-size:11.5px;height:26px;padding:0 9px;display:inline-flex;align-items:center;gap:5px;background:var(--hu-panel);border:1px solid var(--hu-line);
+  border-radius:7px;color:var(--hu-ink-3);cursor:pointer;white-space:nowrap;flex:none}
+.home-ui .hu-ract.icon{width:26px;padding:0;justify-content:center}
+.home-ui .hu-ract.danger{color:var(--af-danger);border-color:var(--af-danger);background:var(--hu-bad-soft)}
+.home-ui .hu-ract.strong{color:var(--hu-accent-deep);border-color:var(--hu-accent);background:var(--hu-accent-soft);font-weight:600}
+.home-ui .hu-i{width:15px;height:15px;display:block;flex:none}
+.photo{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='s' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23f7c26b'/%3E%3Cstop offset='.55' stop-color='%23e98b6d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' fill='url(%23s)'/%3E%3Ccircle cx='44' cy='17' r='8' fill='%23fff2d0' opacity='.95'/%3E%3Cpath d='M0 40 L16 30 L30 42 L42 32 L56 44 L64 39 L64 64 L0 64Z' fill='%233c3350'/%3E%3Cpath d='M0 50 L20 42 L38 52 L52 46 L64 52 L64 64 L0 64Z' fill='%23241f30'/%3E%3C/svg%3E");
+  background-size:cover;background-position:center}
+
+/* ---- 卡片顶部一段（B 原样）---- */
+.sB .x-btop{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center}
+/* ② 孤儿态：章 + ⚠ 标志 + 提示行 + 卡边，全部走红（原琥珀）*/
+.sB .hu-pill.alert{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;flex:none;
+  color:#ffd9d9;background:color-mix(in srgb,var(--af-danger) 24%,transparent);border:1px solid color-mix(in srgb,var(--af-danger) 58%,transparent)}
+.sB .hu-row.orphan{background:color-mix(in srgb,var(--af-danger) 7%,var(--hu-panel));border-color:color-mix(in srgb,var(--af-danger) 40%,var(--hu-line-soft))}
+.sB .x-warnline{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--af-danger) 26%,transparent);font-size:11px;color:var(--hu-ink-2)}
+.sB .x-warnline .p{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:10.5px;color:var(--hu-ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+
+/* ---- ③ 助理条带（三级降级）---- */
+.sB .x-strip{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow:hidden;margin-top:9px;padding-top:9px;border-top:1px solid var(--hu-line-soft);min-height:30px}
+.sB .x-chip{display:inline-flex;align-items:center;gap:6px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);
+  border-radius:999px;padding:3px 9px 3px 3px;font-size:11px;font-weight:600;color:var(--hu-ink);flex:none;max-width:180px}
+.sB .x-chip .av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;flex:none}
+.sB .x-chip .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* 未绑定＝虚线边 ＋ 空心点，不加任何文字（owner 2026-10-15） */
+.sB .x-chip.unbound{border-style:dashed;color:var(--hu-ink-2)}
+/* 二级降级：只留头像 + 点（名字进 tooltip）*/
+.sB .x-chip.cmp{padding:3px;gap:0}
+.sB .x-chip.cmp .cov{position:relative;display:grid;place-items:center;width:22px;height:22px}
+.sB .x-chip.cmp .dot{position:absolute;right:-1px;bottom:-1px;border:1.5px solid var(--hu-panel-2)}
+/* 一级：0 助理 ⇒ A 的「＋ 建助理」*/
+.sB .x-add{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:650;color:var(--hu-accent-deep);
+  background:transparent;border:1px dashed color-mix(in srgb,var(--af-accent) 50%,transparent);border-radius:999px;padding:2.5px 9px;flex:none}
+/* A 方案的「N 助理」徽章（条带末端的计数交代）*/
+.sB .x-cnt{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;padding:1.5px 8px;border-radius:999px;flex:none;line-height:1.6;
+  background:color-mix(in srgb,var(--af-accent) 15%,transparent);color:var(--af-accent)}
+.sB .x-cnt.many{background:color-mix(in srgb,var(--af-accent) 26%,transparent)}
+.x-on{width:7px;height:7px;border-radius:50%;flex:none;background:var(--af-success)}
+.x-off{width:7px;height:7px;border-radius:50%;flex:none;background:var(--af-danger)}
+.x-none{width:7px;height:7px;border-radius:50%;flex:none;border:1.5px solid var(--hu-ink-3);opacity:.6;box-sizing:border-box}
+.x-tag{font-size:10px;font-weight:600;color:var(--hu-ink-2);background:var(--hu-neutral);border-radius:5px;padding:1px 6px;flex:none}
+</style>
+</head>
+<body>
+<div class="pagehead">
+  <h1>L1 家行 · B 收敛版</h1>
+  <p>以你的裁定为底：<b>B 助理条带</b> ＋ 你刚提的三条。拖动下面的宽度条可以看到条带怎么降级（真机面板内容宽约 490–510px）。</p>
+  <div class="changes">
+    <div><b>① 无助理</b>条带里显示 A 的「＋ 建助理」虚线胶囊（不再写「这个家还没有助理」长句）。</div>
+    <div><b>② 红色</b>「工作区已不在」章 ＋ ⚠ 标志 ＋ 提示行 ＋ 卡片描边，一律走红（原来是琥珀）。</div>
+    <div><b>③ 条带降级</b>完整芯片 → 只留头像＋点（悬停出名字）→ 放不下就不画，末端用 A 的「N 助理」徽章交代总数。</div>
+  </div>
+  <div class="ctl">
+    <label for="w">内容宽</label>
+    <input id="w" type="range" min="300" max="620" value="500" step="10">
+    <span class="w" id="wv">500 px</span>
+    <span class="hint">← 拖它看条带降级</span>
+  </div>
+</div>
+
+<div class="stage">
+  <div class="panelbox" id="panelbox">
+    <div class="ptitle">IM机器人增强 › 家（L1）</div>
+    <div class="home-ui sB"><div class="hu-fbody" id="list"></div></div>
+  </div>
+  <div class="legend" style="flex:1;min-width:300px">
+    <b>条带三级降级（每行右侧标签就是它当前落在哪一级）</b>
+    <ol>
+      <li><span class="mode full">完整</span> 芯片 ＝ 头像 ＋ 名字 ＋ 在线点：宽度够就一直是这个效果。</li>
+      <li><span class="mode compact">收起</span> 名字换成悬停（鼠标放上去看名字/状态）：只留头像 ＋ 点。</li>
+      <li><span class="mode trim">裁剪</span> 连头像都放不下 ⇒ 后面不画，末端「N 助理」徽章说明这个家一共有几位。</li>
+      <li><span class="mode none">空家</span> 0 助理 ⇒ 一枚「＋ 建助理」虚线胶囊（零态即入口）。</li>
+    </ol>
+    <b style="display:block;margin-top:10px">孤儿家（红）</b>
+    <div style="margin-top:4px">上段：名字 ＋ 红章「⚠ 工作区已不在」＋ 右侧「选择工作区 / 删除家」；条带位置换成红色提示行：⚠ ＋ 原工作区目录。正常家条带照常显示助理。</div>
+  </div>
+</div>
+
+<script>
+const CH = [
+  { n: 'dsh-1003-verify', av: 'D1', hue: '#6b4fd6', orphan: true, path: 'D:\\dsh-plugin\\dsh-1003-verify', assts: [] },
+  { n: 'dsh-log', photo: true, assts: [{ n: 'dsh-log', on: true, photo: true }] },
+  { n: 'dsh-plugin-update', av: 'DP', hue: '#2f6b4f', assts: [] },
+  { n: 'dsh-mattpocock-skills-deck', av: 'DM', hue: '#2f7a5f', user: true, assts: [
+    { n: '小美', hue: '#b8544e', on: true }, { n: 'dsh-prompt', hue: '#7a5cc0', on: false }, { n: '未命名助理', hue: '#4a6b8a', on: null } ] },
+  { n: 'dsh-prompt', av: 'DP', hue: '#8a3f5f', assts: [
+    { n: '小美', hue: '#b8544e', on: true }, { n: 'dsh-prompt', hue: '#7a5cc0', on: false },
+    { n: 'dsh-im-companion', hue: '#2f6b8a', on: true }, { n: '未命名助理', hue: '#4a6b8a', on: null }, { n: '小助手', hue: '#8a6b3f', on: true } ] },
+  { n: 'dsh-im-companion', av: 'DI', hue: '#2f6b8a', assts: [
+    { n: '小美', hue: '#b8544e', on: true }, { n: 'dsh-prompt', hue: '#7a5cc0', on: false }, { n: 'dsh-log', hue: '#2f8f6a', on: true },
+    { n: '未命名助理', hue: '#4a6b8a', on: null }, { n: '小助手', hue: '#8a6b3f', on: true }, { n: 'dsh-1003-frozen', hue: '#6b4fd6', on: false },
+    { n: 'dsh-mattpocock', hue: '#2f7a5f', on: true }, { n: '小i', hue: '#b8544e', on: true }, { n: 'dsh-plugin-update', hue: '#2f6b4f', on: false } ] },
+];
+const av = (a, cls) => `<span class="${cls} ${a.photo ? 'photo' : ''}" style="${a.photo ? '' : 'background:' + (a.hue || '#3a2d30')}">${a.photo ? '' : (a.av || first(a.n))}</span>`;
+const first = (s) => (s || '?').trim().charAt(0);
+const dotOf = (on) => on === true ? '<i class="x-on"></i>' : on === false ? '<i class="x-off"></i>' : '<i class="x-none"></i>';
+const tip = (a) => `${a.n}：${a.on === true ? '在线' : a.on === false ? '离线' : '未绑定'}`;
+const acts = (h) => h.orphan
+  ? '<button class="hu-ract strong">选择工作区</button><button class="hu-ract danger">删除家</button>'
+  : '<button class="hu-ract icon">✎</button><button class="hu-ract icon">⋯</button>';
+
+/* 条带的三种画法（同一批助理，只是密度不同）。
+   芯片里**一个状态字都不写**（owner 2026-10-15）：在线/离线本来就只靠点的颜色，未绑定也只留空心点
+   ＋虚线边（状态改由悬停报出，见 title/data-tip）。 */
+const fullChips = (list) => list.map((a) => `<span class="x-chip${a.on === null ? ' unbound' : ''}" data-tip="${tip(a)}" title="${tip(a)}">
+  ${av(a, 'av')}<span class="nm">${a.n}</span>${dotOf(a.on)}</span>`).join('');
+const compactChips = (list) => list.map((a) => `<span class="x-chip cmp" data-tip="${tip(a)}" title="${tip(a)}">
+  <span class="cov">${av(a, 'av')}${dotOf(a.on).replace('class="', 'class="dot ')}</span></span>`).join('');
+const badge = (n) => `<span class="x-cnt${n > 1 ? ' many' : ''}">${n} 助理</span>`;
+
+function stripHtml(h, mode, k) {
+  if (h.orphan) return `<div class="x-warnline"><span class="hu-pill alert">⚠ 工作区已不在</span><span class="p">${h.path}</span></div>`;
+  if (!h.assts.length) return '<div class="x-strip"><span class="x-add">＋ 建助理</span></div>';
+  if (mode === 'full') return `<div class="x-strip">${fullChips(h.assts)}${badge(h.assts.length)}</div>`;
+  const keep = typeof k === 'number' ? h.assts.slice(0, k) : h.assts;
+  return `<div class="x-strip">${compactChips(keep)}${badge(h.assts.length)}</div>`;
+}
+function rowHtml(h, mode, k) {
+  /* 孤儿家：名字行**不再重复**那枚章（原来会和下面的红色提示行说两遍，且窄宽度下会把家名挤没、
+     章自己被裁一半）。名字行只留名字，警示交给下面那条红提示行 ＋ 卡片红描边。 */
+  const top = `<div class="x-btop">
+    ${av({ av: h.av, hue: h.hue, photo: h.photo }, 'hu-av')}
+    <span class="hu-txt"><span class="hu-nm"><b>${h.n}</b>${h.user ? '<span class="x-tag">你取的名</span>' : ''}</span></span>
+    <span class="hu-acts2">${acts(h)}</span></div>`;
+  return `<div class="hu-row${h.orphan ? ' orphan' : ''}" data-row="${h.n}">${top}${stripHtml(h, mode, k)}</div>`;
+}
+
+/* 逐行实测：先按「完整」画，溢出就降到「收起」，还溢出就逐个减到放得下——末端那枚「N 助理」徽章一直在 */
+function setStrip(row, html) {
+  const old = row.querySelector('.x-strip');
+  if (!old) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  old.replaceWith(tmp.firstElementChild);
+}
+function fits(row) {
+  const s = row.querySelector('.x-strip');
+  return s ? s.scrollWidth <= s.clientWidth : true;
+}
+function layout() {
+  const list = document.getElementById('list');
+  list.innerHTML = CH.map((h) => rowHtml(h, 'full')).join('');
+  const modes = CH.map((h) => {
+    const row = list.querySelector(`[data-row="${CSS.escape(h.n)}"]`);
+    if (h.orphan) return 'orphan';
+    if (!h.assts.length) return 'empty';
+    if (fits(row)) return 'full';
+    let mode = 'trim';
+    for (let k = h.assts.length; k >= 0; k -= 1) {
+      setStrip(row, stripHtml(h, 'compact', k));
+      if (fits(row)) { mode = k === h.assts.length ? 'compact' : 'trim'; break; }
+    }
+    return mode;
+  });
+  CH.forEach((h, i) => {
+    const row = list.querySelector(`[data-row="${CSS.escape(h.n)}"]`);
+    const m = document.createElement('span');
+    m.className = 'mode ' + modes[i];
+    m.textContent = { full: '完整', compact: '收起', trim: '裁剪', empty: '空家', orphan: '红警示' }[modes[i]];
+    row.querySelector('.hu-nm').appendChild(m);
+  });
+  document.getElementById('wv').textContent = document.getElementById('w').value + ' px';
+}
+document.getElementById('w').addEventListener('input', (e) => {
+  document.getElementById('panelbox').style.width = e.target.value + 'px';
+  layout();
+});
+/* 支持 ?w=360 直接开在某个宽度（真机面板内容宽约 490–510px；拖到 300 附近能看见第三级「裁剪」） */
+const qs = new URLSearchParams(location.search).get('w');
+const startW = Math.min(620, Math.max(260, Number(qs) || 500));
+document.getElementById('w').value = String(startW);
+document.getElementById('panelbox').style.width = startW + 'px';
+layout();
+</script>
+</body>
+</html>

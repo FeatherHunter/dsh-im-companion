@@ -16,6 +16,7 @@ import { newAsstAct } from './home-create-act'
 import type { MoveOps } from './home-move-ops'
 import { closeHomePop } from './home-pop'
 import { skeletonRows, viewOf, type RowView } from './home-rows'
+import { hideAsstTip } from './home-row-tip'
 import { stageCrumbOpts, stageHead, stageList, type StageCtx } from './home-stage'
 import type { PanelState } from './panel-data'
 import { logLine, logOn } from '../log'
@@ -227,6 +228,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
   }
 
   function render(): void {
+    /* 每次重画都换掉行 DOM：悬停气泡的锚点随旧芯片一起游离，先收（#136 左下角滞留即此漏）。 */
+    hideAsstTip()
     const v = view()
     clear(deps.bodyEl)
     const root = h('div', { className: 'home-ui' })
