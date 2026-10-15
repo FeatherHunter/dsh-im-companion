@@ -33,7 +33,7 @@ export const HOME_UI_CSS = `
 .home-ui button:focus-visible,.home-ui input:focus-visible,.home-ui select:focus-visible,.home-ui [tabindex]:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
 
 /* ============ frame ============ */
-.home-ui .hu-fhead{display:flex;align-items:center;gap:8px;padding:11px 12px;border-bottom:1px solid var(--hu-line-soft);flex:none}
+.home-ui .hu-fhead{display:flex;align-items:center;gap:8px;padding:11px 12px 3px;flex:none}
 .home-ui .hu-fhead .hu-ttl{min-width:0;flex:1}
 .home-ui .hu-fhead .hu-ttl b{display:block;font-size:15px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-fhead .hu-ttl small{display:block;font-size:11.5px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -47,7 +47,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-back:active{transform:scale(.94)}
 
 /* ============ crumbs（液签面包屑） ============ */
-.home-ui .hu-crumbs{position:relative;display:flex;align-items:center;gap:6px;margin:8px 12px 0;padding:7px 10px;border:1px solid var(--hu-line-soft);border-radius:12px;flex:none;background:var(--hu-panel-2);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.home-ui .hu-crumbs{position:relative;display:flex;align-items:center;gap:6px;margin:8px 0 0;padding:7px 10px;border:1px solid var(--hu-line-soft);border-radius:12px;flex:none;background:var(--hu-panel-2);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
 .home-ui .hu-crumbs::-webkit-scrollbar{display:none}
 .home-ui .hu-crumbs::-webkit-scrollbar{display:none}
 .home-ui .hu-crumb{font:inherit;font-size:11.5px;display:inline-flex;align-items:center;gap:5px;background:none;border:1px solid transparent;flex:none;border-radius:999px;padding:3px 9px;color:var(--hu-ink-3);cursor:pointer;white-space:nowrap;transition:color var(--hu-t) var(--hu-ease);position:relative;z-index:1}
@@ -67,7 +67,7 @@ export const HOME_UI_CSS = `
 /* 绿框不自造滚动容器：整页只留宿主一条滚动条（内层滚动既丑又与页面滚动嵌套打架）。
    另外：一旦给元素写 webkit 滚动条伪元素，Chromium 会切回「经典滚动条」渲染（带上下箭头按钮），
    所以这里连 width/thumb 都不写。 */
-.home-ui .hu-fbody{flex:1;min-height:0;margin:10px 12px 8px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);border-radius:14px}
+.home-ui .hu-fbody{flex:1;min-height:0;margin:10px 0 8px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);border-radius:14px}
 .home-ui .hu-row{position:relative;display:grid;grid-template-columns:36px 1fr auto;gap:13px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;
   background:var(--hu-panel);border:1px solid var(--hu-line-soft);border-radius:var(--hu-r);padding:9px 10px;cursor:pointer;
   transition:border-color var(--hu-t) var(--hu-ease),box-shadow var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease);min-height:56px}
@@ -160,7 +160,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-abtn[disabled]{opacity:.45;cursor:not-allowed}
 
 /* ============ footer ============ */
-.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;padding:8px 12px 4px;border-top:1px solid var(--hu-line-soft);background:var(--hu-panel);display:flex;gap:8px}
+.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;padding:6px 0 2px;background:none;border-top:0;display:flex;gap:8px}
 .home-ui .hu-pbtn{position:relative;overflow:hidden;flex:1;font:inherit;font-size:13px;font-weight:600;height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
   background:var(--hu-accent);color:#fff;border:1px solid transparent;border-radius:9px;cursor:pointer;transition:transform var(--hu-t-fast) var(--hu-ease),background var(--hu-t) var(--hu-ease);
   box-shadow:0 1px 2px rgba(13,148,136,.3);will-change:transform}
