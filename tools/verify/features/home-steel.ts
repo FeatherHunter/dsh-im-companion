@@ -454,6 +454,8 @@ test('T6b 两步删除：首点布防、次点真删且只走行删除（验收�
   const links = cls(pop, 'hu-plink');
   const del = links.find((b: any) => txt(b).includes('删除助理'));
   assert.ok(del, '助理设置弹层有删除助理（恢复默认旁，不再是假按钮）');
+  assert.equal(cls(pop, 'hu-avopt').length, 8, '助理设置弹层也有配图行＝默认＋6 色＋图片格（T11 #128）');
+  assert.equal(cls(pop, 'hu-avimg-cell').length, 1, '助理侧上传口与家设置共用 avatarImageCell（不是两份实现）');
   clickEl(del);
   assert.ok(txt(del).includes('再点一次确认删除') && removed.length === 0, '首点只布防不删除');
   clickEl(del);
