@@ -5,7 +5,8 @@
  * （宿主仍带 `.home-ui` 类，作用域不破）：`position:fixed` ⇒ 不会被列表的 `overflow:hidden` 裁掉。
  *
  * 纪律：气泡只读、不拦指针（`pointer-events:none`）⇒ 不会把鼠标从芯片上"抢走"造成闪烁；
- * 延迟 120ms 才显（扫过一排芯片不刷屏）；滚动/点击/离开任一即收。日志零（纯视觉，不进关键路径）。
+ * 延迟 120ms 才显（扫过一排芯片不刷屏）；滚动/点击/离开任一即收。悬停即落一条 info
+ * 自证几何（#136 真机竖排卡：磁盘日志直接给出盒子的真实朝向/尺寸，不用开控制台），其余日志零。
  *
  * 永不裸奔（owner 2026-10-16：左下角裸字 `DLdsh-log未绑定 · 飞书 · 未绑定`，且气泡就该长在
  * 被悬停的头像旁边、不该钉在屏幕上）：**拆盒制** —— 气泡盒用一次就从 DOM 里拆掉，不复用、
@@ -17,6 +18,7 @@
  */
 import { h } from '../dom'
 import { channelGlyphSvg } from '../icons'
+import { logLine } from '../log'
 import { avatarStyle, imageCover, initialsOf } from './home-identity'
 import { ensureHomeRowStyles, homeRowStylesAlive } from './home-row-styles'
 /* 进层三件套复用绿框 popover 系统（`home-pop.ts`，#112 实证：设置页可能落在 dialog 下，
@@ -138,6 +140,19 @@ function paint(a: HTMLElement, data: TipData): void {
     el.classList.add('on')
     /* 最后进层：有 Popover API 的宿主进 top layer（盖过设置页的 dialog），失败自动退回 z-index。 */
     try { showLayer(el) } catch { /* 进层失败不挡显示（z-index 兜底还在） */ }
+    /* 自证几何（#136 真机竖排卡）：悬停落一条 info，磁盘日志直接给出盒子的真实朝向/尺寸/
+     * 子节点数，不用开控制台、不看截图像素。走 assistant.action（info 常驻，无需拨开关）。 */
+    try {
+      const cs = (globalThis as unknown as { getComputedStyle?: (e: unknown) => { flexDirection?: string } }).getComputedStyle?.(el)
+      const t0 = el.children?.[0] as unknown as { offsetWidth?: number; offsetHeight?: number } | undefined
+      logLine('info', 'assistant.action', {
+        action: 'tip-show', assistantId: data.id, ok: true,
+        message: 'flex=' + String(cs?.flexDirection ?? '?') + ' box=' + String(w) + 'x' + String(hh)
+          + ' tav=' + String(t0?.offsetWidth ?? '?') + 'x' + String(t0?.offsetHeight ?? '?')
+          + ' kids=' + String(el.children?.length ?? '?')
+          + ' pop=' + String(typeof el.hasAttribute === 'function' && el.hasAttribute('popover')),
+      })
+    } catch { /* 取证失败不挡显示 */ }
   } catch { /* 拿不到几何信息就不显示 */ }
 }
 
