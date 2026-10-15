@@ -12,6 +12,7 @@ import {
 } from '../data/home-model'
 import { isOrphanHome } from '../data/home-orphan'
 import { orphanRowActs } from './home-orphan-row'
+import { homeStrip } from './home-row-strip'
 import type { BotSnap } from '../data/fleet-api'
 
 /** 原型回落文案（proto-studio 的 homeFrom/asstFrom）。 */
@@ -103,13 +104,6 @@ export function onlineTagEl(bot: BotSnap | null): HTMLElement {
   return h('span', { className: `hu-online${on ? '' : ' off'}` }, dotEl(on), on ? '在线' : '离线')
 }
 
-/** 家状态章：已删除 / 工作区已不在 / 没有工作区 / 无（orphan 判据唯一在 data/home-orphan.isOrphanHome，T10b #127）。 */
-export function homePillEl(home: Home, orphan = false): HTMLElement | null {
-  if (home.tombstone) return pillEl('bad', '已删除')
-  if (orphan || !home.workspaceId) return pillEl('dim', orphan ? '工作区已不在' : '没有工作区')
-  return null
-}
-
 export function statusPillEl(a: Assistant): HTMLElement {
   if (a.status === 'unbound') return pillEl('warn', '未绑定')
   return pillEl(a.status === 'bound' ? 'ok' : 'bad', a.status === 'bound' ? '已绑' : '失联')
@@ -152,26 +146,6 @@ export function homeOnlineTag(view: RowView, list: Assistant[]): HTMLElement | n
     : h('span', { className: 'hu-online off' }, dotEl(false), '全部离线')
 }
 
-/** 家行每助理一圆点（owner 2026-10-15）：绿＝在线，红＝离线/未绑定；悬停报名字＋状态。0 助理回 null（空家由 zeroDotEl 配空心标记）。 */
-export function homeDotsEl(view: RowView, list: Assistant[]): HTMLElement | null {
-  if (!list.length) return null
-  const box = h('span', { className: 'hu-dots' })
-  for (const a of list) {
-    const bot = botOf(view, a)
-    const d = dotEl(!!bot && !!bot.connected)
-    d.setAttribute('data-tip', `${asstName(view, a)}：${bot ? (bot.connected ? '在线' : '离线') : '未绑定'}`)
-    box.appendChild(d)
-  }
-  return box
-}
-
-/** 零助理标记（owner 2026-10-15 真机）：空家行也配一枚空心标记（悬停“暂无助理”）——只看副标“0 位助理”文字不够有设计感。 */
-export function zeroDotEl(): HTMLElement {
-  const box = h('span', { className: 'hu-dots' })
-  box.appendChild(h('span', { className: 'hu-dot zero', 'data-tip': '暂无助理' }))
-  return box
-}
-
 export interface RowOpts {
   selected?: boolean
   flash?: boolean
@@ -195,19 +169,17 @@ function wireRow(el: HTMLElement, opts: RowOpts, id: string): void {
   }
 }
 
-/** 家行：头像 + 名 + 家状态章 + 每助理一圆点 / 空家空心标记 + N 位助理 · 回落来源 / 助理清单（孤儿家只有重绑/删除，正常家无删除入口 #127）。 */
+/** 家行（T13 #135，owner 选定的 B 方案）：**两段式**——
+ *  上段：头像 ＋ 名字（**只有手改过名**才挂「你取的名」）＋ 动作（孤儿＝选择工作区/删除家，正常＝重命名/更多）；
+ *  下段：`homeStrip` 的条带（助理芯片｜空家「＋ 建助理」｜孤儿红色警示行）。
+ *  为什么删掉老副标「N 位助理 · 跟随工作区名」：计数交给条带上的芯片与「N 助理」徽章（owner：纯文本不成形）；
+ *  默认命名规则不必写出来（owner 2026-10-15 真机）。孤儿判据唯一在 data/home-orphan.isOrphanHome（T10b #127）。 */
 export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElement {
   const d = homeDisplay(view, home)
   const list = asstOfHome(view, home.id)
-  const names = list.length ? `助理：${list.map((a) => asstName(view, a)).join('、')}` : ''
-  const nm = h('span', { className: 'hu-nm' }, h('b', {}, d.text))
   const orphan = isOrphanHome(home, view.workspaces)
-  const pill = homePillEl(home, orphan)
-  if (pill) nm.appendChild(pill)
-  nm.appendChild(homeDotsEl(view, list) ?? zeroDotEl())
-  const txt = h('span', { className: 'hu-txt' }, nm,
-    h('span', { className: 'hu-sub' }, `${list.length} 位助理 · ${d.from}`))
-  if (names) txt.appendChild(h('span', { className: 'hu-names' }, names))
+  const nm = h('span', { className: 'hu-nm' }, h('b', {}, d.text))
+  if (home.nameSource === 'user' && home.name.trim()) nm.appendChild(h('span', { className: 'hu-scr' }, '你取的名'))
   const acts = h('span', { className: 'hu-acts2' })
   if (orphan) orphanRowActs(acts, home.id, opts.onItemAct)
   else {
@@ -215,12 +187,31 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
     acts.appendChild(iconBtn('more-home', '更多', 'more'))
   }
   const el = h('div', {
-    className: `hu-row${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}`,
+    className: `hu-row hrow${orphan ? ' orphan' : ''}${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}`,
     role: 'button', tabindex: 0, 'data-open': 'L2', 'data-id': home.id, 'aria-label': `家 ${d.text}`,
   },
-    avatarEl(home.id, d.text, home.avatar),
-    txt,
-    acts)
+    h('div', { className: 'hu-btop' },
+      avatarEl(home.id, d.text, home.avatar),
+      h('span', { className: 'hu-txt' }, nm),
+      acts),
+    homeStrip({
+      homeId: home.id,
+      orphan,
+      path: home.path ?? '',
+      assts: list.map((a) => {
+        const bot = botOf(view, a)
+        const ch = channelLabel(a.channel)
+        const bound = !!a.botId
+        return {
+          id: a.id,
+          name: asstName(view, a),
+          avatar: a.avatar ?? null,
+          /* 绿＝在线；有机器人但快照没到＝离线（红）；没绑机器人＝空心（未绑定）。与老「每助理一圆点」口径一致。 */
+          on: bot ? !!bot.connected : (bound ? false : null),
+          sub: bot ? `${ch} · ${bot.botName || '未命名机器人'}` : `${ch} · ${bound ? '机器人不在线' : '未绑定'}`,
+        }
+      }),
+    }))
   wireRow(el, opts, home.id)
   return el
 }

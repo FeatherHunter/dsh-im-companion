@@ -707,16 +707,29 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.deepEqual(rows().map((r) => r.getAttribute('data-open')), ['L2', 'L2'], '家行带 data-open="L2"（空家也是行）');
   assert.deepEqual(rows().map((r) => r.getAttribute('data-id')), ['h1', 'h2'], '两行都在（T3 一区一家含无人之家仍成立）');
   assert.equal(cls(bodyEl, 'hu-more-row').length, 0, '折叠行退场（owner 2026-10-15：空家直接成行）');
-  assert.equal(cls(bodyEl, 'hu-dots').length, 2, '圆点条每家一行：有助理画圆点、空家画空心标记（owner 2026-10-15 真机）');
-  assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').length, 2, '一助理一圆点（h1 两位助理两圆点）');
-  assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').filter((d) => d.classList.contains('on')).length, 1, '绿＝在线（a1 已绑在线）');
-  assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').filter((d) => d.classList.contains('off')).length, 1, '红＝离线/未绑定（a2 无渠道）');
-  assert.ok(cls(one(rows()[0], 'hu-dots'), 'hu-dot').every((d) => String(d.getAttribute?.('data-tip') ?? '').length > 0), '圆点悬停报名字＋状态');
-  const zeroDots = cls(one(rows()[1], 'hu-dots'), 'hu-dot');
-  assert.equal(zeroDots.length, 1, '空家（h2）只配一枚空心标记');
-  assert.ok(zeroDots[0].classList.contains('zero'), '空心标记带 zero 类');
-  assert.equal(String(zeroDots[0].getAttribute?.('data-tip') ?? ''), '暂无助理', '空心标记悬停“暂无助理”');
-  for (const c of ['hu-av', 'hu-txt', 'hu-nm', 'hu-sub', 'hu-names', 'hu-acts2']) assert.ok(one(rows()[0], c), '家行解剖缺件：' + c);
+  /* T13 #135（owner 选定 B 方案）：家行＝两段式——上段身份（头像/名字/动作），下段条带。
+     老「N 位助理 · 跟随工作区名」副标与圆点条退役：计数交给芯片＋「N 助理」徽章，默认命名规则不再提示；
+     「每助理一状态点」保住了（完整档在芯片里、收起档贴头像右下角）。 */
+  assert.equal(cls(bodyEl, 'hu-dots').length, 0, '老圆点条退役（点已进芯片）');
+  assert.equal(cls(bodyEl, 'hu-strip').length, 2, '两家各一条条带（有助理＋空家都画）');
+  assert.equal(cls(bodyEl, 'hu-warnline').length, 0, '本夹具无孤儿家 ⇒ 没有红色警示行');
+  const chips = cls(one(rows()[0], 'hu-strip'), 'hu-chip');
+  assert.equal(chips.length, 2, 'h1 两位助理两枚芯片（一助理一芯片）');
+  assert.deepEqual(chips.map((c) => txt(one(c, 'hu-cnm'))), ['小帅', '客厅'], '芯片带名字（a2 未命名 ⇒ 回落家名）');
+  assert.equal(cls(one(rows()[0], 'hu-strip'), 'hu-cdot').filter((d) => d.classList.contains('on')).length, 1, '绿＝在线（a1 已绑在线）');
+  assert.equal(cls(one(rows()[0], 'hu-strip'), 'hu-cdot').filter((d) => d.classList.contains('none')).length, 1, '空心＝未绑定（a2 无渠道）');
+  assert.ok(chips.every((c) => String(c.getAttribute?.('aria-label') ?? '').includes('：')), '芯片带 aria-label（名字：状态）');
+  assert.ok(chips.some((c) => c.classList.contains('unbound')), '未绑定芯片虚线（不加任何状态文字）');
+  assert.equal(txt(one(rows()[0], 'hu-cnt')), '2 助理', '条带末端计数徽章：N 助理');
+  assert.equal(one(rows()[0], 'hu-strip').getAttribute?.('data-rung'), 'full', '量不到宽度（桩环境）时保持完整档，不许瞎降级');
+  /* 空家（h2）：零态即入口 —— 「＋ 建助理」虚线胶囊，且必须是 data-item-act（否则点它会被当成进 L2） */
+  const addBtn = one(rows()[1], 'hu-add');
+  assert.ok(addBtn, '空家条带＝「＋ 建助理」');
+  assert.equal(txt(addBtn), '＋ 建助理', '空家文案（不再写「这个家还没有助理 · 建一个」长句）');
+  assert.equal(addBtn.getAttribute?.('data-item-act'), 'new-asst', '空家入口走 item-act 拦截（不会误触进 L2）');
+  assert.equal(cls(one(rows()[1], 'hu-strip'), 'hu-chip').length, 0, '空家没有芯片');
+  for (const c of ['hu-av', 'hu-txt', 'hu-nm', 'hu-acts2', 'hu-btop', 'hu-strip']) assert.ok(one(rows()[0], c), '家行解剖缺件：' + c);
+  assert.equal(cls(one(rows()[0], 'hu-btop'), 'hu-av').length, 1, '头像在上段（条带里没有家头像）');
   assert.deepEqual(crumbInfo(bodyEl), [
     { lv: 'L1', label: '家', cur: true, goto: null },
     { lv: 'L2', label: '助理 · 客厅', cur: false, goto: 'L2' },
@@ -725,11 +738,13 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.ok(cls(bodyEl, 'hu-crumb').slice(1).every((c) => !c.getAttribute('aria-disabled')),
     '无焦点时后两级必须可点即进（owner：点击 tab 后就自动进去）');
   assert.equal(txt(foot()), '新建家', 'L1 底部主操作＝新建家');
-  /* 命名回落（渲染口径）：手改名冻结＞工作区标题＞目录名，副标如实标出来源 */
+  /* 命名回落（渲染口径）：手改名冻结＞工作区标题＞目录名；**默认规则不写出来**，只有手改过名才挂 tag */
   assert.equal(txt(tag(one(rows()[0], 'hu-nm'), 'b')), '客厅', '家名回落：没手改 ⇒ 用工作区标题');
-  assert.ok(txt(one(rows()[0], 'hu-sub')).includes('跟随工作区名'), '副标标出来源：跟随工作区名');
+  assert.equal(cls(one(rows()[0], 'hu-nm'), 'hu-scr').length, 0, '默认命名（跟随工作区）不挂来源 tag');
+  assert.equal(cls(bodyEl, 'hu-sub').length, 0, '老副标「N 位助理 · 跟随工作区名」整条退役');
+  assert.equal(cls(bodyEl, 'hu-names').length, 0, '老「助理：名字、名字」灰字行退役（改由芯片承担）');
   assert.equal(txt(tag(one(rows()[1], 'hu-nm'), 'b')), '书房基地', '家名冻结：手改过就不跟工作区（书房）');
-  assert.ok(txt(one(rows()[1], 'hu-sub')).includes('你改过的名字'), '副标标出来源：你改过的名字');
+  assert.equal(txt(one(one(rows()[1], 'hu-nm'), 'hu-scr')), '你取的名', '手改过名才挂「你取的名」tag');
   /* T6b #114：家行重命名/更多已启用（开家设置弹层：改名＋配图＋恢复默认） */
   assert.equal(cls(bodyEl, 'hu-ract').length, 4, 'L1 家行两枚行动作 ×2 行');
   assert.ok(cls(bodyEl, 'hu-ract').every((b) => !off(b)), '家行的重命名/更多全部可用');

@@ -1,0 +1,81 @@
+/** T13 #135 L1 家行（B 方案）追加样式：两段式卡片 ＋ 助理条带 ＋ 芯片 ＋ 悬停小气泡。
+ *
+ * 为什么单开文件、并且只做「追加」：`home-ui-styles.ts` 已顶 300 行红线（契约 §5），而家行改版要
+ * 加十几个类。故新增规则一律落这里，经 `installFeatureStyles` 以**独立 id** 注册（与绿框同款机制，
+ * 幂等、热重载安全）；本文件不删改既有规则，`.hu-row` 的 grid 布局留给**助理行/渠道行**照旧用，
+ * 家行靠 `.hrow` 修饰类切成两段式（见 `home-row-strip.ts`）。
+ *
+ * 命名空间（契约 §6）：所有规则挂 `.home-ui` 之下；新类一律 `hu-` 前缀；颜色只走 `--hu-*` 令牌
+ * ⇒ 深浅主题自动跟随（不写死颜色值）。 */
+import { installFeatureStyles } from '../theme'
+
+export const HOME_ROW_STYLE_ID = 'home-row-l1'
+
+export const HOME_ROW_CSS = `
+/* 家行＝两段：上段身份（头像/名字/动作），下段条带（助理 / 空家入口 / 孤儿警示）。 */
+.home-ui .hu-row.hrow{display:block;padding:10px 11px}
+.home-ui .hu-btop{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center}
+/* 手改过名才挂的来源 tag（默认命名规则不写出来 —— owner 2026-10-15） */
+.home-ui .hu-scr{font-size:10px;font-weight:600;color:var(--hu-ink-2);background:var(--hu-neutral);border-radius:5px;padding:1px 6px;flex:none}
+
+/* ---- 条带：一行不换行、溢出裁掉；降级由 JS 实测决定（见 home-row-strip.fitOnce） ---- */
+.home-ui .hu-strip{display:flex;align-items:center;gap:6px;flex-wrap:nowrap;overflow:hidden;margin-top:9px;padding-top:9px;border-top:1px solid var(--hu-line-soft);min-height:30px}
+/* ---- 助理芯片：头像 ＋ 名字 ＋ 状态点（**一个状态字都不写**，owner 2026-10-15）---- */
+.home-ui .hu-chip{display:inline-flex;align-items:center;gap:6px;flex:none;max-width:180px;background:var(--hu-panel-2);
+  border:1px solid var(--hu-line-soft);border-radius:999px;padding:3px 9px 3px 3px;font-size:11px;font-weight:600;color:var(--hu-ink);
+  transition:border-color var(--hu-t) var(--hu-ease),background var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease)}
+.home-ui .hu-chip:hover{border-color:color-mix(in srgb,var(--hu-accent) 55%,var(--hu-line));background:var(--hu-panel-3);transform:translateY(-1px)}
+.home-ui .hu-chip.cmp{padding:3px}
+.home-ui .hu-chip .hu-cav{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:9px;font-weight:700;flex:none;position:relative}
+.home-ui .hu-chip .hu-cnm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.home-ui .hu-chip.unbound{border-style:dashed;color:var(--hu-ink-2)}
+/* 状态点：绿＝在线、红＝离线/未绑定；收起档时贴到头像右下角（描边用面板底色，压出头像外沿） */
+.home-ui .hu-cdot{width:7px;height:7px;border-radius:50%;flex:none;background:var(--hu-ink-3)}
+.home-ui .hu-cdot.on{background:var(--af-success)}
+.home-ui .hu-cdot.off{background:var(--hu-bad)}
+.home-ui .hu-cdot.none{background:none;border:1.5px solid var(--hu-ink-3);opacity:.7;box-sizing:border-box}
+.home-ui .hu-chip .hu-cav .hu-cdot{position:absolute;right:-1px;bottom:-1px;border:1.5px solid var(--hu-panel-2)}
+
+/* ---- 空家：＋ 建助理（零态即入口；可点控件必须给足交互反馈）---- */
+.home-ui .hu-add{display:inline-flex;align-items:center;gap:4px;flex:none;font:inherit;font-size:11px;font-weight:650;cursor:pointer;
+  color:var(--hu-accent-deep);background:transparent;border:1px dashed color-mix(in srgb,var(--hu-accent) 50%,transparent);
+  border-radius:999px;padding:3px 10px;transition:background var(--hu-t) var(--hu-ease),border-color var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease)}
+.home-ui .hu-add:hover{background:var(--hu-accent-soft);border-color:var(--hu-accent);border-style:solid}
+.home-ui .hu-add:active{transform:scale(.95)}
+
+/* ---- 计数徽章：完整档与降级档同一个形状，密度说明「一共有几位」 ---- */
+.home-ui .hu-cnt{display:inline-flex;align-items:center;flex:none;font-size:11px;font-weight:700;line-height:1.6;padding:1.5px 8px;border-radius:999px;
+  background:color-mix(in srgb,var(--hu-accent) 15%,transparent);color:var(--hu-accent)}
+.home-ui .hu-cnt.many{background:color-mix(in srgb,var(--hu-accent) 26%,transparent)}
+
+/* ---- 孤儿家：红色警示一条（原工作区目录 ＋ ⚠），卡片红描边（owner 2026-10-15：一律改红）---- */
+.home-ui .hu-row.hrow.orphan{background:color-mix(in srgb,var(--hu-bad) 7%,var(--hu-panel));border-color:color-mix(in srgb,var(--hu-bad) 40%,var(--hu-line-soft))}
+.home-ui .hu-warnline{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid color-mix(in srgb,var(--hu-bad) 26%,transparent);min-height:30px}
+.home-ui .hu-warnline .hu-path{flex:1;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:10.5px;color:var(--hu-ink-3);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.home-ui .hu-pill.alert{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;border-radius:999px;padding:2px 8px;flex:none;
+  color:var(--hu-bad);background:var(--hu-bad-soft);border:1px solid color-mix(in srgb,var(--hu-bad) 58%,transparent)}
+
+/* ---- 键盘可达：条带里的可点件必须给焦点环（与既有 focus-visible 口径一致）---- */
+.home-ui .hu-add:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
+
+/* ---- 悬停小气泡：body 级 float（宿主同带 .home-ui），不被列表 overflow 裁掉 ---- */
+.home-ui.hu-tiphost{position:fixed;z-index:60;pointer-events:none;display:flex;align-items:center;gap:9px;max-width:260px;
+  padding:8px 11px;border-radius:12px;background:var(--hu-panel-3);border:1px solid var(--hu-line);
+  box-shadow:var(--hu-sh-pop);color:var(--hu-ink);font-size:12px;line-height:1.35;
+  opacity:0;transform:translateY(4px) scale(.97);transition:opacity var(--hu-t) var(--hu-ease),transform var(--hu-t) var(--hu-ease)}
+.home-ui.hu-tiphost.on{opacity:1;transform:translateY(0) scale(1)}
+.home-ui.hu-tiphost .hu-tav{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
+.home-ui.hu-tiphost .hu-tt{min-width:0}
+.home-ui.hu-tiphost .hu-tt b{display:block;font-size:12.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui.hu-tiphost .hu-tt small{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:11px;color:var(--hu-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+`
+
+let installed = false
+
+/** 幂等装配（首次画家行时调一次就够）：`installFeatureStyles` 按 id 复用同一 <style>，热重载安全。 */
+export function ensureHomeRowStyles(): void {
+  if (installed) return
+  installed = true
+  installFeatureStyles(HOME_ROW_STYLE_ID, HOME_ROW_CSS)
+}

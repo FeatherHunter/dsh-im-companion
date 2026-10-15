@@ -12,6 +12,7 @@ import { crumbsEl, footEl, headEl, slideTab, type Level } from './home-frame'
 import { bindAsstPop, newAsstPop, newHomePop, renameAsstPop, renameHomePop, type FormOps } from './home-forms'
 import { moveAsstPop, unbindAsstPop } from './home-move-forms'
 import { orphanHomeAct } from './home-orphan-forms'
+import { newAsstAct } from './home-create-act'
 import type { MoveOps } from './home-move-ops'
 import { closeHomePop } from './home-pop'
 import { skeletonRows, viewOf, type RowView } from './home-rows'
@@ -119,6 +120,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel.body', action: 'act:' + kind, ok: true, message: 'id=' + id })
     /* T10b #127 孤儿家两动作（选择工作区 / 删除家）：自成一文件，这里只留一行入口（本文件余量只剩这一行）。 */
     if (orphanHomeAct(kind, id, anchor, { view: v, ops: deps.ops, onDone: render })) return
+    /* T13 #135 空家行「＋ 建助理」跨级入口：同款做法（自成一文件），新建完的落点与 L2 底部主按钮同一份。 */
+    if (newAsstAct(kind, id, actAnchor(kind, id, anchor), { view: v, ops: deps.ops, onDone: createDone })) return
     if (kind === 'connect-a' || kind === 'connect') {
       const a = v.assistants.find((x) => x.id === id)
       if (a && a.status !== 'bound') {
@@ -197,25 +200,28 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     slideTab(fresh, fresh.querySelector('.hu-tablk') as HTMLElement | null)
   }
 
+  /* 新建完成后的落点（建家→L2 落到新建的家；建助理→L3 落到最新那一位）：L2 底部主按钮与
+   * L1 空家行的「＋ 建助理」跨级入口（T13 #135）**共用这一份**，语义不许两写。 */
+  const createDone = (next: 'L2' | 'L3', homeId: string, workspaceId?: string): void => {
+    const fresh = view()
+    if (next === 'L2') {
+      const created = fresh.homes.find((x) => x.workspaceId && x.workspaceId === workspaceId)
+      selHome = created ? created.id : homeId
+      flash(selHome)
+    } else {
+      selHome = homeId
+      const list = fresh.assistants.filter((a) => a.homeId === homeId)
+      const newest = list.slice().sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0]
+      selAsst = newest ? newest.id : ''
+      if (selAsst) flash(selAsst)
+    }
+    level = next
+    render()
+  }
+
   function openCreate(): void {
     if (level === 'L3') return
-    const v = view()
-    const form = { view: v, ops: deps.ops, selHome, lockHome: level === 'L2' && !channelMode(), onDone: (next: 'L2' | 'L3', homeId: string, workspaceId?: string) => {
-      const fresh = view()
-      if (next === 'L2') {
-        const created = fresh.homes.find((x) => x.workspaceId && x.workspaceId === workspaceId)
-        selHome = created ? created.id : homeId
-        flash(selHome)
-      } else {
-        selHome = homeId
-        const list = fresh.assistants.filter((a) => a.homeId === homeId)
-        const newest = list.slice().sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))[0]
-        selAsst = newest ? newest.id : ''
-        if (selAsst) flash(selAsst)
-      }
-      level = next
-      render()
-    } }
+    const form = { view: view(), ops: deps.ops, selHome, lockHome: level === 'L2' && !channelMode(), onDone: createDone }
     if (channelMode() || level === 'L2') newAsstPop(anchorOf, form)
     else newHomePop(anchorOf, form)
   }

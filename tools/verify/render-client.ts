@@ -342,12 +342,19 @@ const popBtn = (label: string) => popNode()?.querySelectorAll('.hu-pbtn-s')?.fin
 if (homeRows().length !== 4) throw new Error('L1 家行数应为 4（空家直接成行、无折叠），实际 ' + homeRows().length + '（折叠退场 owner 2026-10-15）');
 const moreRow = q1('.hu-more-row');
 if (moreRow) throw new Error('折叠行应已退场，实际仍在：' + String((moreRow as any)?.textContent ?? ''));
-/* 家行每助理一圆点＋空家一枚空心标记：小帅窝 2 助理（aaaa/bbbb 在线）＋ 星火 1（cccc 离线）＋ wechat 1（wx 在线）⇒ 4 条圆点条 / 5 圆点 / 3 绿 / 1 空心；空房间行配空心标记。 */
-const dotBoxes = all('.hu-dots');
-const dots = all('.hu-dot');
-const dotsOn = dots.filter((d: any) => (d.classList as any)?.contains('on'));
-const dotsZero = dots.filter((d: any) => (d.classList as any)?.contains('zero'));
-const emptyRowDots = (homeRows()[3] as any)?.querySelector?.('.hu-dot') ?? null;
+/* T13 #135（owner 选定 B 方案）：家行改**两段式**——条带里一助理一芯片（芯片自带一枚状态点）＋末端
+ * 「N 助理」徽章；空家条带＝「＋ 建助理」。老圆点条（.hu-dots）与老副标（N 位助理 · 来源）已退役。
+ * 夹具：小帅窝 2 助理（aaaa/bbbb 在线）＋ 星火 1（cccc 离线）＋ wechat 1（wx 在线）＋ 空房间 0 ⇒
+ * 4 条条带 / 4 枚芯片 / 3 绿 1 红 0 空心 / 3 枚徽章 / 1 枚「＋ 建助理」。 */
+const strips = all('.hu-strip');
+const chips = all('.hu-chip');
+const chipDots = all('.hu-cdot');
+const chipDotsOn = chipDots.filter((d: any) => (d.classList as any)?.contains('on'));
+const chipDotsOff = chipDots.filter((d: any) => (d.classList as any)?.contains('off'));
+const chipDotsNone = chipDots.filter((d: any) => (d.classList as any)?.contains('none'));
+const badges = all('.hu-cnt');
+const addBtns = all('.hu-add');
+const emptyRowAdd = (homeRows()[3] as any)?.querySelector?.('.hu-add') ?? null;
 const plannedL1 = all('.hu-ract').filter((b: any) => b.classList.contains('planned')).length;
 const plannedAria = all('.hu-ract').filter((b: any) => b.classList.contains('planned')).every((b: any) => b.getAttribute('aria-disabled') === 'true');
 const avatarOf = (row: any): string => String(row?.querySelector?.('.hu-av')?.textContent ?? '');
@@ -483,13 +490,13 @@ const checks: [string, boolean][] = [
   ['L1 家名（工作区标题回落）', l1Text.includes('小帅窝')],
   ['L1 家名（空标题回落目录基名）', l1Text.includes('wechat')],
   ['L1 空家直接成行（无折叠行）', l1HomeCount === 4 && !moreRow && l1Text.includes('空房间')],
-  ['L1 空家行可见与 0 位助理', l1Text.includes('空房间') && l1Text.includes('0 位助理')],
+  ['L1 空家行可见（零态＝「＋ 建助理」，不再写「0 位助理」）', l1Text.includes('空房间') && !l1Text.includes('0 位助理') && addBtns.length === 1 && String(emptyRowAdd?.getAttribute?.('data-item-act')) === 'new-asst'],
   ['头像字形：CJK 单字 / 拉丁两词首字母（dsh-* 不再全是 d）', avatar0 === '小' && avatarWe === 'WE'],
   ['L1 行动作已启用（T6b #114：重命名/更多不再 planned）', plannedL1 === 0],
-  ['L1 助理计数（N 位助理）', l1Text.includes('2 位助理')],
-  ['L1 命名回落来源行（原型 sub）', l1Text.includes('跟随工作区名') && l1Text.includes('跟随目录名')],
-  ['L1 助理清单行（原型 names）', l1Text.includes('助理：')],
-  ['L1 家行每助理一圆点＋空家空心标记（绿在线/红离线/空心暂无助理；悬停报名字＋状态）', dotBoxes.length === 4 && dots.length === 5 && dotsOn.length === 3 && dotsZero.length === 1 && (emptyRowDots as any)?.classList?.contains('zero') && dots.every((d: any) => String((d as any).getAttribute?.('data-tip') ?? '').length > 0)],
+  ['L1 助理计数（末端 N 助理徽章）', badges.length === 3 && badges.some((b: any) => String(b.textContent).trim() === '2 助理')],
+  ['L1 默认命名规则不再提示（跟随工作区名/跟随目录名退役）', !l1Text.includes('跟随工作区名') && !l1Text.includes('跟随目录名')],
+  ['L1 助理清单改芯片（一助理一芯片，带名字）', chips.length === 4 && chips.every((c: any) => String(c.textContent).trim().length > 0)],
+  ['L1 每助理一状态点进了芯片（绿在线/红离线/空心未绑定）', strips.length === 4 && chipDots.length === 4 && chipDotsOn.length === 3 && chipDotsOff.length === 1 && chipDotsNone.length === 0 && all('.hu-dots').length === 0],
   ['L1 无“未命名”', !l1Text.includes('未命名')],
   ['L1 家行 4 枚（钻取锚点 data-open=L2）', l1HomeCount === 4],
   ['L1 底部主操作＝新建家（随层）', l1Foot.includes('新建家')],
