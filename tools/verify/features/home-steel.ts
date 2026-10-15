@@ -1263,10 +1263,14 @@ test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移
   const prevRaf = (globalThis as any).requestAnimationFrame;
   (globalThis as any).requestAnimationFrame = (fn: () => void) => { rafQueue.push(fn); return rafQueue.length };
   const flush = (): void => { rafQueue.splice(0).forEach((fn) => fn()); };
-  const mk = (chipLeft: number, chipWidth: number, hasCur = true): any => {
+  const mk = (chipLeft: number, chipWidth: number, hasCur = true, lv = 'L1'): any => {
     const crumbs: any = domDoc.createElement('div');
     const tab: any = domDoc.createElement('span');
     const chip: any = domDoc.createElement('button');
+    const lvEl: any = domDoc.createElement('span');
+    lvEl.className = 'hu-lv';
+    lvEl.textContent = lv;
+    chip.appendChild(lvEl);
     crumbs.querySelector = (sel: string) => (String(sel).indexOf('hu-crumb') >= 0 && hasCur ? chip : null);
     crumbs.scrollLeft = 0;
     crumbs.getBoundingClientRect = () => ({ left: 100, top: 200, width: 540, height: 41.25 });
@@ -1289,7 +1293,7 @@ test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移
   assert.notEqual(a.tab.style.transition, 'none', '落位后必须恢复过渡（CSS 的 spring 才有机会生效）');
 
   /* 换层（L1→L2）：液签必须**从旧 chip 滑到新 chip** —— FLIP 先按回旧位，再放开过渡滑走。 */
-  const b = mk(300, 60);
+  const b = mk(300, 60, true, 'L2');
   frame.slideTab(b.crumbs, b.tab);
   assert.equal(b.tab.style.transform, 'translate(12px, 8px)', 'FLIP 第一步必须按回上一次的位置（否则没有起点，无从滑动）');
   assert.equal(b.tab.style.transition, 'none', '按回旧位那一刻不得有过渡');
@@ -1297,11 +1301,24 @@ test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移
   assert.equal(b.tab.style.transform, 'translate(200px, 8px)', '下一帧放开过渡滑到新 chip（液态 tab）');
 
   /* 同点（悬停换行不改当前层）：起止重合 ⇒ 零位移，不抖。 */
-  const c = mk(300, 60);
+  const c = mk(300, 60, true, 'L2');
   frame.slideTab(c.crumbs, c.tab);
   const before = c.tab.style.transform;
   flush();
   assert.equal(c.tab.style.transform, before, '目标没变时起止同点 ⇒ 零位移（真机「反复动画/抖动」的根因）');
+
+  /* 同 chip 只变宽（悬停改文案/骨架→真行）：矩形变了但 chip 没换 ⇒ 瞬放，不许滑（入场怪滑的根因）。 */
+  const d = mk(320, 70, true, 'L2');
+  frame.slideTab(d.crumbs, d.tab);
+  assert.equal(d.tab.style.transform, 'translate(220px, 8px)', '同 chip 变宽直接落新位，不许从旧位滑过来');
+  flush();
+
+  /* 切回 L1：chip 变了 ⇒ 再滑（矩形恰好回到 a 的位置，起点必须是 d 的旧位）。 */
+  const e = mk(112, 46.38, true, 'L1');
+  frame.slideTab(e.crumbs, e.tab);
+  assert.equal(e.tab.style.transform, 'translate(220px, 8px)', 'FLIP 起点＝上一次落位');
+  flush();
+  assert.equal(e.tab.style.transform, 'translate(12px, 8px)', '切层滑到新 chip（液态只发生在换 chip 时）');
 
   (globalThis as any).requestAnimationFrame = prevRaf;
 
@@ -1315,6 +1332,8 @@ test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移
   const bodySrc = readFileSync(join(COMP, 'panel-body.ts'), 'utf8');
   assert.ok(!/slideTab\([^;]*,\s*true\)/.test(bodySrc), '调用点不得再传瞬时落位（FLIP 已接管判定）');
   assert.ok(!bodySrc.includes('lastLevel'), 'lastLevel 记账必须退场（瞬时/动画判定归 slideTab）');
+  const frameSrc = readFileSync(join(COMP, 'home-frame.ts'), 'utf8');
+  assert.ok(frameSrc.includes('lastTabKey'), '换 chip 判定收归 slideTab（lastTabKey），调用点不记账');
 });
 
 /* —— 面包屑默认路径（owner 2026-10-13：「当没有焦点时，默认二级目录 三级目录 tab 上的内容

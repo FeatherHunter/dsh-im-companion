@@ -111,11 +111,14 @@ export function crumbsEl(o: CrumbOpts): HTMLElement {
  *   起止同点（悬停换行不改当前层）⇒ 零位移 ⇒ 不抖；层级切换 ⇒ 从旧 chip 真滑到新 chip。
  * 尺寸全部取 chip 的实测矩形（原型用 top/bottom 内缩，液签会比 chip 高约 4px）。 */
 let lastTabRect: { x: number; y: number; w: number; h: number } | null = null
+/** 当前 chip 身份（L1/L2/L3）：FLIP 只认「换 chip」——同 chip 变宽（悬停改文案/骨架→真行）
+ * 一律瞬放；入场（无旧位）也瞬放。液态只发生在三个 tab 之间（owner 2026-10-15 真机）。 */
+let lastTabKey: string | null = null
 
 export function slideTab(crumbs: HTMLElement, tab: HTMLElement | null): void {
   if (!tab || typeof crumbs.getBoundingClientRect !== 'function') return
   const cur = crumbs.querySelector('.hu-crumb[aria-current="true"]') as HTMLElement | null
-  if (!cur) { tab.setAttribute('hidden', ''); lastTabRect = null; return }
+  if (!cur) { tab.setAttribute('hidden', ''); lastTabRect = null; lastTabKey = null; return }
   const cr = crumbs.getBoundingClientRect()
   const r = cur.getBoundingClientRect()
   if (!r.width) return
@@ -126,9 +129,12 @@ export function slideTab(crumbs: HTMLElement, tab: HTMLElement | null): void {
     tab.style.height = `${rect.h}px`
     tab.style.transform = `translate(${rect.x}px, ${rect.y}px)`
   }
+  const key = (cur.querySelector('.hu-lv') as HTMLElement | null)?.textContent ?? ''
+  const switched = lastTabKey !== null && lastTabKey !== key
+  lastTabKey = key
   const prev = tab.style.transition
   const raf = typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null
-  if (lastTabRect) {
+  if (lastTabRect && switched) {
     tab.style.transition = 'none'
     place(lastTabRect)
     const play = (): void => { tab.style.transition = prev || ''; place(next) }
