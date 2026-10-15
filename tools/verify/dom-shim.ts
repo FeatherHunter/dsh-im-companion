@@ -168,6 +168,13 @@ export class El {
   getPropertyValue(k: string) { return this._style[k] ?? ''; }
   contains(n: unknown) { return n === this || this.childNodes.includes(n as El) || this.childNodes.some((c) => c.contains?.(n)); }
   get parentElement() { return this.parentNode?.nodeType === 1 ? this.parentNode : null; }
+  /* 真机恒有的几何 API（桩里补零 rect：量不到＝零位，不许抛 —— 气泡 paint 把“点亮”
+   * 押在定位之后，桩里一抛就永不亮，红的是桩不是实现；旧断言“零 rect 钉 (8,8)”即此口径）。 */
+  getBoundingClientRect() { return { top: 0, left: 0, bottom: 0, right: 0, width: 0, height: 0, x: 0, y: 0 }; }
+  get offsetWidth() { return 0; }
+  get offsetHeight() { return 0; }
+  get clientWidth() { return 0; }
+  get clientHeight() { return 0; }
 }
 
 export class TextNode extends El {

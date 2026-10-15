@@ -11,14 +11,15 @@ import { h } from '../dom'
 export type OrphanRowAct = NonNullable<RowOpts['onItemAct']>
 
 /** 把两枚按钮追加进调用方给的 `.hu-acts2` 容器（容器归调用方，避免两层同名包裹）。
- * 「选择工作区」挂 `.strong`（B 原型收敛版：accent 高亮的主动作）；「删除家」保持 `.danger`。 */
+ * 「选择工作区」挂 `.strong`（B 原型收敛版：accent 高亮的主动作）；「删除家」保持 `.danger`，
+ * 首点布防再挂 `.armed` 先变色（样式在 `home-row-styles.ts`，与上报解耦）。 */
 export function orphanRowActs(host: HTMLElement, id: string, onAct?: OrphanRowAct): void {
   const rebind = h('button', { className: 'hu-ract strong', type: 'button', 'data-item-act': 'rebind-home', 'data-id': id }, '选择工作区')
   const del = h('button', { className: 'hu-ract danger', type: 'button', 'data-id': id }, '删除家')
   let armed = false
   del.addEventListener('click', (e) => {
     e.stopPropagation()
-    if (!armed) { armed = true; del.textContent = '再点一次确认删除'; return }
+    if (!armed) { armed = true; del.textContent = '再点一次确认删除'; del.classList.add('armed'); return }
     onAct?.('remove-home', id, del)
   })
   host.appendChild(rebind)

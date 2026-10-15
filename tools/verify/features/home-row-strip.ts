@@ -196,6 +196,11 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
     String(n.nodeName).toLowerCase() === 'style' && String(n.getAttribute?.('id') ?? (n as any).id ?? '') === 'af-feature-home-row-l1');
   assert.equal(back.length, 1, '悬停时样式先重装（认领的旧盒也不会裸奔）');
   assert.equal(shown().length, 1, '重装后气泡照常亮起');
+  /* ⑤ 收起＝灭掉＋倒内容：以后任何时刻盒子里都没旧字 ⇒ 样式再掉、定位再丢，也没有裸字可露 */
+  tip.hideAsstTip();
+  assert.equal(shown().length, 0, '收起后不亮');
+  assert.equal(boxes().length, 1, '盒子本身复用（只清空，不拆盒）');
+  assert.equal(txt(boxes()[0]), '', '收起即清空内容（旧字不许在盒子里过夜）');
   host.removeChild(el2);
   tip.hideAsstTip();
 });
@@ -225,8 +230,22 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   const orphanSrc = readFileSync(join(COMP, 'home-orphan-row.ts'), 'utf8');
   assert.ok(orphanSrc.includes('hu-ract strong'), '「选择工作区」挂 .strong（B 原型 accent 高亮主动作）');
   assert.ok(css.includes('.home-ui .hu-ract.strong'), '基表没有 .strong 档 ⇒ 新表必须自带（否则类名无样式）');
+  /* 孤儿两枚按钮交互钉子（owner 2026-10-16：悬停没反应）：基表 hover 把 .danger 排除在外、
+     .strong 的 idle 值又与基表 hover 值撞车 ⇒ 反馈必须落新表，这里钉死 */
+  assert.ok(css.includes('.hu-acts2 .hu-ract.strong:hover') && css.includes('.hu-acts2 .hu-ract.danger:hover'),
+    '孤儿两枚按钮悬停都有反馈（选择工作区加深＋微抬，删除家加深＋微抬）');
+  assert.ok(css.includes('.hu-acts2 .hu-ract:active'), '按钮按下保持缩放反馈（不被悬停的位移吃掉）');
+  assert.ok(css.includes('.hu-ract.danger.armed'), '删除家布防态有 .armed 视觉（首点先变色，次点才上报）');
+  assert.ok(orphanSrc.includes('armed'), '布防态真的挂到按钮上（不是只有 CSS 空等）');
+  assert.ok(css.includes('.hu-acts2 .hu-ract:focus-visible'), '孤儿按钮键盘可达（焦点环与「＋ 建助理」同口径）');
   assert.ok(css.includes('.home-ui .hu-row.hrow:hover'), '家行悬停只换边框＋底色（老投影在这里不出现，还原型）');
   assert.ok(rowsSrc.includes('hu-sstrip'), '骨架行两段式（上段身份＋下段条带灰条，与真行同几何）');
   assert.ok(css.includes('.home-ui .hu-sstrip'), '骨架条带样式与新表同注册（不回基表添行）');
+  /* 气泡永不裸奔钉子（owner 2026-10-16：左下角裸字）：无样式不画、定位完才亮、收起即倒内容 */
+  const tipSrc = readFileSync(join(COMP, 'home-row-tip.ts'), 'utf8');
+  assert.ok(tipSrc.includes('homeRowStylesAlive'), '画之前先查样式活没活（死了就不画，宁可不弹也不裸）');
+  assert.ok(tipSrc.indexOf("classList.add('on')") > tipSrc.indexOf('el.style.left'),
+    '先定位、后点亮（定位丢了盒子就不亮，不许无定位现身左下角）');
+  assert.ok(tipSrc.includes("box.textContent = ''"), '收起即倒掉内容（旧字不过夜）');
 });
 

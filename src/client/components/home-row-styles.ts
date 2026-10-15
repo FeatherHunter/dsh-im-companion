@@ -18,6 +18,20 @@ export const HOME_ROW_CSS = `
 .home-ui .hu-row.hrow:hover{box-shadow:none}
 /* 孤儿家主动作「选择工作区」：accent 高亮（B 原型 .hu-ract.strong，基表没有这档，落在这里） */
 .home-ui .hu-ract.strong{color:var(--hu-accent-deep);border-color:var(--hu-accent);background:var(--hu-accent-soft);font-weight:600}
+/* ---- 孤儿家两枚按钮的悬停/布防反馈（owner 2026-10-16：之前悬停没反应）----
+ * 根因：基表 hover 把 .danger 排除在外（删除家天然无悬停）；.strong 的 idle 值又与基表 hover 值
+ * 撞车（选择工作区悬停“看起来没动”）。⇒ 两枚按钮的反馈都落在这里，不回基表添行。
+ * 特异度说明：「.home-ui .hu-acts2 .hu-ract.strong:hover」（5 级）压过基表 hover（4 级），与装配顺序无关。 */
+.home-ui .hu-acts2 .hu-ract{transition:background var(--hu-t) var(--hu-ease),border-color var(--hu-t) var(--hu-ease),box-shadow var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease)}
+.home-ui .hu-acts2 .hu-ract.strong:hover{background:color-mix(in srgb,var(--hu-accent) 30%,transparent);border-color:var(--hu-accent);
+  box-shadow:0 2px 10px -3px var(--hu-accent);transform:translateY(-1px)}
+.home-ui .hu-acts2 .hu-ract.danger:hover{background:color-mix(in srgb,var(--hu-bad) 26%,transparent);border-color:var(--hu-bad);
+  box-shadow:0 2px 10px -3px var(--hu-bad);transform:translateY(-1px)}
+.home-ui .hu-acts2 .hu-ract:active{transform:scale(.94)}
+/* 「删除家」首点只布防：挂 .armed 先变色（次点才上报，见 home-orphan-row.ts） */
+.home-ui .hu-acts2 .hu-ract.danger.armed{background:color-mix(in srgb,var(--hu-bad) 38%,transparent);border-color:var(--hu-bad);
+  color:color-mix(in srgb,var(--hu-bad) 72%,var(--hu-ink));font-weight:700}
+.home-ui .hu-acts2 .hu-ract:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
 .home-ui .hu-btop{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center}
 /* 手改过名才挂的来源 tag（默认命名规则不写出来 —— owner 2026-10-15） */
 .home-ui .hu-scr{font-size:10px;font-weight:600;color:var(--hu-ink-2);background:var(--hu-neutral);border-radius:5px;padding:1px 6px;flex:none}
@@ -84,17 +98,32 @@ export const HOME_ROW_CSS = `
 
 let installed = false
 
-/** 样式标签还在不在（只认 flag 不够：热重载/插件重载可能卸掉标签，#136 左下角裸字即此）。 */
-function styleAlive(): boolean {
+/** 样式标签还在不在（只认 flag 不够：热重载/插件重载可能卸掉标签，#136 左下角裸字即此）。
+ * 气泡 paint 前调它验活：死了就不画（宁可不弹也不裸），见 `home-row-tip.ts paint`。
+ * 两段查：真 DOM 走 `getElementById` 快路；单测桩的 `getElementById` 只认属性位而
+ * `installTag` 写的是 `.id` 属性位（真 DOM 会反射、桩里不反射）⇒ 桩里退到扫 head，
+ * 比照 verify 里的同款写法（`home-row-strip.ts` 样式测试那段）。 */
+export function homeRowStylesAlive(): boolean {
   try {
-    const d = (globalThis as unknown as { document?: { getElementById?: (id: string) => unknown } }).document
-    return !!d?.getElementById?.('af-feature-' + HOME_ROW_STYLE_ID)
+    const d = (globalThis as unknown as { document?: {
+      getElementById?: (id: string) => unknown,
+      head?: { childNodes?: ArrayLike<unknown> },
+    } }).document
+    const id = 'af-feature-' + HOME_ROW_STYLE_ID
+    if (d?.getElementById?.(id)) return true
+    const kids = d?.head?.childNodes
+    const n = (kids as ArrayLike<unknown> | undefined)?.length ?? 0
+    for (let i = 0; i < n; i++) {
+      const el = (kids as ArrayLike<any>)[i] as any
+      if (String(el?.getAttribute?.('id') ?? el?.id ?? '') === id) return true
+    }
+    return false
   } catch { return true }
 }
 
 /** 幂等装配（首次画家行时调一次就够）：`installFeatureStyles` 按 id 复用同一 <style>，热重载安全。 */
 export function ensureHomeRowStyles(): void {
-  if (installed && styleAlive()) return
+  if (installed && homeRowStylesAlive()) return
   installed = true
   installFeatureStyles(HOME_ROW_STYLE_ID, HOME_ROW_CSS)
 }
