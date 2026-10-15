@@ -342,10 +342,11 @@ const popBtn = (label: string) => popNode()?.querySelectorAll('.hu-pbtn-s')?.fin
 if (homeRows().length !== 4) throw new Error('L1 家行数应为 4（空家直接成行、无折叠），实际 ' + homeRows().length + '（折叠退场 owner 2026-10-15）');
 const moreRow = q1('.hu-more-row');
 if (moreRow) throw new Error('折叠行应已退场，实际仍在：' + String((moreRow as any)?.textContent ?? ''));
-/* 家行每助理一圆点：小帅窝 2 助理（aaaa/bbbb 在线）＋ 星火 1（cccc 离线）＋ wechat 1（wx 在线）⇒ 3 条圆点条 / 4 圆点 / 3 绿；空房间无圆点。 */
+/* 家行每助理一圆点＋空家一枚空心标记：小帅窝 2 助理（aaaa/bbbb 在线）＋ 星火 1（cccc 离线）＋ wechat 1（wx 在线）⇒ 4 条圆点条 / 5 圆点 / 3 绿 / 1 空心；空房间行配空心标记。 */
 const dotBoxes = all('.hu-dots');
 const dots = all('.hu-dot');
 const dotsOn = dots.filter((d: any) => (d.classList as any)?.contains('on'));
+const dotsZero = dots.filter((d: any) => (d.classList as any)?.contains('zero'));
 const emptyRowDots = (homeRows()[3] as any)?.querySelector?.('.hu-dot') ?? null;
 const plannedL1 = all('.hu-ract').filter((b: any) => b.classList.contains('planned')).length;
 const plannedAria = all('.hu-ract').filter((b: any) => b.classList.contains('planned')).every((b: any) => b.getAttribute('aria-disabled') === 'true');
@@ -488,7 +489,7 @@ const checks: [string, boolean][] = [
   ['L1 助理计数（N 位助理）', l1Text.includes('2 位助理')],
   ['L1 命名回落来源行（原型 sub）', l1Text.includes('跟随工作区名') && l1Text.includes('跟随目录名')],
   ['L1 助理清单行（原型 names）', l1Text.includes('助理：')],
-  ['L1 家行每助理一圆点（绿在线/红离线；空家无圆点；悬停报名字＋状态）', dotBoxes.length === 3 && dots.length === 4 && dotsOn.length === 3 && !emptyRowDots && dots.every((d: any) => String((d as any).getAttribute?.('data-tip') ?? '').length > 0)],
+  ['L1 家行每助理一圆点＋空家空心标记（绿在线/红离线/空心暂无助理；悬停报名字＋状态）', dotBoxes.length === 4 && dots.length === 5 && dotsOn.length === 3 && dotsZero.length === 1 && (emptyRowDots as any)?.classList?.contains('zero') && dots.every((d: any) => String((d as any).getAttribute?.('data-tip') ?? '').length > 0)],
   ['L1 无“未命名”', !l1Text.includes('未命名')],
   ['L1 家行 4 枚（钻取锚点 data-open=L2）', l1HomeCount === 4],
   ['L1 底部主操作＝新建家（随层）', l1Foot.includes('新建家')],

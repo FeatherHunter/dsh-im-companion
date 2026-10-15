@@ -47,12 +47,12 @@ export const HOME_UI_CSS = `
 .home-ui .hu-back:active{transform:scale(.94)}
 
 /* ============ crumbs（液签面包屑） ============ */
-.home-ui .hu-crumbs{position:relative;display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--hu-line-soft);flex:none;background:var(--hu-panel-2);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+.home-ui .hu-crumbs{position:relative;display:flex;align-items:center;gap:6px;margin:8px 12px 0;padding:7px 10px;border:1px solid var(--hu-line-soft);border-radius:12px;flex:none;background:var(--hu-panel-2);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
 .home-ui .hu-crumbs::-webkit-scrollbar{display:none}
 .home-ui .hu-crumbs::-webkit-scrollbar{display:none}
 .home-ui .hu-crumb{font:inherit;font-size:11.5px;display:inline-flex;align-items:center;gap:5px;background:none;border:1px solid transparent;flex:none;border-radius:999px;padding:3px 9px;color:var(--hu-ink-3);cursor:pointer;white-space:nowrap;transition:color var(--hu-t) var(--hu-ease);position:relative;z-index:1}
 .home-ui .hu-crumb:hover{color:var(--hu-ink-2)}
-.home-ui .hu-crumb[aria-current="true"]{color:var(--hu-ink);font-weight:650}
+.home-ui .hu-crumb[aria-current="true"]{color:var(--hu-ink);font-weight:650;background:var(--hu-panel);border-color:var(--hu-line)}
 .home-ui .hu-crumb.off{opacity:.42;cursor:not-allowed;border-style:dotted}
 .home-ui .hu-crumb.next{border:1px dashed var(--hu-line);color:var(--hu-ink-2);background:var(--hu-panel)}
 .home-ui .hu-crumb.next:hover{background:var(--hu-accent-soft);border-color:var(--hu-accent);color:var(--hu-accent-deep);border-style:solid}
@@ -67,7 +67,7 @@ export const HOME_UI_CSS = `
 /* 绿框不自造滚动容器：整页只留宿主一条滚动条（内层滚动既丑又与页面滚动嵌套打架）。
    另外：一旦给元素写 webkit 滚动条伪元素，Chromium 会切回「经典滚动条」渲染（带上下箭头按钮），
    所以这里连 width/thumb 都不写。 */
-.home-ui .hu-fbody{flex:1;min-height:0;padding:10px 12px 12px;display:flex;flex-direction:column;gap:7px}
+.home-ui .hu-fbody{flex:1;min-height:0;margin:10px 12px 8px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);border-radius:14px}
 .home-ui .hu-row{position:relative;display:grid;grid-template-columns:36px 1fr auto;gap:13px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;
   background:var(--hu-panel);border:1px solid var(--hu-line-soft);border-radius:var(--hu-r);padding:9px 10px;cursor:pointer;
   transition:border-color var(--hu-t) var(--hu-ease),box-shadow var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease);min-height:56px}
@@ -97,6 +97,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-dot{width:7px;height:7px;border-radius:50%;flex:none}
 .home-ui .hu-dot.on{background:var(--hu-accent);box-shadow:0 0 0 3px var(--hu-accent-soft)}
 .home-ui .hu-dot.off{background:color-mix(in srgb, var(--hu-ink-3) 70%, var(--hu-panel))}
+.home-ui .hu-dot.zero{background:none;border:1.5px solid var(--hu-ink-3);opacity:.55;box-sizing:border-box}
 .home-ui .hu-online{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--hu-accent-deep);background:var(--hu-accent-soft);border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none;align-self:center}
 .home-ui .hu-online.off{color:var(--hu-ink-2);background:var(--hu-neutral)}
 
@@ -159,7 +160,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-abtn[disabled]{opacity:.45;cursor:not-allowed}
 
 /* ============ footer ============ */
-.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;padding:10px 12px;border-top:1px solid var(--hu-line-soft);background:var(--hu-panel);display:flex;gap:8px}
+.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;padding:8px 12px 4px;border-top:1px solid var(--hu-line-soft);background:var(--hu-panel);display:flex;gap:8px}
 .home-ui .hu-pbtn{position:relative;overflow:hidden;flex:1;font:inherit;font-size:13px;font-weight:600;height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
   background:var(--hu-accent);color:#fff;border:1px solid transparent;border-radius:9px;cursor:pointer;transition:transform var(--hu-t-fast) var(--hu-ease),background var(--hu-t) var(--hu-ease);
   box-shadow:0 1px 2px rgba(13,148,136,.3);will-change:transform}

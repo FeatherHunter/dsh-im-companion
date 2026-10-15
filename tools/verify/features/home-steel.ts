@@ -707,11 +707,15 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.deepEqual(rows().map((r) => r.getAttribute('data-open')), ['L2', 'L2'], '家行带 data-open="L2"（空家也是行）');
   assert.deepEqual(rows().map((r) => r.getAttribute('data-id')), ['h1', 'h2'], '两行都在（T3 一区一家含无人之家仍成立）');
   assert.equal(cls(bodyEl, 'hu-more-row').length, 0, '折叠行退场（owner 2026-10-15：空家直接成行）');
-  assert.equal(cls(bodyEl, 'hu-dots').length, 1, '圆点条只给有助理的家（h2 空家不画）');
+  assert.equal(cls(bodyEl, 'hu-dots').length, 2, '圆点条每家一行：有助理画圆点、空家画空心标记（owner 2026-10-15 真机）');
   assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').length, 2, '一助理一圆点（h1 两位助理两圆点）');
   assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').filter((d) => d.classList.contains('on')).length, 1, '绿＝在线（a1 已绑在线）');
   assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').filter((d) => d.classList.contains('off')).length, 1, '红＝离线/未绑定（a2 无渠道）');
   assert.ok(cls(one(rows()[0], 'hu-dots'), 'hu-dot').every((d) => String(d.getAttribute?.('data-tip') ?? '').length > 0), '圆点悬停报名字＋状态');
+  const zeroDots = cls(one(rows()[1], 'hu-dots'), 'hu-dot');
+  assert.equal(zeroDots.length, 1, '空家（h2）只配一枚空心标记');
+  assert.ok(zeroDots[0].classList.contains('zero'), '空心标记带 zero 类');
+  assert.equal(String(zeroDots[0].getAttribute?.('data-tip') ?? ''), '暂无助理', '空心标记悬停“暂无助理”');
   for (const c of ['hu-av', 'hu-txt', 'hu-nm', 'hu-sub', 'hu-names', 'hu-acts2']) assert.ok(one(rows()[0], c), '家行解剖缺件：' + c);
   assert.deepEqual(crumbInfo(bodyEl), [
     { lv: 'L1', label: '家', cur: true, goto: null },

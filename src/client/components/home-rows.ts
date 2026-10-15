@@ -98,27 +98,21 @@ export function dotEl(on: boolean): HTMLElement {
 
 /** 助理在线标（原型 onlineTag）：无渠道 / 在线 / 离线。 */
 export function onlineTagEl(bot: BotSnap | null): HTMLElement {
-  if (!bot) {
-    const el = h('span', { className: 'hu-online off' }, dotEl(false), '无渠道')
-    return el
-  }
+  if (!bot) return h('span', { className: 'hu-online off' }, dotEl(false), '无渠道')
   const on = !!bot.connected
   return h('span', { className: `hu-online${on ? '' : ' off'}` }, dotEl(on), on ? '在线' : '离线')
 }
 
-/** 家状态章（原型 homePill）：已删除 / 工作区已不在 / 没有工作区 / 无。
- *  `orphan` 由调用方按活工作区快照判（T10b #127）——唯一判据在 `data/home-orphan.isOrphanHome`。 */
+/** 家状态章：已删除 / 工作区已不在 / 没有工作区 / 无（orphan 判据唯一在 data/home-orphan.isOrphanHome，T10b #127）。 */
 export function homePillEl(home: Home, orphan = false): HTMLElement | null {
   if (home.tombstone) return pillEl('bad', '已删除')
-  if (orphan) return pillEl('dim', '工作区已不在')
-  if (!home.workspaceId) return pillEl('dim', '没有工作区')
+  if (orphan || !home.workspaceId) return pillEl('dim', orphan ? '工作区已不在' : '没有工作区')
   return null
 }
 
 export function statusPillEl(a: Assistant): HTMLElement {
-  if (a.status === 'bound') return pillEl('ok', '已绑')
   if (a.status === 'unbound') return pillEl('warn', '未绑定')
-  return pillEl('bad', '失联')
+  return pillEl(a.status === 'bound' ? 'ok' : 'bad', a.status === 'bound' ? '已绑' : '失联')
 }
 
 /** 未实现钮（T6b/T6c）：照原型画出但语义化禁用（不用 opacity .45）；悬停说明归属票号（owner 裁定 2026-10-12）。 */
@@ -137,18 +131,14 @@ function planned(el: HTMLElement, label: string, ticket: string): HTMLElement {
 }
 
 export function iconBtn(act: string, label: string, iconName: HuIconName, opts: { ticket?: string } = {}): HTMLElement {
-  const el = h('button', {
-    className: 'hu-ract icon', type: 'button', 'data-item-act': act, 'aria-label': label,
-    'data-tip': opts.ticket ? pendingTip(label, opts.ticket) : label,
-  }, huIcon(iconName, 15))
+  const el = h('button', { className: 'hu-ract icon', type: 'button', 'data-item-act': act,
+    'aria-label': label, 'data-tip': opts.ticket ? pendingTip(label, opts.ticket) : label }, huIcon(iconName, 15))
   return opts.ticket ? planned(el, label, opts.ticket) : el
 }
 
 export function textBtn(act: string, label: string, opts: { cls?: string; ticket?: string; id?: string } = {}): HTMLElement {
-  const el = h('button', {
-    className: `hu-ract ${opts.cls ?? ''}`.trim(), type: 'button', 'data-item-act': act,
-    ...(opts.id ? { 'data-id': opts.id } : {}),
-  }, label)
+  const el = h('button', { className: `hu-ract ${opts.cls ?? ''}`.trim(), type: 'button',
+    'data-item-act': act, ...(opts.id ? { 'data-id': opts.id } : {}) }, label)
   return opts.ticket ? planned(el, label, opts.ticket) : el
 }
 
@@ -162,7 +152,7 @@ export function homeOnlineTag(view: RowView, list: Assistant[]): HTMLElement | n
     : h('span', { className: 'hu-online off' }, dotEl(false), '全部离线')
 }
 
-/** 家行每助理一圆点（owner 2026-10-15）：绿＝在线，红＝离线/未绑定；悬停报名字＋状态。0 助理不画。 */
+/** 家行每助理一圆点（owner 2026-10-15）：绿＝在线，红＝离线/未绑定；悬停报名字＋状态。0 助理回 null（空家由 zeroDotEl 配空心标记）。 */
 export function homeDotsEl(view: RowView, list: Assistant[]): HTMLElement | null {
   if (!list.length) return null
   const box = h('span', { className: 'hu-dots' })
@@ -172,6 +162,13 @@ export function homeDotsEl(view: RowView, list: Assistant[]): HTMLElement | null
     d.setAttribute('data-tip', `${asstName(view, a)}：${bot ? (bot.connected ? '在线' : '离线') : '未绑定'}`)
     box.appendChild(d)
   }
+  return box
+}
+
+/** 零助理标记（owner 2026-10-15 真机）：空家行也配一枚空心标记（悬停“暂无助理”）——只看副标“0 位助理”文字不够有设计感。 */
+export function zeroDotEl(): HTMLElement {
+  const box = h('span', { className: 'hu-dots' })
+  box.appendChild(h('span', { className: 'hu-dot zero', 'data-tip': '暂无助理' }))
   return box
 }
 
@@ -198,7 +195,7 @@ function wireRow(el: HTMLElement, opts: RowOpts, id: string): void {
   }
 }
 
-/** 家行：头像 + 名 + 家状态章 + 每助理一圆点 / N 位助理 · 回落来源 / 助理清单（孤儿家只有重绑/删除，正常家无删除入口 #127）。 */
+/** 家行：头像 + 名 + 家状态章 + 每助理一圆点 / 空家空心标记 + N 位助理 · 回落来源 / 助理清单（孤儿家只有重绑/删除，正常家无删除入口 #127）。 */
 export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElement {
   const d = homeDisplay(view, home)
   const list = asstOfHome(view, home.id)
@@ -207,8 +204,7 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
   const orphan = isOrphanHome(home, view.workspaces)
   const pill = homePillEl(home, orphan)
   if (pill) nm.appendChild(pill)
-  const dotsEl = homeDotsEl(view, list)
-  if (dotsEl) nm.appendChild(dotsEl)
+  nm.appendChild(homeDotsEl(view, list) ?? zeroDotEl())
   const txt = h('span', { className: 'hu-txt' }, nm,
     h('span', { className: 'hu-sub' }, `${list.length} 位助理 · ${d.from}`))
   if (names) txt.appendChild(h('span', { className: 'hu-names' }, names))
