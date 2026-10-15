@@ -89,10 +89,10 @@ export function stageCrumbOpts(c: StageCtx): Parameters<typeof crumbsEl>[0] {
   }
 }
 
-/** L1 列表实际顺序的第一行（有助理的家在前、空家在后）——chip 的默认去处必须与眼睛看到的一致。 */
+/** L1 列表实际顺序的第一行（孤儿置顶，其次有助理的家在前、空家在后）——chip 的默认去处必须与眼睛看到的一致。 */
 function firstListedHomeId(v: RowView): string {
-  const { active, empty } = partitionHomes(v.homes, v.index)
-  const first = active[0] ?? empty[0] ?? v.homes[0]
+  const { orphan, active, empty } = partitionHomes(v.homes, v.index, v.workspaces)
+  const first = orphan[0] ?? active[0] ?? empty[0] ?? v.homes[0]
   return first ? first.id : ''
 }
 
@@ -131,13 +131,14 @@ export function stageList(c: StageCtx): HTMLElement {
       return list
     }
     const rowOf = (x: (typeof items)[number]): HTMLElement => homeRow(v, x, { selected: c.selHome === x.id, flash: c.flashId === x.id, ...rowOpts })
-    if (q) { items.forEach((x) => list.appendChild(rowOf(x))); return list }
-    /* 呈现策略（非数据规则）：有助理的家在前（按最近更新降序），空家在后——
+    /* 呈现策略（非数据规则）：孤儿家置顶（工作区已不在，必须人动手，最显眼），
+     * 再是有助理的家（按最近更新降序），空家在后——
      * T3「一区一家含无人之家」是持久化不变量（保历史不丢），这里只决定先看谁。
      * owner 2026-10-15：折叠段取消，「N 个空家」退场，空家直接成行（状态看行内章/圆点/副标）。 */
-    const { active, empty } = partitionHomes(items, v.index)
-    active.forEach((x) => list.appendChild(rowOf(x)))
-    empty.forEach((x) => list.appendChild(rowOf(x)))
+    const { orphan, active, empty } = partitionHomes(items, v.index, v.workspaces)
+    const ordered = [...orphan, ...active, ...empty]
+    if (q) { ordered.forEach((x) => list.appendChild(rowOf(x))); return list }
+    ordered.forEach((x) => list.appendChild(rowOf(x)))
     return list
   }
   const home = v.homes.find((x) => x.id === c.selHome)

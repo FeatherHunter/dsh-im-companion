@@ -4,6 +4,7 @@
  * 呈现策略（分区/排序）也放这里：它属于「先看谁」，不属于持久化不变量。 */
 import type { Assistant, Home, WorkspaceRef } from '../data/home-model'
 import type { BotSnap } from '../data/fleet-api'
+import { isOrphanHome } from '../data/home-orphan'
 
 export interface FleetIndex {
   /** homeId → 该家的助理（只读，勿改） */
@@ -53,13 +54,19 @@ export function buildIndex(
   return { byHome, byBot, byChannel, byWs, byId }
 }
 
-/** 呈现策略：L1 导航列表分区——**有助理的家**（按 updatedAt 降序）在前，空家在后。
+/** 呈现策略：L1 导航列表分区——**孤儿家（工作区已不在）置顶**，再是有助理的家
+ *  （按 updatedAt 降序），空家在后。孤儿是唯一需要人动手的状态（重绑/删除），
+ *  沉在底下等于藏起来（owner 2026-10-15）。
  *  T3「一区一家含无人之家」是持久化不变量（保历史不丢），此处不动它；这里只决定先看谁。
- *  O(n)；不原地改 state.homes（active 是新数组）。 */
-export function partitionHomes(homes: Home[], index: FleetIndex): { active: Home[]; empty: Home[] } {
+ *  O(n)；不原地改 state.homes（三个都是新数组）。 */
+export function partitionHomes(homes: Home[], index: FleetIndex, workspaces: WorkspaceRef[] = []): { orphan: Home[]; active: Home[]; empty: Home[] } {
+  const orphan: Home[] = []
   const active: Home[] = []
   const empty: Home[] = []
-  for (const hm of homes) ((index.byHome.get(hm.id)?.length ?? 0) > 0 ? active : empty).push(hm)
+  for (const hm of homes) {
+    if (isOrphanHome(hm, workspaces)) { orphan.push(hm); continue }
+    ((index.byHome.get(hm.id)?.length ?? 0) > 0 ? active : empty).push(hm)
+  }
   active.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0))
-  return { active, empty }
+  return { orphan, active, empty }
 }

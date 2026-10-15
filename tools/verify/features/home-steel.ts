@@ -1642,4 +1642,29 @@ test('T10b #127 重绑/删家编排：失败一律 throw 带原文、远端先�
   assert.deepEqual(calls, [], '没有连接就一个请求都不发');
 });
 
+test('T14 #136 孤儿置顶：工作区不存在的家排在 L1 最顶部（红卡＋警示行跟着一起上去）', () => {
+  const bodyEl = new El('div', domDoc);
+  const homes = [
+    H({ id: 'h1', workspaceId: 'ws-1', path: 'D:\\agents\\keting', name: '客厅', nameSource: 'system', updatedAt: 5 }),
+    H({ id: 'h2', workspaceId: 'ws-2', path: 'D:\\agents\\shufang', name: '书房基地', nameSource: 'user', updatedAt: 6 }),
+    /* hx：工作区 ws-gone 已不在（BOX_WS 里没有），且 updatedAt 最老——置顶必须赢过「最近更新」 */
+    H({ id: 'hx', workspaceId: 'ws-gone', path: 'D:\\agents\\gone', name: '旧车库', nameSource: 'system', updatedAt: 1 }),
+  ];
+  const handle = bodyMod.createPanelBody({
+    state: { homes, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
+    bodyEl,
+    titleMetaEl: new El('div', domDoc),
+    getWorkspaces: () => BOX_WS,
+    ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {} },
+    onRetry: () => {},
+  });
+  handle.render();
+  const ids = byAttr(bodyEl, 'data-open', 'L2').map((r) => r.getAttribute('data-id'));
+  assert.deepEqual(ids, ['hx', 'h1', 'h2'], '孤儿置顶，其次有助理的家（h1），空家（h2）最后');
+  const top = byAttr(bodyEl, 'data-id', 'hx')[0];
+  assert.ok(top.classList.contains('orphan'), '置顶的是红卡（不是换了个位置的普通行）');
+  assert.ok(one(top, 'hu-warnline'), '红色警示行跟着一起上去');
+  assert.equal(txt(one(top, 'hu-path')), 'D:\\agents\\gone', '原工作区目录带着走');
+});
+
 console.log('features/home-steel: ALL PASS');
