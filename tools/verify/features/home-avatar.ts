@@ -21,6 +21,9 @@ try {
     join(HOST, 'home-store.ts'),
     join(HOST, 'home-orphan.ts'),
     join(HOST, 'home-edit.ts'),
+    /* 真分发器（rpc.ts）也转译进来：真机走的就是「/api/im-companion → createAgentFleetHandler 的真 switch」，
+     * 只调 avatarPhoneFor 会绕开 default 支 ⇒ 见下面那条「真分发器」用例（同 home-steel 口径）。 */
+    join(HOST, 'rpc.ts'),
     '--ignoreConfig',
     '--rootDir', join(REPO, 'src'),
     '--outDir', tmpHost, '--module', 'commonjs', '--target', 'es2023',
@@ -39,6 +42,8 @@ const av: any = hostFile('home-avatar.js');
 const store: any = hostFile('home-store.js');
 const orphan: any = hostFile('home-orphan.js');
 const edit: any = hostFile('home-edit.js');
+const rpcHost: any = hostFile('rpc.js');
+const metaHost: any = hostFile('meta-store.js');
 const yaml: any = reqHost('yaml');
 const readDoc = (file: string): any => yaml.parse(readFileSync(file, 'utf8'));
 
@@ -117,6 +122,35 @@ test('T11 #128 清图：行回落预设色、旧文件删掉、再 get 为空', 
   assert.equal((await call('avatar.clear', { id: 'h-nope' })).error.code, 'not-found', '不存在的行明文拒');
 });
 
+test('T11 #128 改名不改图（验收②）：只带 name 的补丁不碰 avatar，图与文件都还在', async () => {
+  const { file, call, homeId, asstId } = await mkTable();
+  const r: any = await call('avatar.set', { id: homeId, dataUrl: url('image/png', png()) });
+  const marker = r.value.avatar as string;
+  const name = av.stemFor(homeId) + '.png';
+  const d = av.avatarDirFor(file);
+
+  const up: any = await edit.updateHomeRow(file, { id: homeId, name: '改了个名' });
+  assert.equal(up.ok, true, JSON.stringify(up.error ?? {}));
+  assert.equal(up.row.name, '改了个名', '名字真改了');
+  assert.equal(up.row.avatar, marker, '改名后行里仍是 img: 标记（补丁没带 avatar 就不许动它）');
+  assert.equal(up.row.avatarSource, 'user', '图片来源不被改名牵动');
+  assert.ok(existsSync(join(d, name)), '图片文件还在');
+  const again = await store.loadHomesDoc(file);
+  assert.equal(again.homes.find((h: any) => h.id === homeId).avatar, marker, '重读仍在（改名没把图洗掉）');
+  assert.equal((await call('avatar.get', { ids: [homeId] })).value.images[homeId], url('image/png', png()), '改名后仍取得到图');
+
+  /* 助理侧同口径；「恢复默认名」（name: ''）也不许顺手把图抹了 */
+  const ra: any = await call('avatar.set', { id: asstId, dataUrl: url('image/webp', webp()) });
+  const ua: any = await edit.updateAssistantRow(file, { id: asstId, name: '换个名' });
+  assert.equal(ua.ok, true, JSON.stringify(ua.error ?? {}));
+  assert.equal(ua.row.avatar, ra.value.avatar, '助理改名同样不动图');
+  const ub: any = await edit.updateAssistantRow(file, { id: asstId, name: '' });
+  assert.equal(ub.ok, true);
+  assert.equal(ub.row.nameSource, 'bot', '恢复默认名＝回落机器人名');
+  assert.equal(ub.row.avatar, ra.value.avatar, '恢复默认名也不动图');
+  assert.ok(existsSync(join(d, av.stemFor(asstId) + '.webp')), '助理改名后文件仍在');
+});
+
 test('T11 #128 拒绝口径：非图/超限/缺参一律 bad-request，且一个脏文件都不留', async () => {
   const { file, call, homeId } = await mkTable();
   const dir = av.avatarDirFor(file);
@@ -189,17 +223,51 @@ test('T11 #128 值域钉子：img: 只走 avatar.set；update 仍只收 1-6；se
   assert.ok(after.homes.some((h: any) => h.id === homeId && h.avatar === marker), '原有那行的图没被 seed 抹掉');
 });
 
+/* ---------- 真机那条路：浏览器 → /api/im-companion → createAgentFleetHandler 的真 switch → avatarPhone ---
+ * 上面几条直调 `avatarPhoneFor`，绕开了 `rpc.ts` 的 default 支——真机若漏接那一行，单测仍全绿而面板一张图都看不到。
+ * 这里换成**真分发器**再跑一遍（与 home-steel 的「宿主分发器真跑」同款）。 */
+test('T11 #128 真分发器：avatar.set/get/clear 经 rpc.ts 真 switch 可达，未知端点没被族路由吞掉', async () => {
+  const dshHome = mkdtempSync(join(tmpdir(), 'ha-rpc-'));
+  const call = rpcHost.createAgentFleetHandler(new metaHost.AgentMetaStore(join(dshHome, 'agents.json')), { dshHome });
+  const c: any = await call('home.create', { workspaceId: 'ws-rpc', path: 'D:\\agents\\rpc', title: '真机路' });
+  assert.equal(c.ok, true, JSON.stringify(c.error ?? {}));
+  const id = c.value.home.id;
+  const dir = av.avatarDirFor(store.homesFileFor(dshHome));
+  const name = av.stemFor(id) + '.png';
+
+  const s: any = await call('avatar.set', { id, dataUrl: url('image/png', png()) });
+  assert.equal(s.ok, true, '真分发器可达 avatar.set：' + JSON.stringify(s.error ?? {}));
+  assert.equal(s.value.avatar, 'img:' + name, '回包带标记');
+  assert.ok(existsSync(join(dir, name)), '真分发器这条路也真落盘');
+  assert.deepEqual(readFileSync(join(dir, name)), png(), '盘上字节与上传一致');
+
+  const g: any = await call('avatar.get', { ids: [id] });
+  assert.equal(g.value.images[id], url('image/png', png()), '真机取图回的字节与上传一致');
+  const cl: any = await call('avatar.clear', { id });
+  assert.equal(cl.ok, true, JSON.stringify(cl.error ?? {}));
+  assert.equal((await call('avatar.get', { ids: [id] })).value.images[id], undefined, '清完真取不到（回落预设色）');
+  assert.ok(!existsSync(join(dir, name)), '清完文件也真删');
+
+  assert.equal((await call('avatar.bogus', {})).error.code, 'bad-request', '族内未知端点明文拒');
+  assert.equal((await call('home.bogus', {})).error.code, 'bad-request', '非族未知端点没被族路由吞掉（仍回未知端点）');
+});
+
 test('T11 #128 客户端接线钉子：面板装配 transport、行/弹层共用一个取图口（不许各自实现）', () => {
   const panel = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
   const rows = readFileSync(join(REPO, 'src', 'client', 'components', 'home-rows.ts'), 'utf8');
   const forms = readFileSync(join(REPO, 'src', 'client', 'components', 'home-forms.ts'), 'utf8');
   const transport = readFileSync(join(REPO, 'src', 'client', 'components', 'home-avatar.ts'), 'utf8');
+  const detail = readFileSync(join(REPO, 'src', 'client', 'components', 'home-detail.ts'), 'utf8');
   assert.match(panel, /bindAvatarTransport\(\{/, '面板装配一次 transport（否则 avatar.get 一次都不发）');
   assert.match(rows, /avatarSrc\(/, '列表/详情头像走 avatarSrc（有图用图、无图预设色）');
   assert.match(forms, /avatarImageCell\(/, '弹层色板行收编图片格（第 8 格）');
   assert.match(transport, /'avatar\.get'/, '取图只走 avatar.get');
   assert.doesNotMatch(rows, /'avatar\.get'/, '行渲染不许自己发请求（唯一取图口在 home-avatar）');
   assert.doesNotMatch(forms, /'avatar\.(get|set|clear)'/, '弹层不许自己发请求');
+  /* 验收①「列表与详情一致」的**结构**保证：详情头像必须是列表那枚共用元素（avatarEl），
+   * 不许另长一份「详情专用头像」。 */
+  assert.match(detail, /avatarEl\(/, '详情卡头像走列表共用的 avatarEl');
+  assert.doesNotMatch(detail, /avatarSrc\(|imageCover\(|'avatar\./, '详情不许自建取图/画图路径');
 });
 
 /* ---------- 客户端半：真跑 `home-avatar-form`（三道校验闸 ＋ 上传链），假 rpc 只记账 ----------
