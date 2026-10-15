@@ -89,8 +89,10 @@ export const HOME_ROW_CSS = `
  * 无 Popover API 的老环境退回 z-index（1260 压过 overlay 1250、让着 toast 1300）。盒子自带 af-portal
  * 保令牌作用域（body 在 .af-root 之外，否则 --hu-* 全失效、气泡透明裸奔——同 home-pop 宿主备注）。
  * [popover] 那一行只中和 UA 默认（未 show 前 display:none 藏盒、:popover-open 的 inset:0＋margin:auto
- * 会把按行内 top/left 定位的小盒拉变形）：border/底色/圆角走本表原规则，不动。 */
-.home-ui.hu-tiphost{position:fixed;z-index:1260;pointer-events:none;display:flex;align-items:center;gap:9px;max-width:260px;
+ * 会把按行内 top/left 定位的小盒拉变形）：border/底色/圆角走本表原规则，不动。
+ * 方向必显式（真机血案：宿主环境样式给了 flex-direction:column，本表只写 display:flex 就全盘接管——
+ * 日志铁证 tip-show flex=column box=113x91；凡依赖初始值的属性一律显式声明，不赌宿主脸色）。 */
+.home-ui.hu-tiphost{position:fixed;z-index:1260;pointer-events:none;display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;gap:9px;max-width:260px;
   padding:8px 11px;border-radius:12px;background:var(--hu-panel-3);border:1px solid var(--hu-line);
   box-shadow:var(--hu-sh-pop);color:var(--hu-ink);font-size:12px;line-height:1.35;
   opacity:0;transform:translateY(4px) scale(.97);transition:opacity var(--hu-t) var(--hu-ease),transform var(--hu-t) var(--hu-ease)}
@@ -98,10 +100,10 @@ export const HOME_ROW_CSS = `
 .home-ui.hu-tiphost .hu-tav{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;flex:none}
 .home-ui.hu-tiphost .hu-tt{min-width:0}
 .home-ui.hu-tiphost .hu-tt b{display:block;font-size:12.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.home-ui.hu-tiphost .hu-tt small{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:11px;color:var(--hu-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui.hu-tiphost .hu-tt small{display:flex;flex-direction:row;align-items:center;gap:5px;margin-top:3px;font-size:11px;color:var(--hu-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui.hu-tiphost .hu-tt small .hu-st{font-weight:700;color:var(--hu-ink)}
 .home-ui.hu-tiphost .hu-tt small .hu-st-bad{color:var(--hu-bad)}
-.home-ui.hu-tiphost .hu-tt small .hu-ch{display:inline-flex;align-items:center;gap:4px}
+.home-ui.hu-tiphost .hu-tt small .hu-ch{display:inline-flex;flex-direction:row;align-items:center;gap:4px}
 .home-ui.hu-tiphost .hu-tt small .hu-logo{display:inline-grid;place-items:center}
 .home-ui.hu-tiphost .hu-tt small .hu-logo svg{display:block}
 .home-ui.hu-tiphost .hu-tt small .hu-logo-fb{width:14px;height:14px;border-radius:4px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);font-size:9px;color:var(--hu-ink-2)}

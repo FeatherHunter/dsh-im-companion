@@ -307,5 +307,11 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   assert.ok(tipSrc.includes('af-portal'), '气泡盒自带 af-portal（令牌作用域不断）');
   assert.ok(tipSrc.includes('showLayer(el)') && tipSrc.includes('hideLayer(box)'), '画完进层、收起下层（调用点，不是只 import）');
   assert.ok(css.includes('.hu-tiphost[popover]'), 'popover 态中和 UA 默认（margin/inset 复位，不抢定位）');
+  /* 方向必显式钉（owner 2026-10-16：真机竖排卡——宿主环境样式给了 column，本表只写 display:flex 就被接管；
+   * 日志铁证 tip-show flex=column box=113x91。凡依赖初始值的轴向属性一律显式声明，不赌宿主脸色） */
+  assert.ok(/\.home-ui\.hu-tiphost\{[^}]*flex-direction:row/.test(css), '气泡主轴横排写死（A 横排单轴，宿主 column 盖不掉）');
+  assert.ok(/\.hu-tt small\{[^}]*flex-direction:row/.test(css), '状态行横排写死（点＋渠道＋状态一横排）');
+  assert.ok(/\.hu-tt small \.hu-ch\{[^}]*flex-direction:row/.test(css), '渠道节点横排写死（logo＋渠道名不许竖叠）');
+  assert.ok(tipSrc.includes("action: 'tip-show'"), '悬停自证几何日志不许丢（真机判官：flex/box/tav/kids，删了等于闭眼）');
 });
 
