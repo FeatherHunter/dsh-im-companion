@@ -286,6 +286,9 @@ export const HOME_UI_CSS = `
 .home-ui .hu-plink.danger:hover{color:color-mix(in srgb,var(--hu-bad) 78%,var(--hu-ink))}
 .home-ui .hu-avopt:hover:not([aria-selected="true"]){border-color:color-mix(in srgb,var(--hu-ink) 32%,var(--hu-line))}
 .home-ui .hu-avopt:active{transform:scale(.94)}
+/* T11 #128 图片格（色板第 8 格）：原先靠 div 默认块级碰巧对齐，且 8 格必然折到第二行（.hu-ppo 内容宽 ~300px < 8×34+7×6=314px）⇒ 虚线边框＝「可上传」。 */
+.home-ui .hu-avimg-cell{display:flex;align-items:center}
+.home-ui .hu-avimg{border-style:dashed;border-color:color-mix(in srgb,var(--hu-ink) 26%,transparent)}
 .home-ui .hu-dirpath:active{border-color:var(--hu-accent);background:var(--hu-panel-3)}
 
 @media (max-width:470px){.home-ui .hu-hide-narrow{display:none}}

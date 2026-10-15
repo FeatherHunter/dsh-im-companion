@@ -13,6 +13,10 @@
  *   （文件真没了时不许每帧重试刷屏；页面刷新即自愈）。
  * 写：`uploadAvatarImage` / `clearAvatarImage` 是唯一两个写口，成功即更新缓存；**不自己 onChange**——
  *   谁调谁负责重渲染（弹层那边是 closeHomePop ＋ onDone，与既有「恢复默认名」同一套先例）。
+ *   ⚠ 但「重渲染」不够：行的 `avatar` 字段才是取图的唯一真相，而弹层拿的是**旧快照**——不重读家表
+ *   就只会在旧快照上重画（新图不出现，清除后格子还挂着旧图），这正是 #128 真机前的阻断缺陷。
+ *   故写成功后一律 `notifyCommitted()`：由装配方（`panel.ts`）把家表重读一遍（`data.loadHomes` 末尾
+ *   自带 paint）。与其它写操作（`home-ops` 的 `await deps.reloadHomes()`）同一条纪律。
  * 日志：走既有 hLog/aLog（home.action / assistant.action，resident ⇒ 事后看磁盘日志就能判谁传了图）。
  */
 import { logLine, logOn } from '../log'
@@ -33,11 +37,28 @@ const listeners = new Map<string, Set<(url: string) => void>>()
 let scheduled = false
 let getRpc: (() => RpcCall | null) | null = null
 let onChange: (() => void) | null = null
+let onCommitted: (() => void | Promise<void>) | null = null
 
-/** 面板装配时接一次（panel.ts 一行）：取 rpc 的提供函数 ＋ 「图到了就重渲染」回调。 */
-export function bindAvatarTransport(port: { getRpc: () => RpcCall | null; onChange: () => void }): void {
+/** 面板装配时接一次（panel.ts 一行）：取 rpc 的提供函数 ＋「图到了就重渲染」＋「写完重读家表」两个回调。
+ *  `onCommitted` 由装配方定义成**重读真相源**（`data.loadHomes`，末尾自带 paint），不是再画一次旧快照。 */
+export function bindAvatarTransport(port: {
+  getRpc: () => RpcCall | null
+  onChange: () => void
+  onCommitted?: () => void | Promise<void>
+}): void {
   getRpc = port.getRpc
   onChange = port.onChange
+  onCommitted = port.onCommitted ?? null
+}
+
+/** 写成功后的「重读家表」通知：失败**不许反蚀写结果**（图已落盘成功，重读失败下次刷新自愈）⇒ 自己吞。 */
+async function notifyCommitted(): Promise<void> {
+  if (!onCommitted) return
+  try {
+    await onCommitted()
+  } catch (e) {
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'avatar', action: 'committed', ok: false, message: msgOf(e) })
+  }
 }
 
 /** 订一次该 id 的图（命中即回调、随即清掉；没图时静默作废，不留常驻订阅）。 */
@@ -130,6 +151,8 @@ export async function uploadAvatarImage(id: string, kind: Kind, dataUrl: string)
     log('set-avatar-image', id, false, msgOf(e))
     throw e
   }
+  /* 落盘成功之后：让装配方重读家表（行的 `avatar` 标记变了，旧快照上没有它 ⇒ 不重读就不显示）。 */
+  await notifyCommitted()
 }
 
 /** 清图（回落预设色＋首字母）：缓存与负缓存一起清干净，让下一帧重新按新标记取。 */
@@ -146,4 +169,6 @@ export async function clearAvatarImage(id: string, kind: Kind): Promise<void> {
     log('clear-avatar-image', id, false, msgOf(e))
     throw e
   }
+  /* 同上传：清完行的标记回 null，旧快照上还写着 `img:`（格子会继续显示图、还挂着「清除图片」）。 */
+  await notifyCommitted()
 }

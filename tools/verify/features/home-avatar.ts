@@ -305,19 +305,29 @@ const formMod: any = reqCli('./client/components/home-avatar-form.js');
 const avCli: any = reqCli('./client/components/home-avatar.js');
 const buf = (b: Buffer): ArrayBuffer => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 
-test('T11 #128 客户端三道闸真跑：超 2 MB 早拒、空文件拒、格式拒、存盘上限拒，成功只走 avatar.set', async () => {
+test('T11 #128 客户端三道闸真跑：超 2 MB 早拒、空文件拒、按字节认格式、存盘上限拒，成功只走 avatar.set', async () => {
   const calls: Array<{ ep: string; p: any }> = [];
+  let committed = 0;
   avCli.bindAvatarTransport({
     getRpc: () => async (_path: string, ep: string, p: any) => { calls.push({ ep, p }); return { ok: true, value: { avatar: 'img:' + p.id + '.png' } } },
     onChange: () => {},
+    onCommitted: () => { committed += 1 },
   });
   /* ① 纯校验：选文件前的那道闸（不读内存）——上限与票面/宿主同值 2 MB，不给两套口径 */
   assert.equal(formMod.avatarFileReject(null), '没选到文件', '没选到文件');
   assert.match(formMod.avatarFileReject({ size: 11 * 1024 * 1024, type: 'image/png', name: 'big.png' }), /上限 2 MB/, '>2 MB 当场拒，不读进内存');
   assert.match(formMod.avatarFileReject({ size: 3 * 1024 * 1024, type: 'image/png', name: 'mid.png' }), /上限 2 MB/, '3 MB 也是同一句明文（没有 10 MB 的第二套口径）');
   assert.match(formMod.avatarFileReject({ size: 0, type: 'image/png', name: 'empty.png' }), /空文件/, '空文件');
-  assert.match(formMod.avatarFileReject({ size: 100, type: 'image/gif', name: 'a.gif' }), /不支持的格式/, '格式白名单');
+  /* 格式**不在这关判**：声明的 mime 不作数（真 PNG 但 type 为空也得能过这道闸），只认字节 */
+  assert.equal(formMod.avatarFileReject({ size: 100, type: 'image/gif', name: 'a.gif' }), null, '格式关不看声明（改由字节判）');
+  assert.equal(formMod.avatarFileReject({ size: 100, type: '', name: 'noext' }), null, '没有声明类型也不许在这关被误杀');
   assert.equal(formMod.avatarFileReject({ size: 100, type: 'image/png', name: 'a.png' }), null, '合法文件放行');
+  /* ①b 魔数判定本身（与宿主 sniffer 同判据） */
+  assert.equal(formMod.sniffImageExt(png()), 'png', 'PNG 魔数');
+  assert.equal(formMod.sniffImageExt(jpeg()), 'jpg', 'JPEG 魔数');
+  assert.equal(formMod.sniffImageExt(webp()), 'webp', 'WEBP 魔数');
+  assert.equal(formMod.sniffImageExt(gif()), null, 'GIF 不在白名单');
+  assert.equal(formMod.sniffImageExt(Buffer.from('改个扩展名就想蒙混')), null, '文本冒充一律 null');
   /* ② 票面「≤2 MB，超限明文拒绝」的客户端侧：3 MB 明文拒且一个请求都不发 */
   const big = await formMod.commitAvatarFile('h1', 'home', {
     size: 3 * 1024 * 1024, type: 'image/png', name: 'b.png', arrayBuffer: async () => new ArrayBuffer(3 * 1024 * 1024),
@@ -325,6 +335,13 @@ test('T11 #128 客户端三道闸真跑：超 2 MB 早拒、空文件拒、格�
   assert.equal(big.ok, false, '3 MB 必须拒');
   assert.match(big.message, /上限 2 MB/, '明文说清上限');
   assert.deepEqual(calls, [], '超限不落任何请求（更不落盘）');
+  /* ②b 声明的类型是图片、字节不是 ⇒ 读字节后明文拒（宿主之前先拦一道，不发请求） */
+  const liar = await formMod.commitAvatarFile('h1', 'home', {
+    size: gif().length, type: 'image/png', name: 'a.png', arrayBuffer: async () => buf(gif()),
+  });
+  assert.equal(liar.ok, false, '声明的 mime 不作数：GIF 字节必须拒');
+  assert.match(liar.message, /不是有效图片/, '明文说清判据是文件内容');
+  assert.deepEqual(calls, [], '格式不符不发请求');
   /* ③ 成功：读字节 → data URL → 唯一写口 avatar.set（kind 带给宿主日志映射） */
   const ok = await formMod.commitAvatarFile('h1', 'home', {
     size: png().length, type: 'image/png', name: 'a.png', arrayBuffer: async () => buf(png()),
@@ -335,13 +352,22 @@ test('T11 #128 客户端三道闸真跑：超 2 MB 早拒、空文件拒、格�
   assert.equal(calls[0].p.id, 'h1');
   assert.equal(calls[0].p.kind, 'home');
   assert.equal(calls[0].p.dataUrl, url('image/png', png()), 'data URL 与源字节一致（base64 编码无误）');
+  assert.equal(committed, 1, '写成功后必须通知装配方重读家表（否则新图只在旧快照上重画 ⇒ 真机不显示）');
+  /* ③b 真 PNG 但**没有声明类型**（去掉扩展名的文件）：按字节放行，且 data URL 用嗅出来的 mime
+   *     ——用空声明拼成 `data:;base64,` 会被宿主那条 `^data:image/...` 正则拒掉。 */
+  const noType = await formMod.commitAvatarFile('h2', 'home', {
+    size: png().length, type: '', name: 'noext', arrayBuffer: async () => buf(png()),
+  });
+  assert.deepEqual(noType, { ok: true }, '真 PNG 没有声明类型也必须能传（判据是字节）');
+  assert.equal(calls[1].p.dataUrl, url('image/png', png()), 'data URL 的 mime 来自嗅探，不来自空声明');
+  assert.equal(committed, 2, '每次写成功都要重读一次');
   /* ④ 读不到文件内容：明文拒绝，不发请求 */
   const unreadable = await formMod.commitAvatarFile('h1', 'home', {
     size: 10, type: 'image/png', name: 'x.png', arrayBuffer: async () => { throw new Error('设备没插好') },
   });
   assert.equal(unreadable.ok, false, '读不到就拒');
   assert.match(unreadable.message, /读不到文件内容：设备没插好/, '带原文');
-  assert.equal(calls.length, 1, '失败不发请求');
+  assert.equal(calls.length, 2, '失败不发请求');
   /* ⑤ 通道没接通：如实拒绝（不静默装作传上了） */
   avCli.bindAvatarTransport({ getRpc: () => null, onChange: () => {} });
   const nolink = await formMod.commitAvatarFile('h1', 'home', {
@@ -349,6 +375,35 @@ test('T11 #128 客户端三道闸真跑：超 2 MB 早拒、空文件拒、格�
   });
   assert.equal(nolink.ok, false, '没有通道就拒');
   assert.match(nolink.message, /头像通道未接通/, '明文说清是装配问题');
+});
+
+/* ---------- 写后重读：真机阻断缺陷的回归钉（#128 真机前抓到） ----------
+ * 症状：上传成功、文件与 `img:` 标记都落盘，但列表/详情仍是预设色＋首字母，要手动刷新才出现。
+ * 根因：行的 `avatar` 字段才是取图真相，而写图那条路**没有重读家表**（其它写操作走的是
+ * `home-ops` 的 `await deps.reloadHomes()`），弹层那边只 `onDone: () => render()` ⇒ 在旧快照上重画。
+ * 两半都要钉：① 写口必须通知装配方（行为断言，真跑客户端模块）；② 装配方收到通知必须**重读家表**，
+ * 不是再 `render()` 一次旧快照（装配根接线钉：panel.ts 那一行拿不到真 DOM，故用源码钉住它的形状）。 */
+test('T11 #128 写后重读：上传/清图都通知装配方，且装配方那一行必须重读家表（不是重画旧快照）', async () => {
+  const seen: string[] = [];
+  let reloads = 0
+  const rpc = async (_path: string, ep: string): Promise<any> => { seen.push(ep); return { ok: true, value: { avatar: 'img:h1.png', images: { h1: url('image/png', png()) } } } };
+  avCli.bindAvatarTransport({ getRpc: () => rpc, onChange: () => {}, onCommitted: () => { reloads += 1 } });
+  await avCli.uploadAvatarImage('h1', 'home', url('image/png', png()));
+  assert.deepEqual(seen, ['avatar.set'], '上传只走 avatar.set');
+  assert.equal(reloads, 1, '上传成功 ⇒ 通知装配方一次');
+  await avCli.clearAvatarImage('h1', 'home');
+  assert.equal(reloads, 2, '清图成功 ⇒ 也要通知（否则格子还挂着旧图与「清除图片」）');
+  /* 装配方的重读回调抛错**不许**反蚀写结果：图已落盘成功，重读失败下次刷新自愈。 */
+  avCli.bindAvatarTransport({ getRpc: () => rpc, onChange: () => {}, onCommitted: () => { throw new Error('loadHomes 炸了') } });
+  await avCli.uploadAvatarImage('h1', 'home', url('image/png', png()));
+  /* 走到这里没抛 ⇒ 写结果没被重读失败反蚀 */
+  assert.ok(true, '重读失败不许让「已上传成功」变成失败');
+
+  const panel = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
+  const bind = /bindAvatarTransport\(\{[\s\S]{0,400}?\}\)/.exec(panel)?.[0] ?? '';
+  assert.ok(bind, 'panel.ts 必须装配 avatar transport');
+  assert.match(bind, /onCommitted\s*:/, '装配根必须接 onCommitted（不接 ⇒ 写后不重读）');
+  assert.match(bind, /loadHomes\(/, 'onCommitted 必须重读家表（loadHomes）；只 render() 就是重画旧快照＝真机不显示');
 });
 
 console.log('features/home-avatar: ALL PASS');

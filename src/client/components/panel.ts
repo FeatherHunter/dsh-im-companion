@@ -226,9 +226,9 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     onRetry: () => void refresh(),
   })
   data.setRender(() => bodyModule.render())
-  /* T11 #128：头像图片通道接通（rpc 供取图/上传、onChange 供「图到了重渲染」）。不接这行，上传必抛
-   * 「头像通道未接通」且 `avatar.get` 一次都不发——渲染侧只见回落款。 */
-  bindAvatarTransport({ getRpc: () => rpc, onChange: () => bodyModule.render() })
+  /* T11 #128：头像通道接通（取图/上传 ＋ 图到了重渲染 ＋ 写成功后重读家表）。不接这行，上传必抛「头像
+   * 通道未接通」；只接前两个则新图落盘了也不显示——行的 `avatar` 标记才是真相，弹层拿的是旧快照。 */
+  bindAvatarTransport({ getRpc: () => rpc, onChange: () => bodyModule.render(), onCommitted: () => data.loadHomes(getWorkspaces) })
 
   /* ---------- 生命周期（#17：轮询归共享 stream，面板只订阅 + dispose 退订） ---------- */
   /* 顺序化首屏：先 load（拿到 bots+meta）再由它读完家表（种子一次到位，助理行不等下一轮 15s 轮询）。

@@ -4,7 +4,7 @@
  * 才成得了标记，攒到确定再传会造出「弹层里的待传图」与「行里的真图」两套状态；落完由调用方
  * closeHomePop ＋ onDone（home-forms 提供）。
  * 校验只有**一道上限**（＝2 MiB，与票面/宿主同值，没有第二套数字）：选完文件**当场**明文拒（不读进内存）
- * → 读字节后再核一次（防声明的 size 撒谎）→ 非 png/jpg/webp 明文拒；
+ * → 读字节后再核一次（防声明的 size 撒谎）→ **按魔数**认格式（声明的 mime / 扩展名一律不作数，与宿主同判据）。
  * 宿主侧还有第二道（魔数 ＋ 2 MiB）⇒「不写半行数据」是两侧都拒出来的，不是任一侧说了算。
  * 想读缩略图的场合：图片字节只走端口缓存（`home-avatar.ts`），本文件不碰 IO。
  */
@@ -18,7 +18,10 @@ import { avatarStyle, imageCover } from './home-identity'
 const ACCEPT = 'image/png,image/jpeg,image/webp'
 /** 存盘上限（与宿主 AVATAR_MAX_BYTES 同值；两侧都卡，客户端这层只为即时反馈——选完文件当场给明文，不先读进内存）。 */
 const MAX_STORE = 2 * 1024 * 1024
-const MIMES = ['image/png', 'image/jpeg', 'image/webp']
+/** 魔数 → 声明用的 mime（与宿主 `MIME_EXT` 同表）。用**嗅出来的**类型去拼 data URL：宿主那条
+ *  `^data:image/...;base64,` 正则会拒掉 `data:;base64,`——没有扩展名的真 PNG 在旧写法下必被宿主拒。 */
+const EXT_MIME: Record<string, string> = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' }
+const REJECT = '不是有效图片：只收 png/jpg/webp 原始文件（按文件内容判定，改扩展名不作数）'
 
 type Kind = 'home' | 'assistant'
 /** 文件对象的最小形状（`File` 结构子集：单测直接喂假对象，不必造真 File）。 */
@@ -31,14 +34,25 @@ export interface FileLike {
 
 const mb = (n: number): string => (n / 1048576).toFixed(1) + ' MB'
 
-/** 选文件前的本地校验（纯函数，可单测）：回 null ＝ 可以读。 */
+/** 魔数判定（与宿主 `sniffImageMime` 同判据，唯一真相是字节）：png / jpeg / webp 三种，别的一律 null。
+ *  客户端这一关与宿主那一关**同判据**——按声明的 mime 判会误杀「真 PNG 但 `type` 为空」（去掉扩展名）。 */
+export function sniffImageExt(bytes: Uint8Array): string | null {
+  const b = bytes
+  if (b.length > 8 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47
+    && b[4] === 0x0d && b[5] === 0x0a && b[6] === 0x1a && b[7] === 0x0a) return 'png'
+  if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff) return 'jpg'
+  const tag = (i: number, n: number): string => String.fromCharCode(...Array.from(b.subarray(i, i + n)))
+  if (b.length > 12 && tag(0, 4) === 'RIFF' && tag(8, 4) === 'WEBP') return 'webp'
+  return null
+}
+
+/** 选文件前的本地校验（纯函数，可单测）：回 null ＝ 可以读。
+ *  **格式不在这关判**——格式只看字节（声明的 mime/扩展名不作数），故这里只卡「没选到 / 太大 / 空」。 */
 export function avatarFileReject(file: { type?: string; size?: number; name?: string } | null | undefined): string | null {
   if (!file) return '没选到文件'
   const size = typeof file.size === 'number' ? file.size : 0
   if (size > MAX_STORE) return '图片太大：' + mb(size) + '，上限 2 MB'
   if (!size) return '空文件：' + String(file.name ?? '（未命名）')
-  const type = String(file.type ?? '').toLowerCase()
-  if (!MIMES.includes(type)) return '不支持的格式：只收 png / jpg / webp（当前 ' + (type || '未知类型') + '）'
   return null
 }
 
@@ -68,8 +82,11 @@ export async function commitAvatarFile(id: string, kind: Kind, file: FileLike | 
   }
   if (!bytes.length) return { ok: false, message: '空文件：' + String(file?.name ?? '（未命名）') }
   if (bytes.length > MAX_STORE) return { ok: false, message: '图片太大：' + mb(bytes.length) + '，上限 2 MB' }
+  /* 格式的最终判据＝字节（声明的 mime 不作数）；data URL 的 mime 也用嗅出来的那个，别把空声明透传给宿主。 */
+  const ext = sniffImageExt(bytes)
+  if (!ext) return { ok: false, message: REJECT }
   try {
-    await uploadAvatarImage(id, kind, toDataUrl(bytes, String(file?.type ?? '').toLowerCase()))
+    await uploadAvatarImage(id, kind, toDataUrl(bytes, EXT_MIME[ext] as string))
   } catch (e) {
     return { ok: false, message: msgOf(e) }
   }
