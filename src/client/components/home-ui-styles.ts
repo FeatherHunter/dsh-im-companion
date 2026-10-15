@@ -33,7 +33,7 @@ export const HOME_UI_CSS = `
 .home-ui button:focus-visible,.home-ui input:focus-visible,.home-ui select:focus-visible,.home-ui [tabindex]:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
 
 /* ============ frame ============ */
-.home-ui .hu-fhead{display:flex;align-items:center;gap:8px;padding:11px 12px 3px;flex:none}
+.home-ui .hu-fhead{display:flex;align-items:center;gap:8px;padding:11px 10px 3px;flex:none}
 .home-ui .hu-fhead .hu-ttl{min-width:0;flex:1}
 .home-ui .hu-fhead .hu-ttl b{display:block;font-size:15px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-fhead .hu-ttl small{display:block;font-size:11.5px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -160,7 +160,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-abtn[disabled]{opacity:.45;cursor:not-allowed}
 
 /* ============ footer ============ */
-.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;padding:6px 0 2px;background:none;border-top:0;display:flex;gap:8px}
+.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;padding:4px 0 0;background:linear-gradient(to bottom,transparent,var(--hu-panel) 60%);border-top:0;display:flex;gap:8px}
 .home-ui .hu-pbtn{position:relative;overflow:hidden;flex:1;font:inherit;font-size:13px;font-weight:600;height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
   background:var(--hu-accent);color:#fff;border:1px solid transparent;border-radius:9px;cursor:pointer;transition:transform var(--hu-t-fast) var(--hu-ease),background var(--hu-t) var(--hu-ease);
   box-shadow:0 1px 2px rgba(13,148,136,.3);will-change:transform}
