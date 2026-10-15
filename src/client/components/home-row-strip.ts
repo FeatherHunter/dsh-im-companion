@@ -25,7 +25,7 @@ export interface StripAsst {
   avatar: string | null
   /** true 在线 / false 离线或未绑定 / null 未绑定（画空心点）。 */
   on: boolean | null
-  /** 气泡第二行的附加信息（渠道 · 机器人名）。 */
+  /** 气泡第二行的附加信息（渠道＋机器人名，状态由 statusText 讲，不许出现 ·）。 */
   sub: string
 }
 

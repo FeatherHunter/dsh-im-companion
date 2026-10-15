@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE  throwaway  悬浮气泡三方案对比  双击即看  ?v=0/1/2/3 切换 -->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>气泡原型 A/B/C + 现状对照</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #101216; color: #e8eaf0; font: 14px/1.5 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 28px; }
+  h1 { font-size: 17px; margin-bottom: 4px; }
+  .sub { color: #8b93a5; font-size: 12.5px; margin-bottom: 22px; }
+  .grid { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
+  .cell { display: none; }
+  body[data-v="0"] .cell, .cell.show { display: block; }
+  body[data-v="1"] #cA, body[data-v="2"] #cB, body[data-v="3"] #cC { display: block; }
+  .card-cap { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+  .card-why { font-size: 12px; color: #8b93a5; margin-bottom: 12px; max-width: 300px; }
+  .stage { background: #171a20; border: 1px dashed #333a48; border-radius: 14px; padding: 46px 30px; min-width: 330px; min-height: 240px; display: flex; align-items: center; justify-content: center; }
+  /* —— 模拟被悬停的助理 chip —— */
+  .fakechip { display: inline-flex; align-items: center; gap: 7px; background: #22262f; border: 1px solid #343b49; border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; }
+  .fakechip i { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-style: normal; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+  /* ══ A  横排单轴 ══ */
+  .tipA { display: flex; align-items: center; gap: 11px; background: #22262f; border: 1px solid #3d4557; border-radius: 12px; padding: 12px 15px; box-shadow: 0 14px 34px rgba(0,0,0,.6); max-width: 270px; }
+  .tipA .tav { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-weight: 800; font-size: 14px; display: grid; place-items: center; flex: none; }
+  .tipA .tt b { display: block; font-size: 14px; }
+  .tipA .tt small { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c9cfdb; margin-top: 3px; }
+  .tipA .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b; flex: none; }
+  .tipA .tt small em { font-style: normal; color: #ff9a9a; font-weight: 700; }
+  /* ══ B  居中单轴 ══ */
+  .tipB { background: #22262f; border: 1px solid #3d4557; border-radius: 14px; padding: 16px 22px 14px; box-shadow: 0 14px 34px rgba(0,0,0,.6); text-align: center; max-width: 230px; }
+  .tipB .tav { width: 48px; height: 48px; border-radius: 13px; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-weight: 800; font-size: 17px; display: grid; place-items: center; margin: 0 auto 8px; }
+  .tipB b { display: block; font-size: 14px; }
+  .tipB .pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 9px; font-size: 12px; font-weight: 700; color: #ff9a9a; background: rgba(255,107,107,.16); border: 1px solid rgba(255,107,107,.4); border-radius: 999px; padding: 3px 11px; }
+  .tipB .pill i { width: 7px; height: 7px; border-radius: 50%; background: #ff6b6b; }
+  /* ══ C  极简单行 ══ */
+  .tipC { display: inline-flex; align-items: center; gap: 8px; background: #22262f; border: 1px solid #3d4557; border-radius: 999px; padding: 7px 14px 7px 8px; box-shadow: 0 14px 34px rgba(0,0,0,.6); font-size: 13px; white-space: nowrap; }
+  .tipC .tav { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-style: normal; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+  .tipC b { font-weight: 700; }
+  .tipC .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b; }
+  .tipC em { font-style: normal; color: #ff9a9a; font-weight: 700; font-size: 12.5px; }
+  /* ══ 现状（问题版复刻） ══ */
+  .tipNow { background: #23262e; border-radius: 16px; padding: 18px 20px 10px; width: 210px; }
+  .tipNow .tav { width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-weight: 800; display: grid; place-items: center; margin: 0 auto; }
+  .tipNow b { display: block; margin-top: 10px; font-size: 15px; }
+  .tipNow small { display: block; color: #8b93a5; font-size: 12px; margin-top: 2px; }
+  /* 底部切换条 */
+  #bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); background: #1d2129; border: 1px solid #3a4150; border-radius: 999px; padding: 6px; display: flex; gap: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+  #bar button { border: 0; border-radius: 999px; background: transparent; color: #aeb6c6; font-size: 12.5px; padding: 6px 14px; cursor: pointer; }
+  #bar button.cur { background: #2f6fed; color: #fff; font-weight: 700; }
+</style>
+</head>
+<body data-v="0">
+<h1>悬浮气泡  三方案 ＋ 现状对照（PROTOTYPE，用完即焚）</h1>
+<div class="sub">同一份数据：dsh-log ／ DL ／ 未绑定 ／ 渠道飞书。每个方案都修了审查里的 6 条：单轴、去重、省高度、状态提亮、真阴影+描边、均匀内边距。</div>
+<div class="grid">
+  <div class="cell" id="cA">
+    <div class="card-cap">A  横排单轴（推荐）</div>
+    <div class="card-why">左头像＋右两行，整卡一条左轴；"未绑定"只出现一次且提亮加粗；高度只有现状一半。</div>
+    <div class="stage"><span class="fakechip" title=""><i>DL</i>dsh-log</span>&nbsp;&nbsp;<span class="tipA"><span class="tav">DL</span><span class="tt"><b>dsh-log</b><small><span class="dot"></span>飞书<em>未绑定</em></small></span></span></div>
+  </div>
+  <div class="cell" id="cB">
+    <div class="card-cap">B  居中单轴</div>
+    <div class="card-why">保留"头像在上"的观感，但全卡统一居中——单中轴；状态做成实心胶囊徽，不再是灰脚注。</div>
+    <div class="stage"><span class="tipB"><span class="tav">DL</span><b>dsh-log</b><span class="pill"><i></i>飞书未绑定</span></span></div>
+  </div>
+  <div class="cell" id="cC">
+    <div class="card-cap">C  极简单行</div>
+    <div class="card-why">信息密度最高：一行讲完身份＋状态；适合"瞟一眼确认是谁、能不能点"，不适合将来加更多字段。</div>
+    <div class="stage"><span class="tipC"><span class="tav">DL</span><b>dsh-log</b><span class="dot"></span><em>飞书未绑定</em></span></div>
+  </div>
+  <div class="cell" id="c0">
+    <div class="card-cap">现状复刻（问题版，对照用）</div>
+    <div class="card-why">居中头像＋左对齐文字（轴打架）、"未绑定"×2、无阴影无描边、上松下紧。原截图此行含分隔符，按禁令隐去，结构照原样。</div>
+    <div class="stage"><span class="tipNow"><span class="tav">DL</span><b>dsh-log</b><small>○ 未绑定飞书未绑定</small></span></div>
+  </div>
+</div>
+<div id="bar">
+  <button data-v="0" class="cur">全部</button><button data-v="1">A 横排</button><button data-v="2">B 居中</button><button data-v="3">C 单行</button>
+</div>
+<script>
+  const q = new URLSearchParams(location.search).get('v');
+  const init = { '1': '1', '2': '2', '3': '3' }[q] || '0';
+  const body = document.body, btns = [...document.querySelectorAll('#bar button')];
+  const set = v => { body.dataset.v = v; btns.forEach(b => b.classList.toggle('cur', b.dataset.v === v)); };
+  btns.forEach(b => b.onclick = () => set(b.dataset.v)); set(init);
+</script>
+</body>
+</html>

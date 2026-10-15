@@ -54,11 +54,11 @@ const cls = (root: any, c: string): any[] => nodes(root).filter((e) => e.classLi
 const one = (root: any, c: string): any => cls(root, c)[0] ?? null;
 const txt = (e: any): string => String(e?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-const asst = (o: any = {}): any => ({ id: 'a1', name: '小帅', avatar: null, on: true, sub: '飞书 · 小帅', ...o });
+const asst = (o: any = {}): any => ({ id: 'a1', name: '小帅', avatar: null, on: true, sub: '飞书小帅', ...o });
 const LIST = [
   asst({ id: 'a1', name: '小美', on: true }),
-  asst({ id: 'a2', name: 'dsh-prompt', on: false, sub: '飞书 · 机器人不在线' }),
-  asst({ id: 'a3', name: '未命名助理', on: null, sub: '微信 · 未绑定' }),
+  asst({ id: 'a2', name: 'dsh-prompt', on: false, sub: '飞书机器人不在线' }),
+  asst({ id: 'a3', name: '未命名助理', on: null, sub: '微信未绑定' }),
 ];
 
 /* 按「当前 DOM」粗算宽度：命名芯片 120px、收起芯片 34px、容器 40px。真机不用这个，只为把三档逼出来。 */
@@ -170,7 +170,7 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
   host.appendChild(el);
   const chips = cls(el, 'hu-chip');
   assert.equal(chips.length, 3, '前置：三枚芯片都在');
-  /* ① 正常悬停 ⇒ 亮起，内容＝头像首字母＋名字＋状态·渠道 */
+  /* ① 正常悬停 ⇒ 亮起，内容＝头像首字母＋名字＋状态＋渠道（无 ·，状态只讲一次） */
   enter(chips[0]); await sleep(200);
   assert.equal(boxes().length, 1, 'body 里永远只有一个气泡盒（不叠盒）');
   assert.equal(shown().length, 1, '悬停 120ms 后亮起');
@@ -203,13 +203,23 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
   /* ⑥ 旧盒清扫：手工往 body 里扔一个带旧字的裸盒（模拟跨版本热重载的残留），下次悬停必须先扫掉它 */
   const leftover = domDoc.createElement('div');
   leftover.className = 'home-ui hu-tiphost';
-  leftover.textContent = 'DLdsh-log未绑定 · 飞书 · 未绑定';
+  leftover.textContent = 'DLdsh-log飞书未绑定';
   host.appendChild(leftover);
   enter(chips[0]); await sleep(200);
   assert.equal(boxes().length, 1, '每画必先扫：旧盒已带走，永远只有一个新盒');
   assert.equal(shown().length, 1, '清扫之后新盒照常亮起');
   assert.ok(!txt(boxes()[0]).includes('DLdsh-log'), '旧盒的旧字没有借尸还魂（新盒内容＝当前芯片）');
   assert.ok(txt(shown()[0]).includes('小美'), '新盒内容跟着当前悬停走');
+  /* ⑦ 无·令（owner 2026-10-16：· 不许出现）：实际渲染文案＋两处源码连接处三钉 */
+  assert.ok(!txt(shown()[0]).includes('·'), '气泡实际文案里没有 ·');
+  assert.ok(cls(shown()[0], 'hu-ch').length === 1 && cls(shown()[0], 'hu-st').length === 1,
+    '渠道与状态是两个独立节点（flex gap 分隔，不是拼字符串更不是紧贴）');
+  const tipSrc = readFileSync(join(COMP, 'home-row-tip.ts'), 'utf8');
+  const rowsSrc = readFileSync(join(COMP, 'home-rows.ts'), 'utf8');
+  const paintLine = tipSrc.split('\n').find((l) => l.includes('data.sub')) ?? '';
+  assert.ok(paintLine.length > 0 && !paintLine.includes('·'), '气泡拼接行没有 ·（状态＋渠道紧贴，不用符号连接）');
+  const subLine = rowsSrc.split('\n').find((l) => l.includes('sub: bot ?')) ?? '';
+  assert.ok(subLine.length > 0 && !subLine.includes('·'), '家行 sub 行没有 ·（只讲渠道＋名，状态归 statusText）');
   /* 进层与令牌钉（#112 同款坑）：body 级盒子自带 af-portal（否则 --hu-* 全失效），
    * 无 Popover API 的环境不带 popover 属性（否则 UA display:none 藏盒） */
   assert.ok(boxes()[0].classList.contains('af-portal'), '气泡盒自带 af-portal（body 在 .af-root 之外，令牌不能断）');
@@ -242,6 +252,7 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   assert.ok(css.includes('.home-ui .hu-add:hover') && css.includes('.home-ui .hu-add:active'), '「＋ 建助理」悬停＋按下都有反馈');
   assert.ok(css.includes('.home-ui.hu-tiphost'), '悬停气泡是 body 级 float（宿主带 .home-ui，作用域不破）');
   assert.ok(css.includes('.home-ui.hu-tiphost.on'), '气泡有显隐过渡态');
+  assert.ok(css.includes('.hu-tt small .hu-st'), '状态字独立成 span 且加粗提亮（结构分隔的另一半，灰脚注不许回来）');
   /* 源码侧钉子：不能长回老副标/老圆点条（owner 2026-10-15 已改口径）。渠道行（按渠道模式）另有一句
      「N 位助理 · M 位已绑」不在本票范围内，故这里只钉**家行**那一句。 */
   const rowsSrc = readFileSync(join(COMP, 'home-rows.ts'), 'utf8');

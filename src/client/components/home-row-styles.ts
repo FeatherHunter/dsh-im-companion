@@ -99,6 +99,7 @@ export const HOME_ROW_CSS = `
 .home-ui.hu-tiphost .hu-tt{min-width:0}
 .home-ui.hu-tiphost .hu-tt b{display:block;font-size:12.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui.hu-tiphost .hu-tt small{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:11px;color:var(--hu-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui.hu-tiphost .hu-tt small .hu-st{font-weight:700;color:var(--hu-ink)}
 .home-ui.hu-tiphost[popover]{margin:0;inset:auto;overflow:visible}
 `
 

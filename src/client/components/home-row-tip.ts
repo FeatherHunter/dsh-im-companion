@@ -30,7 +30,7 @@ export interface TipData {
   avatar: string | null
   status: 'on' | 'off' | 'unbound'
   statusText: string
-  /** 附加一行（渠道 · 机器人名之类），空串则不显示。 */
+  /** 附加一行（渠道＋机器人名之类），空串则不显示。 */
   sub: string
 }
 
@@ -103,7 +103,11 @@ function paint(a: HTMLElement, data: TipData): void {
   }, data.url ? '' : initialsOf(data.name)))
   el.appendChild(h('span', { className: 'hu-tt' },
     h('b', {}, data.name),
-    h('small', {}, h('i', { className: dotClass(data.status) }), data.statusText + (data.sub ? ' · ' + data.sub : ''))))
+    /* 状态行三个独立节点（点＋渠道＋状态，flex gap 撑开）：分隔靠结构不靠符号，不许拼 · 也不许紧贴成一片。 */
+    h('small', {},
+      h('i', { className: dotClass(data.status) }),
+      data.sub ? h('span', { className: 'hu-ch' }, data.sub) : null,
+      h('span', { className: 'hu-st' }, data.statusText))))
   try {
     const r = a.getBoundingClientRect()
     const w = Number(el.offsetWidth) || 0
