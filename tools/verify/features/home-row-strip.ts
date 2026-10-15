@@ -159,7 +159,7 @@ test('T13 #135 窗宽跟随 refitStrips：活条带一起重判，游离条带�
   host.removeChild(a); host.removeChild(b);
 });
 
-test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重装', async () => {
+test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重装、收起拆盒、旧盒清扫', async () => {
   const tip: any = createRequire(join(tmp, 'run.cjs'))('./client/components/home-row-tip.js');
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
   const boxes = (): any[] => (domDoc.body.querySelectorAll('.hu-tiphost') as any[]);
@@ -175,7 +175,7 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
   assert.equal(boxes().length, 1, 'body 里永远只有一个气泡盒（不叠盒）');
   assert.equal(shown().length, 1, '悬停 120ms 后亮起');
   assert.ok(txt(shown()[0]).includes('小美') && txt(shown()[0]).includes('在线'), '气泡报名字＋状态');
-  /* ② 换一枚 ⇒ 还是同一个盒（内容换掉，不另起） */
+  /* ② 换一枚 ⇒ 还是只有一个盒（拆了旧的建新的，不叠盒） */
   enter(chips[1]); await sleep(200);
   assert.equal(boxes().length, 1, '换芯片不另起盒');
   assert.ok(txt(shown()[0]).includes('dsh-prompt'), '内容跟着换到新芯片');
@@ -196,11 +196,21 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
     String(n.nodeName).toLowerCase() === 'style' && String(n.getAttribute?.('id') ?? (n as any).id ?? '') === 'af-feature-home-row-l1');
   assert.equal(back.length, 1, '悬停时样式先重装（认领的旧盒也不会裸奔）');
   assert.equal(shown().length, 1, '重装后气泡照常亮起');
-  /* ⑤ 收起＝灭掉＋倒内容：以后任何时刻盒子里都没旧字 ⇒ 样式再掉、定位再丢，也没有裸字可露 */
+  /* ⑤ 收起＝拆盒：body 里一个气泡盒都不留 ⇒ 以后样式再掉、版本再换，都没有裸字可露 */
   tip.hideAsstTip();
   assert.equal(shown().length, 0, '收起后不亮');
-  assert.equal(boxes().length, 1, '盒子本身复用（只清空，不拆盒）');
-  assert.equal(txt(boxes()[0]), '', '收起即清空内容（旧字不许在盒子里过夜）');
+  assert.equal(boxes().length, 0, '收起即拆盒（不复用、不留盒，旧字没有过夜的地方）');
+  /* ⑥ 旧盒清扫：手工往 body 里扔一个带旧字的裸盒（模拟跨版本热重载的残留），下次悬停必须先扫掉它 */
+  const leftover = domDoc.createElement('div');
+  leftover.className = 'home-ui hu-tiphost';
+  leftover.textContent = 'DLdsh-log未绑定 · 飞书 · 未绑定';
+  host.appendChild(leftover);
+  enter(chips[0]); await sleep(200);
+  assert.equal(boxes().length, 1, '每画必先扫：旧盒已带走，永远只有一个新盒');
+  assert.equal(shown().length, 1, '清扫之后新盒照常亮起');
+  assert.ok(!txt(boxes()[0]).includes('DLdsh-log'), '旧盒的旧字没有借尸还魂（新盒内容＝当前芯片）');
+  assert.ok(txt(shown()[0]).includes('小美'), '新盒内容跟着当前悬停走');
+  tip.hideAsstTip();
   host.removeChild(el2);
   tip.hideAsstTip();
 });
@@ -241,11 +251,12 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   assert.ok(css.includes('.home-ui .hu-row.hrow:hover'), '家行悬停只换边框＋底色（老投影在这里不出现，还原型）');
   assert.ok(rowsSrc.includes('hu-sstrip'), '骨架行两段式（上段身份＋下段条带灰条，与真行同几何）');
   assert.ok(css.includes('.home-ui .hu-sstrip'), '骨架条带样式与新表同注册（不回基表添行）');
-  /* 气泡永不裸奔钉子（owner 2026-10-16：左下角裸字）：无样式不画、定位完才亮、收起即倒内容 */
+  /* 气泡永不裸奔钉子（owner 2026-10-16：左下角裸字）：拆盒制＋无样式不画＋定位完才亮 */
   const tipSrc = readFileSync(join(COMP, 'home-row-tip.ts'), 'utf8');
   assert.ok(tipSrc.includes('homeRowStylesAlive'), '画之前先查样式活没活（死了就不画，宁可不弹也不裸）');
   assert.ok(tipSrc.indexOf("classList.add('on')") > tipSrc.indexOf('el.style.left'),
     '先定位、后点亮（定位丢了盒子就不亮，不许无定位现身左下角）');
-  assert.ok(tipSrc.includes("box.textContent = ''"), '收起即倒掉内容（旧字不过夜）');
+  assert.ok(tipSrc.includes("querySelectorAll?.('.hu-tiphost')"), '每画必先扫旧盒（跨版本残留也带走，不认领）');
+  assert.ok(tipSrc.includes('box = null'), '收起即拆盒（旧字没有过夜的地方）');
 });
 

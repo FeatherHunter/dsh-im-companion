@@ -7,9 +7,11 @@
  * 纪律：气泡只读、不拦指针（`pointer-events:none`）⇒ 不会把鼠标从芯片上"抢走"造成闪烁；
  * 延迟 120ms 才显（扫过一排芯片不刷屏）；滚动/点击/离开任一即收。日志零（纯视觉，不进关键路径）。
  *
- * 永不裸奔三件套（owner 2026-10-16：左下角裸字 `DLdsh-log未绑定 · 飞书 · 未绑定`）：
- * 无样式不画（`homeRowStylesAlive` 验活）、定位完才亮（`.on` 落在定位之后）、收起即倒内容
- * —— 三条同时成立，裸字在构造上就没有出现的位置。
+ * 永不裸奔（owner 2026-10-16：左下角裸字 `DLdsh-log未绑定 · 飞书 · 未绑定`，且气泡就该长在
+ * 被悬停的头像旁边、不该钉在屏幕上）：**拆盒制** —— 气泡盒用一次就从 DOM 里拆掉，不复用、
+ * 不认领旧盒；每次画之前先把 body 里所有的 `.hu-tiphost` 扫掉（跨版本热重载留下的旧盒也一并带走）。
+ * 再加上画前验样式活（死了就不画）、定位完才亮（几何丢了就不亮），四条同时成立，
+ * 屏幕上就不存在“有字无样式”的东西。
  */
 import { h } from '../dom'
 import { avatarStyle, imageCover, initialsOf } from './home-identity'
@@ -51,15 +53,27 @@ function connected(el: HTMLElement): boolean {
   return typeof flag === 'boolean' ? flag : !!el.parentNode
 }
 
+/** 把 body 里所有的气泡盒全部拆掉（跨版本热重载留下的旧盒也在内：只认类名，不认是不是自己建的）。
+ * 返回拆掉的个数（平时是 0；大于 0 说明刚才屏幕上躺着一个随时可能裸奔的旧盒）。 */
+function sweepTipBoxes(): number {
+  try {
+    const doc = (globalThis as unknown as { document?: { body?: { querySelectorAll?: (s: string) => ArrayLike<unknown> } } }).document
+    const list = doc?.body?.querySelectorAll?.('.hu-tiphost')
+    const n = (list as ArrayLike<unknown> | undefined)?.length ?? 0
+    for (let i = 0; i < n; i++) {
+      try { ((list as ArrayLike<any>)[i] as any)?.remove?.() } catch { /* 单个拆不掉不影响别的 */ }
+    }
+    return n
+  } catch { return 0 }
+}
+
 function ensureBox(): HTMLElement {
-  if (box && connected(box)) return box
-  const doc = (globalThis as unknown as { document?: { body?: HTMLElement } }).document
-  /* 热重载/插件重载后旧盒子会留在 body 里（本模块变量已重置）：认领它而不是再叠一个，
-   * 否则 reco 越多、游离裸盒越多（#136 左下角裸字即此物缺样式时的样子）。 */
-  const adopted = doc?.body?.querySelector?.('.hu-tiphost') as unknown as HTMLElement | null
-  if (adopted && connected(adopted)) { box = adopted; return box }
+  /* 不认领、只新建：认领旧盒等于把上一个版本/上一次悬停的旧字请回来，拆了重建最干净。 */
+  sweepTipBoxes()
+  box = null
+  const doc = (globalThis as unknown as { document?: { body?: { appendChild?: (e: unknown) => void } } }).document
   box = h('div', { className: 'home-ui hu-tiphost', role: 'tooltip' })
-  doc?.body?.appendChild(box)
+  try { doc?.body?.appendChild?.(box) } catch { /* 桩里 body 缺 appendChild 就算了 */ }
   return box
 }
 
@@ -115,13 +129,14 @@ export function showAsstTip(a: HTMLElement, data: TipData): void {
   timer = set(() => { timer = null; if (anchor === a) paint(a, data) }, 120)
 }
 
-/** 收起（离开/滚动/点击/换目标都走它）：灭掉＋倒掉内容。
- * 内容必须一起倒：盒子肮脏地留在 body 里是设计（复用单盒），但旧字不许过夜 ——
- * 以后样式再掉、定位再丢，盒子里没有字，就没有裸字可露（#136 左下角）。 */
+/** 收起（离开/滚动/点击/换目标都走它）：灭掉＋**拆盒**。
+ * 拆盒不留盒：盒子从 DOM 里拿掉之后，以后样式再掉、版本再换，body 里没有盒子，
+ * 就没有裸字可露（#136 左下角）。下次悬停重建一个（一个小 div，120ms 延迟后建一次，忽略不计）。 */
 export function hideAsstTip(): void {
   const clear = (globalThis as unknown as { clearTimeout?: typeof clearTimeout }).clearTimeout
   if (timer !== null && typeof clear === 'function') clear(timer)
   timer = null
   anchor = null
-  try { box?.classList.remove('on'); if (box) box.textContent = '' } catch { /* 桩环境无 classList 就算了 */ }
+  try { (box as unknown as { remove?: () => void } | null)?.remove?.() } catch { /* 桩环境无 remove 就算了 */ }
+  finally { box = null }
 }
