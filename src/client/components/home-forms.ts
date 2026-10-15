@@ -8,7 +8,7 @@ import { avatarImageCell } from './home-avatar-form'
 import { closeHomePop, homePopOpen, openHomePop, updateHomePop, type AnchorRef } from './home-pop'
 import { freeBots, type Assistant, type Home, type WorkspaceRef } from '../data/home-model'
 import type { BotSnap } from '../data/fleet-api'
-import { asstName, homeName, type RowView } from './home-rows'
+import { asstName, avatarEl, homeName, type RowView } from './home-rows'
 import { logLine, logOn } from '../log'
 export interface FormOps {
   createHome(workspaceId: string): Promise<void>
@@ -26,6 +26,8 @@ export interface FormDeps {
   view: RowView
   ops: FormOps
   selHome: string
+  /** 家内建助理时锁家（L2 的「新建助理」）：家已定 ⇒ 不再给候选列表，直接告知归属。 */
+  lockHome?: boolean
   onDone: (level: 'L2' | 'L3', homeId: string, workspaceId?: string) => void
 }
 
@@ -111,20 +113,27 @@ export function newHomePop(anchor: AnchorRef, deps: FormDeps): void {
   open()
 }
 
-/** 新建助理（原型 newAsstPop + T6a 验收② + T6b #114 未绑定占位）：选家 + 选空闲机器人（或以后再绑）+ 可选名字。 */
+/** 新建助理（原型 newAsstPop + T6a 验收② + T6b #114 未绑定占位）：选家 + 选空闲机器人（或以后再绑）+ 可选名字。
+ *  `lockHome` 为真且家还在时，「属于哪个家」退化成归属告知（无候选可点）——家内点的「新建助理」一定归当前家。 */
 export function newAsstPop(anchor: AnchorRef, deps: FormDeps): void {
   const homes: Home[] = deps.view.homes.filter((x) => !x.tombstone)
   const bots: BotSnap[] = freeBots(deps.view.bots.map((b) => ({ channel: b.channel, botId: b.botId, workspace: b.workspace, botName: b.botName })), deps.view.assistants)
     .map((r) => deps.view.bots.find((b) => b.botId === r.botId && b.channel === r.channel))
     .filter((b): b is BotSnap => !!b)
   let homeId = deps.selHome && homes.some((x) => x.id === deps.selHome) ? deps.selHome : (homes[0]?.id ?? '')
+  const locked = deps.lockHome ? homes.find((x) => x.id === homeId) ?? null : null
+  const lockedName = locked ? homeName(deps.view, locked) : ''
   let botId = bots.length ? bots[0].botId : ''
   const unboundChannel = bots.length ? bots[0].channel : 'feishu'
   const nameInput = h('input', { type: 'text', placeholder: '留空用默认名', 'aria-label': '助理名字' }) as HTMLInputElement
   const body = [
-    field('属于哪个家', homes.length
-      ? optList(homes.map((x) => ({ value: x.id, title: homeName(deps.view, x), sub: x.path || '未关联工作区' })), homeId, (v) => { homeId = v })
-      : h('p', { className: 'hu-fhint' }, '还没有家：先回上一层建一个家。')),
+    locked
+      ? field('属于哪个家', h('div', { className: 'hu-locked' },
+        avatarEl(locked.id, lockedName, locked.avatar),
+        h('span', { className: 'hu-ot' }, h('b', {}, lockedName), h('small', {}, locked.path || '未关联工作区'))), 'div')
+      : field('属于哪个家', homes.length
+        ? optList(homes.map((x) => ({ value: x.id, title: homeName(deps.view, x), sub: x.path || '未关联工作区' })), homeId, (v) => { homeId = v })
+        : h('p', { className: 'hu-fhint' }, '还没有家：先回上一层建一个家。')),
     field('绑定机器人', bots.length
       ? optList([
         { value: '', title: '以后再绑', sub: '先不选，之后在助理里再绑' },

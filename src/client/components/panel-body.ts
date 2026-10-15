@@ -54,8 +54,6 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
   let selChannel = ''
   let focusId = ''
   let flashId = ''
-  /** L1「N 个空家」折叠态（呈现策略：0 助理的家收在尾部，默认不展开）。 */
-  let showEmpty = false
   let flashTimer: ReturnType<typeof setTimeout> | null = null
 
   const view = (): RowView => viewOf(state.homes, state.assistants, state.bots, deps.getWorkspaces())
@@ -67,16 +65,11 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     flashTimer = setTimeout(() => { flashId = '' }, 320)
   }
 
-  /** 选中的家若是空家 ⇒ 自动展开折叠段（否则刚建的家/刚钻进去的家看不见）。 */
-  function revealHome(id: string): void {
-    if (id && !state.assistants.some((a) => a.homeId === id)) showEmpty = true
-  }
-
   function go(next: Level, id?: string): void {
     if (next === 'L1') { level = 'L1'; focusId = '' }
     else if (next === 'L2') {
       if (channelMode()) selChannel = id ?? selChannel
-      else { selHome = id ?? selHome; revealHome(selHome) }
+      else selHome = id ?? selHome
       selAsst = ''
       level = 'L2'
       focusId = ''
@@ -101,13 +94,11 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     selChannel,
     focusId,
     flashId,
-    showEmpty,
     query: String(state.query ?? ''),
     channelMode: channelMode(),
     onGo: (next, id) => go(next, id),
     onOpen: (id) => go(level === 'L1' ? 'L2' : 'L3', id),
     onAct: (kind, id, anchor) => act(kind, id, anchor),
-    onToggleEmpty: () => { showEmpty = !showEmpty; render() },
   })
 
   /** 锚点一律**现取**（T7 #112 真机 bug）：面板刷新会 clear 重建，捕获的元素随即游离、rect 全 0 ⇒ 弹层跳到窗口左上。
@@ -209,12 +200,11 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
   function openCreate(): void {
     if (level === 'L3') return
     const v = view()
-    const form = { view: v, ops: deps.ops, selHome, onDone: (next: 'L2' | 'L3', homeId: string, workspaceId?: string) => {
+    const form = { view: v, ops: deps.ops, selHome, lockHome: level === 'L2' && !channelMode(), onDone: (next: 'L2' | 'L3', homeId: string, workspaceId?: string) => {
       const fresh = view()
       if (next === 'L2') {
         const created = fresh.homes.find((x) => x.workspaceId && x.workspaceId === workspaceId)
         selHome = created ? created.id : homeId
-        showEmpty = true
         flash(selHome)
       } else {
         selHome = homeId

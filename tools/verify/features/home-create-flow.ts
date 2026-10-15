@@ -400,11 +400,9 @@ test('②建助理点击级：点家钻进 L2→「新建助理」→弹层点�
 
     clickPrimary(b.panel(), '新建助理')
     await waitFor('建助理弹层出现', () => popTitle() === '新建助理')
-    assert.equal(popBoxes().length, 2, '弹层两组候选：属于哪个家 / 绑定机器人')
-    const [homeBox, botBox] = popBoxes()
-    const ketingOpt = boxOpts(homeBox).find((o: any) => attr(o, 'data-value') === ketingId)
-    assert.ok(ketingOpt, '「属于哪个家」里必须有当前钻取的家\n当前候选：' + JSON.stringify(boxValues(homeBox)))
-    assert.equal(attr(ketingOpt, 'aria-selected'), 'true', '建单必须挂当前选中的家（客厅）')
+    assert.equal(popBoxes().length, 1, '家内建助理：归属锁死，只剩「绑定机器人」一组候选')
+    const botBox = popBoxes()[0]
+    assert.ok(popText().includes('客厅'), '归属告知当前钻取的家（客厅），不再给选家列表')
     assert.deepEqual(boxValues(botBox), ['', 'bot_dddd', 'bot_eeee'], '候选=未绑定的两枚（外加禁用的「以后再绑」占位）')
     assert.ok(!boxOpts(botBox)[0].hasAttribute('disabled'), '「以后再绑」T6b #114 已启用（未绑定占位，不再禁用）')
     assert.ok(boxLabels(botBox)[1].includes('飞书') && boxLabels(botBox)[2].includes('微信'), '候选项带渠道标注：' + JSON.stringify(boxLabels(botBox)))
@@ -493,7 +491,7 @@ test('③点击级幂等：同一目录重提 → DSH 侧复用（created:false�
 
     clickPrimary(b.panel(), '新建助理')
     await waitFor('建助理弹层', () => popTitle() === '新建助理')
-    clickOpt(popBoxes()[1], 'bot_dddd')
+    clickOpt(popBoxes()[0], 'bot_dddd')
     clickPop('创建')
     await waitFor('新助理落盘（宿主 3→4）', () => readDoc(b.homesFile).assistants.length === 4)
     assert.equal(b.calls.filter((c) => c.endpoint === 'assistant.create').length, 1)
@@ -503,8 +501,8 @@ test('③点击级幂等：同一目录重提 → DSH 侧复用（created:false�
 
     clickPrimary(b.panel(), '新建助理')
     await waitFor('重进建单', () => popTitle() === '新建助理')
-    assert.ok(!boxValues(popBoxes()[1]).includes('bot_dddd'), '已绑的机器人不再进候选（客户端一道守卫）')
-    assert.deepEqual(boxValues(popBoxes()[1]), ['', 'bot_eeee'], '候选恰余未绑的 bot_eeee（外加禁用占位）')
+    assert.ok(!boxValues(popBoxes()[0]).includes('bot_dddd'), '已绑的机器人不再进候选（客户端一道守卫）')
+    assert.deepEqual(boxValues(popBoxes()[0]), ['', 'bot_eeee'], '候选恰余未绑的 bot_eeee（外加禁用占位）')
 
     /* 陈旧弹层：另一窗口先把 bot_eeee 绑走 + 落表（真宿主写，不进 calls）。 */
     const beforeA = readDoc(b.homesFile).assistants.length
@@ -538,7 +536,7 @@ test('④一对一：已被绑走的机器人不进新建助理候选（候选�
     await waitFor('钻进客厅 L2', () => asstsOf(b.panel()).length === 1)
     clickPrimary(b.panel(), '新建助理')
     await waitFor('建助理弹层', () => popTitle() === '新建助理')
-    const botBox = popBoxes()[1]
+    const botBox = popBoxes()[0]
     const values = boxValues(botBox)
     const labels = boxLabels(botBox)
 

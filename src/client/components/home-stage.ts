@@ -9,7 +9,6 @@ import type { Assistant } from '../data/home-model'
 import { detailEl } from './home-detail'
 import type { Level } from './home-frame'
 import { crumbsEl } from './home-frame'
-import { huIcon } from './home-icons'
 import { partitionHomes } from './home-index'
 import { asstDisplay, asstName, asstOfHome, asstRow, channelRow, emptyEl, homeDisplay, homeName, homeRow, type RowView } from './home-rows'
 
@@ -21,14 +20,11 @@ export interface StageCtx {
   selChannel: string
   focusId: string
   flashId: string
-  /** L1「N 个空家」折叠段是否展开（呈现策略，不是数据规则）。 */
-  showEmpty: boolean
   query: string
   channelMode: boolean
   onGo(next: Level, id?: string): void
   onOpen(id: string): void
   onAct(kind: string, id: string, anchor: HTMLElement): void
-  onToggleEmpty(): void
 }
 
 const channelsOf = (v: RowView): string[] => [...new Set(v.assistants.map((a) => a.channel))]
@@ -57,7 +53,7 @@ export function stageHead(c: StageCtx): { title: string; sub: string } {
  *   ② **没有焦点时不留空**——下一级 chip 显示「它要带你去的那个列表的第一个」，
  *      并且可点即进（owner：「点击 tab 后就自动进去」）。空 chip（`助理`/`机器人` 后面没名字、
  *      aria-disabled）既没信息也没去处，属于没做完的状态。
- *   ③ 默认值取**列表实际顺序**的第一个（有助理的家在前、空家折叠在后），不是数组顺序——
+ *   ③ 默认值取**列表实际顺序**的第一个（有助理的家在前、空家在后），不是数组顺序——
  *      chip 说什么，点进去就该看到什么。 */
 export function stageCrumbOpts(c: StageCtx): Parameters<typeof crumbsEl>[0] {
   const v = c.view
@@ -136,17 +132,12 @@ export function stageList(c: StageCtx): HTMLElement {
     }
     const rowOf = (x: (typeof items)[number]): HTMLElement => homeRow(v, x, { selected: c.selHome === x.id, flash: c.flashId === x.id, ...rowOpts })
     if (q) { items.forEach((x) => list.appendChild(rowOf(x))); return list }
-    /* 呈现策略（非数据规则）：有助理的家在前（按最近更新降序），空家收进尾部折叠段——
-     * T3「一区一家含无人之家」是持久化不变量（保历史不丢），这里只决定先看谁。 */
+    /* 呈现策略（非数据规则）：有助理的家在前（按最近更新降序），空家在后——
+     * T3「一区一家含无人之家」是持久化不变量（保历史不丢），这里只决定先看谁。
+     * owner 2026-10-15：折叠段取消，「N 个空家」退场，空家直接成行（状态看行内章/圆点/副标）。 */
     const { active, empty } = partitionHomes(items, v.index)
     active.forEach((x) => list.appendChild(rowOf(x)))
-    if (empty.length) {
-      if (c.showEmpty) empty.forEach((x) => list.appendChild(rowOf(x)))
-      const toggle = h('button', { className: 'hu-more-row', type: 'button', 'data-act': 'toggle-empty' },
-        huIcon('chev', 12), c.showEmpty ? `收起 ${empty.length} 个空家` : `${empty.length} 个空家 · 暂无助理`)
-      toggle.addEventListener('click', () => c.onToggleEmpty())
-      list.appendChild(toggle)
-    }
+    empty.forEach((x) => list.appendChild(rowOf(x)))
     return list
   }
   const home = v.homes.find((x) => x.id === c.selHome)

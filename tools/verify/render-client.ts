@@ -339,10 +339,14 @@ const popHost = () => (((doc as any).body.childNodes as any[]) || []).find((n) =
 const popNode = () => popHost()?.querySelector?.('.hu-pop') ?? null;
 const popBtn = (label: string) => popNode()?.querySelectorAll('.hu-pbtn-s')?.find((b: any) => String(b.textContent).trim() === label) ?? null;
 
-if (homeRows().length !== 3) throw new Error('L1 活跃家行数应为 3，实际 ' + homeRows().length + '（0 助理的家应折叠进尾部）');
+if (homeRows().length !== 4) throw new Error('L1 家行数应为 4（空家直接成行、无折叠），实际 ' + homeRows().length + '（折叠退场 owner 2026-10-15）');
 const moreRow = q1('.hu-more-row');
-const moreText = String(moreRow?.textContent ?? '');
-if (!moreText.includes('1 个空家')) throw new Error('L1 空家折叠行缺失，实际：' + moreText);
+if (moreRow) throw new Error('折叠行应已退场，实际仍在：' + String((moreRow as any)?.textContent ?? ''));
+/* 家行每助理一圆点：小帅窝 2 助理（aaaa/bbbb 在线）＋ 星火 1（cccc 离线）＋ wechat 1（wx 在线）⇒ 3 条圆点条 / 4 圆点 / 3 绿；空房间无圆点。 */
+const dotBoxes = all('.hu-dots');
+const dots = all('.hu-dot');
+const dotsOn = dots.filter((d: any) => (d.classList as any)?.contains('on'));
+const emptyRowDots = (homeRows()[3] as any)?.querySelector?.('.hu-dot') ?? null;
 const plannedL1 = all('.hu-ract').filter((b: any) => b.classList.contains('planned')).length;
 const plannedAria = all('.hu-ract').filter((b: any) => b.classList.contains('planned')).every((b: any) => b.getAttribute('aria-disabled') === 'true');
 const avatarOf = (row: any): string => String(row?.querySelector?.('.hu-av')?.textContent ?? '');
@@ -389,14 +393,9 @@ await tick();
 const afterBack = !!q1('.hu-detail');
 click(crumbs().find((n) => n.getAttribute('data-goto') === 'L1'), '面包屑 L1 章');
 await tick();
-const backToL1 = homeRows().length === 3 && !!q1('.hu-more-row');
+const backToL1 = homeRows().length === 4 && !q1('.hu-more-row');
 
-/* 空家（第 4 家 ws-4 无 bot ⇒ 原型空态文案）：默认收在「N 个空家」折叠段里（呈现策略），
- * 先点折叠行展开，再钻进去。 */
-click(q1('.hu-more-row'), 'L1「1 个空家」折叠行');
-await tick();
-const l1ExpandedText = String((container as any).textContent ?? '');
-const l1ExpandedRows = homeRows().length;
+/* 空家（第 4 家 ws-4 空房间 ⇒ 原型空态文案）：无折叠，直接成行，钻进去。 */
 click(homeRows()[3], 'L1 家行 #3（空家）');
 await tick();
 const emptyText = String((container as any).textContent ?? '');
@@ -482,16 +481,16 @@ const checks: [string, boolean][] = [
   ['L1 面包屑三级 chip（L1 家 / L2 助理 · … / L3 机器人 · …）', l1CrumbList.length === 3 && l1CrumbList[0].includes('L1家') && l1CrumbList[1].includes('L2助理') && l1CrumbList[2].includes('L3机器人')],
   ['L1 家名（工作区标题回落）', l1Text.includes('小帅窝')],
   ['L1 家名（空标题回落目录基名）', l1Text.includes('wechat')],
-  ['L1 空家折叠（0 助理的家收尾部，可达性不丢）', moreText.includes('1 个空家') && l1HomeCount === 3],
-  ['L1 展开后可见空家与 0 位助理', l1ExpandedRows === 4 && l1ExpandedText.includes('空房间') && l1ExpandedText.includes('0 位助理')],
+  ['L1 空家直接成行（无折叠行）', l1HomeCount === 4 && !moreRow && l1Text.includes('空房间')],
+  ['L1 空家行可见与 0 位助理', l1Text.includes('空房间') && l1Text.includes('0 位助理')],
   ['头像字形：CJK 单字 / 拉丁两词首字母（dsh-* 不再全是 d）', avatar0 === '小' && avatarWe === 'WE'],
   ['L1 行动作已启用（T6b #114：重命名/更多不再 planned）', plannedL1 === 0],
   ['L1 助理计数（N 位助理）', l1Text.includes('2 位助理')],
   ['L1 命名回落来源行（原型 sub）', l1Text.includes('跟随工作区名') && l1Text.includes('跟随目录名')],
   ['L1 助理清单行（原型 names）', l1Text.includes('助理：')],
-  ['L1 在线汇总（N 个在线 / 全部离线；0 助理不再重复一枚）', l1Text.includes('2 个在线') && l1Text.includes('全部离线') && !l1Text.includes('没有助理') && !l1Text.includes('还没有助理')],
+  ['L1 家行每助理一圆点（绿在线/红离线；空家无圆点；悬停报名字＋状态）', dotBoxes.length === 3 && dots.length === 4 && dotsOn.length === 3 && !emptyRowDots && dots.every((d: any) => String((d as any).getAttribute?.('data-tip') ?? '').length > 0)],
   ['L1 无“未命名”', !l1Text.includes('未命名')],
-  ['L1 家行 3 枚（钻取锚点 data-open=L2）', l1HomeCount === 3],
+  ['L1 家行 4 枚（钻取锚点 data-open=L2）', l1HomeCount === 4],
   ['L1 底部主操作＝新建家（随层）', l1Foot.includes('新建家')],
   ['点家行进入 L2（钻取，非展开树）', l2Asst === 2],
   ['L2 页头标题＝家名', l2Head.includes('小帅窝')],

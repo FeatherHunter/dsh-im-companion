@@ -177,10 +177,8 @@ test('降级②渲染：volatile 时 L1 顶部出「家表未落盘」，4 个�
   const notice = el.querySelector('.hu-err')
   assert.ok(notice, 'volatile 提示行（绿框 .hu-err）必须存在')
   assert.ok(notice.textContent.includes(VOLATILE_COPY), '提示文案一字不动：' + notice.textContent)
-  /* 呈现策略：0 助理的家折叠在尾部（降级态同样生效），展开后 4 个家名都要在。 */
-  const fold = el.querySelector('.hu-more-row')
-  assert.ok(fold && fold.textContent.includes('2 个空家'), '降级态也要有空家折叠行：' + text.slice(0, 120))
-  fold.dispatchEvent({ type: 'click' })
+  /* 呈现策略：0 助理的家也在尾部直接成行（无折叠，owner 2026-10-15），4 个家名都要在。 */
+  assert.ok(!el.querySelector('.hu-more-row'), '折叠行退场');
   for (const name of HOME_NAMES) assert.ok(el.textContent.includes(name), '三级缺家名：' + name)
   /* T4 原型绿框：三级 chip 面包屑（.hu-crumb 的 .hu-lv 带层级）＋ 页头说明行 ＋ 底部主操作。 */
   const chips = el.querySelectorAll('.hu-crumb')
@@ -253,7 +251,6 @@ test('恢复⑤（家表可读、工作区名单暂空）：volatile 由读表�
   assert.ok(onePerPath(s.homes), '一区一家')
   const el = renderBody(s)
   assert.ok(!el.textContent.includes('家表未落盘'), '恢复后提示必须消失')
-  el.querySelector('.hu-more-row').dispatchEvent({ type: 'click' })
   for (const name of HOME_NAMES) assert.ok(el.textContent.includes(name), '缺家名：' + name)
 })
 

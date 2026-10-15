@@ -83,11 +83,9 @@ export const HOME_UI_CSS = `
 .home-ui .hu-row .hu-sub{display:block;margin-top:5px;font-size:11.5px;line-height:1.4;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-names{display:block;margin-top:4px;font-size:11px;line-height:1.45;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-acts2{display:flex;align-items:center;gap:5px;flex:none;padding-left:2px}
-/* 「N 个空家」折叠行（呈现策略，非数据规则）：把 0 助理的家收在尾部，可达性不丢、首屏不被噪音占满。 */
-.home-ui .hu-more-row{display:flex;align-items:center;justify-content:center;gap:6px;font:inherit;font-size:11.5px;color:var(--hu-ink-3);
-  background:transparent;border:1px dashed var(--hu-line);border-radius:var(--hu-r);min-height:36px;cursor:pointer;padding:0 10px;
-  transition:color var(--hu-t) var(--hu-ease),border-color var(--hu-t) var(--hu-ease)}
-.home-ui .hu-more-row:hover{color:var(--hu-ink);border-color:var(--hu-line-strong,var(--hu-line))}
+.home-ui .hu-dots{display:inline-flex;align-items:center;gap:4px;flex:none;align-self:center;padding-left:1px}
+.home-ui .hu-dots .hu-dot.on{background:var(--af-success);box-shadow:none}
+.home-ui .hu-dots .hu-dot.off{background:var(--hu-bad);box-shadow:none}
 .home-ui .hu-av{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;font-weight:650;font-size:14px;letter-spacing:-.02em;flex:none}
 .home-ui .hu-av.round{border-radius:50%}
 .home-ui .hu-av.sm{width:30px;height:30px;font-size:12.5px;border-radius:9px}
@@ -266,6 +264,10 @@ export const HOME_UI_CSS = `
 .home-ui .hu-opt .hu-ot{min-width:0;flex:1}
 .home-ui .hu-opt .hu-ot b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-opt .hu-ot small{display:block;font-size:11px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui .hu-locked{display:flex;align-items:center;gap:9px;font-size:12.5px;background:var(--hu-panel);border:1px solid var(--hu-line-soft);border-radius:9px;padding:8px 10px;color:var(--hu-ink)}
+.home-ui .hu-locked .hu-ot{min-width:0;flex:1}
+.home-ui .hu-locked .hu-ot b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui .hu-locked .hu-ot small{display:block;font-size:11px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .home-ui .hu-avrow{display:flex;gap:6px;flex-wrap:wrap}
 .home-ui .hu-avopt{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:12px;font-weight:650;cursor:pointer;border:2px solid transparent}

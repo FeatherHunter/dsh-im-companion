@@ -700,15 +700,18 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   const rows = (): any[] => rowsOf(bodyEl);
 
   /* L1：无返回键、家行 data-open="L2"（点行进下一级，不是展开树）、底部主操作「新建家」。
-   * 呈现策略（非数据规则）：0 助理的家折叠进尾部 ⇒ 默认只有活跃行 + 折叠行。 */
+   * 呈现策略（非数据规则）：有助理的家在前、空家在后直接成行（折叠退场，owner 2026-10-15）。 */
   assert.ok(one(bodyEl, 'home-ui'), '绿框根 .home-ui 必须在');
   assert.deepEqual(ttl(), { b: '家', small: '2 个 · 每个家对应一个工作区' }, 'L1 页头标题/副标');
   assert.equal(cls(bodyEl, 'hu-back').length, 0, 'L1 不显示返回键（原型：最上层无返回）');
-  assert.deepEqual(rows().map((r) => r.getAttribute('data-open')), ['L2'], '活跃家行带 data-open="L2"');
-  assert.deepEqual(rows().map((r) => r.getAttribute('data-id')), ['h1'], '活跃家行带家 id（钻取的落点）');
-  assert.equal(txt(one(bodyEl, 'hu-more-row')), '1 个空家 · 暂无助理', '空家折叠行：0 助理的家收在尾部（可达性不丢）');
-  clickEl(one(bodyEl, 'hu-more-row'));
-  assert.deepEqual(rows().map((r) => r.getAttribute('data-id')), ['h1', 'h2'], '展开后两行都在（T3 一区一家含无人之家仍成立）');
+  assert.deepEqual(rows().map((r) => r.getAttribute('data-open')), ['L2', 'L2'], '家行带 data-open="L2"（空家也是行）');
+  assert.deepEqual(rows().map((r) => r.getAttribute('data-id')), ['h1', 'h2'], '两行都在（T3 一区一家含无人之家仍成立）');
+  assert.equal(cls(bodyEl, 'hu-more-row').length, 0, '折叠行退场（owner 2026-10-15：空家直接成行）');
+  assert.equal(cls(bodyEl, 'hu-dots').length, 1, '圆点条只给有助理的家（h2 空家不画）');
+  assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').length, 2, '一助理一圆点（h1 两位助理两圆点）');
+  assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').filter((d) => d.classList.contains('on')).length, 1, '绿＝在线（a1 已绑在线）');
+  assert.equal(cls(one(rows()[0], 'hu-dots'), 'hu-dot').filter((d) => d.classList.contains('off')).length, 1, '红＝离线/未绑定（a2 无渠道）');
+  assert.ok(cls(one(rows()[0], 'hu-dots'), 'hu-dot').every((d) => String(d.getAttribute?.('data-tip') ?? '').length > 0), '圆点悬停报名字＋状态');
   for (const c of ['hu-av', 'hu-txt', 'hu-nm', 'hu-sub', 'hu-names', 'hu-acts2']) assert.ok(one(rows()[0], c), '家行解剖缺件：' + c);
   assert.deepEqual(crumbInfo(bodyEl), [
     { lv: 'L1', label: '家', cur: true, goto: null },
@@ -765,8 +768,7 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.deepEqual(ttl(), { b: '家', small: '2 个 · 每个家对应一个工作区' }, '面包屑点回 L1（链路条可向前钻取）');
   assert.equal(txt(foot()), '新建家', '回 L1 后底部主操作跟着回到新建家');
 
-  /* 空态：进没有助理的家 → .hu-empty（不是空白列表）；空家折叠段此时已展开（前面点过折叠行） */
-  assert.equal(txt(one(bodyEl, 'hu-more-row')), '收起 1 个空家', '折叠行状态可见（展开后变「收起」）');
+  /* 空态：进没有助理的家 → .hu-empty（不是空白列表） */
   clickEl(rows()[1]);
   assert.equal(txt(tag(one(bodyEl, 'hu-empty'), 'b')), '这个家还没有助理', '空家走 .hu-empty 空态');
   assert.ok(txt(one(bodyEl, 'hu-empty')).includes('点下面的「新建助理」'), '空态给出下一步');
@@ -781,6 +783,9 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   const head = one(pop, 'hu-phead');
   assert.ok(head && one(head, 'hu-ptitle') && cls(head, 'hu-pbtn-s').length === 2, '标题栏＝标题 + 取消/创建同一行（按钮在弹层右上角，owner 2026-10-15）');
   assert.deepEqual(cls(pop, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['属于哪个家', '绑定机器人', '名字'], '建单字段');
+  /* 家内建助理（L2 开的这一单）：归属锁死——无家候选可点，直接告知当前家（h2 书房基地） */
+  assert.equal(byAttr(pop, 'data-value', 'h1').length + byAttr(pop, 'data-value', 'h2').length, 0, '锁家：无家候选可点');
+  assert.ok(txt(pop).includes('书房基地'), '归属告知当前家');
   assert.deepEqual(byAttr(pop, 'data-value', 'b9').map((o) => txt(tag(o, 'b'))), ['野号'], '空闲机器人是候选：已绑的 b1 不进下拉');
   const later = byAttr(pop, 'data-value', '')[0];
   assert.ok(!off(later), '「以后再绑」可用（未绑定占位，T6b #114）');
@@ -1327,7 +1332,6 @@ test('面包屑默认路径：无焦点时二级/三级 chip＝列表第一个�
 
   /* 没有下一级可去（空家）⇒ chip 显式留空并禁用：不假装有去处，也不给一个点了没反应的入口。 */
   const empty = renderBox();
-  clickEl(one(empty.bodyEl, 'hu-more-row'));
   const h2 = rowsOf(empty.bodyEl).filter((r) => r.getAttribute('data-id') === 'h2')[0];
   clickEl(h2);
   assert.deepEqual(crumbInfo(empty.bodyEl).map((c) => c.label), ['家', '书房基地', '机器人'], '空家：L3 没有可预显的助理');
@@ -1431,7 +1435,7 @@ test('T10b #127 孤儿家：行内两动作只给孤儿家，重绑走 T8 收养
   const tick = (): Promise<void> => new Promise((r) => { setTimeout(r, 0) });
   const dir = 'D:\\agents\\newhome';
   const gone = H({ id: 'h9', workspaceId: 'ws-gone', path: 'D:\\agents\\gone', name: '走丢的家', nameSource: 'system' });
-  /* 孤儿家带一位助理：L1 会把「0 助理的空家」折叠成一行（呈现策略），带助理才直接出现在列表里。 */
+  /* 孤儿家带一位助理：折叠退场后空家也直接成行；这里带助理是为了同时验孤儿行圆点与两动作共存。 */
   const goneAsst = A({ id: 'a9', homeId: 'h9', channel: 'qq', botId: 'q9', status: 'bound', name: '小九', nameSource: 'bot' });
   const picked: string[] = [];
   const adopted: string[] = [];

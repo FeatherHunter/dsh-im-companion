@@ -1,5 +1,4 @@
-/** 绿框行渲染器（T6a）：行解剖逐字照 T4 认可款原型 proto-studio.html 的 rowsHomes/rowsAsst/empty/skeleton。
- * 只渲染不写数据；写管道在 home-ops，钻取编排在 panel-body。
+/** 绿框行渲染器（T6a）：行解剖逐字照 T4 认可款原型；只渲染不写数据（写管道在 home-ops，钻取在 panel-body）。
  * T6b/T6c 才实现的钮照原型画出但 disabled（owner 裁定 2026-10-12），title 标注归属票号。 */
 import { h } from '../dom'
 import { channelLabel } from '../data/config'
@@ -32,8 +31,7 @@ export interface RowView {
   index: FleetIndex
 }
 
-/** 唯一装配缝：视图只能由这里产出（索引与四个数组永远同源）。
- *  T10b #127：墓碑家（用户点过「删除家」）不进列表/计数/钻取；索引仍含它——助理命名回落要读家名。 */
+/** 唯一装配缝（T10b #127：墓碑家不进列表/计数/钻取，索引仍含它供命名回落读家名）。 */
 export function viewOf(homes: Home[], assistants: Assistant[], bots: BotSnap[], workspaces: WorkspaceRef[]): RowView {
   return { homes: homes.filter((h) => !h.tombstone), assistants, bots, workspaces, index: buildIndex(homes, assistants, bots, workspaces) }
 }
@@ -81,8 +79,7 @@ export function asstName(view: RowView, a: Assistant): string {
  *  `id` 与 `name` 分开传：身份来自 id，显示来自 name——两者不许混用。 */
 export function avatarEl(id: string, name: string, avatar: string | null, opts: { round?: boolean; small?: boolean; iconName?: HuIconName } = {}): HTMLElement {
   const cls = `hu-av${opts.round ? ' round' : ''}${opts.small ? ' sm' : ''}`
-  /* T11 #128：有图用图、无图回落预设色＋首字母——判定单点＝`home-avatar.avatarSrc`（列表/详情共用本函数，
-   * 故「列表与详情一致」是结构保证）。图未取回时 `img` 为 null ⇒ 先画回落款，取回后 onChange 重渲染换图。 */
+  /* T11 #128：判定单点＝avatarSrc（列表/详情共用 ⇒ 一致是结构保证）；图未到先画回落款。 */
   const img = opts.iconName ? null : avatarSrc(id, avatar)
   const tint = opts.iconName ? 'background:var(--hu-accent-soft);color:var(--hu-accent-deep)' : avatarStyle(id, avatar)
   const el = h('span', { className: cls, style: img ? imageCover(img) : tint })
@@ -124,8 +121,7 @@ export function statusPillEl(a: Assistant): HTMLElement {
   return pillEl('bad', '失联')
 }
 
-/** 未实现钮（T6b/T6c）：照原型画出，但**语义化禁用**——`aria-disabled` + 常态对比度，
- *  不用 opacity .45（那在深色主题里读起来就是「坏了」）。悬停说明归属票号（owner 裁定 2026-10-12）。 */
+/** 未实现钮（T6b/T6c）：照原型画出但语义化禁用（不用 opacity .45）；悬停说明归属票号（owner 裁定 2026-10-12）。 */
 export function pendingTip(label: string, ticket: string): string {
   return `${label}（#${ticket} 待实现）`
 }
@@ -156,8 +152,7 @@ export function textBtn(act: string, label: string, opts: { cls?: string; ticket
   return opts.ticket ? planned(el, label, opts.ticket) : el
 }
 
-/** 家/渠道行的在线汇总（原型 homeOnlineTag）：**0 助理不渲染**——计数已由副标「N 位助理」
- *  承担，再来一枚「没有助理」是同义重复（真机反馈 2026-10-13）。O(m)，读索引后的机器人。 */
+/** 在线汇总（渠道行用）：0 助理不渲染——计数已由副标承担（真机反馈 2026-10-13）。O(m)。 */
 export function homeOnlineTag(view: RowView, list: Assistant[]): HTMLElement | null {
   if (!list.length) return null
   let online = 0
@@ -165,6 +160,19 @@ export function homeOnlineTag(view: RowView, list: Assistant[]): HTMLElement | n
   return online > 0
     ? h('span', { className: 'hu-online' }, dotEl(true), `${online} 个在线`)
     : h('span', { className: 'hu-online off' }, dotEl(false), '全部离线')
+}
+
+/** 家行每助理一圆点（owner 2026-10-15）：绿＝在线，红＝离线/未绑定；悬停报名字＋状态。0 助理不画。 */
+export function homeDotsEl(view: RowView, list: Assistant[]): HTMLElement | null {
+  if (!list.length) return null
+  const box = h('span', { className: 'hu-dots' })
+  for (const a of list) {
+    const bot = botOf(view, a)
+    const d = dotEl(!!bot && !!bot.connected)
+    d.setAttribute('data-tip', `${asstName(view, a)}：${bot ? (bot.connected ? '在线' : '离线') : '未绑定'}`)
+    box.appendChild(d)
+  }
+  return box
 }
 
 export interface RowOpts {
@@ -190,8 +198,7 @@ function wireRow(el: HTMLElement, opts: RowOpts, id: string): void {
   }
 }
 
-/** 家行（原型 rowsHomes）：头像 + 名 + 家状态章 + 在线汇总 / N 位助理 · 回落来源 / 助理清单。
- *  孤儿家（工作区已不在）只剩两条出路：重绑 or 删除——正常家永远看不到「删除家」（#127 验收④）。 */
+/** 家行：头像 + 名 + 家状态章 + 每助理一圆点 / N 位助理 · 回落来源 / 助理清单（孤儿家只有重绑/删除，正常家无删除入口 #127）。 */
 export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElement {
   const d = homeDisplay(view, home)
   const list = asstOfHome(view, home.id)
@@ -200,8 +207,8 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
   const orphan = isOrphanHome(home, view.workspaces)
   const pill = homePillEl(home, orphan)
   if (pill) nm.appendChild(pill)
-  const onlineEl = homeOnlineTag(view, list)
-  if (onlineEl) nm.appendChild(onlineEl)
+  const dotsEl = homeDotsEl(view, list)
+  if (dotsEl) nm.appendChild(dotsEl)
   const txt = h('span', { className: 'hu-txt' }, nm,
     h('span', { className: 'hu-sub' }, `${list.length} 位助理 · ${d.from}`))
   if (names) txt.appendChild(h('span', { className: 'hu-names' }, names))
