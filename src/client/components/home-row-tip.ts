@@ -16,6 +16,7 @@
  * （设置页落在 dialog 下时纯 z-index 会被整层盖住，#112 实证），盒子自带 `af-portal` 保令牌作用域。
  */
 import { h } from '../dom'
+import { channelGlyphSvg } from '../icons'
 import { avatarStyle, imageCover, initialsOf } from './home-identity'
 import { ensureHomeRowStyles, homeRowStylesAlive } from './home-row-styles'
 /* 进层三件套复用绿框 popover 系统（`home-pop.ts`，#112 实证：设置页可能落在 dialog 下，
@@ -30,6 +31,8 @@ export interface TipData {
   avatar: string | null
   status: 'on' | 'off' | 'unbound'
   statusText: string
+  /** 渠道 id（logo 就地取自 icons.ts；未知回退首字徽标，不自造第二套图标）。 */
+  channel: string
   /** 附加一行（渠道＋机器人名之类），空串则不显示。 */
   sub: string
 }
@@ -40,6 +43,13 @@ let anchor: HTMLElement | null = null
 let wired = false
 
 const dotClass = (s: TipData['status']): string => 'hu-cdot' + (s === 'on' ? ' on' : s === 'off' ? ' off' : ' none')
+
+/** 渠道 logo 节点：品牌 glyph 原色（icons.ts 唯一源）；未知渠道回退首字徽标（detail-drawer 同款）。 */
+function logoNode(data: TipData): HTMLElement {
+  const svg = channelGlyphSvg(data.channel ?? '', 14)
+  if (svg) return h('span', { className: 'hu-logo', html: svg })
+  return h('span', { className: 'hu-logo hu-logo-fb' }, (data.sub ?? '').charAt(0) || '?')
+}
 
 function wireOnce(): void {
   if (wired) return
@@ -103,10 +113,11 @@ function paint(a: HTMLElement, data: TipData): void {
   }, data.url ? '' : initialsOf(data.name)))
   el.appendChild(h('span', { className: 'hu-tt' },
     h('b', {}, data.name),
-    /* 状态行三个独立节点（点＋渠道＋状态，flex gap 撑开）：分隔靠结构不靠符号，不许拼 · 也不许紧贴成一片。 */
+    /* 状态行三个独立节点（点＋渠道＋状态，flex gap 撑开）：分隔靠结构不靠符号，不许拼 · 也不许紧贴成一片。
+     * 渠道节点＝平台 logo＋渠道名（A 方案，以图标认渠道、以文字兜底）。 */
     h('small', {},
       h('i', { className: dotClass(data.status) }),
-      data.sub ? h('span', { className: 'hu-ch' }, data.sub) : null,
+      data.sub ? h('span', { className: 'hu-ch' }, logoNode(data), data.sub) : null,
       h('span', { className: 'hu-st' }, data.statusText))))
   try {
     const r = a.getBoundingClientRect()

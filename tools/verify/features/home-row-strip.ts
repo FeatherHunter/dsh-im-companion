@@ -54,11 +54,11 @@ const cls = (root: any, c: string): any[] => nodes(root).filter((e) => e.classLi
 const one = (root: any, c: string): any => cls(root, c)[0] ?? null;
 const txt = (e: any): string => String(e?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-const asst = (o: any = {}): any => ({ id: 'a1', name: '小帅', avatar: null, on: true, sub: '飞书小帅', ...o });
+const asst = (o: any = {}): any => ({ id: 'a1', name: '小帅', avatar: null, on: true, channel: 'feishu', sub: '飞书小帅', ...o });
 const LIST = [
   asst({ id: 'a1', name: '小美', on: true }),
-  asst({ id: 'a2', name: 'dsh-prompt', on: false, sub: '飞书机器人不在线' }),
-  asst({ id: 'a3', name: '未命名助理', on: null, sub: '微信未绑定' }),
+  asst({ id: 'a2', name: 'dsh-prompt', on: false, channel: 'qq', sub: '飞书机器人不在线' }),
+  asst({ id: 'a3', name: '未命名助理', on: null, channel: 'nope-unknown', sub: '微信未绑定' }),
 ];
 
 /* 按「当前 DOM」粗算宽度：命名芯片 120px、收起芯片 34px、容器 40px。真机不用这个，只为把三档逼出来。 */
@@ -220,6 +220,24 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
   assert.ok(paintLine.length > 0 && !paintLine.includes('·'), '气泡拼接行没有 ·（状态＋渠道紧贴，不用符号连接）');
   const subLine = rowsSrc.split('\n').find((l) => l.includes('sub: bot ?')) ?? '';
   assert.ok(subLine.length > 0 && !subLine.includes('·'), '家行 sub 行没有 ·（只讲渠道＋名，状态归 statusText）');
+  /* ⑧ 平台 logo（A 方案：以图标认渠道）：桩的 innerHTML 不解析标签 ⇒ 源＋函数两头钉，位数在渲染侧钉 */
+  const icons: any = createRequire(join(tmp, 'run.cjs'))('./client/icons.js');
+  assert.ok(String(icons.channelGlyphSvg('feishu', 14)).includes('data-channel-logo="feishu"'), '飞书 logo 来自 icons.ts（原串只活一处，不在气泡里手写第二遍）');
+  assert.ok(String(icons.channelGlyphSvg('feishu', 14)).includes('#00D6B9'), '品牌色保留（用户裁定：不跟 currentColor 变灰）');
+  assert.equal(icons.channelGlyphSvg('nope-unknown', 14), null, '未知渠道回 null（气泡走首字徽标回退）');
+  assert.ok(tipSrc.includes('channelGlyphSvg(data.channel'), '气泡 logo 就地取自 icons.ts（调用点，不是只 import）');
+  assert.ok(tipSrc.includes('hu-logo-fb'), '未知渠道有首字徽标回退（detail-drawer 同款）');
+  assert.equal(cls(shown()[0], 'hu-logo').length, 1, '气泡里有且仅有一个 logo 位（桩不解析 svg，只钉位数）');
+  tip.hideAsstTip();
+  const el3 = strip.homeStrip({ homeId: 'h8', orphan: false, path: '', assts: [asst({ id: 'ax', name: '野助理', on: null, channel: 'nope-unknown', sub: '火星来客' })] });
+  host.appendChild(el3);
+  enter(cls(el3, 'hu-chip')[0]); await sleep(200);
+  assert.equal(shown().length, 1, '未知渠道也照常出气泡（回退不断流）');
+  assert.equal(txt(one(shown()[0], 'hu-logo-fb')), '火', '回退徽标取 sub 首字（火星来客→火）');
+  tip.hideAsstTip();
+  host.removeChild(el3);
+  enter(chips[0]); await sleep(200);
+  assert.equal(shown().length, 1, '回退段落之后盒子照常回来（进层钉的前置）');
   /* 进层与令牌钉（#112 同款坑）：body 级盒子自带 af-portal（否则 --hu-* 全失效），
    * 无 Popover API 的环境不带 popover 属性（否则 UA display:none 藏盒） */
   assert.ok(boxes()[0].classList.contains('af-portal'), '气泡盒自带 af-portal（body 在 .af-root 之外，令牌不能断）');
@@ -253,6 +271,7 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   assert.ok(css.includes('.home-ui.hu-tiphost'), '悬停气泡是 body 级 float（宿主带 .home-ui，作用域不破）');
   assert.ok(css.includes('.home-ui.hu-tiphost.on'), '气泡有显隐过渡态');
   assert.ok(css.includes('.hu-tt small .hu-st'), '状态字独立成 span 且加粗提亮（结构分隔的另一半，灰脚注不许回来）');
+  assert.ok(css.includes('.hu-tt small .hu-ch') && css.includes('.hu-logo-fb'), '渠道节点 inline-flex＋首字徽标回退样式（A 方案 logo 位）');
   /* 源码侧钉子：不能长回老副标/老圆点条（owner 2026-10-15 已改口径）。渠道行（按渠道模式）另有一句
      「N 位助理 · M 位已绑」不在本票范围内，故这里只钉**家行**那一句。 */
   const rowsSrc = readFileSync(join(COMP, 'home-rows.ts'), 'utf8');

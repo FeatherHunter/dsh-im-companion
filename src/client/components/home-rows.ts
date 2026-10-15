@@ -211,6 +211,7 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
           avatar: a.avatar ?? null,
           /* 绿＝在线；有机器人但快照没到＝离线（红）；没绑机器人＝空心（未绑定）。与老「每助理一圆点」口径一致。 */
           on: bot ? !!bot.connected : (bound ? false : null),
+          channel: a.channel ?? '',
           /* 气泡 sub 只讲“渠道＋机器人名”，状态一律由 statusText 讲（owner 禁 · 且禁状态复读）。 */
           sub: bot ? `${ch}${bot.botName || '未命名机器人'}` : ch,
         }

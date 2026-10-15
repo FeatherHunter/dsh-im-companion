@@ -25,6 +25,8 @@ export interface StripAsst {
   avatar: string | null
   /** true 在线 / false 离线或未绑定 / null 未绑定（画空心点）。 */
   on: boolean | null
+  /** 渠道 id（画 logo 用，原串取自 icons.ts；未知渠道回退首字徽标）。 */
+  channel: string
   /** 气泡第二行的附加信息（渠道＋机器人名，状态由 statusText 讲，不许出现 ·）。 */
   sub: string
 }
@@ -91,7 +93,7 @@ function asstChip(a: StripAsst, compact: boolean): HTMLElement {
     'aria-label': `${a.name}：${statusText(a.on)}`,
   }, av, ...(compact ? [] : [h('span', { className: 'hu-cnm' }, a.name), h('i', { className: dotClass(a.on) })]))
   /* 悬停小气泡：收起档只有头像＋点，名字与状态全靠它报出来（owner 2026-10-15）。 */
-  const data = { id: a.id, name: a.name, url, avatar: a.avatar, status: (a.on === true ? 'on' : a.on === false ? 'off' : 'unbound') as 'on' | 'off' | 'unbound', statusText: statusText(a.on), sub: a.sub }
+  const data = { id: a.id, name: a.name, url, avatar: a.avatar, status: (a.on === true ? 'on' : a.on === false ? 'off' : 'unbound') as 'on' | 'off' | 'unbound', statusText: statusText(a.on), channel: a.channel ?? '', sub: a.sub }
   chip.addEventListener('pointerenter', () => showAsstTip(chip, data))
   chip.addEventListener('pointerleave', hideAsstTip)
   return chip

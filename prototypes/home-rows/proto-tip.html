@@ -1,76 +1,81 @@
 <!DOCTYPE html>
-<!-- PROTOTYPE  throwaway  悬浮气泡三方案对比  双击即看  ?v=0/1/2/3 切换 -->
+<!-- PROTOTYPE v2 throwaway 双击即看 ?v=0/1/2/3 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>气泡原型 A/B/C + 现状对照</title>
+<title>气泡原型 v2 A/B/C + 平台 logo 一览</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #101216; color: #e8eaf0; font: 14px/1.5 system-ui, "PingFang SC", "Microsoft YaHei", sans-serif; padding: 28px; }
   h1 { font-size: 17px; margin-bottom: 4px; }
-  .sub { color: #8b93a5; font-size: 12.5px; margin-bottom: 22px; }
+  .sub { color: #8b93a5; font-size: 12.5px; margin-bottom: 22px; max-width: 900px; }
   .grid { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
   .cell { display: none; }
-  body[data-v="0"] .cell, .cell.show { display: block; }
+  body[data-v="0"] .cell { display: block; }
   body[data-v="1"] #cA, body[data-v="2"] #cB, body[data-v="3"] #cC { display: block; }
   .card-cap { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
-  .card-why { font-size: 12px; color: #8b93a5; margin-bottom: 12px; max-width: 300px; }
-  .stage { background: #171a20; border: 1px dashed #333a48; border-radius: 14px; padding: 46px 30px; min-width: 330px; min-height: 240px; display: flex; align-items: center; justify-content: center; }
-  /* —— 模拟被悬停的助理 chip —— */
-  .fakechip { display: inline-flex; align-items: center; gap: 7px; background: #22262f; border: 1px solid #343b49; border-radius: 999px; padding: 4px 12px 4px 5px; font-size: 12.5px; }
-  .fakechip i { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-style: normal; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
-  /* ══ A  横排单轴 ══ */
-  .tipA { display: flex; align-items: center; gap: 11px; background: #22262f; border: 1px solid #3d4557; border-radius: 12px; padding: 12px 15px; box-shadow: 0 14px 34px rgba(0,0,0,.6); max-width: 270px; }
+  .card-why { font-size: 12px; color: #8b93a5; margin-bottom: 12px; max-width: 320px; }
+  .stage { background: #171a20; border: 1px dashed #333a48; border-radius: 14px; padding: 46px 30px; min-width: 340px; min-height: 240px; display: flex; align-items: center; justify-content: center; gap: 18px; }
+  .logo-row { display: flex; gap: 10px; align-items: center; background: #171a20; border: 1px dashed #333a48; border-radius: 14px; padding: 18px 22px; margin-bottom: 22px; flex-wrap: wrap; }
+  .logo-row figure { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 11px; color: #8b93a5; }
+  .logo-row figure span { display: inline-grid; place-items: center; width: 30px; height: 30px; background: #22262f; border: 1px solid #343b49; border-radius: 8px; }
+  .logo-row svg { display: block; }
+  svg { display: block; }
+  /* A 横排单轴 */
+  .tipA { display: flex; align-items: center; gap: 11px; background: #22262f; border: 1px solid #3d4557; border-radius: 12px; padding: 12px 15px; box-shadow: 0 14px 34px rgba(0,0,0,.6); max-width: 290px; }
   .tipA .tav { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-weight: 800; font-size: 14px; display: grid; place-items: center; flex: none; }
   .tipA .tt b { display: block; font-size: 14px; }
-  .tipA .tt small { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #c9cfdb; margin-top: 3px; }
+  .tipA .tt small { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #c9cfdb; margin-top: 3px; }
+  .tipA .ch { display: inline-flex; align-items: center; gap: 5px; }
   .tipA .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b; flex: none; }
-  .tipA .tt small em { font-style: normal; color: #ff9a9a; font-weight: 700; }
-  /* ══ B  居中单轴 ══ */
-  .tipB { background: #22262f; border: 1px solid #3d4557; border-radius: 14px; padding: 16px 22px 14px; box-shadow: 0 14px 34px rgba(0,0,0,.6); text-align: center; max-width: 230px; }
+  .tipA .st { font-weight: 700; color: #fff; }
+  /* B 居中单轴 */
+  .tipB { background: #22262f; border: 1px solid #3d4557; border-radius: 14px; padding: 16px 22px 14px; box-shadow: 0 14px 34px rgba(0,0,0,.6); text-align: center; max-width: 250px; }
   .tipB .tav { width: 48px; height: 48px; border-radius: 13px; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-weight: 800; font-size: 17px; display: grid; place-items: center; margin: 0 auto 8px; }
   .tipB b { display: block; font-size: 14px; }
-  .tipB .pill { display: inline-flex; align-items: center; gap: 6px; margin-top: 9px; font-size: 12px; font-weight: 700; color: #ff9a9a; background: rgba(255,107,107,.16); border: 1px solid rgba(255,107,107,.4); border-radius: 999px; padding: 3px 11px; }
-  .tipB .pill i { width: 7px; height: 7px; border-radius: 50%; background: #ff6b6b; }
-  /* ══ C  极简单行 ══ */
-  .tipC { display: inline-flex; align-items: center; gap: 8px; background: #22262f; border: 1px solid #3d4557; border-radius: 999px; padding: 7px 14px 7px 8px; box-shadow: 0 14px 34px rgba(0,0,0,.6); font-size: 13px; white-space: nowrap; }
-  .tipC .tav { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-style: normal; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
+  .tipB .pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 9px; font-size: 12px; background: rgba(255,107,107,.16); border: 1px solid rgba(255,107,107,.4); border-radius: 999px; padding: 4px 12px; }
+  .tipB .pill .ch { display: inline-flex; align-items: center; gap: 5px; color: #c9cfdb; }
+  .tipB .pill .st { font-weight: 700; color: #ff9a9a; }
+  /* C 极简单行 */
+  .tipC { display: inline-flex; align-items: center; gap: 9px; background: #22262f; border: 1px solid #3d4557; border-radius: 999px; padding: 7px 15px 7px 8px; box-shadow: 0 14px 34px rgba(0,0,0,.6); font-size: 13px; white-space: nowrap; }
+  .tipC .tav { width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-size: 10px; font-weight: 800; display: grid; place-items: center; }
   .tipC b { font-weight: 700; }
+  .tipC .ch { display: inline-flex; align-items: center; gap: 5px; color: #c9cfdb; }
   .tipC .dot { width: 8px; height: 8px; border-radius: 50%; background: #ff6b6b; }
-  .tipC em { font-style: normal; color: #ff9a9a; font-weight: 700; font-size: 12.5px; }
-  /* ══ 现状（问题版复刻） ══ */
+  .tipC .st { color: #ff9a9a; font-weight: 700; font-size: 12.5px; }
+  /* 现状对照 */
   .tipNow { background: #23262e; border-radius: 16px; padding: 18px 20px 10px; width: 210px; }
   .tipNow .tav { width: 52px; height: 52px; border-radius: 14px; background: linear-gradient(135deg, #1f7a4d, #0f3d27); color: #7dffb0; font-weight: 800; display: grid; place-items: center; margin: 0 auto; }
   .tipNow b { display: block; margin-top: 10px; font-size: 15px; }
   .tipNow small { display: block; color: #8b93a5; font-size: 12px; margin-top: 2px; }
-  /* 底部切换条 */
   #bar { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); background: #1d2129; border: 1px solid #3a4150; border-radius: 999px; padding: 6px; display: flex; gap: 6px; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
   #bar button { border: 0; border-radius: 999px; background: transparent; color: #aeb6c6; font-size: 12.5px; padding: 6px 14px; cursor: pointer; }
   #bar button.cur { background: #2f6fed; color: #fff; font-weight: 700; }
 </style>
 </head>
 <body data-v="0">
-<h1>悬浮气泡  三方案 ＋ 现状对照（PROTOTYPE，用完即焚）</h1>
-<div class="sub">同一份数据：dsh-log ／ DL ／ 未绑定 ／ 渠道飞书。每个方案都修了审查里的 6 条：单轴、去重、省高度、状态提亮、真阴影+描边、均匀内边距。</div>
+<h1>气泡原型 v2（PROTOTYPE，用完即焚）</h1>
+<div class="sub">改动：ABC 全部带平台 logo（复用 icons.ts 九枚品牌 glyph，真机有飞书 QQ 微信 钉钉 企业微信 Telegram Discord Slack WhatsApp）；渠道与状态在三个方案里都是独立节点，中间只靠间距分开。落地时气泡直接调 channelGlyphSvg，不自造第二套；未知渠道回退首字徽标。</div>
+<div class="logo-row" id="logos"></div>
 <div class="grid">
   <div class="cell" id="cA">
-    <div class="card-cap">A  横排单轴（推荐）</div>
-    <div class="card-why">左头像＋右两行，整卡一条左轴；"未绑定"只出现一次且提亮加粗；高度只有现状一半。</div>
-    <div class="stage"><span class="fakechip" title=""><i>DL</i>dsh-log</span>&nbsp;&nbsp;<span class="tipA"><span class="tav">DL</span><span class="tt"><b>dsh-log</b><small><span class="dot"></span>飞书<em>未绑定</em></small></span></span></div>
+    <div class="card-cap">A 横排单轴（推荐）</div>
+    <div class="card-why">左头像加右两行。状态行四个独立节点：点、logo 加渠道名、加粗状态字，全程无连接符。</div>
+    <div class="stage"><span class="tipA"><span class="tav">DL</span><span class="tt"><b>dsh-log</b><small><span class="dot"></span><span class="ch" data-logo="feishu"></span><span class="st">未绑定</span></small></span></span></div>
   </div>
   <div class="cell" id="cB">
-    <div class="card-cap">B  居中单轴</div>
-    <div class="card-why">保留"头像在上"的观感，但全卡统一居中——单中轴；状态做成实心胶囊徽，不再是灰脚注。</div>
-    <div class="stage"><span class="tipB"><span class="tav">DL</span><b>dsh-log</b><span class="pill"><i></i>飞书未绑定</span></span></div>
+    <div class="card-cap">B 居中单轴</div>
+    <div class="card-why">头像在上，全卡居中。胶囊里 logo 加渠道名与状态字是两截，中间 8px 间距，不再连成一串。</div>
+    <div class="stage"><span class="tipB"><span class="tav">DL</span><b>dsh-log</b><span class="pill"><span class="ch" data-logo="qq"></span><span class="st">未绑定</span></span></span></div>
   </div>
   <div class="cell" id="cC">
-    <div class="card-cap">C  极简单行</div>
-    <div class="card-why">信息密度最高：一行讲完身份＋状态；适合"瞟一眼确认是谁、能不能点"，不适合将来加更多字段。</div>
-    <div class="stage"><span class="tipC"><span class="tav">DL</span><b>dsh-log</b><span class="dot"></span><em>飞书未绑定</em></span></div>
+    <div class="card-cap">C 极简单行</div>
+    <div class="card-why">一行讲完：头像、名字、logo、状态点加状态字，每截之间都有间距，可读不靠符号。</div>
+    <div class="stage"><span class="tipC"><span class="tav">DL</span><b>dsh-log</b><span class="ch" data-logo="weixin"></span><span class="dot"></span><span class="st">未绑定</span></span></div>
   </div>
   <div class="cell" id="c0">
     <div class="card-cap">现状复刻（问题版，对照用）</div>
-    <div class="card-why">居中头像＋左对齐文字（轴打架）、"未绑定"×2、无阴影无描边、上松下紧。原截图此行含分隔符，按禁令隐去，结构照原样。</div>
+    <div class="card-why">居中头像加左对齐文字（轴打架）、未绑定复读、无阴影、原截图此行含分隔符按禁令隐去，结构照原样。</div>
     <div class="stage"><span class="tipNow"><span class="tav">DL</span><b>dsh-log</b><small>○ 未绑定飞书未绑定</small></span></div>
   </div>
 </div>
@@ -78,11 +83,33 @@
   <button data-v="0" class="cur">全部</button><button data-v="1">A 横排</button><button data-v="2">B 居中</button><button data-v="3">C 单行</button>
 </div>
 <script>
-  const q = new URLSearchParams(location.search).get('v');
-  const init = { '1': '1', '2': '2', '3': '3' }[q] || '0';
-  const body = document.body, btns = [...document.querySelectorAll('#bar button')];
-  const set = v => { body.dataset.v = v; btns.forEach(b => b.classList.toggle('cur', b.dataset.v === v)); };
-  btns.forEach(b => b.onclick = () => set(b.dataset.v)); set(init);
+  var GLYPHS = {
+    feishu: '<svg width="14" height="14" viewBox="0 0 24 24"><path fill="#00D6B9" d="M7.2 4.5h7.6c1.2 0 2.1.55 2.7 1.58 1.05 1.8 1.55 3.45 1.58 4.95-2.04-.62-4.2-.15-6.22 1.45C11.3 9.7 9.42 7.04 7.2 4.5Z"/><path fill="#1456B8" d="M10.8 13.55c3.3-2.93 5.72-4.24 9.47-2.52-1.2 1.45-2.27 4.18-3.86 5.43-1.67 1.31-3.9.5-5.61-.64v-2.27Z"/><path fill="#3370FF" d="M4.4 8.35c3.47 3.61 7.25 6.1 10.33 5.7 1.06-.14 2.2-.72 3.4-1.72-1.04 2.65-2.6 4.8-5.06 6-2.46 1.2-5.56.52-7.42-.72A2.76 2.76 0 0 1 4.4 15.3V8.35Z"/></svg>',
+    qq: '<svg width="14" height="14" viewBox="0 0 24 24"><path fill="#12B7F5" d="M21.395 15.035a40 40 0 0 0-.803-2.264l-1.079-2.695c.001-.032.014-.562.014-.836C19.526 4.632 17.351 0 12 0S4.474 4.632 4.474 9.241c0 .274.013.804.014.836l-1.08 2.695a39 39 0 0 0-.802 2.264c-1.021 3.283-.69 4.643-.438 4.673.54.065 2.103-2.472 2.103-2.472 0 1.469.756 3.387 2.394 4.771-.612.188-1.363.479-1.845.835-.434.32-.379.646-.301.778.343.578 5.883.369 7.482.189 1.6.18 7.14.389 7.483-.189.078-.132.132-.458-.301-.778-.483-.356-1.233-.646-1.846-.836 1.637-1.384 2.393-3.302 2.393-4.771 0 0 1.563 2.537 2.103 2.472.251-.03.581-1.39-.438-4.673"/></svg>',
+    weixin: '<svg width="14" height="14" viewBox="0 0 24 24"><path fill="#07C160" d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348z"/></svg>',
+    dingtalk: '<svg width="14" height="14" viewBox="0 0 48 48"><path fill="#0091FF" d="M37.05 22.783c-6.758-5.216-14.378-12.128-22.73-19.538-.655-.585-1.242-.354-1.536.42-1.88 4.973-.058 9.386 2.889 11.932s7.368 4.912 10.058 6.155c.105.049.013.203-.093.163-4.953-2.182-8.397-3.765-13.07-7.368-.497-.388-1.01-.242-1.07.521-.384 4.748 2.657 8.483 6.058 9.745 2.1.781 4.398 1.212 6.53 1.474.109.015.084.178-.027.178-2.747.01-6.058-.654-8.935-1.751-.606-.233-.818.25-.722.633.491 2.008 2.974 5.076 6.926 5.73a12 12 0 0 0 2.228.115c.164 0 .208.089.154.217q-2.685 4.6-2.803 4.797c-.091.152-.036.275.156.275h3.543c.164 0 .264.106.18.246l-4.958 8.196c-.191.328.035.565.395.301s15.212-11.133 15.636-11.448c.195-.142.148-.327-.124-.327h-3.18c-.206 0-.252-.14-.111-.28.14-.141 3.602-3.594 4.837-4.888 1.283-1.35 1.938-3.825-.231-5.498"/></svg>',
+    wecom: '<svg width="14" height="14" viewBox="0 0 24 24"><path fill="none" stroke="#3370FF" stroke-width="2.35" stroke-linecap="round" stroke-linejoin="round" d="M17.7 14.5c1.05-1.12 1.65-2.52 1.65-4.03 0-3.82-3.58-6.92-8-6.92s-8 3.1-8 6.92 3.58 6.92 8 6.92c1.17 0 2.28-.22 3.28-.62"/><path fill="#07C160" d="M16.1 15.15c.7-.7 1.83-.7 2.53 0s.7 1.83 0 2.53-1.83.7-2.53 0-.7-1.83 0-2.53Z"/></svg>',
+    telegram: '<svg width="14" height="14" viewBox="0 0 24 24"><path fill="#2AABEE" d="M23.95 4.57c-.36-1.45-1.43-1.76-2.82-1.24L1.5 10.9c-1.34.52-1.32 1.27-.24 1.6l5.03 1.57 11.66-7.36c.55-.34 1.05-.16.64.21l-9.44 8.52-.37 5.12c.54 0 .78-.24 1.08-.53l2.59-2.51 5.38 3.97c.99.55 1.7.27 1.95-.92L23.95 4.57Z"/></svg>',
+    discord: '<svg width="14" height="14" viewBox="0 0 24 24"><path fill="#5865F2" d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.51c-.21.38-.46.89-.63 1.29a18.4 18.4 0 0 0-5.59 0 13 13 0 0 0-.64-1.29c-1.71.29-3.36.8-4.89 1.52C.59 9.09-.25 13.68.17 18.2a19.9 19.9 0 0 0 6 3.04c.48-.66.91-1.36 1.28-2.1-.7-.26-1.37-.58-2-.96.17-.12.33-.25.49-.38 3.86 1.79 8.04 1.79 11.86 0 .16.13.32.26.49.38-.64.38-1.31.7-2.01.97.37.73.8 1.44 1.28 2.09a19.8 19.8 0 0 0 6-3.04c.49-5.24-.84-9.79-3.24-13.83ZM8.02 15.42c-1.16 0-2.11-1.07-2.11-2.38s.93-2.38 2.11-2.38c1.18 0 2.13 1.08 2.11 2.38 0 1.31-.93 2.38-2.11 2.38Zm7.95 0c-1.16 0-2.11-1.07-2.11-2.38s.93-2.38 2.11-2.38c1.18 0 2.13 1.08 2.11 2.38 0 1.31-.93 2.38-2.11 2.38Z"/></svg>',
+    slack: '<svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4A154B" d="M6 15a2 2 0 1 1-2-2h2v2Zm1 0a2 2 0 1 1 4 0v5a2 2 0 1 1-4 0v-5Zm2-8a2 2 0 1 1 2-2v2H9Zm0 1a2 2 0 1 1 0 4H4a2 2 0 1 1 0-4h5Zm8 2a2 2 0 1 1 2 2h-2v-2Zm-1 0a2 2 0 1 1-4 0V5a2 2 0 1 1 4 0v5Zm-2 8a2 2 0 1 1-2 2v-2h2Zm0-1a2 2 0 1 1 0-4h5a2 2 0 1 1 0 4h-5Z"/></svg>',
+    whatsapp: '<svg width="14" height="14" viewBox="0 0 24 24"><path fill="#25D366" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.149-.173.198-.297.298-.495.099-.198.05-.372-.025-.521-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479s1.065 2.875 1.213 3.074c.149.198 2.095 3.2 5.077 4.487.709.306 1.262.489 1.694.626.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.29.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.981.999-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.83 9.83 0 0 1 2.893 6.991c-.003 5.45-4.437 9.884-9.886 9.884"/></svg>'
+  };
+  var NAMES = { feishu: '飞书', qq: 'QQ', weixin: '微信', dingtalk: '钉钉', wecom: '企业微信', telegram: 'Telegram', discord: 'Discord', slack: 'Slack', whatsapp: 'WhatsApp' };
+  var row = document.getElementById('logos');
+  Object.keys(GLYPHS).forEach(function (k) {
+    var f = document.createElement('figure');
+    f.innerHTML = '<span>' + GLYPHS[k] + '</span><figcaption>' + NAMES[k] + '</figcaption>';
+    row.appendChild(f);
+  });
+  document.querySelectorAll('[data-logo]').forEach(function (el) {
+    var k = el.getAttribute('data-logo');
+    el.innerHTML = GLYPHS[k] + '<span>' + NAMES[k] + '</span>';
+  });
+  var q = new URLSearchParams(location.search).get('v');
+  var init = { '1': '1', '2': '2', '3': '3' }[q] || '0';
+  var body = document.body, btns = Array.prototype.slice.call(document.querySelectorAll('#bar button'));
+  var set = function (v) { body.dataset.v = v; btns.forEach(function (b) { b.classList.toggle('cur', b.dataset.v === v); }); };
+  btns.forEach(function (b) { b.onclick = function () { set(b.dataset.v); }; }); set(init);
 </script>
 </body>
 </html>
