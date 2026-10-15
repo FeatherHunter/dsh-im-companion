@@ -84,8 +84,13 @@ export const HOME_ROW_CSS = `
 /* ---- 键盘可达：条带里的可点件必须给焦点环（与既有 focus-visible 口径一致）---- */
 .home-ui .hu-add:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
 
-/* ---- 悬停小气泡：body 级 float（宿主同带 .home-ui），不被列表 overflow 裁掉 ---- */
-.home-ui.hu-tiphost{position:fixed;z-index:60;pointer-events:none;display:flex;align-items:center;gap:9px;max-width:260px;
+/* ---- 悬停小气泡：body 级 float（宿主同带 .home-ui），不被列表 overflow 裁掉 ----
+ * 进 top layer（home-pop.ts 的 showLayer，#112 同款坑：设置页落在 dialog 下时 z-index 再高也没用；
+ * 无 Popover API 的老环境退回 z-index（1260 压过 overlay 1250、让着 toast 1300）。盒子自带 af-portal
+ * 保令牌作用域（body 在 .af-root 之外，否则 --hu-* 全失效、气泡透明裸奔——同 home-pop 宿主备注）。
+ * [popover] 那一行只中和 UA 默认（未 show 前 display:none 藏盒、:popover-open 的 inset:0＋margin:auto
+ * 会把按行内 top/left 定位的小盒拉变形）：border/底色/圆角走本表原规则，不动。 */
+.home-ui.hu-tiphost{position:fixed;z-index:1260;pointer-events:none;display:flex;align-items:center;gap:9px;max-width:260px;
   padding:8px 11px;border-radius:12px;background:var(--hu-panel-3);border:1px solid var(--hu-line);
   box-shadow:var(--hu-sh-pop);color:var(--hu-ink);font-size:12px;line-height:1.35;
   opacity:0;transform:translateY(4px) scale(.97);transition:opacity var(--hu-t) var(--hu-ease),transform var(--hu-t) var(--hu-ease)}
@@ -94,6 +99,7 @@ export const HOME_ROW_CSS = `
 .home-ui.hu-tiphost .hu-tt{min-width:0}
 .home-ui.hu-tiphost .hu-tt b{display:block;font-size:12.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui.hu-tiphost .hu-tt small{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:11px;color:var(--hu-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-ui.hu-tiphost[popover]{margin:0;inset:auto;overflow:visible}
 `
 
 let installed = false

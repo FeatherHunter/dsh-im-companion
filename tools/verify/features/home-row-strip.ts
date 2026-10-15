@@ -210,6 +210,10 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
   assert.equal(shown().length, 1, '清扫之后新盒照常亮起');
   assert.ok(!txt(boxes()[0]).includes('DLdsh-log'), '旧盒的旧字没有借尸还魂（新盒内容＝当前芯片）');
   assert.ok(txt(shown()[0]).includes('小美'), '新盒内容跟着当前悬停走');
+  /* 进层与令牌钉（#112 同款坑）：body 级盒子自带 af-portal（否则 --hu-* 全失效），
+   * 无 Popover API 的环境不带 popover 属性（否则 UA display:none 藏盒） */
+  assert.ok(boxes()[0].classList.contains('af-portal'), '气泡盒自带 af-portal（body 在 .af-root 之外，令牌不能断）');
+  assert.ok(!(boxes()[0].hasAttribute?.('popover') ?? false), '桩里无 Popover API ⇒ 不带 popover 属性（带了会被 UA 藏盒）');
   tip.hideAsstTip();
   host.removeChild(el2);
   tip.hideAsstTip();
@@ -224,6 +228,14 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   assert.equal(String(style.getAttribute?.('id') ?? style.id ?? ''), 'af-feature-home-row-l1', '样式表 id 固定（热重载按 id 复用）');
   const css = String(style.textContent ?? '');
   assert.ok(css.length > 400, '样式表真的写进去了');
+  /* 模板杀手钉：CSS 住在 TS 模板字符串里，一个反引号就会提前终结字符串、构建直接炸
+   *（本文件已连踩三回：都是注释里顺手写的反引号）。只查模板区（起始行尾的开引号到行首闭引号），文件头注释里的不管。 */
+  const stylesSrc = readFileSync(join(COMP, 'home-row-styles.ts'), 'utf8');
+  const tplMark = stylesSrc.indexOf('HOME_ROW_CSS =');
+  const tplOpen = stylesSrc.indexOf('`', tplMark);
+  const tplClose = stylesSrc.indexOf('\n`', tplOpen + 1);
+  assert.ok(tplMark >= 0 && tplOpen > tplMark && tplClose > tplOpen, '前置：找得到 CSS 模板的起止引号');
+  assert.ok(!stylesSrc.slice(tplOpen + 1, tplClose).includes('`'), 'CSS 模板区不许有反引号');
   const unscoped = css.split('\n').map((l) => l.trim()).filter((l) => l.includes('{') && !l.startsWith('@') && !l.includes('.home-ui'));
   assert.deepEqual(unscoped, [], '每条规则都必须挂在 .home-ui 之下（不污染全局）');
   assert.ok(css.includes('.home-ui .hu-chip:hover'), '芯片有悬停反馈');
@@ -258,5 +270,9 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
     '先定位、后点亮（定位丢了盒子就不亮，不许无定位现身左下角）');
   assert.ok(tipSrc.includes("querySelectorAll?.('.hu-tiphost')"), '每画必先扫旧盒（跨版本残留也带走，不认领）');
   assert.ok(tipSrc.includes('box = null'), '收起即拆盒（旧字没有过夜的地方）');
+  /* 可见性钉（owner 2026-10-16：悬停了却什么都不出）：进层复用绿框 popover 系统，不过就再也没人修第二遍 */
+  assert.ok(tipSrc.includes('af-portal'), '气泡盒自带 af-portal（令牌作用域不断）');
+  assert.ok(tipSrc.includes('showLayer(el)') && tipSrc.includes('hideLayer(box)'), '画完进层、收起下层（调用点，不是只 import）');
+  assert.ok(css.includes('.hu-tiphost[popover]'), 'popover 态中和 UA 默认（margin/inset 复位，不抢定位）');
 });
 

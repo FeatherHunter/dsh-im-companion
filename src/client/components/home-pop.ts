@@ -41,8 +41,9 @@ function viewport(): { w: number; h: number } {
 }
 
 /** 宿主能力探测：有 Popover API 就带 `popover="manual"`（进 top layer），没有就确保不带——
- * 否则支持 `[popover]` 的宿主会把它按 UA 默认样式 `display:none` 藏掉。复用旧宿主时也要补正。 */
-function applyLayerAttr(el: HTMLElement): void {
+ * 否则支持 `[popover]` 的宿主会把它按 UA 默认样式 `display:none` 藏掉。复用旧宿主时也要补正。
+ * 导出给气泡（`home-row-tip.ts`）复用：同一套“设置页可能被 dialog 盖住”的坑（#112），别各写一套。 */
+export function applyLayerAttr(el: HTMLElement): void {
   const has = typeof (el as { showPopover?: unknown }).showPopover === 'function'
   if (has) el.setAttribute('popover', 'manual')
   else el.removeAttribute('popover')
@@ -67,7 +68,7 @@ function ensureHost(): HTMLElement {
 }
 
 /** 把宿主提进 top layer（失败即摘掉 popover 属性退回 z-index 层，绝不让弹层因此不可见）。 */
-function showLayer(host: HTMLElement): void {
+export function showLayer(host: HTMLElement): void {
   const el = host as { showPopover?: () => void; matches?: (s: string) => boolean }
   if (typeof el.showPopover !== 'function') return
   try {
@@ -78,7 +79,7 @@ function showLayer(host: HTMLElement): void {
   }
 }
 
-function hideLayer(host: HTMLElement | null): void {
+export function hideLayer(host: HTMLElement | null): void {
   if (!host) return
   const el = host as { hidePopover?: () => void; matches?: (s: string) => boolean }
   try {

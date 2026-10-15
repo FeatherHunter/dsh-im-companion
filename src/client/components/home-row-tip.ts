@@ -12,10 +12,15 @@
  * 不认领旧盒；每次画之前先把 body 里所有的 `.hu-tiphost` 扫掉（跨版本热重载留下的旧盒也一并带走）。
  * 再加上画前验样式活（死了就不画）、定位完才亮（几何丢了就不亮），四条同时成立，
  * 屏幕上就不存在“有字无样式”的东西。
+ * 可见性（同轮补钉：悬停了却什么都不出）：进层走绿框 popover 系统——有 Popover API 进 top layer
+ * （设置页落在 dialog 下时纯 z-index 会被整层盖住，#112 实证），盒子自带 `af-portal` 保令牌作用域。
  */
 import { h } from '../dom'
 import { avatarStyle, imageCover, initialsOf } from './home-identity'
 import { ensureHomeRowStyles, homeRowStylesAlive } from './home-row-styles'
+/* 进层三件套复用绿框 popover 系统（`home-pop.ts`，#112 实证：设置页可能落在 dialog 下，
+ * 纯 z-index 会被整层盖住 ⇒ 有 Popover API 就进 top layer，没有就退回 z-index）。 */
+import { applyLayerAttr, hideLayer, showLayer } from './home-pop'
 
 export interface TipData {
   id: string
@@ -72,7 +77,10 @@ function ensureBox(): HTMLElement {
   sweepTipBoxes()
   box = null
   const doc = (globalThis as unknown as { document?: { body?: { appendChild?: (e: unknown) => void } } }).document
-  box = h('div', { className: 'home-ui hu-tiphost', role: 'tooltip' })
+  /* 自带 `af-portal` 保令牌作用域（body 在 .af-root 之外，无它则 --hu-* 全失效）＋
+   * 按宿主能力挂 `popover="manual"`（有 API 进 top layer，无则不带、免得被 UA 藏盒）。 */
+  box = h('div', { className: 'home-ui hu-tiphost af-portal', role: 'tooltip' })
+  try { applyLayerAttr(box) } catch { /* 桩里 setAttribute 若缺就当无 API */ }
   try { doc?.body?.appendChild?.(box) } catch { /* 桩里 body 缺 appendChild 就算了 */ }
   return box
 }
@@ -113,6 +121,8 @@ function paint(a: HTMLElement, data: TipData): void {
     /* 定位落定了才点亮（opacity:0 不影响量尺寸，先量后亮完全够用）：几何拿不到（抛了）
      * ⇒ 盒子保持熄灭，不许无定位现身（之前先亮后量，定位一丢就是左下角一个已点亮的盒子）。 */
     el.classList.add('on')
+    /* 最后进层：有 Popover API 的宿主进 top layer（盖过设置页的 dialog），失败自动退回 z-index。 */
+    try { showLayer(el) } catch { /* 进层失败不挡显示（z-index 兜底还在） */ }
   } catch { /* 拿不到几何信息就不显示 */ }
 }
 
@@ -137,6 +147,8 @@ export function hideAsstTip(): void {
   if (timer !== null && typeof clear === 'function') clear(timer)
   timer = null
   anchor = null
+  /* 先下层再拆盒（进过 top layer 的节点，hidePopover 让它归位；没进过就是空操作）。 */
+  try { hideLayer(box) } catch { /* 桩里无 API 就是空操作 */ }
   try { (box as unknown as { remove?: () => void } | null)?.remove?.() } catch { /* 桩环境无 remove 就算了 */ }
   finally { box = null }
 }
