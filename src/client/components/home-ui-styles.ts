@@ -38,12 +38,12 @@ export const HOME_UI_CSS = `
 .home-ui .hu-fhead .hu-ttl b{display:block;font-size:15px;font-weight:650;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-fhead .hu-ttl small{display:block;font-size:11.5px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-ibtn{width:32px;height:32px;display:grid;place-items:center;background:none;border:1px solid transparent;border-radius:9px;color:var(--hu-ink-2);cursor:pointer;transition:all var(--hu-t) var(--hu-ease);flex:none}
-.home-ui .hu-ibtn:hover{background:var(--hu-panel-3);color:var(--hu-ink)}
+.home-ui .hu-ibtn:hover{background:var(--hu-accent-soft);color:var(--hu-accent-deep)}
 .home-ui .hu-ibtn:active{transform:scale(.94)}
 .home-ui .hu-ibtn.solid{background:var(--hu-accent);color:#fff}
 .home-ui .hu-ibtn[disabled]{opacity:.4;cursor:not-allowed}
 .home-ui .hu-back{width:32px;height:32px;display:grid;place-items:center;background:var(--hu-panel-3);border:0;border-radius:9px;color:var(--hu-ink-2);cursor:pointer;transition:all var(--hu-t) var(--hu-ease);flex:none}
-.home-ui .hu-back:hover{color:var(--hu-ink)}
+.home-ui .hu-back:hover{color:var(--hu-accent-deep);background:var(--hu-accent-soft)}
 .home-ui .hu-back:active{transform:scale(.94)}
 
 /* ============ crumbs（液签面包屑） ============ */
@@ -74,7 +74,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-row{position:relative;display:grid;grid-template-columns:36px 1fr auto;gap:13px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;
   background:var(--hu-panel);border:1px solid var(--hu-line-soft);border-radius:var(--hu-r);padding:9px 10px;cursor:pointer;
   transition:border-color var(--hu-t) var(--hu-ease),box-shadow var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease);min-height:56px}
-.home-ui .hu-row:hover{border-color:var(--hu-line);box-shadow:var(--hu-sh)}
+.home-ui .hu-row:hover{border-color:color-mix(in srgb, var(--hu-accent) 55%, var(--hu-line));background:var(--hu-panel-3);box-shadow:var(--hu-sh)}
 .home-ui .hu-row:active{transform:scale(.994)}
 .home-ui .hu-row.on{border-color:var(--hu-accent);background:color-mix(in srgb, var(--af-accent) 5%, var(--hu-panel));box-shadow:var(--hu-sh)}
 .home-ui .hu-row.hu-flash{animation:huRowIn var(--hu-t-med) var(--hu-spring)}
@@ -107,7 +107,7 @@ export const HOME_UI_CSS = `
 /* ============ row action buttons + tooltip ============ */
 .home-ui .hu-ract{font:inherit;font-size:11.5px;height:26px;padding:0 9px;display:inline-flex;align-items:center;gap:5px;background:var(--hu-panel);border:1px solid var(--hu-line);
   border-radius:7px;color:var(--hu-ink-3);cursor:pointer;white-space:nowrap;transition:all var(--hu-t) var(--hu-ease);flex:none;position:relative}
-.home-ui .hu-ract:hover{background:var(--hu-panel-3);color:var(--hu-ink)}
+.home-ui .hu-ract:not(.danger):not(.planned):not([disabled]):hover{background:var(--hu-accent-soft);border-color:var(--hu-accent);color:var(--hu-accent-deep)}
 .home-ui .hu-ract:active{transform:scale(.94)}
 .home-ui .hu-ract.connect{border-color:var(--hu-accent);background:var(--hu-accent-soft);color:var(--hu-accent-deep);font-weight:600}
 .home-ui .hu-ract.icon{width:26px;padding:0;justify-content:center}

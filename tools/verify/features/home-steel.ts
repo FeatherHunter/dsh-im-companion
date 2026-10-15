@@ -1338,6 +1338,11 @@ test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移
   const crumbCss = readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8');
   assert.ok(/\.hu-crumb\[data-goto\]:not\(\.off\):not\(\.next\)\{[^}]*background:var\(--hu-panel\)/.test(crumbCss), '返回 tab 有实心底');
   assert.ok(/\.hu-crumb\[data-goto\]:not\(\.off\):not\(\.next\):hover\{[^}]*border-color:var\(--hu-accent\)/.test(crumbCss), '返回 tab hover 有强调');
+  /* hover 反馈全覆盖（owner 2026-10-15 真机）：行卡、行内钮、页头星标/反馈，缺一个都不行。 */
+  assert.ok(/\.hu-row:hover\{[^}]*border-color:color-mix\(in srgb, var\(--hu-accent\)/.test(crumbCss), '行卡 hover 有强调描边');
+  assert.ok(/\.hu-ract:not\(\.danger\):not\(\.planned\):not\(\[disabled\]\):hover\{[^}]*background:var\(--hu-accent-soft\)/.test(crumbCss), '行内钮 hover 有强调（危险/待实现/禁用除外）');
+  const fvCss = readFileSync(join(COMP, 'first-view-styles.ts'), 'utf8');
+  assert.ok(/\.af-icon-btn\.af-star:hover\s*\{[^}]*border:[^}]*var\(--af-accent\)/.test(fvCss), '星标/反馈钮 hover 有强调');
 });
 
 /* —— 面包屑默认路径（owner 2026-10-13：「当没有焦点时，默认二级目录 三级目录 tab 上的内容

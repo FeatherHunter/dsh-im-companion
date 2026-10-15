@@ -31,6 +31,7 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 
 /* P2 引流星标：ghost 虚线风，与详情 ghost 同级 */
 .af-icon-btn.af-star { background: transparent; border: 1px dashed var(--af-hairline-strong); text-decoration: none; }
+.af-icon-btn.af-star:hover { background: color-mix(in srgb, var(--af-accent) 14%, transparent); border: 1px solid var(--af-accent); color: var(--af-accent); }
 
 /* P2 底部关联卡：名 + 一句话 + 右箭头，新开页 */
 .af-promo { margin-top: 12px; background: var(--af-surface); border: 1px dashed var(--af-hairline-strong); border-radius: 12px; padding: 10px 14px; }
