@@ -237,15 +237,16 @@ const formMod: any = reqCli('./client/components/home-avatar-form.js');
 const avCli: any = reqCli('./client/components/home-avatar.js');
 const buf = (b: Buffer): ArrayBuffer => b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer;
 
-test('T11 #128 客户端三道闸真跑：11 MB 早拒、空文件拒、格式拒、2 MB 存盘上限拒，成功只走 avatar.set', async () => {
+test('T11 #128 客户端三道闸真跑：超 2 MB 早拒、空文件拒、格式拒、存盘上限拒，成功只走 avatar.set', async () => {
   const calls: Array<{ ep: string; p: any }> = [];
   avCli.bindAvatarTransport({
     getRpc: () => async (_path: string, ep: string, p: any) => { calls.push({ ep, p }); return { ok: true, value: { avatar: 'img:' + p.id + '.png' } } },
     onChange: () => {},
   });
-  /* ① 纯校验：选文件前的那道闸（不读内存） */
+  /* ① 纯校验：选文件前的那道闸（不读内存）——上限与票面/宿主同值 2 MB，不给两套口径 */
   assert.equal(formMod.avatarFileReject(null), '没选到文件', '没选到文件');
-  assert.match(formMod.avatarFileReject({ size: 11 * 1024 * 1024, type: 'image/png', name: 'big.png' }), /10 MB/, '>10 MB 不读进内存');
+  assert.match(formMod.avatarFileReject({ size: 11 * 1024 * 1024, type: 'image/png', name: 'big.png' }), /上限 2 MB/, '>2 MB 当场拒，不读进内存');
+  assert.match(formMod.avatarFileReject({ size: 3 * 1024 * 1024, type: 'image/png', name: 'mid.png' }), /上限 2 MB/, '3 MB 也是同一句明文（没有 10 MB 的第二套口径）');
   assert.match(formMod.avatarFileReject({ size: 0, type: 'image/png', name: 'empty.png' }), /空文件/, '空文件');
   assert.match(formMod.avatarFileReject({ size: 100, type: 'image/gif', name: 'a.gif' }), /不支持的格式/, '格式白名单');
   assert.equal(formMod.avatarFileReject({ size: 100, type: 'image/png', name: 'a.png' }), null, '合法文件放行');

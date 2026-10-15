@@ -15,9 +15,7 @@ import { aLog, hLog, msgOf } from './home-ops'
 import { avatarStyle, imageCover } from './home-identity'
 
 const ACCEPT = 'image/png,image/jpeg,image/webp'
-/** 选择器入口上限：先挡住手滑选中的巨型文件，别把它读进内存（票面口径的 2 MB 是**存盘**上限）。 */
-const MAX_FILE = 10 * 1024 * 1024
-/** 存盘上限（与宿主 AVATAR_MAX_BYTES 同值；两侧都卡，客户端这层只为即时反馈）。 */
+/** 存盘上限（与宿主 AVATAR_MAX_BYTES 同值；两侧都卡，客户端这层只为即时反馈——选完文件当场给明文，不先读进内存）。 */
 const MAX_STORE = 2 * 1024 * 1024
 const MIMES = ['image/png', 'image/jpeg', 'image/webp']
 
@@ -36,7 +34,7 @@ const mb = (n: number): string => (n / 1048576).toFixed(1) + ' MB'
 export function avatarFileReject(file: { type?: string; size?: number; name?: string } | null | undefined): string | null {
   if (!file) return '没选到文件'
   const size = typeof file.size === 'number' ? file.size : 0
-  if (size > MAX_FILE) return '图片太大：' + mb(size) + '，请先压到 10 MB 以内再传'
+  if (size > MAX_STORE) return '图片太大：' + mb(size) + '，上限 2 MB'
   if (!size) return '空文件：' + String(file.name ?? '（未命名）')
   const type = String(file.type ?? '').toLowerCase()
   if (!MIMES.includes(type)) return '不支持的格式：只收 png / jpg / webp（当前 ' + (type || '未知类型') + '）'
