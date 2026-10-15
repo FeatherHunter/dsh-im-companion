@@ -70,7 +70,7 @@ export const HOME_UI_CSS = `
 /* 绿框不自造滚动容器：整页只留宿主一条滚动条（内层滚动既丑又与页面滚动嵌套打架）。
    另外：一旦给元素写 webkit 滚动条伪元素，Chromium 会切回「经典滚动条」渲染（带上下箭头按钮），
    所以这里连 width/thumb 都不写。 */
-.home-ui .hu-fbody{flex:1;min-height:0;margin:10px 0 4px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);border-radius:14px}
+.home-ui .hu-fbody{flex:1;min-height:0;margin:10px 0 14px;padding:10px;display:flex;flex-direction:column;gap:8px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);border-radius:14px}
 .home-ui .hu-row{position:relative;display:grid;grid-template-columns:36px 1fr auto;gap:13px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;
   background:var(--hu-panel);border:1px solid var(--hu-line-soft);border-radius:var(--hu-r);padding:9px 10px;cursor:pointer;
   transition:border-color var(--hu-t) var(--hu-ease),box-shadow var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease);min-height:56px}
@@ -163,7 +163,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-abtn[disabled]{opacity:.45;cursor:not-allowed}
 
 /* ============ footer ============ */
-.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;margin:0 0 6px;padding:2px 0 0;background:linear-gradient(to bottom,transparent,var(--hu-panel) 60%);border-top:0;display:flex;gap:8px}
+.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;margin:0 0 6px;padding:6px 0 0;background:linear-gradient(to bottom,transparent,var(--hu-panel) 60%);border-top:0;display:flex;gap:8px}
 .home-ui .hu-pbtn{position:relative;overflow:hidden;flex:1;font:inherit;font-size:13px;font-weight:600;height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
   background:var(--hu-accent);color:#fff;border:1px solid color-mix(in srgb, #fff 16%, transparent);border-radius:9px;cursor:pointer;transition:transform var(--hu-t-fast) var(--hu-ease),background var(--hu-t) var(--hu-ease);
   box-shadow:0 10px 28px -8px rgba(0,0,0,.55),0 2px 6px rgba(13,148,136,.35);will-change:transform}
