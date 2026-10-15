@@ -131,7 +131,7 @@ test('构建身份⑤：真产物真落盘后用 `dsh-log tail` 的人话渲染�
   assert.equal(handle.dropped(), 0, '不该有丢弃行')
   const cli = join(REPO, 'node_modules', 'dsh-log', 'dist', 'cli.js')
   assert.ok(existsSync(cli), 'dsh-log CLI 不在（读日志的惯例入口）: ' + cli)
-  /* 传目录而非文件：与 AGENTS.md 的读法一致（`npx dsh-log tail <dir>`）；首行 `没找到日志目录：tail` 是无害提示。 */
+  /* 传目录而非文件：与 AGENTS.md 的读法一致（`npx dsh-log tail <dir>`）；0.3.2 起 CLI stderr 干净（0.3.1 那行 `没找到日志目录：tail` 已修）。 */
   const out = execFileSync(process.execPath, [cli, 'tail', handle.dir, '-n', '20'], { encoding: 'utf8' })
   assert.ok(out.includes('build=' + realId), '人话渲染里必须看得见构建身份：' + out.slice(0, 500))
 })

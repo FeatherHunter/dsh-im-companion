@@ -34,6 +34,7 @@
 |---|---|---|---|
 | `T9-客户端traceId贯通取证.md`（#125） | 两端信封都没有 id 字段；`traceId` 只在客户端进程内、宿主写路径不搬迁保留字 ⇒ 在桥内层 `payload` 加可选 `traceId`、宿主并入日志 fields 即贯通，属本仓 Added-only（非契约变更）；`logCtx` 线索排除 | **有效** | #125 的实现依据；含 8 条未证实项（首要是 `log.why().traceId` 首次业务调用可能为 null） |
 | `排查-更新中心unknown-profile根因.md`（#126） | `unknown-profile` 抛自 0.13.0 `dist/host.js:245`：判据要求 target 包目录含 `\node_modules\<包名>`，而 desktop profile 是 Junction（realpath 出 profile）⇒ 开发态必现、真机真安装不命中；本仓侧无缺陷 | **有效** | 取代 `审查-R3` 对 `unknown-profile` 的归因与行号（基线 0.1.1）；README:556 的 `readerOverrides.targetPackageDir` 药方实测对 Junction 无效 |
+| `评估-dsh-log-0.3.4-可升级性.md`（#122） | `dsh-log` 0.3.1→0.3.4 可**直接升**：四入口 `.d.ts` 与全部格式/开关/轮转/租约实现在两版**逐字节相同**，只增 `pluginVersion`(可选)·`trace()`·`export` 子命令；本仓装配形状实跑落盘 `"v":3` 逐字同形 ⇒ 仅改 pin，`src/`·`tools/` 零改动 | **有效** | 顺带订正 `AGENTS.md`：CLI `没找到日志目录：tail` 噪声 0.3.2 已修、开关形状实为 `{"enabled":false}`（无 `sampleRate`）；**勿**改用 `createNodeHostLog`/`writeStartupHeader`（会与本仓 `src/index.ts:129` 的 `host.start` 重复） |
 
 ## B. 本 effort：审查 R1–R10
 
