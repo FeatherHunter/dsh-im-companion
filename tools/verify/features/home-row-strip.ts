@@ -214,6 +214,7 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
   assert.ok(!txt(shown()[0]).includes('·'), '气泡实际文案里没有 ·');
   assert.ok(cls(shown()[0], 'hu-ch').length === 1 && cls(shown()[0], 'hu-st').length === 1,
     '渠道与状态是两个独立节点（flex gap 分隔，不是拼字符串更不是紧贴）');
+  assert.equal(cls(shown()[0], 'hu-st-bad').length, 0, '在线不染红（红色只给未绑定，当前是小美的在线气泡）');
   const tipSrc = readFileSync(join(COMP, 'home-row-tip.ts'), 'utf8');
   const rowsSrc = readFileSync(join(COMP, 'home-rows.ts'), 'utf8');
   const paintLine = tipSrc.split('\n').find((l) => l.includes('data.sub')) ?? '';
@@ -234,6 +235,7 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
   enter(cls(el3, 'hu-chip')[0]); await sleep(200);
   assert.equal(shown().length, 1, '未知渠道也照常出气泡（回退不断流）');
   assert.equal(txt(one(shown()[0], 'hu-logo-fb')), '火', '回退徽标取 sub 首字（火星来客→火）');
+  assert.equal(txt(one(shown()[0], 'hu-st-bad')), '未绑定', '未绑定三个字是红色档（hu-st-bad，只染未绑定）');
   tip.hideAsstTip();
   host.removeChild(el3);
   enter(chips[0]); await sleep(200);
@@ -272,6 +274,7 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   assert.ok(css.includes('.home-ui.hu-tiphost.on'), '气泡有显隐过渡态');
   assert.ok(css.includes('.hu-tt small .hu-st'), '状态字独立成 span 且加粗提亮（结构分隔的另一半，灰脚注不许回来）');
   assert.ok(css.includes('.hu-tt small .hu-ch') && css.includes('.hu-logo-fb'), '渠道节点 inline-flex＋首字徽标回退样式（A 方案 logo 位）');
+  assert.ok(css.includes('.hu-st-bad'), '未绑定红色档有样式（只染未绑定，在线离线不动）');
   /* 源码侧钉子：不能长回老副标/老圆点条（owner 2026-10-15 已改口径）。渠道行（按渠道模式）另有一句
      「N 位助理 · M 位已绑」不在本票范围内，故这里只钉**家行**那一句。 */
   const rowsSrc = readFileSync(join(COMP, 'home-rows.ts'), 'utf8');

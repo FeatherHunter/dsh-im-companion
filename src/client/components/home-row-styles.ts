@@ -100,6 +100,7 @@ export const HOME_ROW_CSS = `
 .home-ui.hu-tiphost .hu-tt b{display:block;font-size:12.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui.hu-tiphost .hu-tt small{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:11px;color:var(--hu-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui.hu-tiphost .hu-tt small .hu-st{font-weight:700;color:var(--hu-ink)}
+.home-ui.hu-tiphost .hu-tt small .hu-st-bad{color:var(--hu-bad)}
 .home-ui.hu-tiphost .hu-tt small .hu-ch{display:inline-flex;align-items:center;gap:4px}
 .home-ui.hu-tiphost .hu-tt small .hu-logo{display:inline-grid;place-items:center}
 .home-ui.hu-tiphost .hu-tt small .hu-logo svg{display:block}
