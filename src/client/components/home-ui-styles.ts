@@ -163,10 +163,10 @@ export const HOME_UI_CSS = `
 .home-ui .hu-abtn[disabled]{opacity:.45;cursor:not-allowed}
 
 /* ============ footer ============ */
-.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;margin:0 0 -8px;padding:4px 0 0;background:linear-gradient(to bottom,transparent,var(--hu-panel) 60%);border-top:0;display:flex;gap:8px}
+.home-ui .hu-ffoot{position:sticky;bottom:0;z-index:6;flex:none;margin:0 0 -14px;padding:4px 0 0;background:linear-gradient(to bottom,transparent,var(--hu-panel) 60%);border-top:0;display:flex;gap:8px}
 .home-ui .hu-pbtn{position:relative;overflow:hidden;flex:1;font:inherit;font-size:13px;font-weight:600;height:38px;display:inline-flex;align-items:center;justify-content:center;gap:7px;
-  background:var(--hu-accent);color:#fff;border:1px solid transparent;border-radius:9px;cursor:pointer;transition:transform var(--hu-t-fast) var(--hu-ease),background var(--hu-t) var(--hu-ease);
-  box-shadow:0 1px 2px rgba(13,148,136,.3);will-change:transform}
+  background:var(--hu-accent);color:#fff;border:1px solid color-mix(in srgb, #fff 16%, transparent);border-radius:9px;cursor:pointer;transition:transform var(--hu-t-fast) var(--hu-ease),background var(--hu-t) var(--hu-ease);
+  box-shadow:0 10px 28px -8px rgba(0,0,0,.55),0 2px 6px rgba(13,148,136,.35);will-change:transform}
 .home-ui .hu-pbtn:hover{background:color-mix(in srgb, var(--af-accent) 84%, #000)}
 .home-ui .hu-pbtn:active{transform:scale(.975)}
 .home-ui .hu-pbtn.ghost{background:var(--hu-panel);color:var(--hu-ink);border-color:var(--hu-line)}
