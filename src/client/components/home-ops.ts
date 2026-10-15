@@ -40,8 +40,7 @@ export async function listHomes(rpc: RpcCall): Promise<{ homes: Home[]; assistan
   }
 }
 
-/** 种子落盘（幂等：宿主按规范路径/bot 判重跳过，可重跑）。宿主半未必最新（宿主代码只在插件重载/重启时生效），
- * 旧宿主没有 `home.seed` ⇒ 失败即回落到「逐行 home.create ＋ assistant.create」，保证「有家无助理」空窗不出现。 */
+/** 种子落盘（幂等可重跑；旧宿主无 `home.seed` ⇒ 回落逐行建家/补助理，无空窗）。 */
 export async function seedHomes(
   rpc: RpcCall,
   seed: { homes: Home[]; assistants: Assistant[] },
@@ -98,7 +97,7 @@ export async function createHome(
     return v.home ?? null
   } catch (e) {
     hLog('create', '', false, msgOf(e)); toast('建家失败：' + msgOf(e))
-    return null
+    throw e /* 原文上抛：调用方灰字带原因（T8 #121 验收⑤「不吞细节」）；null 只留给「宿主未返回家行」。 */
   }
 }
 
@@ -224,7 +223,8 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
       if (!rpc) { toast('连接服务不可用'); hLog('create', '', false, '连接服务不可用'); throw new Error('连接服务不可用') }
       const w = deps.getWorkspaces().find((x) => x.workspaceId === workspaceId)
       if (!w) { toast('找不到这个工作区'); hLog('create', '', false, '找不到这个工作区：' + workspaceId); throw new Error('找不到这个工作区') }
-      if (!await createHome(rpc, { workspaceId: w.workspaceId, path: w.path, title: w.title })) throw new Error('家的记录没写成功')
+      const home = await createHome(rpc, { workspaceId: w.workspaceId, path: w.path, title: w.title }).catch((e) => { throw new Error('家的记录没写成功：' + msgOf(e)) })
+      if (!home) throw new Error('家的记录没写成功：宿主未返回家行')
       await deps.reloadHomes()
     },
     createAssistant: async (homeId: string, channel: string, botId: string, userName?: string) => {

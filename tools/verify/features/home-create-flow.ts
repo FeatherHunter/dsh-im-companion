@@ -22,10 +22,10 @@
 //   转译路径同时让 stream.dispose() 可达（bundle 内模块不可 require），有界退出才做得成。
 // HCF_REPO 只为变异自证（拿 src 的临时副本当仓库根跑同一份测试），正常跑无需设置。
 import { execFileSync } from 'node:child_process'
-import { mkdtempSync, readFileSync, symlinkSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, symlinkSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createDocument, El } from '../dom-shim.ts'
@@ -204,8 +204,11 @@ function disposeShared(): void {
 }
 
 /* ---------- 每 test 一套新夹具：新 homes.json ＋ 新桥 handler ＋ 新 stream ＋ 新 React 根 ---------- */
-/* T8 #121 收尾：pickCancel＝原生选择器被用户取消（返回 null）；createFails＝DSH 建工作区失败（明文回错）。 */
-async function boot({ freeWs = false, pickCancel = false, createFails = false }: { freeWs?: boolean; pickCancel?: boolean; createFails?: boolean } = {}) {
+/* T8 #121 收尾：pickCancel＝原生选择器被用户取消（返回 null）；createFails＝DSH 建工作区失败（明文回错）；
+ * noNative＝远端/精简宿主没有原生选择器（uiWorkspace 空 ⇒ 走内置浏览兜底）；failHomeCreate＝adopt 成功但
+ * home.create 落盘失败（宿主回 ok:false ⇒ 灰字可重试＋DSH 侧不回滚）；noProjection＝建区成功但投影永不到
+ * （快照里见不到新区 ⇒ adopt 等满 8s 超时 ⇒ 灰字＋不落家）。 */
+async function boot({ freeWs = false, pickCancel = false, createFails = false, noNative = false, failHomeCreate = false, noProjection = false }: { freeWs?: boolean; pickCancel?: boolean; createFails?: boolean; noNative?: boolean; failHomeCreate?: boolean; noProjection?: boolean } = {}) {
   const dshHome = mkdtempSync(join(tmpdir(), 'hcf-dsh-'))
   const homesFile = storeMod.homesFileFor(dshHome)
   /* 只有建家测试才暴露「尚无家」的空闲区：建助理点击成功后会瞬时触发一次缺口种子 sweep
@@ -229,7 +232,32 @@ async function boot({ freeWs = false, pickCancel = false, createFails = false }:
   )
   const okV = (value: any) => ({ ok: true, value })
   const errV = (code: string, message: string) => ({ ok: false, error: { code, message } })
+  /* T8 #121 ⑧：远端兜底的真目录（node 真 fs 可列：内置浏览经 fs.* 固件读它；PICKROOT 下恰一个子目录 brandnew）。 */
+  const PICKROOT = mkdtempSync(join(tmpdir(), 'hcf-pick-'))
+  mkdirSync(join(PICKROOT, 'brandnew'))
+  const fsFixture = (ep: string, payload: any) => {
+    if (ep === 'fs.defaultRoot') return okV({ path: PICKROOT })
+    if (ep === 'fs.roots') return okV({ roots: [] })
+    if (ep === 'fs.list') {
+      const dir = String(payload?.path ?? PICKROOT)
+      const entries = readdirSync(dir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => ({ name: d.name, path: join(dir, d.name) }))
+      return okV({ path: dir, parent: dirname(dir), entries })
+    }
+    return errV('bad-request', '未知端点: ' + ep)
+  }
   const bridge = async (endpoint: string, payload: any) => {
+    /* fs.* 固件挂 bridge 层（单漏斗）：extractRpcV2 可能把通道重映射（如 /im-companion → /api 嵌套），call 层按 ch 分流会漏——真宿主 handler 有 fs.* 真实现，会回真用户目录。 */
+    if (String(endpoint).startsWith('fs.')) {
+      const reply = fsFixture(endpoint, payload ?? {})
+      calls.push({ channel: 'bridge', endpoint, payload, reply })
+      return reply
+    }
+    /* T8 #121 ⑦：落盘失败走真实通道——宿主回 ok:false（不抛），产品桥自己转成抛错（code-review c2：夹具直接 throw 测的不是真实通道）。 */
+    if (failHomeCreate && endpoint === 'home.create') {
+      const reply = errV('IO_FAIL', '宿主写盘失败（夹具注入落盘失败）')
+      calls.push({ channel: 'bridge', endpoint, payload, reply })
+      return reply
+    }
     const reply = await handler(endpoint, payload, AbortSignal.timeout(8000))
     calls.push({ channel: 'bridge', endpoint, payload, reply })
     return reply
@@ -294,7 +322,7 @@ async function boot({ freeWs = false, pickCancel = false, createFails = false }:
             const hit = workspaces.find((w: any) => w.path === path)
             if (hit) return { ok: true, value: { workspace: hit, created: false } }
             const row = { workspaceId: 'ws-9', path, title: '新房间' }
-            workspaces.push(row)
+            if (!noProjection) workspaces.push(row) /* 投影永不到：建区 ok 但快照不见新区（T8 #121 ⑨） */
             return { ok: true, value: { workspace: row, created: true } }
           },
         },
@@ -302,7 +330,7 @@ async function boot({ freeWs = false, pickCancel = false, createFails = false }:
     },
     slots: { inject: (_n: string, fn: any) => fn(), register: (_o: any, Comp: any) => Comp },
     connection: { rpc: { call } },
-    uiWorkspace: { pickDirectory: async () => (pickCancel ? null : NEWDIR) },
+    uiWorkspace: noNative ? {} : { pickDirectory: async () => (pickCancel ? null : NEWDIR) },
     emit() {},
   }
 
@@ -592,6 +620,82 @@ test('⑥建区失败点击级：DSH 建工作区失败 ⇒ 弹层不关、灰�
     assert.ok(!okBtn?.hasAttribute('disabled'), '失败后「创建」恢复可点（可重试）')
     assert.equal(readDoc(b.homesFile).homes.length, before, '一行没写（失败不脏）')
     assert.equal(b.calls.filter((c) => c.endpoint === 'home.create').length, 0, 'home.create 从未发出（连尝试都没有）')
+  } finally { await b.dispose() }
+})
+
+/* ---------- ⑦ 落盘失败：adopt 成功＋createHome 抛 ⇒ 灰字原文、可重试、一行没写、DSH 侧不回滚（T8 #121 验收⑤） ---------- */
+test('⑦落盘失败点击级：DSH 建区成功但家落盘失败 ⇒ 灰字原文留在弹层、按钮可重试、一行没写、DSH 侧新区不回滚', async () => {
+  const b = await boot({ freeWs: true, failHomeCreate: true })
+  try {
+    const before = readDoc(b.homesFile).homes.length
+    clickPrimary(b.panel(), '新建家')
+    await waitFor('建家弹层出现', () => popTitle() === '新建家')
+    clickPop('选择目录')
+    await waitFor('路径回填', () => popText().includes('brandnew'))
+    clickPop('创建')
+    await waitFor('灰字原文出现', () => all(popNode() ?? doc.body).some((e) => hasCls(e, 'hu-err')))
+    assert.ok(popNode(), '失败时弹层不关（就地可重试）');
+    const err = all(popNode()).find((e) => hasCls(e, 'hu-err'))
+    assert.match(String(err.textContent), /家的记录没写成功/, '灰字原文＝落盘失败原因（不吞细节）：' + String(err.textContent))
+    assert.match(String(err.textContent), /再点一次「创建」重试/, '灰字带可重试提示（验收⑤「提示可重试」）')
+    assert.match(String(err.textContent), /宿主写盘失败/, '底层原因透出到灰字（code-review c1：实现吞掉原文也能过 ⇒ 钉死细节）')
+    const okBtn = all(popNode()).find((x: any) => x.tagName === 'BUTTON' && String(x.textContent).trim() === '创建')
+    assert.ok(!okBtn?.hasAttribute('disabled'), '失败后「创建」恢复可点（可重试）')
+    assert.equal(readDoc(b.homesFile).homes.length, before, '一行没写（失败不脏）')
+    const hc = b.calls.find((c) => c.endpoint === 'home.create')
+    assert.ok(hc, 'home.create 发出过（adopt 成功、落盘这步才失败——与⑥建区失败零发出相对）')
+    assert.equal(hc.payload.workspaceId, 'ws-9', '落家带 canonical 区（验收⑦三步顺序之落家入参）')
+    assert.ok(String(hc.payload.path).includes('brandnew'), '落家入参 path＝选中的目录：' + hc.payload.path)
+    const snap = b.ctx.get('workspaces').list.getSnapshot()
+    assert.ok(snap.items.some((w: any) => w.path === 'D:\\agents\\brandnew'), 'DSH 侧新区不回滚（人家建成功了）：' + JSON.stringify(snap.items.map((w: any) => w.path)))
+  } finally { await b.dispose() }
+})
+
+/* ---------- ⑧ 远端兜底：无原生选择器 ⇒ 开内置浏览，直达选定目录后同样建区＋落家（T8 #121 验收②） ---------- */
+test('⑧远端兜底点击级：无原生选择器 ⇒ 内置浏览出现；点进 brandnew →「选择此目录」→ 路径回填 → 建区＋落家', async () => {
+  const b = await boot({ freeWs: true, noNative: true })
+  try {
+    const before = readDoc(b.homesFile).homes.length
+    clickPrimary(b.panel(), '新建家')
+    await waitFor('建家弹层出现', () => popTitle() === '新建家')
+    clickPop('选择目录')
+    await waitFor('内置浏览出现（无原生 ⇒ 远端兜底开 modal）', () => all(doc.body).filter((e) => hasCls(e, 'af-dirbar')).length > 0)
+    /* 条先出、项后到（navigate 经 fs.list 异步回填）：等项，不只等条。 */
+    await waitFor('内置浏览列出远端固件目录 brandnew', () => all(doc.body).some((e) => hasCls(e, 'af-diritem') && String(e.textContent).includes('brandnew')))
+    const item = all(doc.body).find((e) => hasCls(e, 'af-diritem') && String(e.textContent).includes('brandnew'))
+    assert.ok(item, '内置浏览列出远端固件目录 brandnew')
+    click(item)
+    await waitFor('钻进 brandnew（工具条出现该目录）', () => all(doc.body).some((e) => hasCls(e, 'af-dirbar') && String(e.textContent).includes('brandnew')))
+    const choose = all(doc.body).find((x: any) => x.tagName === 'BUTTON' && String(x.textContent).trim() === '选择此目录')
+    assert.ok(choose && !choose.hasAttribute('disabled'), '进目录后「选择此目录」可点（state.path 已定）')
+    click(choose)
+    await waitFor('路径回填（内置浏览选的目录回到建家弹层）', () => popText().includes('brandnew'))
+    clickPop('创建')
+    await waitFor('落到新家 L2', () => headTitle(b.panel()).includes('新房间'))
+    assert.equal(readDoc(b.homesFile).homes.length, before + 1, '宿主多一行（远端兜底同样走通三步链）')
+    const hc8 = b.calls.find((c) => c.endpoint === 'home.create')
+    assert.ok(hc8, 'home.create 发出过')
+    assert.equal(hc8.payload.workspaceId, 'ws-9', '落家带 canonical 区')
+    assert.ok(String(hc8.payload.path).includes('brandnew'), '落家入参 path＝内置浏览选定的目录：' + hc8.payload.path)
+  } finally { await b.dispose() }
+})
+
+/* ---------- ⑨ 投影超时：建区成功但投影永不到 ⇒ 灰字原文、不落家（T8 #121 验收③） ---------- */
+test('⑨投影超时点击级：DSH 建区成功但 8s 等不到投影 ⇒ 灰字原文留在弹层、一行没写', async () => {
+  const b = await boot({ freeWs: true, noProjection: true })
+  try {
+    const before = readDoc(b.homesFile).homes.length
+    clickPrimary(b.panel(), '新建家')
+    await waitFor('建家弹层出现', () => popTitle() === '新建家')
+    clickPop('选择目录')
+    await waitFor('路径回填', () => popText().includes('brandnew'))
+    clickPop('创建')
+    await waitFor('灰字原文出现', () => all(popNode() ?? doc.body).some((e) => hasCls(e, 'hu-err')), 15000)
+    assert.ok(popNode(), '超时弹层不关（就地可重试）');
+    const err = all(popNode()).find((e) => hasCls(e, 'hu-err'))
+    assert.match(String(err.textContent), /还没把工作区加进列表/, '灰字原文＝投影超时：' + String(err.textContent))
+    assert.match(String(err.textContent), /再点一次「创建」/, '超时同样提示可重试')
+    assert.equal(readDoc(b.homesFile).homes.length, before, '等不到不落家（一行没写）')
   } finally { await b.dispose() }
 })
 
