@@ -54,6 +54,8 @@ export const HOME_UI_CSS = `
 .home-ui .hu-crumb:hover{color:var(--hu-ink-2)}
 .home-ui .hu-crumb[aria-current="true"]{color:var(--hu-ink);font-weight:650;background:var(--hu-panel);border-color:var(--hu-line)}
 .home-ui .hu-crumb[aria-current="true"]:hover{background:var(--hu-accent-soft);border-color:var(--hu-accent);color:var(--hu-accent-deep)}
+.home-ui .hu-crumb[data-goto]:not(.off):not(.next){background:var(--hu-panel);border-color:var(--hu-line-soft);color:var(--hu-ink-2)}
+.home-ui .hu-crumb[data-goto]:not(.off):not(.next):hover{background:var(--hu-accent-soft);border-color:var(--hu-accent);color:var(--hu-accent-deep);border-style:solid}
 .home-ui .hu-crumb.off{opacity:.42;cursor:not-allowed;border-style:dotted}
 .home-ui .hu-crumb.next{border:1px dashed var(--hu-line);color:var(--hu-ink-2);background:var(--hu-panel)}
 .home-ui .hu-crumb.next:hover{background:var(--hu-accent-soft);border-color:var(--hu-accent);color:var(--hu-accent-deep);border-style:solid}

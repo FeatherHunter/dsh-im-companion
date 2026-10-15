@@ -1334,6 +1334,10 @@ test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移
   assert.ok(!bodySrc.includes('lastLevel'), 'lastLevel 记账必须退场（瞬时/动画判定归 slideTab）');
   const frameSrc = readFileSync(join(COMP, 'home-frame.ts'), 'utf8');
   assert.ok(frameSrc.includes('lastTabKey'), '换 chip 判定收归 slideTab（lastTabKey），调用点不记账');
+  /* 返回向 tab（L2 页的 L1 / L3 页的 L1·L2）：可点就不能是灰字裸奔，必须实心 pill＋hover 强调（owner 2026-10-15 真机）。 */
+  const crumbCss = readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8');
+  assert.ok(/\.hu-crumb\[data-goto\]:not\(\.off\):not\(\.next\)\{[^}]*background:var\(--hu-panel\)/.test(crumbCss), '返回 tab 有实心底');
+  assert.ok(/\.hu-crumb\[data-goto\]:not\(\.off\):not\(\.next\):hover\{[^}]*border-color:var\(--hu-accent\)/.test(crumbCss), '返回 tab hover 有强调');
 });
 
 /* —— 面包屑默认路径（owner 2026-10-13：「当没有焦点时，默认二级目录 三级目录 tab 上的内容
