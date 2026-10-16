@@ -14,7 +14,7 @@
 //   于是四通电话在**生产口径（零解析类 readerOverrides）**下真跑：只有网络是假的。
 //
 //   ⚠️ 为什么必须真拷贝：Node 按 **realpath** 解析模块，junction 会让包内 `import.meta.url` 落回本仓，
-//   包就"看不见"这个假使用范围（它会解析到本仓的 package.json，再反推不出范围 ⇒ unknown-profile）。
+//   包就"看不见"这个假使用范围（它会解析到本仓的 package.json，再反推不出范围 ⇒ dev-source，0.18.3 起；此前为 unknown-profile）。
 import test, { after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { cpSync, lstatSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -293,20 +293,21 @@ test('T7-3 link: 说明符 → source-install 且 manual 为 null；版本号说
   assert.equal(reg.value.snapshot.latestVersion, null, '还没 check 过 → latestVersion 为 null');
 
   // 实装目录越出使用范围：0.2.0 先按包名解析到它 ⇒ 反推不出范围 ⇒ **诚实失败**（README 排错第 13 条）。
+  // 0.18.3 起失败码是独立的 `dev-source`（#153；此前为 `unknown-profile`）。
   installPluginOutside('1.2.3');
   const outside: any = await makeHost().handle(STATUS, {});
-  assert.equal(outside.ok, false, '范围外实装 ⇒ 认不出使用范围（0.2.0 的诚实答复）');
-  assert.equal(outside.error.code, 'unknown-profile', '失败码是包冻结词表里的 unknown-profile：' + JSON.stringify(outside.error));
+  assert.equal(outside.ok, false, '范围外实装 ⇒ 认不出使用范围（0.18.3 起的诚实答复是 dev-source）');
+  assert.equal(outside.error.code, 'dev-source', '失败码是包冻结词表里的 dev-source：' + JSON.stringify(outside.error));
   assert.equal(outside.value, undefined, '失败信封不带 value');
   // 集成方的口子：显式交 profileDir（本仓装配不传，只有这类越界布局才需要）⇒ 立刻变成可诊断的 source-install。
   const patched: any = await makeHost({ readerOverrides: { profileDir: PROFILE } }).handle(STATUS, {});
   assert.equal(patched.value.snapshot.blockedReason, 'source-install', '补上 profileDir ⇒ 判据齐全，落源安装');
   assert.equal(patched.value.manual, null, '源安装仍不给命令');
-  proof('source-install', 'link: ⇒ source-install/manual=null；版本号 ⇒ 给命令；越界 ⇒ unknown-profile（+profileDir 口子）');
+  proof('source-install', 'link: ⇒ source-install/manual=null；版本号 ⇒ 给命令；越界 ⇒ dev-source（+profileDir 口子）');
 });
 
 /* ---------- ③b #126 只读预检：开发态实装 ⇒ 判得出 + 留痕，失败语义一字不改 ---------- */
-test('T7-3b 只读预检：unknown-profile 时判出「开发态实装」并留痕一次，失败仍原样透传', async () => {
+test('T7-3b 只读预检：dev-source 时判出「开发态实装」并留痕一次，失败仍原样透传', async () => {
   // 纯函数：与包内判据（tryInferProfileDir）逐字同形——marker 现算（installMarker），避免两处字面量漂移
   const marker = updatePre.installMarker('dsh-im-companion');
   const realDir = 'C:\\u\\.dsh\\profiles\\web' + marker;
@@ -318,7 +319,7 @@ test('T7-3b 只读预检：unknown-profile 时判出「开发态实装」并留�
     'C:\\u\\.dsh\\profiles\\web', '真目录形状：marker 之前那段就是使用范围');
   assert.equal(
     updatePre.inferProfileFromDir('D:\\dsh-plugin\\dsh-im-companion', 'dsh-im-companion'), null,
-    'Junction realpath 落在仓库 ⇒ 认不出使用范围（包据此诚实抛 unknown-profile）');
+    'Junction realpath 落在仓库 ⇒ 认不出使用范围（包据此诚实抛 dev-source）');
   const dev = updatePre.judgeInstallDir('D:\\dsh-plugin\\dsh-im-companion', 'dsh-im-companion');
   assert.equal(dev.mode, 'dev-source', '开发态实装判定：' + JSON.stringify(dev));
   assert.match(dev.message, /预期/, '结论里写明这是预期而非缺陷');
@@ -339,13 +340,13 @@ test('T7-3b 只读预检：unknown-profile 时判出「开发态实装」并留�
   // 接线：越界实装（与 Junction 同形：realpath 落在使用范围之外）⇒ 判定一次并留痕
   installPluginOutside('1.2.3');
   const outside = await updatePre.precheckInstall('dsh-im-companion');
-  assert.equal(outside.mode, 'dev-source', '越界实装：包回 unknown-profile ⇒ 本仓也判 dev-source');
+  assert.equal(outside.mode, 'dev-source', '越界实装：包回 dev-source ⇒ 本仓也判 dev-source');
   assert.ok(sameDir(outside.dir, realpathSync(OUTSIDE_DIR)), '解析出的是 realpath 后的范围外目录：' + String(outside.dir));
   const seen: any[] = [];
   const h = makeHost({ onPrecheck: (v) => seen.push(v) });
   const st: any = await h.handle(STATUS, {});
   assert.equal(st.ok, false, '预检不改语义：仍回失败信封');
-  assert.equal(st.error.code, 'unknown-profile', '原因码原样透传：' + JSON.stringify(st.error));
+  assert.equal(st.error.code, 'dev-source', '原因码原样透传：' + JSON.stringify(st.error));
   await settle();
   assert.equal(seen.length, 1, '判定一次并留痕');
   assert.equal(seen[0].mode, 'dev-source', '判出开发态实装：' + JSON.stringify(seen[0]));

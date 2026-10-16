@@ -5,6 +5,17 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
+## [0.2.11] - 2026-10-16
+
+主题：**更新包跟随到官方源最新 0.18.3（开发态挂载独立码 `dev-source` ＋ 无快照失败页补回复制诊断）**。
+
+### Changed
+- 依赖 `dsh-plugin-update` 由 0.18.2 升到 **0.18.3**（npm 官方源 `latest`，exact pin；`npm run check:update-pkg` 复核通过）：junction / 源码链接 / 显式外部目录不再报 `unknown-profile`，改走新增 `dev-source` 阻塞码（取值可增、向后兼容；包真找不到仍报 `unknown-profile`，行为一字不动）；面板给开发态口径文案且不提供手工命令。本仓跟随一处：宿主只读预检的触发码由 `unknown-profile` 扩到 `dev-source`（`src/host/update.ts` 一行；失败仍原样透传，红字语义一字不动），其余接线零改（宿主/面板仍走既有五电话与七字段快照）。
+- `README.md` / `docs/README.en.md` 安装示例同步到 0.2.11；`CONTEXT.md` 更新包术语行同步到 0.18.3。
+
+### Fixed
+- 首帧即失败（`unknown-profile` / `dev-source` 类不写快照的失败）时「复制诊断」按钮不再缺席（`copy-diag` 门放宽为有快照或失败横幅或失败引用即画；首帧 loading 仍不画）。
+
 ## [0.2.10] - 2026-10-16
 
 主题：**更新包跟随到官方源最新 0.18.2（检查后置条件收敛：陈旧目标版不再被卖成「有新版本」）**。

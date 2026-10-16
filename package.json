@@ -1,6 +1,6 @@
 {
   "name": "dsh-im-companion",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "dshImCompat": {
     "verified": "4.21.1",
     "range": ">=4.17.1 || <=4.17.0"
@@ -78,7 +78,7 @@
   },
   "dependencies": {
     "dsh-log": "0.3.4",
-    "dsh-plugin-update": "0.18.2",
+    "dsh-plugin-update": "0.18.3",
     "yaml": "2.9.1"
   }
 }

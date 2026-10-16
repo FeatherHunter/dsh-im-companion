@@ -155,7 +155,7 @@ export function apply(ctx: any, config: any = {}) {
         { level, event, detail: JSON.stringify(fields ?? {}) },
       ),
     },
-    /* #126 只读预检：开发态 Junction／越界实装 ⇒ 更新中心必回 unknown-profile（预期而非缺陷）。
+    /* #126 只读预检：开发态 Junction／越界实装 ⇒ 更新中心必回 dev-source（0.18.3 起独立码；此前为 unknown-profile，预期而非缺陷）。
      * 只多留一行 resident 判定，失败本身仍走 host.rpc.fail 原样透传。
      * 建库异步（上面 createHostLogFor 才落地）⇒ 判定先缓存、库就绪后补记，绝不静默丢。 */
     onPrecheck: (v) => {

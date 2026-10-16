@@ -94,14 +94,14 @@ export function createUpdateHostBridge(options: UpdateHostOptions): UpdateHostBr
   // 五个端点按包自己拼的电话名建表（不另拼字符串）；键名即端点名，`rpc.ts` 的 case 逐字对齐。
   // 前四通全直通（version 由调用方给，包内做 tarball 取数；缺 version 时包回失败码，不抛）。
   // 第五电话 logAppend 是面板日志通道（包回 `{accepted,dropped}` 无 ok 包裹），同样直通，翻译见下方 reply。
-  /* #126 只读预检：`unknown-profile` 是「开发态实装」的预期答复 ⇒ 只读判定一次并留痕；
-   * 回包**原样**返回（失败照旧透传：不降级成成功、不隐藏红字——诚实性 P0 判据）。 */
+  /* #126 只读预检：`dev-source`（0.18.3 起；此前为 `unknown-profile`）是「开发态实装」的预期答复
+   * ⇒ 只读判定一次并留痕；回包**原样**返回（失败照旧透传：不降级成成功、不隐藏红字——诚实性 P0 判据）。 */
   let precheckLogged = false
   const statusCall = packageHost.handlers[phone.updateStatus]
   const statusWithDevInstallNote = async (payload?: unknown): Promise<unknown> => {
     const raw = await statusCall(asRecord(payload) ?? {})
     const row = asRecord(raw)
-    if (!precheckLogged && row?.ok === false && row.error === 'unknown-profile' && options.onPrecheck) {
+    if (!precheckLogged && row?.ok === false && (row.error === 'unknown-profile' || row.error === 'dev-source') && options.onPrecheck) {
       precheckLogged = true
       options.onPrecheck(await precheckInstall(TARGET_PACKAGE_NAME))
     }

@@ -69,7 +69,7 @@ export const LOG_EVENTS: Record<string, LogEventSpec> = {
   'update.check': { level: 'info', kind: 'resident', fields: ['ok', 'current', 'latest', 'message', 'traceId'] },
   'update.install': { level: 'info', kind: 'resident', fields: ['ok', 'version', 'message', 'traceId'] },
   'update.changelog': { level: 'debug', kind: 'ondemand', fields: ['ok', 'version', 'traceId'] },
-  /* #126 只读预检：开发态实装（Junction／越界目录）⇒ unknown-profile 是**预期**而非缺陷。
+  /* #126 只读预检：开发态实装（Junction／越界目录）⇒ dev-source（0.18.3 起；此前为 unknown-profile）是**预期**而非缺陷。
    * 每次装配至多一行；失败本身仍走 host.rpc.fail（不降级、不隐藏）。 */
   'update.precheck': { level: 'info', kind: 'resident', fields: ['mode', 'dir', 'profileDir', 'expected', 'message'] },
 
