@@ -52,8 +52,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     或者
 dsh plugin --profile web add dsh-im-companion
 
-# 锁定版本更稳（当前 0.2.8）
-dsh plugin --profile desktop add dsh-im-companion@0.2.8 --registry https://registry.npmjs.org
+# 锁定版本更稳（当前 0.2.9）
+dsh plugin --profile desktop add dsh-im-companion@0.2.9 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -82,7 +82,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.2.8 --registry https://regis
 下面以 desktop 为例，web 用户请把 --profile desktop 换成 --profile web：
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.2.8 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.2.9 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
@@ -338,7 +338,8 @@ MIT © FeatherHunter
 
 感谢每一位提交 Issue、PR 与参与讨论的朋友。
 
-首个公开版（v0.1.0）尚无外部贡献名单，虚位以待——第一个提 Issue 的朋友，你的名字会写在这里。
+- [vk-liu-cn-1](https://github.com/vk-liu-cn-1) 🌹（[#97](https://github.com/FeatherHunter/dsh-im-companion/issues/97)）
+- [Shimmernight](https://github.com/Shimmernight) 🌹（[#78](https://github.com/FeatherHunter/dsh-im-companion/issues/78)）
 
 也感谢上游 [dsh-im](https://github.com/xmanrui/dsh-im)：没有本体，就没有辅助。
 
