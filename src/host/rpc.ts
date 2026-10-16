@@ -208,13 +208,15 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           if (!r.ok) return fail(r.code, r.message)
           return ok({ home: r.row })
         }
-        // ── T7 #90 追加 → T5 #110 加第四电话：更新系统四通电话（电话名即端点名，票面定死；键由包的 `update.phoneNames` 给出，不另拼字符串）。
+        // ── T7 #90 追加 → T5 #110 加第四电话 → #132 加第五电话 logAppend：更新系统五通电话（电话名即端点名，票面定死；键由包的 `update.phoneNames` 给出，不另拼字符串）。
         // 回包是本仓 RpcResult 信封：成功把包载荷原样放 `value`（M5 起不再注入 autoCheck）；
         // 包失败（`{ok:false,error,errorKind}`）走失败通道，翻译在 `src/host/update.ts` 的 `reply`，本文件不认识包字段。
+        // 第五电话 logAppend 回 `{accepted,dropped}` 无 ok 包裹，翻译同样在 reply（按成功进 value），本文件只负责透传。
         case 'imc.updateStatus':
         case 'imc.updateCheck':
         case 'imc.updateInstall':
-        case 'imc.updateChangelog': {
+        case 'imc.updateChangelog':
+        case 'imc.logAppend': {
           const surface = opts.update?.() ?? null
           if (!surface) return fail('bad-request', '更新端点未接线: ' + endpoint)
           const call = surface.handlers[endpoint]

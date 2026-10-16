@@ -1,7 +1,7 @@
-/** 更新系统宿主侧（T7 #90 接线 → #99 升 0.2.0 大幅解耦 → T5 #110 升 0.9.0 接第四电话 → M5 删调度器）。
+/** 更新系统宿主侧（T7 #90 接线 → #99 升 0.2.0 大幅解耦 → T5 #110 升 0.9.0 接第四电话 → M5 删调度器 → #132 升 0.17.0 接第五电话 logAppend）。
  *
  * 本模块现在只做两件事，其余全归更新包：
- * ① 按包真身调 `createHostUpdate`，把 `update.handlers` 的 4 个键交给 `src/host/rpc.ts` 的端点表；
+ * ① 按包真身调 `createHostUpdate`，把 `update.handlers` 的 5 个键交给 `src/host/rpc.ts` 的端点表；
  * ② 本仓 `RpcResult` 信封：成功把包载荷 `{ok,snapshot,manual,receipt}` **原样**放进 `value`
  *    （字段名一个不改）；包失败（`{ok:false,error,errorKind,diag?}`）走本仓失败通道，
  *    原因码**原样透传**（包 README §5.2 冻结了这组码，本仓不自造第二套词表）。
@@ -33,7 +33,7 @@ export const UPDATE_PHONE_PREFIX = 'imc'
 /** 目标包名：要检查/安装更新的那个包就是本插件自己（包按它反推使用范围目录）。 */
 export const TARGET_PACKAGE_NAME = 'dsh-im-companion'
 /** 端点名（= 电话名，票面定死）：`rpc.ts` 的 case 标签必须与它逐字一致；verify 断言包给的电话名等于它。 */
-export const UPDATE_ENDPOINTS = ['imc.updateStatus', 'imc.updateCheck', 'imc.updateInstall', 'imc.updateChangelog'] as const
+export const UPDATE_ENDPOINTS = ['imc.updateStatus', 'imc.updateCheck', 'imc.updateInstall', 'imc.updateChangelog', 'imc.logAppend'] as const
 
 export interface UpdateBridgeLogger {
   info?(message: string): void
@@ -91,8 +91,9 @@ export function createUpdateHostBridge(options: UpdateHostOptions): UpdateHostBr
   )
   const phone = packageHost.phoneNames
 
-  // 四个端点按包自己拼的电话名建表（不另拼字符串）；键名即端点名，`rpc.ts` 的 case 逐字对齐。
-  // 四通全直通（version 由调用方给，包内做 tarball 取数；缺 version 时包回失败码，不抛）。
+  // 五个端点按包自己拼的电话名建表（不另拼字符串）；键名即端点名，`rpc.ts` 的 case 逐字对齐。
+  // 前四通全直通（version 由调用方给，包内做 tarball 取数；缺 version 时包回失败码，不抛）。
+  // 第五电话 logAppend 是面板日志通道（包回 `{accepted,dropped}` 无 ok 包裹），同样直通，翻译见下方 reply。
   /* #126 只读预检：`unknown-profile` 是「开发态实装」的预期答复 ⇒ 只读判定一次并留痕；
    * 回包**原样**返回（失败照旧透传：不降级成成功、不隐藏红字——诚实性 P0 判据）。 */
   let precheckLogged = false
@@ -112,6 +113,7 @@ export function createUpdateHostBridge(options: UpdateHostOptions): UpdateHostBr
     [phone.updateCheck]: (payload?: unknown) => packageHost.handlers[phone.updateCheck](asRecord(payload) ?? {}),
     [phone.updateInstall]: (payload?: unknown) => packageHost.handlers[phone.updateInstall](asRecord(payload) ?? {}),
     [phone.updateChangelog]: (payload?: unknown) => packageHost.handlers[phone.updateChangelog](asRecord(payload) ?? {}),
+    [phone.logAppend]: (payload?: unknown) => packageHost.handlers[phone.logAppend](asRecord(payload) ?? {}),
   }
 
   return {
@@ -120,6 +122,11 @@ export function createUpdateHostBridge(options: UpdateHostOptions): UpdateHostBr
     reply(pkgReply: unknown): RpcResult {
       const row = asRecord(pkgReply)
       if (row?.ok === true) return { ok: true, value: { ...row } }
+      // 0.17.0 第五电话 logAppend：包回 `{accepted,dropped}` 无 ok 包裹（面板日志通道）——按成功信封进 value，
+      // 经 view.toPackageReply 拆回后正好是客户端队列要的形状；不走失败通道（否则高频成功会被记成 error 落盘）。
+      if (row?.ok === undefined && typeof row?.accepted === 'number' && typeof row?.dropped === 'number') {
+        return { ok: true, value: { ...row } }
+      }
       // 原因码原样透传（包 README §5.2 的冻结词表，不再维护第二份）。
       const token = typeof row?.error === 'string' && row.error ? row.error : 'internal'
       return {

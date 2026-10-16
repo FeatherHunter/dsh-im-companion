@@ -65,13 +65,15 @@ test('T5-3 旧自画 11 文件已删（仅 manifest+view 存活）', () => {
   proof('deleted', '11 旧文件 + 生成器已删');
 });
 
-/* ---------- ④ 宿主四电话对齐（文本层，运行时由 update-host.ts 覆盖） ---------- */
-test('T5-4 宿主四电话文本对齐（update.ts 端点表 + rpc.ts case 含 changelog）', () => {
+/* ---------- ④ 宿主五电话对齐（文本层，运行时由 update-host.ts 覆盖） ---------- */
+test('T5-4 宿主五电话文本对齐（update.ts 端点表 + rpc.ts case 含 changelog 与 logAppend）', () => {
   const update = read('src/host/update.ts');
   assert.match(update, /imc\.updateChangelog/, '宿主端点表含第四电话');
+  assert.match(update, /imc\.logAppend/, '宿主端点表含第五电话 logAppend（#132，0.17.0 面板日志通道）');
   const rpc = read('src/host/rpc.ts');
   assert.match(rpc, /imc\.updateChangelog/, 'rpc.ts case 含第四电话');
-  proof('host-4phones', '宿主文本层含 changelog（运行时见 update-host.ts T7-1/T7-1b）');
+  assert.match(rpc, /imc\.logAppend/, 'rpc.ts case 含第五电话 logAppend');
+  proof('host-5phones', '宿主文本层含 changelog 与 logAppend（运行时见 update-host.ts T7-1/T7-1b/T7-1c）');
 });
 
 /* ---------- ⑤ 产物含薄层、不含旧自画标记 ---------- */

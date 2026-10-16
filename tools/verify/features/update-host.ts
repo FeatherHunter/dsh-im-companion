@@ -1,5 +1,5 @@
-// T7 #90 验证（更新系统宿主侧）· **T5 #110 M5 起删调度器后的基线**。
-// 覆盖：四通电话信封 + 包字段原样 + 偏好落盘保留 + 装配点零定时器。
+// T7 #90 验证（更新系统宿主侧）· **T5 #110 M5 起删调度器后的基线；#132 起五通电话（0.17.0 接 logAppend）**。
+// 覆盖：五通电话信封 + 包字段原样 + 偏好落盘保留 + 装配点零定时器。
 //
 // M5 删掉了什么：update-schedule.ts 整文件 + 桥的 autoState/sync/start/dispose/autoCheck +
 // rpc.ts 的 sync() 调用 + index.ts 的 timer 注入与 start/dispose 生命周期。
@@ -159,7 +159,7 @@ function makeHost(opts: HostOpts = {}) {
   const handle = rpcMod.createAgentFleetHandler(store, { update: () => bridge });
   return { home, registry, store, bridge, handle, warns };
 }
-const STATUS = 'imc.updateStatus'; const CHECK = 'imc.updateCheck'; const INSTALL = 'imc.updateInstall'; const CHANGELOG = 'imc.updateChangelog';
+const STATUS = 'imc.updateStatus'; const CHECK = 'imc.updateCheck'; const INSTALL = 'imc.updateInstall'; const CHANGELOG = 'imc.updateChangelog'; const LOGAPPEND = 'imc.logAppend';
 const JOB = { id: 'j1', state: 'installing', targetVersion: '1.2.3', message: null, requestId: 'r1' };
 const withJob = (opts: HostOpts = {}) => makeHost({ ...opts, readJob: async () => ({ ...JOB }) });
 
@@ -182,12 +182,12 @@ test('T7-0 0.9.0 原生解析：不喂 runningVersion/profileDir/readInstalled�
   proof('native-resolve', '零解析 override ⇒ installedVersion/runningVersion/profileName 全对');
 });
 
-/* ---------- ① 四通电话：经 rpc.ts 端点表派发 + 本仓 RpcResult 信封 + 包字段原样（M5 起无 autoCheck） ---------- */
-test('T7-1 四通电话可经 rpc.ts 派发，回包是本仓信封且包字段一个不少（无 autoCheck）', async () => {
+/* ---------- ① 五通电话：经 rpc.ts 端点表派发 + 本仓 RpcResult 信封 + 包字段原样（M5 起无 autoCheck；#132 起第五电话 logAppend） ---------- */
+test('T7-1 五通电话可经 rpc.ts 派发，回包是本仓信封且包字段一个不少（无 autoCheck）', async () => {
   installPlugin({ version: '1.2.3' });
   const h = makeHost();
-  assert.deepEqual([...update.UPDATE_ENDPOINTS], [STATUS, CHECK, INSTALL, CHANGELOG], '端点名常量 = 票面定死四通');
-  assert.deepEqual(Object.keys(h.bridge.handlers).sort(), [STATUS, CHECK, INSTALL, CHANGELOG].sort(), '桥的表键必须是包给的电话名');
+  assert.deepEqual([...update.UPDATE_ENDPOINTS], [STATUS, CHECK, INSTALL, CHANGELOG, LOGAPPEND], '端点名常量 = 票面定死五通');
+  assert.deepEqual(Object.keys(h.bridge.handlers).sort(), [STATUS, CHECK, INSTALL, CHANGELOG, LOGAPPEND].sort(), '桥的表键必须是包给的电话名');
   assert.equal(typeof h.bridge.autoCheck, 'undefined', 'M5 起桥不再有 autoCheck 运行期状态');
   assert.equal(typeof (h.bridge as any).sync, 'undefined', 'M5 起桥不再有 sync()');
   assert.equal(typeof (h.bridge as any).start, 'undefined', 'M5 起桥不再有 start()');
@@ -218,7 +218,21 @@ test('T7-1 四通电话可经 rpc.ts 派发，回包是本仓信封且包字段�
   const wrapped: any = h.bridge.reply(synthetic);
   assert.equal(wrapped.ok, true);
   assert.deepEqual(wrapped.value, synthetic, 'install 成功载荷（含 receipt）原样进 value');
-  proof('endpoints', '四端点派发 + 原样字段 + 失败码 check-expired 透传（无 autoCheck）');
+  proof('endpoints', '五端点派发 + 原样字段 + 失败码 check-expired 透传（无 autoCheck）');
+});
+
+/* ---------- ①c logAppend 接线：面板日志通道，直通信封 `{accepted,dropped}` 按成功进 value（#132，0.17.0 第五电话） ---------- */
+test('T7-1c logAppend 电话已接线：经 rpc.ts 可达，成功按成功信封进 value（不走失败通道）', async () => {
+  installPlugin({ version: '1.2.3' });
+  const h = makeHost();
+  assert.equal(typeof h.bridge.handlers[LOGAPPEND], 'function', '桥必须有 logAppend 处理器（包 phoneNames 第五键）');
+  const raw: any = await h.bridge.handlers[LOGAPPEND]({ rows: [] });
+  assert.equal(typeof raw?.accepted, 'number', '包回包必有 accepted 数字：' + JSON.stringify(raw)?.slice(0, 200));
+  assert.equal(typeof raw?.dropped, 'number', '包回包必有 dropped 数字：' + JSON.stringify(raw)?.slice(0, 200));
+  const result: any = await h.handle(LOGAPPEND, { rows: [] });
+  assert.equal(result.ok, true, 'logAppend 成功必须走成功信封（否则高频成功会被记成 error 落盘）：' + JSON.stringify(result)?.slice(0, 200));
+  assert.deepEqual(result.value, raw, 'logAppend 成功载荷原样进 value');
+  proof('logAppend', '第五电话可达 + 成功信封 + 原样载荷');
 });
 
 /* ---------- ①b changelog 接线：直通包处理器 + 同款信封（T5 #110，0.9.0 第四电话） ---------- */
@@ -247,19 +261,19 @@ test('T7-1b changelog 电话已接线：经 rpc.ts 可达，回包形态合法',
   proof('changelog', '第四电话可达 + 形态合法 + 未知端点对照');
 });
 
-/* ---------- ② snapshot 恰好六字段 ---------- */
-test('T7-2 snapshot 恰好六字段（快照三电话同源；changelog 无 snapshot 不在列）', async () => {
+/* ---------- ② snapshot 恰好七字段（0.17.0 起新增 installed；快照三电话同源；changelog 无 snapshot 不在列） ---------- */
+test('T7-2 snapshot 恰好七字段（快照三电话同源；changelog 无 snapshot 不在列）', async () => {
   installPlugin({ version: '1.2.3' });
-  const h = withJob(); // 注入 readJob ⇒ job 字段真的非空，六字段全被走到
-  const SIX = ['blockedReason', 'canInstall', 'installedVersion', 'job', 'latestVersion', 'runningVersion'];
+  const h = withJob(); // 注入 readJob ⇒ job 字段真的非空，七字段全被走到
+  const SEVEN = ['blockedReason', 'canInstall', 'installed', 'installedVersion', 'job', 'latestVersion', 'runningVersion'];
   for (const ep of [STATUS, CHECK, INSTALL]) {
     const payload = ep === INSTALL ? { checkId: 'c0', requestId: 'r1' } : {};
     const raw: any = await h.bridge.handlers[ep](payload);
     assert.equal(raw.ok, true, ep + ' 应回 ok（' + JSON.stringify(raw) + '）');
-    assert.deepEqual(Object.keys(raw.snapshot).sort(), SIX, ep + ' snapshot 字段集合');
+    assert.deepEqual(Object.keys(raw.snapshot).sort(), SEVEN, ep + ' snapshot 字段集合');
     assert.deepEqual(raw.job ?? raw.snapshot.job, raw.snapshot.job, ep + ' job 在 snapshot 内');
   }
-  proof('snapshot-six', '三电话 snapshot 恰六字段');
+  proof('snapshot-seven', '三电话 snapshot 恰七字段');
 });
 
 /* ---------- ③ source-install：判据全在包内（本仓不再自算） ---------- */
