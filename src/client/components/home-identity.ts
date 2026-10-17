@@ -3,7 +3,9 @@
  * 为什么不按显示名算：显示名是**可变派生值**（用户改名 / 工作区改名回落都会动）——
  * 名字一动头像就跳色，身份感断裂。色相是身份，不是文案。
  * 为什么是 FNV-1a：32 位、无依赖、短串上分布均匀；色相环仍是原型那 6 个色相（保真，不发明新调色板）。
- * 为什么还要字形：6 色相环装 13 行必然撞色（鸽笼原理）⇒ 字形是第二判别维（拉丁名取前两词首字母）。 */
+ * 为什么还要字形：6 色相环装 13 行必然撞色（鸽笼原理）⇒ 字形是第二判别维（拉丁名取前两词首字母）。
+ * owner 2026-10-17：预置色从「派生色相 ＋ 与底混色」改成**显式实色表**（含 DeepSeek 蓝白/黑白两档）——
+ * 混色版把彩度压到 ~40%、明度压到 ~20%，七格看着像同一格的明暗变化；实色版各档可辨、对比可事先算准。 */
 
 /** 原型 HUE（proto-studio 头像色相环）。 */
 export const HUE = [174, 205, 262, 32, 340, 150]
@@ -36,12 +38,22 @@ export function initialsOf(name: string): string {
   return s.slice(0, 2).toUpperCase()
 }
 
-/** 头像底色/字色：与主题底色混色（浅色下≈原型 93% 亮度浅彩底，深色下也留得住色相）。 */
+/** 预置 6 色（avatar "1".."6"）＝实色底＋固定字色：不跟主题混色 ⇒ 任意主题下都鲜明，对比可事先算准。
+ *  1 蓝白＝DeepSeek 品牌蓝 #4D6BFE；2 黑白；3 翠绿；4 琥珀（深字）；5 紫罗兰；6 玫红。 */
+export const PRESETS: ReadonlyArray<readonly [string, string]> = [
+  ['#4D6BFE', '#FFFFFF'],
+  ['#17181C', '#FFFFFF'],
+  ['#0E8A43', '#FFFFFF'],
+  ['#F5A524', '#1B1B1F'],
+  ['#7C3AED', '#FFFFFF'],
+  ['#D32F3A', '#FFFFFF'],
+]
+
+/** 头像底色/字色：显式预置优先（实色），未选色＝按 id 派生色相（改名不换色，身份稳定）。 */
 export function avatarStyle(id: string, avatar: string | null = null): string {
-  const hue = hueOf(id, avatar)
-  const bg = `color-mix(in srgb, hsl(${hue} 62% 50%) 28%, var(--hu-panel))`
-  const fg = `color-mix(in srgb, hsl(${hue} 66% 44%) 62%, var(--hu-ink))`
-  return `background:${bg};color:${fg}`
+  const i = avatar == null ? -1 : Number.parseInt(avatar, 10) - 1
+  const p = Number.isInteger(i) && i >= 0 && i < PRESETS.length ? PRESETS[i] : null
+  return p ? `background:${p[0]};color:${p[1]}` : `background:hsl(${hueOf(id, null)} 62% 30%);color:#fff`
 }
 
 /** 用户上传图片的铺满画法（T11 #128）：列表行与弹层预览共用，免两处各写一份 CSS 串。 */

@@ -182,7 +182,7 @@ export interface EditDeps {
   onDone: () => void
 }
 
-/** 配图行：默认＋6 色（avatar "1".."6"，见 home-identity.hueOf；改名不换色）＋第 8 格「上传图片」（T11 #128）。
+/** 配图行：默认＋6 色（avatar "1".."6"，见 home-identity.PRESETS；实色、不随主题混色）＋第 8 格「上传图片」（T11 #128）。
  *  返回 `{row, clear}` 两件：色板行由调用方塞进「头像」字段，`clear`（有图时才有）单摆在色板行下面。
  *  `onCommitted` 在图片真落盘后回调——图片**点了就落**（不攒进「确定」的补丁），故调用方应关弹层并重读，
  *  否则弹层里那份旧 `avatar` 快照会反手把刚落的图覆盖回预设色。 */

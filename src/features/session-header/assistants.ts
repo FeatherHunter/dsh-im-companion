@@ -45,11 +45,16 @@ export function initialsOf(name: string): string {
   return s.slice(0, 2).toUpperCase()
 }
 
-/** 助理色脸底色（--af-* 作用域，见文件头；色相环/字形与 home-identity 同规则）。 */
+/** 助理色脸底色（--af-* 作用域，见文件头；色相环/字形与 home-identity 同规则）。预置表 owner 2026-10-17 重做。 */
+const PRESETS: ReadonlyArray<readonly [string, string]> = [
+  ['#4D6BFE', '#FFFFFF'], ['#17181C', '#FFFFFF'], ['#0E8A43', '#FFFFFF'],
+  ['#F5A524', '#1B1B1F'], ['#7C3AED', '#FFFFFF'], ['#D32F3A', '#FFFFFF'],
+]
 export function faceStyle(id: string, avatar: string | null = null): string {
   const i = avatar == null ? -1 : Number.parseInt(avatar, 10) - 1
   const hue = Number.isInteger(i) && i >= 0 && i < HUE.length ? HUE[i] : HUE[hash32(String(id ?? '')) % HUE.length]
-  return `background:color-mix(in srgb, hsl(${hue} 62% 50%) 28%, var(--af-surface));color:color-mix(in srgb, hsl(${hue} 66% 44%) 62%, var(--af-primary))`
+  const p = Number.isInteger(i) && i >= 0 && i < PRESETS.length ? PRESETS[i] : null
+  return p ? `background:${p[0]};color:${p[1]}` : `background:hsl(${hue} 62% 30%);color:#fff`
 }
 
 /** bot → 助理：渠道+botId 精确命中优先，botId 兜底（与 left-badges matchAssistant 同序）。 */

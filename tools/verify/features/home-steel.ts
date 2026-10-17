@@ -516,6 +516,44 @@ test('T6b 绿框呈现：纯头像弹层＋行内改名（owner 2026-10-17 口�
   popMod.closeHomePop(true);
 });
 
+/* owner 2026-10-17⑤：预置头像配色重做——7 档各自可辨、内含 DeepSeek 蓝白与黑白两档；色块 34→46px。
+ * 断「算得出来的东西」：实色表、字底 WCAG 对比、两两 RGB 距离、样式表里的真尺寸（不抄字符串）＝对抗式自查。 */
+test('头像预置色：DeepSeek 蓝白/黑白＋实色高对比＋色块放大（owner 2026-10-17）', () => {
+  const idMod: any = (() => {
+    try { return boxReq('./client/components/home-identity.js'); } catch { return boxReq('./components/home-identity.js'); }
+  })();
+  const presets: Array<[string, string]> = idMod.PRESETS;
+  assert.equal(presets.length, 6, '预置 6 档（弹层里 ＋默认 1 格 ＝ 7 格）');
+  assert.equal(presets[0][0].toUpperCase(), '#4D6BFE', '第 1 档＝DeepSeek 蓝白（品牌蓝）');
+  assert.equal(presets[1][0].toUpperCase(), '#17181C', '第 2 档＝黑白（近黑底＋白字）');
+  const rgb = (hex: string): number[] => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+  const lum = (hex: string): number => {
+    const [r, g, b] = rgb(hex).map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a: string, b: string): number => {
+    const [hi, lo] = [lum(a), lum(b)].sort((m, n) => n - m);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  presets.forEach(([bg, fg], i) => {
+    assert.ok(ratio(bg, fg) >= 4.3, '第 ' + (i + 1) + ' 档字底对比 ≥4.3：' + bg + '/' + fg + ' ≈ ' + ratio(bg, fg).toFixed(2));
+  });
+  /* 两两可辨：旧的混色版把彩度压到 ~40%、明度压到 ~20%，多档肉眼分不开 ⇒ 钉 RGB 距离（含明度差）。 */
+  for (let i = 0; i < presets.length; i += 1) {
+    for (let j = i + 1; j < presets.length; j += 1) {
+      const d = Math.hypot(...rgb(presets[i][0]).map((v, k) => v - rgb(presets[j][0])[k]));
+      assert.ok(d >= 60, '第 ' + (i + 1) + ' 与第 ' + (j + 1) + ' 档底色可辨（RGB 距离 ' + d.toFixed(0) + ' ≥ 60）');
+    }
+  }
+  assert.equal(idMod.avatarStyle('h1', '1'), 'background:#4D6BFE;color:#FFFFFF', '选色＝实色（不再 color-mix 到主题底）');
+  assert.ok(idMod.avatarStyle('h1', null).includes('hsl('), '未选色仍按 id 派生色相（改名不换色）');
+  assert.notEqual(idMod.avatarStyle('h1', null), idMod.avatarStyle('h2', null), '不同 id 派生不同色（列表身份感）');
+  const avCss = readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8');
+  assert.ok(avCss.includes('.home-ui .hu-avrow{display:grid;grid-template-columns:repeat(4,46px);gap:8px}'),
+    '色板＝4 列网格（8 格整齐两行，不再靠 flex 碰巧折行）');
+  assert.ok(avCss.includes('.home-ui .hu-avopt{width:46px;height:46px'), '色块 46×46（旧 34×34 显小）');
+});
+
 /* owner 2026-10-17：L2 助理行与 L1 家行在这件事上**功能一致**——铅笔就地改名、头像（图标钮与头像本身）
  * 开同一张纯换头像弹层，「更多」退场。两行共用 home-row-edit / home-avatar-act，不许各写一份。 */
 test('L2 助理行＝L1 家行（owner 2026-10-17）：「更多」退场＋铅笔就地改名＋头像开纯换头像弹层', () => {
@@ -980,13 +1018,16 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.ok(css.includes('.home-ui .hu-crumb[aria-current="true"]') && css.includes('.home-ui .hu-crumb.next'),
     '链路条：当前层与可前进层各有独立样式');
   assert.ok(srcOf('home-ops.ts').includes("'home.list'"), '家表经自有桥读取');
-  /* 头像底色必须与主题底色混够量：深色主题里 16% 几乎无色相，十几行糊成一片灰（真机反馈）。
-   * 身份派生已抽到纯模块 home-identity（色相由 id 派生、字形取两词首字母）。 */
+  /* 头像底色 owner 2026-10-17 重做：预置 6 档＝**显式实色表**（含 DeepSeek 蓝白/黑白），不再与主题底混色；
+   * 未选色的默认档仍按 id 派生色相，但也是实色 hsl(… 62% 42%)。老口径「混色比例 ≥25%」随混色一起退役——
+   * 它保的是「深色主题下看得见色相」，新口径直接钉彩度/明度，同一件事更硬（见上面 PRESETS 的对比/可辨断言）。 */
   const identSrc = srcOf('home-identity.ts');
-  const avBgPct = Number(/hsl\(\$\{hue\} 62% 50%\) (\d+)%,\s*var\(--hu-panel\)/.exec(identSrc)?.[1] ?? '0');
-  const avFgPct = Number(/hsl\(\$\{hue\} 66% 44%\) (\d+)%,\s*var\(--hu-ink\)/.exec(identSrc)?.[1] ?? '0');
-  assert.ok(avBgPct >= 25, '头像底色混色比例须 ≥25%（深色主题下要看得见色相）');
-  assert.ok(avFgPct > 0 && avFgPct <= 70, '头像字色须把色相留在前景（≤70% 混 ink）');
+  assert.ok(identSrc.includes('export const PRESETS'), '预置表是显式常量（唯一真相，别处不再抄一份色值）');
+  const defHsl = /hsl\(\$\{hueOf\(id, null\)\} (\d+)% (\d+)%\)/.exec(identSrc);
+  assert.ok(defHsl, '默认档仍由 id 派生色相（改名不换色）');
+  assert.ok(Number(defHsl?.[1] ?? '0') >= 55, '默认档彩度 ≥55%（深色主题下要看得见色相）');
+  assert.ok(Number(defHsl?.[2] ?? '0') >= 30, '默认档明度 ≥30%（别再混成灰；42% 的青绿档白字只有 2.7:1，34% 起才够）');
+  assert.ok(identSrc.includes('color:${p[1]}'), '字色由预置表给定（不跟主题 ink 混）');
   assert.ok(identSrc.includes('hash32(String(id'), '色相必须由不可变 id 派生（改名不许换色）');
 
   /* —— 真渲染：DOM 桩 + 真 panel-body。下面每条断言点的是点出来的真 DOM，不是源码文本。 —— */

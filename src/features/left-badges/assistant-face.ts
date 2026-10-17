@@ -29,12 +29,15 @@ export function initialsOf(name: string): string {
   if (words.length >= 2) return ((words[0][0] ?? '') + (words[1][0] ?? '')).toUpperCase()
   return s.slice(0, 2).toUpperCase()
 }
-/** 面板同款底色（home-identity.avatarStyle 同字面量，见文件头 parity 说明）。 */
+/** 面板同款底色（home-identity.avatarStyle 同字面量，见文件头 parity 说明）。预置表 owner 2026-10-17 重做。 */
+const PRESETS: ReadonlyArray<readonly [string, string]> = [
+  ['#4D6BFE', '#FFFFFF'], ['#17181C', '#FFFFFF'], ['#0E8A43', '#FFFFFF'],
+  ['#F5A524', '#1B1B1F'], ['#7C3AED', '#FFFFFF'], ['#D32F3A', '#FFFFFF'],
+]
 export function faceStyle(id: string, avatar: string | null = null): string {
-  const hue = hueOf(id, avatar)
-  const bg = `color-mix(in srgb, hsl(${hue} 62% 50%) 28%, var(--hu-panel))`
-  const fg = `color-mix(in srgb, hsl(${hue} 66% 44%) 62%, var(--hu-ink))`
-  return `background:${bg};color:${fg}`
+  const i = avatar == null ? -1 : Number.parseInt(avatar, 10) - 1
+  const p = Number.isInteger(i) && i >= 0 && i < PRESETS.length ? PRESETS[i] : null
+  return p ? `background:${p[0]};color:${p[1]}` : `background:hsl(${hueOf(id, null)} 62% 30%);color:#fff`
 }
 /** 图片标记（与宿主 AVATAR_PREFIX 同字面量 `img:`，跨端各持一份）。 */
 export function hasFaceImage(avatar: string | null | undefined): boolean {

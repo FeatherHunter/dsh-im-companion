@@ -1,6 +1,6 @@
 /** 家/助理改名配图纯逻辑（T6b #114 · T3 #116 语义冻结）。
  * 家命名链：user > 工作区标题 > 目录基名；助理：user > 机器人名 > 家名 > 缺省。
- * 头像：null=默认图（首字+id派生色），"1".."6"=用户选色（hueOf 环序号），非法一律拒收。
+ * 头像：null=默认图（首字+id派生色），"1".."6"=用户选色（home-identity.PRESETS 第几档，实色），非法一律拒收。
  * 未绑定占位：channel 必填、botId=null、boundAt=null；绑定只收 unbound/orphan，已绑拒收。
  * 纯函数无 IO；宿主落盘见 src/host/home-edit.ts（同语义薄封装）。 */
 import type { Assistant, Home } from './home-model'
