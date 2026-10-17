@@ -102,7 +102,7 @@ export function detailEl(o: DetailOpts): HTMLElement {
   /* T6b #114 已启用：改名与头像（同一设置弹层）＋删除助理（两步确认，只删行不断连）。
    * T6c #115：换工作区（整户搬，机器人跟随）＋移除渠道（解绑不断连）。 */
   const second = h('div', { className: 'hu-acts' })
-  second.appendChild(abtn('rename-a', '改名与头像', o, { icon: 'pencil' }))
+  second.appendChild(abtn('settings-a', '改名与头像', o, { icon: 'pencil' }))
   const del = h('button', { className: 'hu-abtn', type: 'button', 'data-item-act': 'remove-a' }, huIcon('trash', 14), '删除助理')
   let armed = false
   del.addEventListener('click', () => {

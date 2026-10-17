@@ -50,8 +50,9 @@ export function renameField(o: RenameOpts): RenameField {
   return { el, edit }
 }
 
-/** 头像当按钮：包一层真 `<button>` ⇒ 键盘可达，且走行级 `[data-item-act]` 统一接线（行不再顺手钻取）。 */
-export function avatarButton(av: HTMLElement): HTMLElement {
-  return h('button', { className: 'hu-avbtn', type: 'button', 'data-item-act': 'avatar-h',
+/** 头像当按钮：包一层真 `<button>` ⇒ 键盘可达，且走行级 `[data-item-act]` 统一接线（行不再顺手钻取）。
+ *  act 默认家行（`avatar-h`）；助理行传 `avatar-a`——owner 2026-10-17：L2 与 L1 在这件事上功能一致。 */
+export function avatarButton(av: HTMLElement, act = 'avatar-h'): HTMLElement {
+  return h('button', { className: 'hu-avbtn', type: 'button', 'data-item-act': act,
     'aria-label': '更换头像', 'data-tip': '更换头像' }, av)
 }

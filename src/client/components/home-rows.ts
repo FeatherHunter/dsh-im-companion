@@ -132,6 +132,8 @@ export interface RowOpts {
   onItemAct?: (act: string, id: string, anchor: HTMLElement) => void
   /** 行内改名提交（owner 2026-10-17）：值已 trim，空串＝回落「跟随工作区」。不给＝铅笔只进编辑不落盘。 */
   onRenameHome?: (id: string, value: string) => void
+  /** 助理侧同口径（owner 2026-10-17：L2 与 L1 功能一致），空串＝回落「跟随机器人/家」。 */
+  onRenameAssistant?: (id: string, value: string) => void
 }
 
 function wireRow(el: HTMLElement, opts: RowOpts, id: string): void {
@@ -209,27 +211,34 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
   return el
 }
 
-/** 助理行（原型 rowsAsst）：头像(圆) + 名 + 已绑章 + 在线 / 渠道 + 工作区路径 + 更换/绑定机器人 / ⋯。
- *  副标走元信息原语：渠道强（未绑定显示「待接入」）＋工作区等宽弱化，靠间距不靠符号（#139）。 */
+/** 助理行（原型 rowsAsst）：头像(圆) + 名 + 已绑章 + 在线 / 渠道 + 工作区路径 + 更换/绑定机器人 / 铅笔 / 头像。
+ *  副标走元信息原语：渠道强（未绑定显示「待接入」）＋工作区等宽弱化，靠间距不靠符号（#139）。
+ *  owner 2026-10-17：与家行**功能一致**——铅笔就地改名、头像按钮与点头像本身开纯换头像弹层，「更多」去掉。 */
 export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLElement {
   const d = asstDisplay(view, a)
   const bot = botOf(view, a)
   const ch = channelOf(a)
   const home = view.index.byId.get(a.homeId)
   const path = home && home.path ? home.path : '未关联工作区'
-  const nm = h('span', { className: 'hu-nm' }, h('b', {}, d.text), statusPillEl(a), onlineTagEl(bot))
+  const nmParts: HTMLElement[] = [h('b', {}, d.text), statusPillEl(a), onlineTagEl(bot)]
+  const rf = renameField({ parts: nmParts, initial: a.nameSource === 'user' ? a.name : '', placeholder: d.text,
+    onCommit: (v) => opts.onRenameAssistant?.(a.id, v) })
+  const acts = h('span', { className: 'hu-acts2' })
+  acts.appendChild(a.status === 'bound'
+    ? textBtn('change-a', '更换机器人', { cls: 'swap', id: a.id })
+    : textBtn('bind-a', '绑定机器人', { cls: 'danger', id: a.id }))
+  const pencil = iconBtn('rename-a', '改名', 'pencil')
+  pencil.addEventListener('click', (e) => { e.stopPropagation(); rf.edit() })
+  acts.appendChild(pencil)
+  acts.appendChild(iconBtn('avatar-a', '更换头像', 'image'))
   const el = h('div', {
     className: `hu-row${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}${a.status !== 'bound' ? ' off' : ''}`,
     role: 'button', tabindex: 0, 'data-open': 'L3', 'data-id': a.id, 'aria-label': `助理 ${d.text}`,
   },
-    avatarEl(a.id, d.text, a.avatar, { round: true }),
-    h('span', { className: 'hu-txt' }, nm,
+    avatarButton(avatarEl(a.id, d.text, a.avatar, { round: true }), 'avatar-a'),
+    h('span', { className: 'hu-txt' }, rf.el,
       h('span', { className: 'hu-sub' }, asstSubMeta(ch, path))),
-    h('span', { className: 'hu-acts2' },
-      a.status === 'bound'
-        ? textBtn('change-a', '更换机器人', { cls: 'swap', id: a.id })
-        : textBtn('bind-a', '绑定机器人', { cls: 'danger', id: a.id }),
-      iconBtn('more-asst', '更多', 'more')))
+    acts)
   wireRow(el, opts, a.id)
   return el
 }

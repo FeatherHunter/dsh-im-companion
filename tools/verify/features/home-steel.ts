@@ -167,6 +167,8 @@ const popBtn = (pop: any, label: string): any => (pop ? cls(pop, 'hu-pbtn-s').fi
 
 /** owner 2026-10-17：行内改名走 `ops.updateHome`（面板不再为改名开弹层）⇒ 桩里记下来当回执。 */
 const renamed: Array<{ id: string; patch: any }> = [];
+/** 助理侧同口径（owner 2026-10-17：L2 与 L1 功能一致）：铅笔提交走 `ops.updateAssistant`。 */
+const asstRenamed: Array<{ id: string; patch: any }> = [];
 function renderBox(mode = 'agent'): { bodyEl: any; handle: any } {
   const bodyEl = new El('div', domDoc);
   const handle = bodyMod.createPanelBody({
@@ -179,6 +181,7 @@ function renderBox(mode = 'agent'): { bodyEl: any; handle: any } {
     ops: {
       createHome: async () => {}, createAssistant: async () => {}, connect: () => {},
       updateHome: async (id: string, patch: any) => { renamed.push({ id, patch }) },
+      updateAssistant: async (id: string, patch: any) => { asstRenamed.push({ id, patch }) },
     },
     onRetry: () => {},
   });
@@ -511,6 +514,34 @@ test('T6b 绿框呈现：纯头像弹层＋行内改名（owner 2026-10-17 口�
   popMod.closeHomePop(true);
 });
 
+/* owner 2026-10-17：L2 助理行与 L1 家行在这件事上**功能一致**——铅笔就地改名、头像（图标钮与头像本身）
+ * 开同一张纯换头像弹层，「更多」退场。两行共用 home-row-edit / home-avatar-act，不许各写一份。 */
+test('L2 助理行＝L1 家行（owner 2026-10-17）：「更多」退场＋铅笔就地改名＋头像开纯换头像弹层', () => {
+  const { bodyEl, handle } = renderBox();
+  clickEl(rowsOf(bodyEl)[0]);
+  const row = rowsOf(bodyEl)[0];
+  assert.equal(byAttr(row, 'data-item-act', 'more-asst').length, 0, '「更多」退场（L2 与 L1 一致）');
+  assert.ok(byAttr(row, 'data-item-act', 'rename-a')[0], '铅笔＝改名（行内就地）');
+  const avBtn = one(row, 'hu-avbtn');
+  assert.equal(avBtn?.getAttribute('data-item-act'), 'avatar-a', '头像本身也是换头像入口（真 <button>，键盘可达）');
+  clickEl(byAttr(row, 'data-item-act', 'rename-a')[0]);
+  assert.equal(popMod.homePopOpen(), false, '铅笔不许开弹层（在名字处就地改）');
+  const input = one(one(row, 'hu-nm'), 'hu-nminput');
+  assert.ok(input, '名字处出现输入框');
+  input.value = '小婉';
+  input.dispatchEvent({ type: 'keydown', key: 'Enter' });
+  assert.equal(one(row, 'hu-nminput'), null, '回车退出编辑态');
+  assert.deepEqual(asstRenamed.at(-1), { id: 'a1', patch: { name: '小婉' } }, '回车落盘走 updateAssistant（与家侧同一条写路径）');
+  clickEl(avBtn);
+  const pop = cls(domDoc.body, 'hu-pop')[0];
+  assert.ok(pop && txt(pop).includes('更换头像'), '头像入口开换头像弹层');
+  assert.equal(cls(pop, 'hu-fld').length, 1, '纯换头像：只有头像一个字段（不带名字字段）');
+  assert.equal(cls(pop, 'hu-avopt').length, 8, '默认＋6 色＋图片格（与家侧同一份 avatarRow）');
+  assert.ok(popBtn(pop, '保存') && !off(popBtn(pop, '保存')), '保存可点');
+  popMod.closeHomePop(true);
+  handle.dispose();
+});
+
 /* owner 2026-10-17 真机两条：① 改名输入框的焦点环右侧被裁（外扩环落在 overflow:hidden 里）；
  * ② 「改名成功」的 toast 沉在视口底部，离被改的那一行太远。两条一起钉在这里。 */
 test('owner 2026-10-17②：改名确认浮在被改那行旁边（顶部变异），焦点环改盒内不再被裁', async () => {
@@ -554,7 +585,7 @@ test('T6b 两步删除：首点布防、次点真删且只走行删除（验收�
   clickEl(rowsOf(bodyEl)[0]);
   clickEl(rowsOf(bodyEl)[0]);
   assert.ok(one(bodyEl, 'hu-detail'), 'L3 详情在');
-  const ra = byAttr(bodyEl, 'data-item-act', 'rename-a')[0];
+  const ra = byAttr(bodyEl, 'data-item-act', 'settings-a')[0];
   assert.ok(ra && !off(ra));
   clickEl(ra);
   const pop = cls(domDoc.body, 'hu-pop')[0];
@@ -974,7 +1005,7 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   const acts = cls(bodyEl, 'hu-abtn');
   assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['更换机器人', '详情', '改名与头像', '删除助理', '换工作区', '移除渠道'], 'L3 六枚全可用（已绑助理，T6c #115）');
   assert.equal(acts.filter(off).length, 0, 'L3 无禁用钮');
-  assert.deepEqual(acts.map((b) => b.getAttribute('data-item-act')), ['change-a', 'detail-a', 'rename-a', 'remove-a', 'move-a', 'unbind-a'], '行动作 data-item-act 口径');
+  assert.deepEqual(acts.map((b) => b.getAttribute('data-item-act')), ['change-a', 'detail-a', 'settings-a', 'remove-a', 'move-a', 'unbind-a'], '行动作 data-item-act 口径（L3 的「改名与头像」＝settings-a；L2 行上的铅笔＝rename-a 行内改）');
   assert.equal(cls(bodyEl, 'hu-soon').length, 0, '待实现清单退场（#115 落地，无 planned 假按钮）');
   assert.equal(txt(one(one(bodyEl, 'hu-chain'), 'on')), '机器人名', '命名链高亮命中来源（nameSource=bot）');
   assert.equal(txt(foot()), '返回助理列表', 'L3 已绑：底部主操作＝返回助理列表');

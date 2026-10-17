@@ -10,6 +10,7 @@ import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, topEl, type Level } from './home-frame'
 import { newAsstPop, newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'
+import { avatarAsstPop } from './home-avatar-act'
 import { bindAsstPop } from './home-bind-forms'
 import { moveAsstPop, unbindAsstPop } from './home-move-forms'
 import { orphanHomeAct } from './home-orphan-forms'
@@ -102,8 +103,9 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     onGo: (next, id) => go(next, id),
     onOpen: (id) => go(level === 'L1' ? 'L2' : 'L3', id),
     onAct: (kind, id, anchor) => act(kind, id, anchor),
-    /* owner 2026-10-17：铅笔**就地**改名——提交即落盘，不弹层（与家设置弹层同一条写路径）。 */
+    /* owner 2026-10-17：铅笔**就地**改名——提交即落盘，不弹层（与家设置弹层同一条写路径）；助理侧同口径。 */
     onRenameHome: (id, value) => { void deps.ops.updateHome(id, { name: value }).then(() => render()) },
+    onRenameAssistant: (id, value) => { void deps.ops.updateAssistant(id, { name: value }).then(() => render()) },
   })
 
   /** 锚点一律**现取**（T7 #112 真机 bug）：面板刷新会 clear 重建，捕获的元素随即游离、rect 全 0 ⇒ 弹层跳到窗口左上。
@@ -148,18 +150,15 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
       }
       bindAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: a.id, onDone: () => render() })
     } else if (kind === 'avatar-h') {
-      /* owner 2026-10-17：行上的「更换头像」图标钮与**点头像本身**都落这里——一张纯换头像弹层。
-       * 铅笔（rename-h）不再走弹层：它在行内**就地**改名（home-row-edit.renameField）。 */
-      if (!v.homes.some((x) => x.id === id)) {
-        logLine('info', 'home.action', { action: 'update', homeId: id, ok: false, message: '家不在表里（可能刚被删），换头像弹层不开' })
-        return
-      }
+      /* owner 2026-10-17：行上的头像钮与**点头像本身**开同一张纯换头像弹层（助理侧 avatar-a 同款）；铅笔走行内改名，不走弹层。 */
+      if (!v.homes.some((x) => x.id === id)) { logLine('info', 'home.action', { action: 'update', homeId: id, ok: false, message: '家不在表里（可能刚被删），换头像弹层不开' }); return }
       avatarHomePop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, homeId: id, onDone: () => render() })
-    } else if (kind === 'rename-a' || kind === 'more-asst') {
-      if (!v.assistants.some((x) => x.id === id)) {
-        logLine('info', 'assistant.action', { action: 'update', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），设置弹层不开' })
-        return
-      }
+    } else if (kind === 'avatar-a') {
+      if (!v.assistants.some((x) => x.id === id)) { logLine('info', 'assistant.action', { action: 'update', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），换头像弹层不开' }); return }
+      avatarAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: id, onDone: () => render() })
+    } else if (kind === 'settings-a') {
+      /* L3 详情页那颗「改名与头像」（home-detail）：仍开整套助理设置弹层，与 L2 行上的就地改名不冲突。 */
+      if (!v.assistants.some((x) => x.id === id)) { logLine('info', 'assistant.action', { action: 'update', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），设置弹层不开' }); return }
       renameAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: id, onDone: () => render() })
     } else if (kind === 'remove-a') {
       void deps.ops.removeAssistant(id).then(() => render())

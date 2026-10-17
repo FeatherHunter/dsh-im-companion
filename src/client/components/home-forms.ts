@@ -186,7 +186,7 @@ export interface EditDeps {
  *  返回 `{row, clear}` 两件：色板行由调用方塞进「头像」字段，`clear`（有图时才有）单摆在色板行下面。
  *  `onCommitted` 在图片真落盘后回调——图片**点了就落**（不攒进「确定」的补丁），故调用方应关弹层并重读，
  *  否则弹层里那份旧 `avatar` 快照会反手把刚落的图覆盖回预设色。 */
-function avatarRow(
+export function avatarRow(
   name: string, id: string, kind: 'home' | 'assistant', current: string | null,
   onPick: (v: string | null) => void, onCommitted: () => void,
 ): { row: HTMLElement; clear: HTMLElement | null } {
