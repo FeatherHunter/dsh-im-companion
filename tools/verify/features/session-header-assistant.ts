@@ -59,7 +59,7 @@ try {
 }
 const mod = (f: string) => import(pathToFileURL(join(tmp, f)).href);
 const {
-  matchBotAssistant, buildAssistBriefs, fetchAssistBriefs,
+  matchBotAssistant, buildAssistBriefs, fetchAssistBriefs, channelViewFor,
   hasAssistImage, initialsOf, faceStyle, ASSIST_STATUS_TEXT,
 } = await mod('assistants.js');
 
@@ -141,6 +141,25 @@ test('工作区隔离：墓碑家/悬空 homeId/异路助理不渲染，按 crea
   const bots = [bot(), bot({ botId: 'b2' })];
   const out = buildAssistBriefs(homes, list, bots, WS, new Map());
   assert.deepEqual(out.map((b: { assistant: { id: string } }) => b.assistant.id), ['a1', 'a2']);
+});
+
+test('诚实渠道行：无 Bot 助理不借用同渠道在线（#144 追修）', () => {
+  const rows = [{ channel: 'feishu', label: '飞书', kind: 'online', statusText: '在线' }];
+  const briefs = buildAssistBriefs(
+    [home()], [asst({}), asst({ id: 'a2', botId: null, status: 'unbound' })], [bot()], WS, new Map(),
+  );
+  const bound = briefs.find((b: { assistant: { id: string } }) => b.assistant.id === 'a1');
+  const unb = briefs.find((b: { assistant: { id: string } }) => b.assistant.id === 'a2');
+  assert.equal(bound.bot?.botId, 'b1');
+  const vBound = channelViewFor(bound, rows);
+  assert.equal(vBound.live, true);
+  assert.equal(vBound.statusText, '在线');
+  assert.equal(unb.bot, null);
+  assert.equal(unb.status, 'unbound');
+  const vUnb = channelViewFor(unb, rows);
+  assert.equal(vUnb.live, false);
+  assert.equal(vUnb.statusText, '未绑定');
+  assert.ok(!vUnb.statusText.includes('在线'));
 });
 
 test('fetchAssistBriefs：home.list + avatar.get 接线；rpc 缺失回 []', async () => {

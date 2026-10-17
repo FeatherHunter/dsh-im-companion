@@ -3,7 +3,7 @@
  * 家归属/命名链复用共享 home-model（单向依赖）；脸算法是 home-identity/left-badges 的只读镜像
  * （feature 禁引别家，色相环/字形规则相同，底色改挂 --af-*：本弹窗不在 .home-ui 之下，--hu-* 取不到）。
  * 无自有轮询：fetchAssistBriefs 只在弹窗打开时调一次；图未到先画色脸（不等、不重试、不存东西）。 */
-import { HEALTH_LABELS, healthOf, type HealthKind } from '../../client/data/config'
+import { HEALTH_LABELS, channelLabel, healthOf, type HealthKind } from '../../client/data/config'
 import { botDisplayLabel, type BotSnap, type RpcCall } from '../../client/data/fleet-api'
 import { normPath, resolveAssistantDisplay, type Assistant, type Home } from '../../client/data/home-model'
 
@@ -102,6 +102,24 @@ export function buildAssistBriefs(
 }
 
 const BRIDGE = '/im-companion'
+
+/** 聚合渠道行最小面（OverlayChannel 的结构子集，避免纯层引 header-overlay）。 */
+export interface ChannelRow { channel: string; label: string; kind: HealthKind; statusText: string }
+
+export interface AssistChannelView { label: string; live: boolean; kind: HealthKind | 'unbound'; statusText: string }
+
+/** 渠道行诚实视图（#144 追修）：只有助理确有 Bot 才借用聚合行状态；
+ * 无 Bot（未绑定/失联）一律用助理自身状态，绝不把同渠道别人的“在线”安到它头上。 */
+export function channelViewFor(b: AssistBrief, rows: ChannelRow[]): AssistChannelView {
+  const row = b.bot ? (rows || []).find((r) => r && r.channel === b.assistant.channel) : undefined
+  if (row) return { label: row.label, live: true, kind: row.kind, statusText: row.statusText }
+  return {
+    label: (rows || []).find((r) => r && r.channel === b.assistant.channel)?.label ?? channelLabel(b.assistant.channel),
+    live: false,
+    kind: b.status === 'unbound' ? 'unbound' : b.status,
+    statusText: b.statusText,
+  }
+}
 
 /** 一次性拉取：home.list 建行＋avatar.get 取图（调用方只在弹窗打开时调，无轮询）。 */
 export async function fetchAssistBriefs(rpc: RpcCall | null, bots: BotSnap[], wsPath: string): Promise<AssistBrief[]> {

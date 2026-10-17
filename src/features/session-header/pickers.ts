@@ -5,6 +5,7 @@ import * as React from 'react'
 import { channelGlyphSvg } from '../../client/icons'
 import type { OverlayChannel } from '../../client/data/header-overlay'
 import type { AssistBrief } from './assistants'
+import { channelViewFor } from './assistants'
 
 /** 渠道行 logo：品牌 glyph + 健康点（原样迁自 panel）。 */
 export function channelLogo(ch: OverlayChannel): React.ReactNode {
@@ -90,13 +91,13 @@ export function assistantGroups(briefs: AssistBrief[], channels: OverlayChannel[
   const byCh = new Map(channels.map((ch) => [ch.channel, ch]))
   return React.createElement('div', { className: 'session-header-channels' },
     ...briefs.map((b) => {
-      const ch = byCh.get(b.assistant.channel)
-      const label = ch?.label ?? b.assistant.channel
-      const tip = label + '，' + (ch?.statusText ?? b.statusText)
+      const v = channelViewFor(b, channels)
+      const tip = v.label + '，' + v.statusText
+      const ch = v.live ? byCh.get(b.assistant.channel) : undefined
       return React.createElement('div', { className: 'session-header-agroup', key: b.assistant.id },
         React.createElement('div', { title: b.name + '，' + b.statusText, 'aria-label': b.name + '，' + b.statusText }, assistantName(b)),
-        ch ? React.createElement('div', { className: 'session-header-chrow', title: tip, 'aria-label': tip }, channelLogo(ch), React.createElement('span', null, label))
-          : React.createElement('div', { className: 'session-header-chrow', title: tip, 'aria-label': tip }, React.createElement('span', null, label)))
+        ch ? React.createElement('div', { className: 'session-header-chrow', title: tip, 'aria-label': tip }, channelLogo(ch), React.createElement('span', null, v.label))
+          : React.createElement('div', { className: 'session-header-chrow', title: tip, 'aria-label': tip }, React.createElement('span', null, v.label + '（' + v.statusText + '）')))
     }))
 }
 
@@ -107,8 +108,9 @@ export function assistantPickerBlock(briefs: AssistBrief[], channels: OverlayCha
     React.createElement('div', { className: 'session-header-sub' }, '选择发送助理：'),
     React.createElement('div', { className: 'session-header-row' },
       ...briefs.slice(0, 5).map((b, i) => {
-        const ch = byCh.get(b.assistant.channel)
-        const tip = b.name + '，' + b.statusText + '（' + (ch?.label ?? b.assistant.channel) + '）'
+        const v = channelViewFor(b, channels)
+        const ch = v.live ? byCh.get(b.assistant.channel) : undefined
+        const tip = b.name + '，' + b.statusText + '（' + v.label + '）'
         return React.createElement('button',
           { type: 'button', key: b.assistant.id, title: tip, 'aria-label': tip, className: 'session-header-btn session-header-abtn', disabled, onClick: () => onPick(i) },
           assistantFace(b.img, b.tint, b.initial, 20),
