@@ -122,6 +122,10 @@ const bodyMod: any = (() => {
 const popMod: any = (() => {
   try { return boxReq('./client/components/home-pop.js'); } catch { return boxReq('./components/home-pop.js'); }
 })();
+/* 表单零件（在线绿档副标等）：同箱取，验的是真渲染出来的节点，不是抄一段字符串。 */
+const formsMod: any = (() => {
+  try { return boxReq('./client/components/home-forms.js'); } catch { return boxReq('./components/home-forms.js'); }
+})();
 
 const H = (o: any) => ({ id: 'h1', workspaceId: 'ws-1', path: 'D:\\agents\\keting', name: '客厅', nameSource: 'system', avatar: null, avatarSource: 'default', createdAt: 1, updatedAt: 1, ...o });
 const A = (o: any) => ({ id: 'a1', homeId: 'h1', channel: 'feishu', botId: 'b1', status: 'bound', name: '小帅', nameSource: 'bot', avatar: null, avatarSource: 'default', createdAt: 1, boundAt: 1, ...o });
@@ -161,10 +165,10 @@ const clickEl = (e: any): void => { e.dispatchEvent({ type: 'click' }); };
 /** 弹层里的按钮按文案找：按钮从底部行搬进标题栏（owner 2026-10-15）后 DOM 顺序变了，不许再用下标。 */
 const popBtn = (pop: any, label: string): any => (pop ? cls(pop, 'hu-pbtn-s').find((b: any) => txt(b) === label) ?? null : null);
 
-function renderBox(): { bodyEl: any; handle: any } {
+function renderBox(mode = 'agent'): { bodyEl: any; handle: any } {
   const bodyEl = new El('div', domDoc);
   const handle = bodyMod.createPanelBody({
-    state: { homes: BOX_HOMES, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
+    state: { homes: BOX_HOMES, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode, loading: false, failed: [], homesReady: true, volatile: false },
     bodyEl,
     titleMetaEl: new El('div', domDoc),
 
@@ -182,8 +186,17 @@ const ttlOf = (root: any): { b: string; small: string } => {
 };
 const footOf = (root: any): any => one(root, 'hu-pbtn');
 const rowsOf = (root: any): any[] => cls(root, 'hu-row');
+/** chip 文案：两段式（层级名 + 对象名，#139）在 DOM 里是两个 span、textContent 会紧贴，
+ *  断言里补一个空格还原视觉间距——断言的形状与「读起来像什么」一致，而不是与节点数一致。 */
+const crumbLabel = (c: any): string => {
+  const b = tag(c, 'b')
+  if (!b) return ''
+  const lv = nodes(b).filter((e: any) => e.classList?.contains('hu-cr2lv'))[0]
+  if (!lv) return txt(b)
+  return txt(lv) + ' ' + txt(nodes(b).filter((e: any) => e.classList?.contains('hu-cr2nm'))[0])
+}
 const crumbInfo = (root: any): Array<{ lv: string; label: string; cur: boolean; goto: string | null }> =>
-  cls(root, 'hu-crumb').map((c) => ({ lv: txt(tag(c, 'span')), label: txt(tag(c, 'b')), cur: c.getAttribute('aria-current') === 'true', goto: c.getAttribute('data-goto') }));
+  cls(root, 'hu-crumb').map((c) => ({ lv: txt(tag(c, 'span')), label: crumbLabel(c), cur: c.getAttribute('aria-current') === 'true', goto: c.getAttribute('data-goto') }));
 const curCrumb = (root: any): any => cls(root, 'hu-crumb').filter((c) => c.getAttribute('aria-current') === 'true')[0];
 
 
@@ -280,23 +293,38 @@ test('种子幂等键：同规范路径（大小写/斜杠差异）不翻倍', (
   assert.equal(seed.homes.length, 1);
 });
 
-test('缺口判定：任一工作区缺家→补；齐→静默；新 bot→补', () => {
-  assert.equal(model.seedGap([W({})], [], [], []), true);
-  assert.equal(model.seedGap([], [B({})], [], []), true);
-  assert.equal(model.seedGap([], [], [], []), false);
-  assert.equal(model.seedGap([W({})], [B({})], [H({})], [A({})]), false);
-  assert.equal(model.seedGap([W({})], [B({}), B({ botId: 'b2' })], [H({})], [A({})]), true);
+test('缺口判定：任一工作区缺家→补；齐→静默；「绑了机器人但没有助理行」不再是缺口（#141）', () => {
+  assert.equal(model.seedGap([W({})], [], []), true);
+  assert.equal(model.seedGap([], [B({})], []), true);
+  assert.equal(model.seedGap([], [], []), false);
+  assert.equal(model.seedGap([W({})], [B({})], [H({})]), false);
+  /* #141（真机实证的抢跑）：这条原来是 true——「某 bot 的工作区有家、但没有 bound 助理行」曾被当成缺口，
+   * 于是接入留下的「已绑工作区·无主」窗口被对账补成一条**新**助理，把用户本想绑的那行挤成孤儿。
+   * 现在绑定是显式动作（assistant.bind），对账不再按机器人快照补行。 */
+  assert.equal(model.seedGap([W({})], [B({}), B({ botId: 'b2' })], [H({})]), false, '#141：不再按机器人快照补助理行');
   /* T10 #124（owner 裁定 2026-10-15）：家＝工作区的镜像 ⇒ 任何工作区缺家都要自动补同名家。
    * 于是「用已有工作区」支路没有存在意义（工作区刚被 DSH 加进来就会被补家），整个分段退场。 */
   assert.equal(model.seedGap(
     [W({}), W({ workspaceId: 'ws-9', path: 'D:\\agents\\new', title: '新区' })],
-    [B({})], [H({})], [A({})]), true, '任何缺家工作区都要自动补同名家（T10 #124）');
+    [B({})], [H({})]), true, '任何缺家工作区都要自动补同名家（T10 #124）');
   /* T10 #124 验收②的原形：DSH 里新建一个工作区、**没有任何机器人**（旧规则在这里必漏补）。 */
   assert.equal(model.seedGap(
     [W({}), W({ workspaceId: 'ws-new', path: 'D:\\agents\\fresh', title: '新房间' })],
-    [], [H({})], []), true, '无机器人的新工作区也必须补家（T10 #124 验收②）');
-  assert.equal(model.seedGap([W({}), W({ workspaceId: 'ws-new', path: 'D:\\agents\\fresh' })], [], [H({}), H({ id: 'h2', workspaceId: 'ws-new', path: 'D:\\agents\\fresh' })], []), false,
+    [], [H({})]), true, '无机器人的新工作区也必须补家（T10 #124 验收②）');
+  assert.equal(model.seedGap([W({}), W({ workspaceId: 'ws-new', path: 'D:\\agents\\fresh' })], [], [H({}), H({ id: 'h2', workspaceId: 'ws-new', path: 'D:\\agents\\fresh' })]), false,
     '补过之后再判＝齐（幂等，不会每轮重种）');
+});
+
+test('#141 抢跑回归：对账不许替「无主机器人」补行，也不许复活删掉的绑定助理', () => {
+  /* ① 真机形状：家 h1 在册、机器人 b1 已绑到 keting、但没有任何 bound 助理行（接入留下的窗口）⇒ 不是缺口。 */
+  assert.equal(model.seedGap([W({})], [B({})], [H({})]), false, '#141：有家＋机器人已绑工作区＋无 bound 行 ⇒ 不补');
+  /* ② 对账种子对**已进账**的工作区不再从机器人快照凭空造行（删掉绑定助理后不会被下一轮复活）。 */
+  const known: any = model.buildSeed([W({})], [B({}), B({ botId: 'b9' })], null, 7, [H({})]);
+  assert.equal(known.homes.length, 1);
+  assert.equal(known.assistants.length, 0, '#141：已在家表里的工作区不补 bound 行（复活被堵）');
+  /* ③ 第一次进账（家表里没有这个工作区）照旧补——历史首迁与「新工作区里已有已绑机器人」不能误伤。 */
+  const fresh: any = model.buildSeed([W({})], [B({})], null, 7, []);
+  assert.equal(fresh.assistants.filter((a: any) => a.status === 'bound' && a.botId === 'b1').length, 1, '#141：首迁照旧补行');
 });
 
 test('T6b 改名配图纯逻辑：user 覆盖/恢复默认/非法拒收（验收①②）', () => {
@@ -366,10 +394,11 @@ test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连�
   assert.equal(bad.code, 'bad-request');
   assert.equal((await homeEdit.updateHomeRow(file, { id: hid })).ok, false, '无字段→拒收');
   assert.equal((await homeEdit.updateHomeRow(file, { id: 'nope', name: 'x' })).code, 'not-found');
-  const c: any = await homeEdit.createUnboundRow(file, { homeId: hid, channel: 'qq', name: '' });
+  const c: any = await homeEdit.createUnboundRow(file, { homeId: hid, name: '' });
   assert.equal(c.ok, true);
   assert.ok(c.row.botId === null && c.row.status === 'unbound' && c.row.boundAt === null);
-  assert.equal((await homeEdit.createUnboundRow(file, { homeId: 'nope', channel: 'qq' })).code, 'not-found');
+  assert.equal(c.row.channel, '', '#138：未绑定占位落空渠道，不再替用户编一个');
+  assert.equal((await homeEdit.createUnboundRow(file, { homeId: 'nope' })).code, 'not-found');
   let doc: any = readDoc(file);
   assert.deepEqual(Object.keys(doc.homes[0]).sort(), Object.keys(H({})).sort(), '改名配图不发明字段');
   assert.deepEqual(Object.keys(doc.assistants[0]).sort(), Object.keys(A({})).sort(), '占位不发明字段');
@@ -383,7 +412,7 @@ test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连�
   assert.equal(bd.ok, true);
   assert.ok(bd.row.status === 'bound' && bd.row.name === '野号' && bd.row.nameSource === 'bot');
   assert.equal((await homeEdit.bindAssistantRow(file, { id: bd.row.id, channel: 'qq', botId: 'b8' })).ok, false, '已绑→拒收');
-  const c2: any = await homeEdit.createUnboundRow(file, { homeId: hid, channel: 'qq' });
+  const c2: any = await homeEdit.createUnboundRow(file, { homeId: hid });
   const clash: any = await homeEdit.bindAssistantRow(file, { id: c2.row.id, channel: 'qq', botId: 'b9' });
   assert.equal(clash.ok, false);
   assert.equal(clash.code, 'already-bound');
@@ -426,6 +455,9 @@ test('T6b 绿框呈现：家设置弹层改名＋配图、绑定弹层可开（�
   clickEl(bindBtn);
   const pop2 = cls(domDoc.body, 'hu-pop')[0];
   assert.ok(pop2 && txt(pop2).includes('绑定机器人') && txt(pop2).includes('野号'), '绑定弹层列出空闲机器人');
+  /* owner 2026-10-17：主按钮文案＝「绑定」——「创建」会被读成「新建一个机器人」，与这一步（认领现成的）相反。 */
+  assert.ok(!off(popBtn(pop2, '绑定')), '非空态主按钮＝绑定（可点）');
+  assert.equal(popBtn(pop2, '创建'), null, '绑定弹层不再出现「创建」');
   clickEl(cls(domDoc.body, 'hu-scrim')[0]);
   assert.equal(popMod.homePopOpen(), false);
   popMod.closeHomePop(true);
@@ -556,6 +588,89 @@ test('宿主：加载保留 unbound/orphan/tombstone（T6b/c 数据不丢）', a
   assert.equal(doc.assistants.length, 2);
   assert.ok(doc.assistants.some((a: any) => a.id === 'a1' && a.status === 'unbound' && a.botId === null));
   assert.ok(doc.assistants.some((a: any) => a.id === 'a2' && a.status === 'orphan'));
+});
+
+test('渠道诚实性（#138）：channelOf 三分支 + 空渠道未绑定行不许被丢（第 0 号风险）', async () => {
+  const co = model.channelOf as any;
+  /* 判据是 status，不是 botId——孤儿 botId 也是 null，但它的渠道是真历史（失联前绑的就是它）。 */
+  assert.equal(co({ status: 'bound', channel: 'feishu' }), 'feishu');
+  assert.equal(co({ status: 'orphan', channel: 'weixin' }), 'weixin', '孤儿＝真历史，照常显示');
+  assert.equal(co({ status: 'unbound', channel: 'feishu' }), null, '旧版客户端编的占位值不算渠道');
+  assert.equal(co({ status: 'unbound', channel: '' }), null);
+  assert.equal(co(null), null);
+  assert.equal((model.bucketOf as any)({ status: 'unbound', channel: 'feishu' }), '', '未绑定归「待接入」桶');
+
+  const { mkdtempSync: mk, writeFileSync } = await import('node:fs');
+  const { tmpdir: td } = await import('node:os');
+  const { join: j } = await import('node:path');
+  const file = j(mk(j(td(), 'hs-chan-')), 'homes.yaml');
+  writeFileSync(file, JSON.stringify({
+    version: 2,
+    homes: [{ id: 'h1', workspaceId: null, path: 'D:\\agents\\keting', name: '客厅', nameSource: 'user', avatar: null, avatarSource: 'default', createdAt: 1, updatedAt: 1 }],
+    assistants: [
+      { id: 'a1', homeId: 'h1', channel: '', botId: null, status: 'unbound', name: '待接入的', nameSource: 'user', avatar: null, avatarSource: 'default', createdAt: 1, boundAt: null },
+      { id: 'a2', homeId: 'h1', channel: '', botId: null, status: 'orphan', name: '失联的', nameSource: 'user', avatar: null, avatarSource: 'default', createdAt: 2, boundAt: 1 },
+    ],
+  }), 'utf8');
+  /* 老写法 `if (!channel || …) continue` 会把这两行**整行丢掉** = 静默数据丢失；这条断言钉住读侧已放行。 */
+  const doc: any = await homeStore.loadHomesDoc(file);
+  assert.equal(doc.assistants.length, 2, '空渠道的未绑定/孤儿行不许被丢掉');
+  assert.deepEqual(doc.assistants.map((a: any) => a.channel), ['', '']);
+  /* 再存一次（幂等重跑）：掉一行就说明写侧也还在丢。 */
+  const again: any = await homeStore.seedDocs(file, { homes: doc.homes, assistants: doc.assistants });
+  assert.equal(again.assistants.length, 2, '重跑后仍是两行');
+});
+
+test('渠道诚实性（#138）＋显示规范（#139）：未绑定不露渠道，面板可见文案零分隔符', () => {
+  const { bodyEl } = renderBox();
+  /* 页头副标＝元信息原语：主数强 + 括号注解，两个节点靠 gap 分开。 */
+  assert.deepEqual(cls(bodyEl, 'hu-mi').map(txt), ['2 个家', '（每个家对应一个工作区）'], '副标＝主数＋括号注解');
+  assert.equal(cls(one(bodyEl, 'hu-ttl'), 'hu-mrow').length, 1, '副标走 hu-mrow 原语容器');
+  assert.ok(!txt(bodyEl).includes('·'), 'L1 可见文案零分隔符');
+
+  /* 面包屑两段式（owner 选 b）：层级名弱 + 对象名强，两个节点，信息不丢。 */
+  const chip = cls(bodyEl, 'hu-crumb')[1];
+  const cb = tag(chip, 'b');
+  assert.equal(txt(cls(cb, 'hu-cr2lv')[0]), '助理', '层级名是独立节点');
+  assert.equal(txt(cls(cb, 'hu-cr2nm')[0]), '客厅', '对象名是独立节点');
+  assert.equal(txt(cb), '助理客厅', '零符号（视觉间距由 CSS gap 给，不在文案里）');
+
+  clickEl(rowsOf(bodyEl)[0]);
+  const row = rowsOf(bodyEl).find((r: any) => r.getAttribute('data-id') === 'a2');
+  assert.ok(row, '未绑定助理行在场');
+  const sub = cls(row, 'hu-sub')[0];
+  const parts = cls(sub, 'hu-mi').map(txt);
+  assert.equal(parts[0], '待接入', '未绑定格写「待接入」（与接入 CTA 同词）');
+  assert.ok(parts[1].indexOf('工作区 ') === 0, '第二格是工作区路径（等宽弱化）');
+  assert.ok(!txt(sub).includes('微信') && !txt(sub).includes('weixin'), '旧版编的占位渠道不许露出来');
+  assert.ok(!txt(bodyEl).includes('·'), 'L2 可见文案零分隔符');
+
+  clickEl(row);
+  const chip2 = cls(bodyEl, 'hu-mchip')[1];
+  assert.equal(txt(chip2), '尚未接入', 'L3 详情渠道章：未绑定＝尚未接入');
+  assert.ok(!txt(bodyEl).includes('·'), 'L3 可见文案零分隔符');
+});
+
+test('渠道视图（#138/#139 Q3）：待接入是显式一组，计数诚实，未绑定助理不从视野消失', () => {
+  const { bodyEl } = renderBox('channel');
+  assert.equal(ttlOf(bodyEl).b, '渠道', '渠道模式 L1 标题');
+  assert.deepEqual(cls(one(bodyEl, 'hu-ttl'), 'hu-mi').map(txt), ['1 个渠道', '（1 位待接入）'],
+    '页头＝真渠道数＋待接入人数（qa 修的假渠道不进这个数）');
+
+  const rows = rowsOf(bodyEl);
+  assert.deepEqual(rows.map((r: any) => r.getAttribute('data-id')), ['feishu', ''],
+    '桶键顺序：真渠道在前、空键（待接入）殿后');
+  assert.deepEqual(rows.map((r: any) => txt(tag(cls(r, 'hu-nm')[0], 'b'))), ['飞书', '待接入'],
+    '空键的显示名是「待接入」，不是空字符串');
+  assert.deepEqual(rows.map((r: any) => cls(r, 'hu-mi').map(txt)),
+    [['1 位助理', '（1 位已绑）'], ['1 位助理', '（0 位已绑）']], '组内计数＝总数＋括号注解');
+  assert.ok(!txt(bodyEl).includes('·'), '渠道模式 L1 可见文案零分隔符');
+
+  clickEl(rows[1]);
+  assert.equal(ttlOf(bodyEl).b, '待接入', '二级标题＝组名');
+  assert.equal(rowsOf(bodyEl).filter((r: any) => r.getAttribute('data-id') === 'a2').length, 1,
+    '这位没绑的助理就在「待接入」组里——不许从视野里消失');
+  assert.ok(!txt(bodyEl).includes('·'), '渠道模式 L2 可见文案零分隔符');
 });
 
 test('宿主种子：批量落盘＋id 回填＋重跑不翻倍', async () => {
@@ -702,7 +817,7 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   /* L1：无返回键、家行 data-open="L2"（点行进下一级，不是展开树）、底部主操作「新建家」。
    * 呈现策略（非数据规则）：有助理的家在前、空家在后直接成行（折叠退场，owner 2026-10-15）。 */
   assert.ok(one(bodyEl, 'home-ui'), '绿框根 .home-ui 必须在');
-  assert.deepEqual(ttl(), { b: '家', small: '2 个 · 每个家对应一个工作区' }, 'L1 页头标题/副标');
+  assert.deepEqual(ttl(), { b: '家', small: '2 个家（每个家对应一个工作区）' }, 'L1 页头标题/副标');
   assert.equal(cls(bodyEl, 'hu-back').length, 0, 'L1 不显示返回键（原型：最上层无返回）');
   assert.deepEqual(rows().map((r) => r.getAttribute('data-open')), ['L2', 'L2'], '家行带 data-open="L2"（空家也是行）');
   assert.deepEqual(rows().map((r) => r.getAttribute('data-id')), ['h1', 'h2'], '两行都在（T3 一区一家含无人之家仍成立）');
@@ -732,8 +847,8 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.equal(cls(one(rows()[0], 'hu-btop'), 'hu-av').length, 1, '头像在上段（条带里没有家头像）');
   assert.deepEqual(crumbInfo(bodyEl), [
     { lv: 'L1', label: '家', cur: true, goto: null },
-    { lv: 'L2', label: '助理 · 客厅', cur: false, goto: 'L2' },
-    { lv: 'L3', label: '机器人 · 小帅', cur: false, goto: 'L3' },
+    { lv: 'L2', label: '助理 客厅', cur: false, goto: 'L2' },
+    { lv: 'L3', label: '机器人 小帅', cur: false, goto: 'L3' },
   ], '链路条三级：当前层 aria-current，后两级带默认去处（列表第一个，见「面包屑默认路径」）');
   assert.ok(cls(bodyEl, 'hu-crumb').slice(1).every((c) => !c.getAttribute('aria-disabled')),
     '无焦点时后两级必须可点即进（owner：点击 tab 后就自动进去）');
@@ -752,16 +867,16 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   /* T13 #135 键盘把关：焦点在行上回车＝进 L2；焦点落在行内按钮（「＋ 建助理」）上回车＝只触发按钮，
    * 行不许顺手钻取（一键两事：又开弹层又进 L2）。 */
   rows()[1].dispatchEvent({ type: 'keydown', key: 'Enter', target: one(rows()[1], 'hu-add') });
-  assert.deepEqual(ttl(), { b: '家', small: '2 个 · 每个家对应一个工作区' }, '按钮上回车不钻取（仍在 L1）');
+  assert.deepEqual(ttl(), { b: '家', small: '2 个家（每个家对应一个工作区）' }, '按钮上回车不钻取（仍在 L1）');
   assert.equal(txt(foot()), '新建家', '按钮上回车不钻取（底部仍是新建家）');
   rows()[0].dispatchEvent({ type: 'keydown', key: 'Enter', target: rows()[0] });
   assert.deepEqual(rows().map((r) => r.getAttribute('data-open')), ['L3', 'L3'], '行上回车＝进 L2（助理行）');
   clickEl(byAttr(bodyEl, 'data-goto', 'L1')[0]);
-  assert.deepEqual(ttl(), { b: '家', small: '2 个 · 每个家对应一个工作区' }, '面包屑回 L1（键盘测试复位，后续流程继续）');
+  assert.deepEqual(ttl(), { b: '家', small: '2 个家（每个家对应一个工作区）' }, '面包屑回 L1（键盘测试复位，后续流程继续）');
 
   /* 点家行 → L2（钻取，不是展开）：页头换家名、返回键出现、行变助理、底部换「新建助理」 */
   clickEl(rows()[0]);
-  assert.deepEqual(ttl(), { b: '客厅', small: '跟随工作区名 · 2 位助理' }, 'L2 页头＝家名＋回落来源');
+  assert.deepEqual(ttl(), { b: '客厅', small: '2 位助理（跟随工作区名）' }, 'L2 页头＝家名＋回落来源');
   assert.equal(cls(bodyEl, 'hu-back').length, 1, 'L2 出现返回键 .hu-back');
   assert.deepEqual(rows().map((r) => r.getAttribute('data-open')), ['L3', 'L3'], '助理行带 data-open="L3"（再点进一级）');
   assert.deepEqual(rows().map((r) => r.getAttribute('data-id')), ['a1', 'a2'], '助理行带助理 id');
@@ -771,11 +886,11 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.ok(!off(one(rows()[1], 'hu-ract')) && txt(one(rows()[1], 'hu-ract')) === '绑定机器人',
     '未绑助理的「绑定机器人」可用（开绑定弹层，T6b #114）');
 
-  /* 点助理行 → L3 详情：T6b #114 接入/详情/改名·头像/删除助理全可用；T6c #115 换工作区/移除渠道已启用 */
+  /* 点助理行 → L3 详情：T6b #114 接入/详情/改名与头像/删除助理全可用；T6c #115 换工作区/移除渠道已启用 */
   clickEl(rows()[0]);
   assert.ok(one(bodyEl, 'hu-detail'), 'L3 详情卡 .hu-detail 必须在');
   const acts = cls(bodyEl, 'hu-abtn');
-  assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['接入', '详情', '改名·头像', '删除助理', '换工作区', '移除渠道'], 'L3 六枚全可用（已绑助理，T6c #115）');
+  assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['接入', '详情', '改名与头像', '删除助理', '换工作区', '移除渠道'], 'L3 六枚全可用（已绑助理，T6c #115）');
   assert.equal(acts.filter(off).length, 0, 'L3 无禁用钮');
   assert.deepEqual(acts.map((b) => b.getAttribute('data-item-act')), ['connect-a', 'detail-a', 'rename-a', 'remove-a', 'move-a', 'unbind-a'], '行动作 data-item-act 口径');
   assert.equal(cls(bodyEl, 'hu-soon').length, 0, '待实现清单退场（#115 落地，无 planned 假按钮）');
@@ -789,11 +904,11 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.ok(!off(foot()), '未绑的绑定钮可用（开绑定弹层）');
   assert.ok(txt(one(bodyEl, 'hu-detail')).includes('还没绑机器人'), 'L3 未绑详情卡走占位文案');
   const actsU = cls(bodyEl, 'hu-abtn');
-  assert.deepEqual(actsU.filter((b) => !off(b)).map((b) => txt(b)), ['绑定机器人', '详情', '改名·头像', '删除助理', '换工作区'], 'L3 未绑五枚可用（无移除渠道，T6c #115）');
+  assert.deepEqual(actsU.filter((b) => !off(b)).map((b) => txt(b)), ['绑定机器人', '详情', '改名与头像', '删除助理', '换工作区'], 'L3 未绑五枚可用（无移除渠道，T6c #115）');
 
   /* 面包屑可向前钻取：点 L1 章回到 L1 */
   clickEl(byAttr(bodyEl, 'data-goto', 'L1')[0]);
-  assert.deepEqual(ttl(), { b: '家', small: '2 个 · 每个家对应一个工作区' }, '面包屑点回 L1（链路条可向前钻取）');
+  assert.deepEqual(ttl(), { b: '家', small: '2 个家（每个家对应一个工作区）' }, '面包屑点回 L1（链路条可向前钻取）');
   assert.equal(txt(foot()), '新建家', '回 L1 后底部主操作跟着回到新建家');
 
   /* 空态：进没有助理的家 → .hu-empty（不是空白列表） */
@@ -1055,10 +1170,32 @@ test('T8 #121 新建家「新建工作区」支路：选目录 → 建区 → �
   assert.match(dirCss, /\.hu-dirrow\{[^}]*align-items:stretch/, '左右等高：行容器 stretch');
   assert.match(dirCss, /\.hu-dirpath\.picked\{[^}]*border-style:solid/, '选到目录后框转实线');
   assert.match(dirCss, /\.hu-err\{[^}]*color:/, '失败原因行有自己的颜色（灰字原文要看得见）');
-  /* owner 2026-10-14：弹层里每个可点控件都要有交互反馈（hover 变样 / 按下回弹），不许「看着能点、点了没反应」 */
-  for (const sel of ['hu-pbtn-s', 'hu-opt', 'hu-plink', 'hu-avopt', 'hu-dirpath']) {
-    assert.match(dirCss, new RegExp('\\.' + sel + ':(hover|active)'), '可点控件缺交互态：' + sel);
+  /* owner 2026-10-14 起、2026-10-17 扩到全量：所有可点控件都要有交互反馈（悬停变样＋按下回弹），
+   * 不许「看着能点、点了没反应」。判据＝该类**同时**有 :hover 与 :active 各一条（基表 theme.ts
+   * ＋四张 feature 样式表合起来看，因为缺口是逐张补的）；缺一即红。名单逐个钉死，不靠扫
+   * cursor:pointer —— 桩里跑，谁删了伪态当场红。 */
+  const themeCss = readFileSync(join(CLIENT, 'theme.ts'), 'utf8');
+  const rowCss = readFileSync(join(COMP, 'home-row-styles.ts'), 'utf8');
+  const fvCssAll = readFileSync(join(COMP, 'first-view-styles.ts'), 'utf8');
+  const dmCss = readFileSync(join(COMP, 'dual-mode-styles.ts'), 'utf8');
+  const allCss = [themeCss, dirCss, rowCss, fvCssAll, dmCss].join('\n');
+  const hasState = (cls: string, state: string): boolean =>
+    new RegExp('\\.' + cls + '(?![a-z0-9-])[^{}]*:' + state).test(allCss);
+  const clickables = [
+    'hu-ibtn', 'hu-back', 'hu-crumb', 'hu-row', 'hu-ract', 'hu-abtn', 'hu-pbtn', 'hu-pbtn-s',
+    'hu-dirpath', 'hu-opt', 'hu-avopt', 'hu-plink', 'hu-add',
+    'af-btn', 'af-icon-btn', 'af-more-btn', 'af-menu-item', 'af-rename', 'af-seg-item',
+    'af-diritem', 'af-row', 'af-cap', 'af-promo-item', 'dm-opt',
+  ];
+  for (const cls of clickables) {
+    assert.ok(hasState(cls, 'hover'), '可点控件缺悬停反馈：' + cls);
+    assert.ok(hasState(cls, 'active'), '可点控件缺按下反馈：' + cls);
   }
+  /* 空态接入出口＝块级主按钮（owner 2026-10-17）：实心 accent ＋ 悬停抬起 ＋ 按下回弹。
+   * 按下那条必须单独存在：hover 的 5 级特异性会压过基表 `.hu-pbtn-s:active`（4 级），否则按住时还浮着。 */
+  assert.match(rowCss, /\.hu-pbtn-s\.cta\{[^}]*background:var\(--hu-accent\)/, '接入按钮＝实心 accent 块级主按钮');
+  assert.match(rowCss, /\.hu-pbtn-s\.cta:hover:not\(\[disabled\]\)\{[^}]*translateY\(-1px\)/, '接入按钮悬停抬起');
+  assert.match(rowCss, /\.hu-pbtn-s\.cta:active:not\(\[disabled\]\)\{[^}]*scale\(\.97\)/, '接入按钮按下回弹');
   assert.equal(String(one(pop1, 'hu-dirpath').className).includes('picked'), false, '未选目录时框是虚线态');
   assert.ok(off(popBtn(pop1, '创建')), '未选目录时「创建」禁用');
   clickEl(byAttr(pop1, 'data-act', 'pick-dir')[0]);
@@ -1131,6 +1268,97 @@ test('首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰�
   /* 真机事故（2026-10-13）：state.failed 是失败端点数组（空数组也 truthy），
    * 只要家表没读完就命中错误分支 ⇒ 进面板瞬间闪出「家表读取失败」横条。这里连非空 failed 也不许出横条。 */
   assert.equal(cls(bodyEl, 'hu-err').length, 0, '首屏不得出现报错横条');
+  handle.dispose();
+});
+
+test('顶栏吸顶（要求2）：页头＋面包屑包一层 sticky，列表未到底时粘住、到底后随页滑出', () => {
+  const bodyEl = new El('div', domDoc);
+  const handle = bodyMod.createPanelBody({
+    state: { homes: BOX_HOMES, assistants: BOX_ASSTS, bots: BOX_BOTS, query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
+    bodyEl,
+    titleMetaEl: new El('div', domDoc),
+    getWorkspaces: () => BOX_WS,
+    ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {} },
+    onRetry: () => {},
+  });
+  handle.render();
+  const top = one(bodyEl, 'hu-top');
+  assert.ok(top, '页头＋面包屑包在 .hu-top 同一容器里（一起吸顶）');
+  assert.ok(one(top, 'hu-fhead') && one(top, 'hu-crumb'), '容器里同时有页头与面包屑');
+  assert.ok(top.firstChild === one(top, 'hu-fhead'), '页头在上、面包屑在下（与截图两行同序）');
+  const frameSrc = readFileSync(join(COMP, 'home-frame.ts'), 'utf8');
+  assert.ok(frameSrc.includes('export function topEl'), '吸顶容器由 home-frame.topEl 唯一出口（panel-body 只调用，不自造）');
+  handle.dispose();
+  /* 骨架分支同包裹：首屏几何与真框架一致，吸顶不断 */
+  const skelEl = new El('div', domDoc);
+  const skel = bodyMod.createPanelBody({
+    state: { homes: [], assistants: [], bots: [], query: '', mode: 'agent', loading: true, failed: [], homesReady: false, volatile: false },
+    bodyEl: skelEl,
+    titleMetaEl: new El('div', domDoc),
+    getWorkspaces: () => BOX_WS,
+    ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {} },
+    onRetry: () => {},
+  });
+  skel.render();
+  assert.ok(one(skelEl, 'hu-top'), '骨架也包 .hu-top（几何与真框架一致）');
+  skel.dispose();
+});
+
+test('绑定空态打通接入：无空闲时创建禁用＋给接入出口（死胡同回归）', () => {
+  /* 唯一机器人被别的助理占着 ⇒ 未绑定助理无候选：旧弹层创建高亮可点却静默无事，新弹层必须禁用＋指路接入。 */
+  const solo = B({ channel: 'feishu', botId: 'b1', workspace: 'D:\\agents\\keting', botName: '小帅', connected: true });
+  const holder = A({ id: 'ah', homeId: 'h1', channel: 'feishu', botId: 'b1', status: 'bound', name: '占位', nameSource: 'bot' });
+  const lone = A({ id: 'a9', homeId: 'h1', channel: 'feishu', botId: null, status: 'unbound', name: '', nameSource: 'home' });
+  const connected: Array<{ homeId: string; asst?: string; after?: (ok: boolean) => void }> = [];
+  const bodyEl = new El('div', domDoc);
+  const handle = bodyMod.createPanelBody({
+    state: { homes: [H({ id: 'h1', workspaceId: 'ws-1', path: 'D:\\agents\\keting' })], assistants: [holder, lone], bots: [solo], query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
+    bodyEl,
+    titleMetaEl: new El('div', domDoc),
+    getWorkspaces: () => BOX_WS,
+    ops: {
+      createHome: async () => {}, createAssistant: async () => {},
+      bindAssistant: async () => {},
+      connect: (homeId: string, _anchor: unknown, assistantId?: string, after?: (ok: boolean) => void) => {
+        connected.push({ homeId, asst: assistantId, after })
+      },
+    },
+    onRetry: () => {},
+  });
+  handle.render();
+  clickEl(rowsOf(bodyEl)[0]);
+  const rows = nodes(bodyEl).filter((r: any) => r.getAttribute?.('data-id') === 'a9');
+  assert.ok(rows.length, '未绑定助理行在场');
+  const bindBtn = byAttr(rows[0], 'data-item-act', 'bind-a')[0];
+  assert.ok(bindBtn, '未绑定行有绑定入口');
+  clickEl(bindBtn);
+  const pop = one(domDoc.body, 'hu-pop');
+  assert.ok(pop && txt(pop).includes('都绑满了'), '空态说清无候选');
+  const bind = popBtn(pop, '绑定');
+  assert.ok(bind && off(bind), '空态「绑定」必须禁用（不再假装可点）');
+  const go = byAttr(pop, 'data-act', 'to-connect')[0];
+  assert.ok(go, '空态给新增出口');
+  /* owner 2026-10-17：出口原来是 `.hu-plink` 文本链接，真机反馈「现在是文本不明显」⇒ 升格为块级主按钮；
+   * 同日再订正：文案「接入新机器人」→「新机器人」，图标由链条（link）改成**加号**——一眼看出会新增一个。
+   * 钉四件：① 不再文本链接 ② 走块级主按钮类 ③ 文案＝新机器人 ④ 图标＝plus。 */
+  assert.ok(!String(go.className).includes('hu-plink'), '唯一动作不再用文本链接承载（不明显）');
+  assert.ok(String(go.className).includes('hu-pbtn-s') && String(go.className).includes('cta'),
+    '空态出口＝明显的块级主按钮（.hu-pbtn-s.cta）');
+  assert.equal(txt(go), '新机器人', '按钮文案＝新机器人');
+  const goIcon = nodes(go).find((n: any) => n.attributes?.get?.('data-hu-icon'));
+  assert.equal(goIcon?.attributes?.get?.('data-hu-icon'), 'plus', '图标＝加号（暗示新增一个，不是把现有东西连起来）');
+  clickEl(go);
+  assert.equal(popMod.homePopOpen(), false, '点接入先关弹层');
+  assert.deepEqual(connected.map((c) => c.homeId), ['h1'], '接入带对家（复用 connect 全链路）');
+  /* #141 A：只带家不带助理 ⇒ 接入落成「无主机器人」，会被家表对账补成一条新助理（真机实证）。
+   * 发起方必须把本助理身份带下去。 */
+  assert.equal(connected[0].asst, 'a9', '#141：接入必须带上本助理身份（只传家会让机器人无主）');
+  /* #141 C：落定失败回执 ⇒ 回**同一个助理**的绑定面；成功回执不弹（A 已把它绑上）。 */
+  connected[0].after?.(false);
+  assert.equal(popMod.homePopOpen(), true, '#141 C：接入没落定要回到本助理的绑定面');
+  popMod.closeHomePop(true);
+  connected[0].after?.(true);
+  assert.equal(popMod.homePopOpen(), false, '#141：落定成功不弹（免得给已绑助理开绑定弹层）');
   handle.dispose();
 });
 
@@ -1377,13 +1605,13 @@ test('液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移
 test('面包屑默认路径：无焦点时二级/三级 chip＝列表第一个且可点即进；没有下一级时显式留空', () => {
   const { bodyEl } = renderBox();
   const goto = (root: any, l: string): any => cls(root, 'hu-crumb').filter((c) => c.getAttribute('data-goto') === l)[0];
-  assert.deepEqual(crumbInfo(bodyEl).map((c) => c.label), ['家', '助理 · 客厅', '机器人 · 小帅'],
+  assert.deepEqual(crumbInfo(bodyEl).map((c) => c.label), ['家', '助理 客厅', '机器人 小帅'],
     'L1 无焦点：默认路径＝列表第一行（活跃家 客厅）→ 它的第一位助理（小帅）');
   assert.ok(!goto(bodyEl, 'L2').getAttribute('aria-disabled') && !goto(bodyEl, 'L3').getAttribute('aria-disabled'),
     '后两级必须可点（owner：点击 tab 后就自动进去）——不许留「助理」/「机器人」空 chip');
   clickEl(goto(bodyEl, 'L2'));
   assert.equal(ttlOf(bodyEl).b, '客厅', '点 L2 chip 直接进入该家的助理层');
-  assert.deepEqual(crumbInfo(bodyEl).map((c) => c.label), ['家', '客厅', '机器人 · 小帅'],
+  assert.deepEqual(crumbInfo(bodyEl).map((c) => c.label), ['家', '客厅', '机器人 小帅'],
     'L2 当前层＝家名，L3 预显该家第一位助理');
   clickEl(goto(bodyEl, 'L3'));
   assert.equal(ttlOf(bodyEl).b, '小帅', '点 L3 chip 直接进入该助理的详情层');
@@ -1572,15 +1800,27 @@ test('T10b #127 孤儿家：行内两动作只给孤儿家，重绑走 T8 收养
   assert.ok(popErr && one(popErr, 'hu-err'), '建区没成 ⇒ 弹层不关、灰字留在弹层里（可重试）');
   assert.deepEqual(rebound, [['h9', 'ws-9', dir]], '收养没成就一行没写');
   clickEl(popBtn(popErr, '取消'));
-  /* ③ 「删除家」两步确认：首点只布防（不发请求），次点才真删 */
+  /* ③ 「删除家」popconfirm（要求1）：点按钮只开确认弹，不直接删；确认才真删，取消一行不写 */
   const orow2 = rowById('h9');
   const del2 = cls(orow2, 'hu-ract').filter((b: any) => txt(b) === '删除家')[0];
+  assert.equal(del2.getAttribute('data-item-act'), 'remove-home', '删除家走通用派发（popconfirm 在弹层里确认）');
   clickEl(del2);
-  assert.deepEqual(removed, [], '首点只布防：不发 home.remove');
-  assert.equal(txt(del2), '再点一次确认删除', '首点后文案变成二次确认');
-  clickEl(del2);
+  assert.deepEqual(removed, [], '点删除只开弹：不发 home.remove');
+  const delPop = one(domDoc.body, 'hu-pop');
+  assert.ok(delPop && txt(delPop).includes('删除家'), '删除确认弹打开');
+  assert.ok(txt(delPop).includes('确定删除'), '弹层说清在做删除确认（不是直接删）');
+  assert.ok(txt(delPop).includes('1 位助理'), '弹层点名连带影响（家下还有 1 位助理）');
+  assert.deepEqual(cls(one(delPop, 'hu-phead'), 'hu-pbtn-s').map(txt), ['取消', '确认删除'], '取消/确认删除在标题栏右上角');
+  clickEl(popBtn(delPop, '取消'));
   await tick();
-  assert.deepEqual(removed, ['h9'], '次点才真删（只发一次）');
+  assert.equal(popMod.homePopOpen(), false, '取消逻辑关闭（DOM 渐隐 130ms 后移除，以 homePopOpen 为准）');
+  assert.deepEqual(removed, [], '取消一行不写');
+  clickEl(byAttr(rowById('h9'), 'data-item-act', 'remove-home')[0]);
+  const delPop2 = one(domDoc.body, 'hu-pop');
+  clickEl(popBtn(delPop2, '确认删除'));
+  await tick();
+  assert.deepEqual(removed, ['h9'], '确认才真删（只发一次）');
+  assert.equal(one(domDoc.body, 'hu-pop'), null, '确认后弹层关闭');
   handle.dispose();
 });
 
@@ -1665,6 +1905,31 @@ test('T14 #136 孤儿置顶：工作区不存在的家排在 L1 最顶部（红�
   assert.ok(top.classList.contains('orphan'), '置顶的是红卡（不是换了个位置的普通行）');
   assert.ok(one(top, 'hu-warnline'), '红色警示行跟着一起上去');
   assert.equal(txt(one(top, 'hu-path')), 'D:\\agents\\gone', '原工作区目录带着走');
+});
+
+test('在线一律绿（owner 2026-10-17）：圆点 / 在线胶囊 / 气泡状态字 / 列表副标同一个绿档', () => {
+  /* 面板里「在线」曾有三副面孔：蓝胶囊（accent）、黑状态字（ink）、灰列表副标；而状态点注释早写着
+   * 「绿＝在线」（.hu-cdot.on 就是 --af-success）。owner 裁定：**属于在线的文字与圆点都必须是绿**。
+   * 绿档取 `--af-success`，文字用「绿 × ink」的混合色 ⇒ 深浅两套主题都保得住对比度。 */
+  const uiCss = readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8');
+  assert.ok(/\.hu-dot\.on\{[^}]*background:var\(--af-success\)/.test(uiCss), '在线圆点＝绿（--af-success，与会话头呼吸点同款）');
+  assert.ok(/\.hu-online\{[^}]*color:color-mix\(in srgb, var\(--af-success\) 55%, var\(--hu-ink\)\)/.test(uiCss),
+    '「在线」胶囊文字＝绿（随 ink 走，深色模式自动变浅）');
+  assert.ok(/\.hu-online\{[^}]*background:color-mix\(in srgb, var\(--af-success\) 14%, transparent\)/.test(uiCss),
+    '在线胶囊底色＝同色淡染（不再是 accent 蓝）');
+  const rowCss = readFileSync(join(COMP, 'home-row-styles.ts'), 'utf8');
+  assert.ok(rowCss.includes('.home-ui .hu-son{') && rowCss.includes('.hu-tt small .hu-st-on{'),
+    '列表副标与气泡状态字共用同一绿档类（不许再出现第三种颜色）');
+  const tipSrc = readFileSync(join(COMP, 'home-row-tip.ts'), 'utf8');
+  assert.ok(tipSrc.includes("data.status === 'on' ? ' hu-st-on'") && tipSrc.includes("data.status === 'unbound' ? ' hu-st-bad'"),
+    '气泡在线挂绿档、未绑定仍挂红档（只把在线染绿）');
+  /* 真渲染：机器人副标「渠道（在线）」的在线二字带绿档类，离线不染。 */
+  const on = formsMod.botSubNode('feishu', true);
+  const off = formsMod.botSubNode('feishu', false);
+  assert.equal(txt(on), '飞书（在线）', '副标文案不变（渠道名＋括号注解）');
+  assert.equal(cls(on, 'hu-son').length, 1, '在线二字走绿档（真节点，不是字符串拼接）');
+  assert.equal(cls(off, 'hu-son').length, 0, '离线不染绿（保持脚注灰）');
+  assert.equal(txt(off), '飞书（离线）');
 });
 
 console.log('features/home-steel: ALL PASS');

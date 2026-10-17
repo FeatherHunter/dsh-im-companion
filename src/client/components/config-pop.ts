@@ -72,7 +72,12 @@ function openConfigPop(anchor: AnchorRef, rpc: RpcCall | null): void {
       dir = String(v.dir ?? '')
       pathText.textContent = dir || '宿主没有回目录'
       const files = Array.isArray(v.files) ? v.files : []
-      filesText.textContent = files.length ? '目录内：' + files.join(' · ') : ''
+      /* 目录内文件是同级并列项：各成一个节点、由 flex gap 分隔（分隔靠结构不靠符号）。 */
+      filesText.textContent = ''
+      if (files.length) {
+        filesText.setAttribute('style', 'display:flex;flex-wrap:wrap;gap:6px')
+        filesText.replaceChildren(h('span', null, '目录内：'), ...files.map((f) => h('span', null, f)))
+      }
     } catch (e) {
       pathText.textContent = '读取失败'
       say('读配置目录失败：' + msgOf(e))

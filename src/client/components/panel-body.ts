@@ -8,8 +8,9 @@
 import { h, clear } from '../dom'
 import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
 import type { WorkspaceRef } from '../data/home-model'
-import { crumbsEl, footEl, headEl, slideTab, type Level } from './home-frame'
-import { bindAsstPop, newAsstPop, newHomePop, renameAsstPop, renameHomePop, type FormOps } from './home-forms'
+import { crumbsEl, footEl, headEl, slideTab, topEl, type Level } from './home-frame'
+import { newAsstPop, newHomePop, renameAsstPop, renameHomePop, type FormOps } from './home-forms'
+import { bindAsstPop } from './home-bind-forms'
 import { moveAsstPop, unbindAsstPop } from './home-move-forms'
 import { orphanHomeAct } from './home-orphan-forms'
 import { newAsstAct } from './home-create-act'
@@ -25,7 +26,7 @@ export interface PanelBodyDeps {
   state: PanelState
   bodyEl: HTMLElement
   getWorkspaces(): WorkspaceRef[]
-  ops: FormOps & MoveOps & { connect(homeId: string, anchor: HTMLElement): void }
+  ops: FormOps & MoveOps & { connect(homeId: string, anchor: HTMLElement, assistantId?: string, after?: (ok: boolean) => void): void }
   onRetry(): void
   titleMetaEl?: HTMLElement
   /** 面板级动作簇（船 / 串门搬家 / 刷新）由装配层交进来，放进绿框页头右侧与 ＋ 同行。 */
@@ -129,7 +130,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
         logLine('info', 'assistant.action', { action: 'connect', assistantId: id, ok: false, message: '助理还没绑定机器人，接入被拒收（fail-closed）' })
         return
       }
-      deps.ops.connect(a ? a.homeId : selHome, anchor)
+      /* #141：手上已经有 `a` 就必须把身份带下去——只传 homeId 会让接入落成「无主机器人」。 */
+      deps.ops.connect(a ? a.homeId : selHome, anchor, a ? a.id : undefined)
     } else if (kind === 'detail-a') {
       const a = v.assistants.find((x) => x.id === id)
       const home = a ? v.homes.find((x) => x.id === a.homeId) : undefined
@@ -240,12 +242,9 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
      * 只要家表还没读完就会命中错误分支；现在未就绪一律骨架，读失败也不再往顶部塞横条。 */
     if (!state.homesReady) {
       const info = { title: '家', sub: '正在加载' }
-      root.appendChild(headEl({
-        level: 'L1', title: info.title, sub: info.sub,
-        onBack: () => go('L1'), onMore: () => undefined,
-        actions: deps.headActions,
-      }))
-      root.appendChild(crumbsEl(stageCrumbOpts(stage(v))))
+      root.appendChild(topEl(headEl({ level: 'L1', title: info.title, sub: info.sub,
+        onBack: () => go('L1'), onMore: () => undefined, actions: deps.headActions }),
+        crumbsEl(stageCrumbOpts(stage(v)))))
       root.appendChild(skeletonRows())
       root.appendChild(footEl({ level: 'L1', bound: false, onPrimary: () => openCreate() }))
       return
@@ -254,14 +253,10 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     if (level === 'L3' && !v.assistants.some((x) => x.id === selAsst)) level = 'L2'
     const sc = stage(v)
     const info = stageHead(sc)
-    root.appendChild(headEl({
-      level, title: info.title, sub: info.sub,
-      onBack: () => go(level === 'L3' ? 'L2' : 'L1'),
-      onMore: (anchor) => openHomeSettings(anchor),
-      actions: deps.headActions,
-    }))
     const crumbs = crumbsEl(stageCrumbOpts(sc))
-    root.appendChild(crumbs)
+    root.appendChild(topEl(headEl({ level, title: info.title, sub: info.sub,
+      onBack: () => go(level === 'L3' ? 'L2' : 'L1'), onMore: (a) => openHomeSettings(a),
+      actions: deps.headActions }), crumbs))
     if (state.volatile) {
       const warn = h('div', { className: 'hu-err' }, '家表未落盘（宿主半尚未重载）：当前为临时呈现，重载插件后即持久化。')
       const retry = h('button', { type: 'button' }, '重试')

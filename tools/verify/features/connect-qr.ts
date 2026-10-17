@@ -184,7 +184,7 @@ test('#49 旧分叉移除：调用方统一到共享选择器', () => {
   assert.ok(acts.includes('setLocalWorkspace'), '落家应走 MetaStore');
   assert.ok(!acts.includes('尚无机器人'), '禁空选家旧逻辑不得残留');
   const modelSrc = readFileSync(join(REPO, 'src', 'client', 'data', 'model.ts'), 'utf8');
-  assert.ok(modelSrc.includes("l.workspace ? '工作区·'"), '有家空壳应展示家路径');
+  assert.ok(modelSrc.includes("'工作区（' + path + '）'"), '有家空壳应展示家路径（注解走括号，#140）');
   const dirPickerSrc = readFileSync(join(REPO, 'src', 'client', 'ui', 'dir-picker.ts'), 'utf8');
   const doneAt = dirPickerSrc.indexOf('const done');
   const resolveAt = dirPickerSrc.indexOf('resolveFn(v)', doneAt);
@@ -246,10 +246,17 @@ test('#49 commitBinding：落定/失败/取消/已绑/关联失败', async () =>
   const run = async (setRes: unknown, opts: any = {}) => {
     const calls: string[] = [];
     const toasts: string[] = [];
+    const bound: any[] = [];
     let done = 0;
-    const fakeRpc = async (ch: string, ep: string) => {
+    const fakeRpc = async (ch: string, ep: string, p?: any) => {
       calls.push(ch + ' ' + ep);
       if (ch === '/im-companion' && ep === 'ping') return { ok: true, value: {} };
+      /* #141：落定编排在 workspace.set 之后补的归属写。 */
+      if (ep === 'assistant.bind') {
+        bound.push(p);
+        if (opts.bindThrows) throw new Error('bind down');
+        return opts.bindRes ?? { ok: true, value: {} };
+      }
       if (ep === 'meta.rename' || ep === 'meta.local.remove') {
         if (opts.renameThrows) throw new Error('meta down');
         return { ok: true, value: {} };
@@ -267,9 +274,10 @@ test('#49 commitBinding：落定/失败/取消/已绑/关联失败', async () =>
       onDone: () => { done++; },
       botId: 'new1', ws: opts.ws === undefined ? 'D:\\home\\xiaoshuai' : opts.ws,
       prevWorkspace: opts.prev ?? '', agentName: opts.name === undefined ? '小帅' : opts.name,
+      assistantId: opts.assistantId,
       notFoundRetry: opts.retry,
     });
-    return { calls, toasts: toasts.join('|'), done, ok };
+    return { calls, toasts: toasts.join('|'), done, ok, bound };
   };
   {
     const r = await run({ ok: true, value: {} });
@@ -280,6 +288,24 @@ test('#49 commitBinding：落定/失败/取消/已绑/关联失败', async () =>
     assert.ok(r.toasts.includes('已接入并绑定工作区'));
     assert.ok(!r.toasts.includes('绑定失败'));
     assert.equal(r.done, 1);
+  }
+  /* #141：发起接入的那个助理必须落回来——workspace.set 只认下工作区，归属由 assistant.bind 写。 */
+  {
+    const r = await run({ ok: true, value: {} }, { assistantId: 'a9' });
+    assert.equal(r.ok, true);
+    assert.equal(r.calls.filter((c) => c === '/im-companion assistant.bind').length, 1, '#141：带身份必须补一次 assistant.bind');
+    assert.equal(r.bound[0].id, 'a9');
+    assert.equal(r.bound[0].channel, 'wechat');
+    assert.equal(r.bound[0].botId, 'new1');
+  }
+  {
+    const r = await run({ ok: true, value: {} });
+    assert.equal(r.bound.length, 0, '#141：不带身份（旧面板家级接入）不许改助理表，行为一字不变');
+  }
+  {
+    const r = await run({ ok: true, value: {} }, { assistantId: 'a9', bindRes: { ok: false, error: { code: 'already-bound', message: '该机器人已被绑定（一对一）' } } });
+    assert.equal(r.ok, false);
+    assert.ok(r.toasts.includes('机器人已接入，但没绑上这个助理：该机器人已被绑定（一对一）'), '#141：归属没写成功必须如实报，不许谎报成功');
   }
   {
     const r = await run({ ok: false, error: { message: 'denied' } });
@@ -417,7 +443,7 @@ test('#49 有家空壳展示家路径', () => {
   const m = modelMod.buildModel([], metaDoc, 'agent', '');
   const row = m.agents.find((v: any) => v.name === '小帅');
   assert.ok(row, '空壳行应在');
-  assert.equal(row.workspaceLine, '工作区·D:\\agents\\xiaoshuai');
+  assert.equal(row.workspaceLine, '工作区（D:\\agents\\xiaoshuai）');
   assert.equal(row.sub, '尚未接入渠道');
 });
 

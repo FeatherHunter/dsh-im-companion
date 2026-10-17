@@ -29,6 +29,9 @@ export interface Assistant {
   boundAt: number | null
 }
 
+/* 渠道语义（#138）住在 `home-channel.ts`（它是判据，不是展示回落）；这里转出去，调用点 import 不变。 */
+export { bucketOf, channelOf } from './home-channel'
+
 export interface WorkspaceRef {
   workspaceId: string
   path: string
@@ -216,14 +219,16 @@ export interface SeedDoc {
 }
 
 /** 种子迁移（T3 故事 20–22 子集＋T1 §4.3）：DSH 全集一区一家（含无人之家，序跟入序）；
- * 有归属 bot 各一 bound 助理；旧 names 命中即 nameSource=user（改名优先），否则 system；
- * 未绑定 bot 不建行（T6a 不做未绑定行；经 freeBots 在建助理时认领）；归档/置顶不动（不在本层）。
+ * **只有第一次进账的工作区**里，有归属 bot 各一 bound 助理（`existingHomes` 里已有家的工作区不补——
+ * #141：否则删掉绑定助理后，任何一次别处的缺口种子都会把它原地复活）；旧 names 命中即 nameSource=user
+ * （改名优先），否则 system；未绑定 bot 不建行（T6a 不做未绑定行；经 freeBots 在建助理时认领）；归档/置顶不动。
  * 纯函数；幂等由宿主 home.seed 按规范路径/bot 判重保证，可重跑。 */
 export function buildSeed(
   workspaces: WorkspaceRef[],
   bots: BotRef[],
   legacy: LegacyNames | null,
   now = Date.now(),
+  existingHomes: Home[] = [],
 ): SeedDoc {
   const names = legacy?.names
   const homes: Home[] = []
@@ -250,8 +255,11 @@ export function buildSeed(
     return homes.find((h) => normPath(h.path) === np) ?? null
   }
   const claimed = new Set<string>()
+  const known = new Set((existingHomes || []).map((h) => normPath(h.path)))
   for (const b of bots || []) {
     if (!b || !b.botId || !b.channel || !b.workspace) continue
+    /* #141：只给「这次才第一次进账」的工作区补行——已在家表里的工作区不再从机器人快照凭空造行。 */
+    if (known.has(normPath(b.workspace))) continue
     const k = b.channel + '' + b.botId
     if (claimed.has(k)) continue
     const home = homeOf(b.workspace)
@@ -268,24 +276,21 @@ export function buildSeed(
   return { homes, assistants }
 }
 
-/** 缺口判定（每轮快照后内存比对，零 IO）：**任一工作区没有家**即补（T10 #124：家＝工作区的镜像），
- * 以及「某 bot 的工作区有家但没有 bound 行」。判重口径与宿主 `seedDocs` 一致（规范路径）。
+/** 缺口判定（每轮快照后内存比对，零 IO）：**任一工作区没有家**即补（T10 #124：家＝工作区的镜像）。
+ * 判重口径与宿主 `seedDocs` 一致（规范路径）。
  * T10b #127 订正：**墓碑行（用户「删除家」）不进 rows**——删掉的家不再占名额、也不会被每轮 sweep 补回；
  * 宿主判重同样忽略墓碑（createHomeRow/seedDocs），故工作区重建时补到的是**全新家**，而不是那块墓碑。
- * 已知局限：删掉「有工作区」的助理后快照仍会把它当新号补回（复活）；真修需删行留痕或删时解绑，归 T6c/后续票。 */
-export function seedGap(workspaces: WorkspaceRef[], bots: BotRef[], homes: Home[], assistants: Assistant[]): boolean {
+ * #141 订正（真机实证的抢跑）：「某 bot 的工作区有家、但没有 bound 助理行」**不再是缺口**。原判定会让一次
+ * 接入留下的「已绑工作区·无主」窗口被对账补成一条**新**助理，把用户本想绑的那行挤成孤儿；去掉后连带消掉
+ * 原「删掉有工作区的助理会被复活」那条已知局限——绑定是显式动作（assistant.bind），只有第一次进账的
+ * 工作区才由 buildSeed 从机器人快照补行。故本函数**不再读 assistants**（参数随之收窄）。 */
+export function seedGap(workspaces: WorkspaceRef[], bots: BotRef[], homes: Home[]): boolean {
   const rows = (homes || []).filter((h) => !h.tombstone)
   /* 空表有料（历史契约）：家表空而工作区/机器人有货 ⇒ 补一次（buildSeed 按有工作区的号建家）。 */
   if (!rows.length && ((workspaces || []).length || (bots || []).length)) return true
   for (const w of workspaces || []) {
     if (!w || !w.workspaceId || !w.path) continue
     if (!rows.some((h) => normPath(h.path) === normPath(w.path) || (h.workspaceId && h.workspaceId === w.workspaceId))) return true
-  }
-  for (const b of bots || []) {
-    if (!b || !b.botId || !b.channel || !b.workspace) continue
-    if (!isBotBound(assistants, b.channel, b.botId)) {
-      if (rows.some((h) => normPath(h.path) === normPath(b.workspace))) return true
-    }
   }
   return false
 }

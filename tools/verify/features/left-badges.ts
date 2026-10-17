@@ -17,6 +17,7 @@ const ENTRIES = [
   join(DATA, 'bindings.ts'),
   join(FEAT, 'index.ts'),
   join(FEAT, 'left-badges', 'manifest.ts'),
+  join(REPO, 'src', 'client', 'components', 'home-identity.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'b1-left-badges-'));
@@ -47,6 +48,8 @@ const styles: any = req('./features/left-badges/styles.js');
 const registry: any = req('./features/index.js');
 const hover: any = req('./features/left-badges/hover-card.js');
 const fleetApi: any = req('./client/data/fleet-api.js');
+const face: any = req('./features/left-badges/assistant-face.js');
+const identity: any = req('./client/components/home-identity.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over = {}) => ({
@@ -286,10 +289,18 @@ test('hover-card：卡片数据（未绑定null/渠道行/时间）', () => {
   assert.equal(d.kind, 'online');
   assert.equal(d.channels.length, 2);
   assert.equal(d.channels[0].kind, 'online');
-  assert.ok(String(d.channels[0].glyph).includes('<svg'));
+  assert.ok(String(d.channels[0].glyph).includes('<svg'), '左侧留渠道 logo');
+  assert.equal(d.channels[0].face.desc.img, null, '无 faceOf 且无渠道图回落无图');
+  const withAv = hover.buildCardData(W1, [snap({ lastCheckedAt: 5000, avatarUrl: 'https://x/y.png', botName: 'AB' })]);
+  assert.equal(withAv.channels[0].face.desc.img, 'https://x/y.png', '无助理时渠道图兜底');
+  assert.equal(withAv.channels[0].label, 'AB', '助理名');
+  const named = hover.buildCardData(W1, [snap({ lastCheckedAt: 5000, botId: 'f9', botName: '机器人' })], undefined,
+    () => ({ desc: { img: 'data:image/png;base64,xx', tint: '', initial: '' }, name: '小婉' }));
+  assert.equal(named.channels[0].label, '小婉', '用户改名优先作助理名');
+  assert.equal(named.channels[0].face.desc.img, 'data:image/png;base64,xx', '助理上传图优先');
   assert.match(d.time, /最后检测/);
-  const p1 = hover.breathPhase('feishu');
-  assert.equal(hover.breathPhase('feishu').delay, p1.delay, '同渠道节奏稳定');
+  const p1 = styles.breathPhase('feishu');
+  assert.equal(styles.breathPhase('feishu').delay, p1.delay, '同渠道节奏稳定');
   assert.match(p1.delay, /^-\d+\.\d+s$/);
   assert.match(p1.duration, /^\d+\.\d+s$/);
 });
@@ -328,7 +339,7 @@ test('hover-card：同渠道组内槽位均分（#33v2，构造错开不靠运�
   const phases = d.channels.map((c) => {
     const i = seen[c.channel] || 0;
     seen[c.channel] = i + 1;
-    return hover.breathPhase(c.channel, c.label + '\0' + (c.bot || ''), (i * 997) % 1600);
+    return styles.breathPhase(c.channel, c.label + '\0' + (c.bot || ''), (i * 997) % 1600);
   });
   const delays = phases.map((p) => p.delay);
   assert.equal(new Set(delays).size, 3, '组内三行 delay 必错开：' + delays.join(','));
@@ -339,9 +350,9 @@ test('hover-card：同渠道组内槽位均分（#33v2，构造错开不靠运�
     gap = Math.min(gap, g, 1600 - g);
   }
   assert.ok(gap >= 300, '两两最小间隔eat 0.3s，实测 ' + (gap / 1000) + 's');
-  assert.equal(hover.breathPhase('feishu').delay, hover.breathPhase('feishu').delay, '无种子走旧口径且稳定');
-  assert.equal(hover.breathPhase('feishu', 'x', 0).delay, hover.breathPhase('feishu').delay, '组内首个=旧口径');
-  assert.equal(hover.breathPhase('feishu', 'x', 0).delay, hover.breathPhase('feishu', 'x', 0).delay, '重渲染不跳变');
+  assert.equal(styles.breathPhase('feishu').delay, styles.breathPhase('feishu').delay, '无种子走旧口径且稳定');
+  assert.equal(styles.breathPhase('feishu', 'x', 0).delay, styles.breathPhase('feishu').delay, '组内首个=旧口径');
+  assert.equal(styles.breathPhase('feishu', 'x', 0).delay, styles.breathPhase('feishu', 'x', 0).delay, '重渲染不跳变');
 });
 
 test('hover-card：悬浮卡三飞书绿点 animationDelay 端到端错开（#33）', async () => {
@@ -385,6 +396,151 @@ test('hover-card：悬浮卡三飞书绿点 animationDelay 端到端错开（#33
     delete globalThis.document;
     delete globalThis.window;
   }
+});
+
+
+test('hover-card：行四段（渠道logo/助理脸/助理名/右侧圆点）', async () => {
+  const bots = [
+    snap({ botId: 'f1', botName: '客服小美', avatarUrl: 'https://x/av1.png', lastCheckedAt: 5000 }),
+    snap({ botId: 'f2', botName: '夜班', avatarUrl: '', lastCheckedAt: 5000 }),
+  ];
+  const faceOf = (b) => b.botId === 'f1'
+    ? { desc: { img: 'https://x/av1.png', tint: '', initial: '' }, name: '客服小美' }
+    : { desc: { img: null, tint: 'background:rgb(1,2,3);color:#fff', initial: '夜' }, name: '夜班' };
+  const row = stubEl('div');
+  const body = stubEl('body');
+  const listeners = {};
+  const docStub = {
+    createElement: (t) => stubEl(t),
+    body,
+    documentElement: stubEl('html'),
+    addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); },
+    removeEventListener: () => {},
+  };
+  const winStub = { innerWidth: 1024, innerHeight: 768, addEventListener: () => {}, removeEventListener: () => {} };
+  globalThis.document = docStub;
+  globalThis.window = winStub;
+  try {
+    const data = hover.buildCardData(W1, bots, undefined, faceOf);
+    const dispose = hover.mountHoverCard({ matchRow: (n) => (n === row ? row : null), resolve: () => data }, 0);
+    try {
+      for (const fn of listeners.mouseover || []) fn({ target: row });
+      await new Promise((r) => setTimeout(r, 20));
+      const card = body.children.find((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card'));
+      assert.ok(card, '悬浮卡已挂载');
+      const rows = card.children.filter((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card-row'));
+      assert.equal(rows.length, 2);
+      const cls = (n) => String(n.attrs && n.attrs.class || '').split(' ');
+      // 行0：logo + 上传图脸 + 助理名 + 右侧圆点
+      assert.ok(String(rows[0].children[0].innerHTML || '').includes('data-channel-logo="feishu"'), '首格是渠道 logo');
+      const fc0 = rows[0].children[1];
+      assert.ok(cls(fc0).includes('left-badges-card-avatar'), '次格是助理脸');
+      const img = fc0.children.find((c) => c.tag === 'img');
+      assert.ok(img, '上传图挂 img');
+      assert.equal(img.attrs.src, 'https://x/av1.png');
+      assert.equal(rows[0].children[2].text, '客服小美', '助理名');
+      const dot0 = rows[0].children.find((c) => cls(c).includes('left-badges-card-dot'));
+      assert.ok(dot0, '状态点在');
+      assert.equal(rows[0].children[rows[0].children.length - 1], dot0, '圆点最右');
+      // 行1：色脸（style + 首字）
+      const fc1 = rows[1].children[1];
+      assert.equal(fc1.children.length, 0, '色脸不挂 img');
+      assert.equal(fc1.attrs.style, 'background:rgb(1,2,3);color:#fff', '色脸带底色');
+      assert.equal(fc1.text, '夜', '色脸首字');
+    } finally {
+      dispose();
+    }
+  } finally {
+    delete globalThis.document;
+    delete globalThis.window;
+  }
+});
+
+test('assistant-face：matchAssistant（精确/兜底/同路家/无）', () => {
+  const A = (over = {}) => ({ id: 'a', homeId: 'h1', channel: 'feishu', botId: null, status: 'bound', name: '', nameSource: 'bot', avatar: null, ...over });
+  const H = (over = {}) => ({ id: 'h1', path: W1, ...over });
+  const bot = snap({ botId: 'f1', lastCheckedAt: 1 });
+  assert.equal(face.matchAssistant([A({ id: 'a-qq', channel: 'qq', botId: 'f1' }), A({ id: 'a-ok', channel: 'feishu', botId: 'f1' })], [], bot, W1).id, 'a-ok', '渠道+botId 精确优先');
+  assert.equal(face.matchAssistant([A({ id: 'a-loose', channel: 'qq', botId: 'f1' })], [], { ...bot, channel: 'weixin' }, W1).id, 'a-loose', 'botId 兜底');
+  assert.equal(face.matchAssistant([A({ id: 'a-home', botId: null })], [H()], { ...bot, botId: '' }, W1).id, 'a-home', '同路家首助理');
+  assert.equal(face.matchAssistant([], [], { ...bot, botId: '' }, W1), null, '无家无助理回 null');
+  assert.equal(face.matchAssistant([A({ id: 'a-tomb', botId: null })], [H({ tombstone: { at: 1, reason: 'x' } })], { ...bot, botId: '' }, W1), null, '墓碑家不进');
+});
+
+test('assistant-face：faceFor 优先级（上传图>色脸>渠道图>首字）', () => {
+  const A = (over = {}) => ({ id: 'a-xw', homeId: 'h1', channel: 'feishu', botId: 'f1', status: 'bound', name: '', nameSource: 'bot', avatar: null, ...over });
+  const H = [{ id: 'h1', path: W1 }];
+  const bot = snap({ botId: 'f1', botName: '旧名', avatarUrl: 'https://c/b.png', lastCheckedAt: 1 });
+  // 上传图 + 用户改名
+  const up = face.faceFor(bot, [A({ name: '小婉', nameSource: 'user', avatar: 'img:face.png' })], H, W1, new Map([['a-xw', 'data:image/png;base64,ZZZ']]));
+  assert.equal(up.name, '小婉', '用户改名优先作助理名');
+  assert.equal(up.desc.img, 'data:image/png;base64,ZZZ', '助理上传图优先');
+  // 图未到 → 色脸（预设 3 号色 + 名首字）
+  const tint = face.faceFor(bot, [A({ name: '小婉', nameSource: 'user', avatar: '3' })], H, W1, new Map());
+  assert.equal(tint.desc.img, null);
+  assert.equal(tint.desc.tint, face.faceStyle('a-xw', '3'), '预设色脸');
+  assert.equal(tint.desc.initial, '小', 'CJK 取首字');
+  assert.equal(tint.name, '小婉');
+  // 无助理 → 渠道图兜底；都无 → 首字
+  const ch = face.faceFor(bot, [], [], W1, new Map());
+  assert.equal(ch.desc.img, 'https://c/b.png', '无助理时渠道图兜底');
+  const bare = face.faceFor(snap({ botId: '', botName: '', avatarUrl: '', lastCheckedAt: 1 }), [], [], W1, new Map());
+  assert.equal(bare.desc.img, null);
+  assert.equal(bare.desc.initial, '未', '占位名首字');
+});
+
+test('assistant-face：视觉 parity（色相/字形与面板一致）', () => {
+  for (const [id, av] of [['a1', null], ['a1', '3'], ['x', 'img:zzz'], ['n', '9'], ['k', '1']]) {
+    assert.equal(face.faceStyle(id, av), identity.avatarStyle(id, av), '底色一致：' + id + '/' + av);
+  }
+  for (const n of ['小婉', '客服小美', 'dsh-log', 'ab', 'x', '', '  ']) {
+    assert.equal(face.initialsOf(n), identity.initialsOf(n), '字形一致：' + JSON.stringify(n));
+  }
+  assert.equal(face.hasFaceImage('img:face.png'), true);
+  assert.equal(face.hasFaceImage('3'), false);
+  assert.equal(face.hasFaceImage(null), false);
+});
+
+test('assistant-face：paintFace（img/色脸）', () => {
+  const body = stubEl('body');
+  globalThis.document = { createElement: (t) => stubEl(t), body, documentElement: stubEl('html'), addEventListener: () => {}, removeEventListener: () => {} };
+  try {
+    const withImg = face.paintFace({ img: 'data:image/png;base64,Z', tint: '', initial: '' });
+    assert.ok(withImg, '有图成格');
+    assert.equal(String(withImg.attrs.class).split(' ').includes('left-badges-card-avatar'), true);
+    const img = withImg.children.find((c) => c.tag === 'img');
+    assert.equal(img.attrs.src, 'data:image/png;base64,Z');
+    const tinted = face.paintFace({ img: null, tint: 'background:X;color:Y', initial: '小' });
+    assert.equal(tinted.children.length, 0);
+    assert.equal(tinted.attrs.style, 'background:X;color:Y');
+    assert.equal(tinted.text, '小');
+    const bare = face.paintFace({ img: null, tint: '', initial: '' });
+    assert.equal(bare.text, '?', '空首字回 ?');
+  } finally {
+    delete globalThis.document;
+  }
+});
+
+test('assistant-face：mountAssistantFaces（home.list + avatar.get，rpc 空回落）', async () => {
+  const homes = [{ id: 'h1', path: W1 }];
+  const assistants = [{ id: 'a-xw', homeId: 'h1', channel: 'feishu', botId: 'f1', status: 'bound', name: '小婉', nameSource: 'user', avatar: 'img:face.png' }];
+  const seen = [];
+  const rpc = async (ch, endpoint, payload, signal) => {
+    seen.push(endpoint);
+    if (endpoint === 'home.list') return { ok: true, value: { homes, assistants } };
+    if (endpoint === 'avatar.get') return { ok: true, value: { images: { 'a-xw': 'data:image/png;base64,ZZZ' } } };
+    throw new Error('bad ' + endpoint);
+  };
+  const faces = face.mountAssistantFaces(rpc);
+  await faces.refresh();
+  assert.ok(seen.includes('home.list') && seen.includes('avatar.get'), '家表+取图都走自有桥');
+  const hit = faces.faceOf(snap({ botId: 'f1', botName: '旧名', lastCheckedAt: 1 }), W1);
+  assert.equal(hit.name, '小婉', '助理名');
+  assert.equal(hit.desc.img, 'data:image/png;base64,ZZZ', '助理上传图');
+  const mute = face.mountAssistantFaces(null);
+  await mute.refresh();
+  const fb = mute.faceOf(snap({ botId: 'f1', botName: '旧名', avatarUrl: 'https://c/b.png', lastCheckedAt: 1 }), W1);
+  assert.equal(fb.desc.img, 'https://c/b.png', '无 rpc 回落渠道图');
 });
 
 

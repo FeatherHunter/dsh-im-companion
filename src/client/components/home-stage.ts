@@ -5,11 +5,12 @@
  * 结构照 T4 认可款原型 `prototypes/home-assistant/proto-studio.html`（owner 裁定 2026-10-13）。 */
 import { h } from '../dom'
 import { channelLabel } from '../data/config'
-import type { Assistant } from '../data/home-model'
+import { bucketOf, channelOf, type Assistant } from '../data/home-model'
 import { detailEl } from './home-detail'
 import type { Level } from './home-frame'
 import { crumbsEl } from './home-frame'
 import { partitionHomes } from './home-index'
+import { metaRow } from './home-meta'
 import { asstDisplay, asstName, asstOfHome, asstRow, channelRow, emptyEl, homeDisplay, homeName, homeRow, type RowView } from './home-rows'
 
 export interface StageCtx {
@@ -27,25 +28,62 @@ export interface StageCtx {
   onAct(kind: string, id: string, anchor: HTMLElement): void
 }
 
-const channelsOf = (v: RowView): string[] => [...new Set(v.assistants.map((a) => a.channel))]
+/** 真渠道集合：**未绑定助理不算渠道**（#138 渠道诚实性）——它们的 channel 是旧版客户端编的猜测值。 */
+const channelsOf = (v: RowView): string[] => [...new Set(v.assistants.map((a) => channelOf(a)).filter((x): x is string => !!x))]
 
-/** 页头标题 + 副标（随层/随模式变）。 */
-export function stageHead(c: StageCtx): { title: string; sub: string } {
+/** 待接入人数（未绑定助理）：按渠道模式里它们归一个显式的「待接入」组，不许从视野里消失。 */
+const pendingOf = (v: RowView): number => v.assistants.filter((a) => a.status === 'unbound').length
+
+/** 按渠道模式的桶键序列：真渠道在前，「待接入」组殿后（键是空串，与 `bucketOf` 同源）。 */
+const channelKeys = (v: RowView): string[] => [...channelsOf(v), ...(pendingOf(v) ? [''] : [])]
+
+/** 桶键的显示名：空键就是「待接入」，不是空字符串。 */
+const bucketLabel = (k: string): string => (k ? channelLabel(k) : '待接入')
+
+/** 页头标题 + 副标（随层/随模式变）。副标走元信息原语：主数强、注解进括号，不拼分隔符（#139）。 */
+export function stageHead(c: StageCtx): { title: string; sub: string | HTMLElement } {
   const v = c.view
   if (c.channelMode) {
-    if (c.level === 'L1') return { title: '渠道', sub: `${channelsOf(v).length} 个渠道 · 每个渠道下的助理` }
-    const list = v.assistants.filter((a) => a.channel === c.selChannel)
+    if (c.level === 'L1') {
+      const n = channelsOf(v).length
+      const p = pendingOf(v)
+      return {
+        title: '渠道',
+        sub: metaRow([
+          { text: `${n} 个渠道`, tone: 'strong' },
+          ...(p ? [{ text: `${p} 位待接入`, tone: 'accent' as const, note: true }] : []),
+        ]),
+      }
+    }
+    const list = v.assistants.filter((a) => bucketOf(a) === c.selChannel)
     const bound = list.filter((a) => a.status === 'bound').length
-    return { title: c.selChannel ? channelLabel(c.selChannel) : '渠道', sub: `${list.length} 位助理 · ${bound} 位已绑` }
+    return {
+      title: bucketLabel(c.selChannel),
+      sub: metaRow([{ text: `${list.length} 位助理`, tone: 'strong' }, { text: `${bound} 位已绑`, note: true }]),
+    }
   }
-  if (c.level === 'L1') return { title: '家', sub: `${v.homes.length} 个 · 每个家对应一个工作区` }
+  if (c.level === 'L1') {
+    return {
+      title: '家',
+      sub: metaRow([{ text: `${v.homes.length} 个家`, tone: 'strong' }, { text: '每个家对应一个工作区', note: true }]),
+    }
+  }
   const home = v.homes.find((x) => x.id === c.selHome)
   if (c.level === 'L2') {
     const list = home ? asstOfHome(v, home.id) : []
-    return { title: home ? homeName(v, home) : '家', sub: `${home ? homeDisplay(v, home).from : ''} · ${list.length} 位助理` }
+    return {
+      title: home ? homeName(v, home) : '家',
+      sub: metaRow([
+        { text: `${list.length} 位助理`, tone: 'strong' },
+        ...(home ? [{ text: homeDisplay(v, home).from, note: true, tone: 'weak' as const }] : []),
+      ]),
+    }
   }
   const a = v.assistants.find((x) => x.id === c.selAsst)
-  return { title: a ? asstName(v, a) : '助理', sub: a ? `${asstDisplay(v, a).from} · 助理详情` : '助理详情' }
+  return {
+    title: a ? asstName(v, a) : '助理',
+    sub: a ? metaRow([{ text: asstDisplay(v, a).from, tone: 'weak' }, { text: '助理详情', tone: 'weak' }]) : '助理详情',
+  }
 }
 
 /** 面包屑三级的「焦点」语义（owner 2026-10-13 收紧）：
@@ -58,16 +96,19 @@ export function stageHead(c: StageCtx): { title: string; sub: string } {
 export function stageCrumbOpts(c: StageCtx): Parameters<typeof crumbsEl>[0] {
   const v = c.view
   if (c.channelMode) {
-    const chs = channelsOf(v)
-    const focused = (c.level === 'L1' && c.focusId) ? c.focusId : (c.selChannel || chs[0] || '')
-    const first = v.assistants.filter((a) => a.channel === focused)[0]
+    const keys = channelKeys(v)
+    const focused = (c.level === 'L1' && c.focusId && keys.indexOf(c.focusId) >= 0)
+      ? c.focusId
+      : (keys.indexOf(c.selChannel) >= 0 ? c.selChannel : (keys[0] ?? ''))
+    const hasFocus = keys.length > 0
+    const first = v.assistants.filter((a) => bucketOf(a) === focused)[0]
     return {
       level: c.level,
-      homeName: c.selChannel ? channelLabel(c.selChannel) : '',
+      homeName: c.selChannel ? channelLabel(c.selChannel) : '待接入',
       asstName: c.selAsst ? asstName(v, v.assistants.find((a) => a.id === c.selAsst) as Assistant) : '',
-      focusHomeName: focused ? channelLabel(focused) : '',
+      focusHomeName: hasFocus ? bucketLabel(focused) : '',
       focusAsstName: first ? asstName(v, first) : '',
-      l2Target: focused,
+      l2Target: hasFocus ? focused : '',
       l3Target: first ? first.id : '',
       onGo: (l, id) => c.onGo(l, id),
     }
@@ -112,12 +153,13 @@ export function stageList(c: StageCtx): HTMLElement {
   }
   if (c.channelMode) {
     if (c.level === 'L1') {
-      const chs = channelsOf(v).filter((ch) => match(channelLabel(ch)) || v.assistants.some((a) => a.channel === ch && match(asstName(v, a))))
-      if (!chs.length) list.appendChild(emptyEl('还没有渠道', '接入聊天渠道后，这里会按渠道列出助理', 'link'))
-      chs.forEach((ch) => list.appendChild(channelRow(v, ch, { selected: c.selChannel === ch, flash: c.flashId === ch, ...rowOpts })))
+      /* 「待接入」组是显式的一行：修掉编造的渠道之后，未绑定助理不能在这个视图里消失（#138 owner 裁定）。 */
+      const keys = channelKeys(v).filter((k) => match(bucketLabel(k)) || v.assistants.some((a) => bucketOf(a) === k && match(asstName(v, a))))
+      if (!keys.length) list.appendChild(emptyEl('还没有渠道', '接入聊天渠道后，这里会按渠道列出助理', 'link'))
+      keys.forEach((k) => list.appendChild(channelRow(v, k, { selected: c.selChannel === k, flash: c.flashId === k, ...rowOpts })))
     } else {
-      const items = v.assistants.filter((a) => a.channel === c.selChannel && match(asstName(v, a)))
-      if (!items.length) list.appendChild(emptyEl('这个渠道下还没有助理', '点下面的「新建助理」给它选一个机器人', 'person'))
+      const items = v.assistants.filter((a) => bucketOf(a) === c.selChannel && match(asstName(v, a)))
+      if (!items.length) list.appendChild(emptyEl(c.selChannel ? '这个渠道下还没有助理' : '还没有待接入的助理', '点下面的「新建助理」给它选一个机器人', 'person'))
       items.forEach((a) => list.appendChild(asstRow(v, a, { selected: c.selAsst === a.id, flash: c.flashId === a.id, ...rowOpts })))
     }
     return list
@@ -137,7 +179,6 @@ export function stageList(c: StageCtx): HTMLElement {
      * owner 2026-10-15：折叠段取消，「N 个空家」退场，空家直接成行（状态看行内章/圆点/副标）。 */
     const { orphan, active, empty } = partitionHomes(items, v.index, v.workspaces)
     const ordered = [...orphan, ...active, ...empty]
-    if (q) { ordered.forEach((x) => list.appendChild(rowOf(x))); return list }
     ordered.forEach((x) => list.appendChild(rowOf(x)))
     return list
   }

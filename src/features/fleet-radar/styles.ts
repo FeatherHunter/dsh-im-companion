@@ -7,7 +7,8 @@ export const CSS = `
 .fleet-radar-close:hover { color: var(--dsw-alias-brand-primary,#0a84ff); }
 .fleet-radar-hd { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 10px; flex-wrap: wrap; }
 .fleet-radar-title { margin: 0; font-size: 17px; line-height: 22px; font-weight: 700; color: var(--dsw-alias-label-primary,#1c1c1e); }
-.fleet-radar-meta { font-size: 12px; color: var(--dsw-alias-label-tertiary,#98989d); font-variant-numeric: tabular-nums; }
+.fleet-radar-meta { display: inline-flex; align-items: baseline; gap: 8px; font-size: 12px; color: var(--dsw-alias-label-tertiary,#98989d); font-variant-numeric: tabular-nums; }
+.fleet-radar-note { color: var(--dsw-alias-label-tertiary,#98989d); }
 .fleet-radar-hd .fleet-radar-sp { flex: 1; }
 .fleet-radar-logo { display: inline-flex; width: 18px; height: 18px; border-radius: 5px; flex: none; align-items: center; justify-content: center; color: #fff; border: 1px solid var(--dsw-alias-separator,#e5e6eb); overflow: hidden; }
 .fleet-radar-logo svg { display: block; }
@@ -30,13 +31,20 @@ export const CSS = `
 .fleet-radar-cell { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--dsw-alias-separator,#dfe1e5); background: var(--dsw-alias-bg-base,#fff); color: var(--dsw-alias-label-primary,#1c1c1e); cursor: pointer; }
 .fleet-radar-cell:hover { border-color: var(--dsw-alias-brand-primary,#0a84ff); color: var(--dsw-alias-brand-primary,#0a84ff); }
 .fleet-radar-cell.unbound { border-style: dashed; }
-.fleet-radar-cell.ghost { border-style: dashed; opacity: 0.55; cursor: pointer; }
+.fleet-radar-cell.ghost { border-style: dashed; opacity: 0.55; cursor: default; }
 .fleet-radar-cell.ghost:hover { border-color: var(--dsw-alias-separator,#dfe1e5); color: var(--dsw-alias-label-primary,#1c1c1e); }
 .fleet-radar-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .fleet-radar-dot.online { background: var(--dsw-alias-state-success-primary,#30d158); }
 .fleet-radar-dot.warn { background: var(--dsw-alias-state-warn-primary,#ff9f0a); }
 .fleet-radar-dot.offline { background: var(--dsw-alias-state-error-primary,#ff453a); }
 .fleet-radar-dot.empty { background: transparent; border: 1.5px dashed var(--dsw-alias-label-tertiary,#98989d); width: 7px; height: 7px; }
+.fleet-radar-dot.orphan { background: var(--dsw-alias-label-tertiary,#98989d); }
 .fleet-radar-agg { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dsw-alias-label-secondary,#6e6e73); }
 .fleet-radar-loading, .fleet-radar-foot { padding: 14px; font-size: 12px; color: var(--dsw-alias-label-tertiary,#98989d); text-align: center; }
+.fleet-radar-pop { position: fixed; z-index: 1300; display: flex; flex-direction: column; gap: 6px; max-width: 260px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--dsw-alias-separator,#e5e6eb); background: var(--dsw-alias-bg-base,#fff); box-shadow: 0 8px 24px rgba(0,0,0,.18); opacity: 0; pointer-events: none; font-size: 12px; }
+.fleet-radar-pop.on { opacity: 1; }
+.fleet-radar-pop-hd { font-size: 11px; color: var(--dsw-alias-label-tertiary,#98989d); }
+.fleet-radar-poprow { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.fleet-radar-poprow .fleet-radar-av { width: 16px; height: 16px; font-size: 10px; border-radius: 5px; }
+.fleet-radar-poprow .fleet-radar-st { color: var(--dsw-alias-label-secondary,#6e6e73); }
 `;

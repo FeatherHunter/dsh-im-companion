@@ -98,10 +98,10 @@ export const HOME_UI_CSS = `
 .home-ui .hu-pill.bad{color:var(--hu-bad);background:var(--hu-bad-soft)}
 .home-ui .hu-pill.dim{color:var(--hu-ink-2);background:var(--hu-neutral)}
 .home-ui .hu-dot{width:7px;height:7px;border-radius:50%;flex:none}
-.home-ui .hu-dot.on{background:var(--hu-accent);box-shadow:0 0 0 3px var(--hu-accent-soft)}
+.home-ui .hu-dot.on{background:var(--af-success);box-shadow:0 0 0 3px color-mix(in srgb, var(--af-success) 20%, transparent)}
 .home-ui .hu-dot.off{background:color-mix(in srgb, var(--hu-ink-3) 70%, var(--hu-panel))}
 .home-ui .hu-dot.zero{background:none;border:1.5px solid var(--hu-ink-3);opacity:.55;box-sizing:border-box}
-.home-ui .hu-online{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:var(--hu-accent-deep);background:var(--hu-accent-soft);border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none;align-self:center}
+.home-ui .hu-online{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;color:color-mix(in srgb, var(--af-success) 55%, var(--hu-ink));background:color-mix(in srgb, var(--af-success) 14%, transparent);border-radius:999px;padding:2px 7px;white-space:nowrap;flex:none;align-self:center}
 .home-ui .hu-online.off{color:var(--hu-ink-2);background:var(--hu-neutral)}
 
 /* ============ row action buttons + tooltip ============ */

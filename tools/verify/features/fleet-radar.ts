@@ -16,7 +16,11 @@ const ENTRIES = [
   join(REPO, 'src', 'client', 'data', 'fleet-api.ts'),
   join(REPO, 'src', 'client', 'data', 'meta.ts'),
   join(REPO, 'src', 'client', 'data', 'model.ts'),
+  join(REPO, 'src', 'client', 'data', 'home-channel.ts'),
+  join(REPO, 'src', 'client', 'data', 'home-model.ts'),
   join(FEAT, 'data.ts'),
+  join(FEAT, 'home-matrix.ts'),
+  join(FEAT, 'cell-pop.ts'),
   join(FEAT, 'view.ts'),
   join(FEAT, 'styles.ts'),
   join(FEAT, 'manifest.ts'),
@@ -40,6 +44,7 @@ try {
 // manifest/view/styles 靠 tsc 转译 + 源码断言覆盖。
 const req = createRequire(join(tmp, 'run.cjs'));
 const data: any = req('./features/fleet-radar/data.js');
+const hm: any = req('./features/fleet-radar/home-matrix.js');
 const config: any = req('./client/data/config.js');
 const iconsMod: any = req('./client/icons.js');
 const manifestSrc = readFileSync(join(FEAT, 'manifest.ts'), 'utf8');
@@ -78,9 +83,14 @@ test('格语义：有 bot 取健康 + 行级绑定；无 bot 为 empty', () => {
   const fei = row.cells.find((c: any) => c.channel === 'feishu');
   assert.equal(fei.botId, 'b1');
   assert.equal(fei.health, 'warn');
+  assert.equal(fei.count, 1);
+  assert.deepEqual(fei.names, []);
+  assert.deepEqual(fei.mates, [], '旧 fallback 格无助理明细（悬浮只走家矩阵）');
   const qq = row.cells.find((c: any) => c.channel === 'qq');
   assert.equal(qq.health, 'empty');
   assert.equal(qq.botId, '');
+  assert.equal(qq.count, 0);
+  assert.deepEqual(qq.mates, []);
 });
 
 test('空态：0 行 + 计数归零；全空列仅在有行时计算', () => {
@@ -99,22 +109,103 @@ test('钻取载荷：事件名即 DetailDrawer 抽屉订阅的 OPEN_DRAWER_EVENT
   assert.deepEqual(e.detail, { key: 'D:/ws/a' });
 });
 
-test('状态文案：健康 label + 未绑定后缀（单元格/汇总共用）', () => {
+test('家矩阵：行＝家；墓碑与悬空 homeId 不渲染；同家同渠道多助理合并', () => {
+  const homes = [
+    { id: 'h1', path: 'D:/ws/a', name: 'A家' },
+    { id: 'h2', path: 'D:/ws/b', name: 'B家', tombstone: { at: 1 } },
+    { id: 'h3', path: 'D:/ws/c', name: 'C家' },
+  ];
+  const assistants = [
+    { id: 'a1', homeId: 'h1', channel: 'feishu', botId: 'b1', status: 'bound', name: '小助' },
+    { id: 'a2', homeId: 'h1', channel: 'feishu', botId: 'b2', status: 'bound', name: '二助' },
+    { id: 'a3', homeId: 'h1', channel: 'qq', botId: null, status: 'unbound', name: '待助' },
+    { id: 'a4', homeId: 'hX', channel: 'qq', botId: 'b9', status: 'bound', name: '悬空' },
+    { id: 'a5', homeId: 'h3', channel: 'weixin', botId: null, status: 'orphan', name: '旧助' },
+  ];
+  const bots = [snap('feishu', 'b1', 'D:/ws/a', 'online'), snap('feishu', 'b2', 'D:/ws/a', 'warn')];
+  const m = hm.buildHomeMatrix(bots, homes, assistants);
+  assert.deepEqual(m.rows.map((r: any) => r.key), ['h1', 'h3'], '在线家在前，墓碑/悬空不占行');
+  const h1 = m.rows[0];
+  assert.equal(h1.drillKey, 'D:/ws/a', '钻取走 home.path（抽屉兼容）');
+  assert.equal(h1.assistantCount, 3);
+  assert.equal(h1.boundCount, 2);
+  assert.equal(h1.unboundCount, 1);
+  assert.equal(h1.orphanCount, 0);
+  assert.equal(h1.status, 'online');
+  const fei = h1.cells.find((c: any) => c.channel === 'feishu');
+  assert.equal(fei.health, 'online');
+  assert.equal(fei.count, 2);
+  assert.deepEqual(fei.names, ['小助', '二助']);
+  assert.deepEqual(fei.mates, [
+    { id: 'a1', name: '小助', avatar: null, botId: 'b1', health: 'online', stale: false },
+    { id: 'a2', name: '二助', avatar: null, botId: 'b2', health: 'warn', stale: false },
+  ], '悬浮明细：一行一位，各自快照健康');
+  const qq = h1.cells.find((c: any) => c.channel === 'qq');
+  assert.equal(qq.health, 'empty', '待绑（unbound）不进渠道列');
+  assert.deepEqual(qq.mates, []);
+  const h3 = m.rows[1];
+  const wx = h3.cells.find((c: any) => c.channel === 'weixin');
+  assert.equal(wx.health, 'orphan', '全员孤儿才标失联');
+  assert.equal(wx.count, 1);
+  assert.deepEqual(wx.mates, [{ id: 'a5', name: '旧助', avatar: null, botId: '', health: 'orphan', stale: false }]);
+  assert.equal(m.counts.assistants, 4);
+});
+
+test('悬浮明细带取图键：id＋avatar 透传（img 标记才取图，无标记回落首字块）', () => {
+  const list = [
+    { id: 'a1', homeId: 'h1', channel: 'feishu', botId: 'b1', status: 'bound', name: '小助', avatar: 'img:mark1' },
+    { id: 'a2', homeId: 'h1', channel: 'feishu', botId: 'b2', status: 'bound', name: '二助', avatar: null },
+  ];
+  const bots = [snap('feishu', 'b1', 'D:/ws/a', 'online'), snap('feishu', 'b2', 'D:/ws/a', 'online')];
+  const c = hm.cellForHome(list, bots, 'feishu');
+  assert.equal(c.mates[0].id, 'a1');
+  assert.equal(c.mates[0].avatar, 'img:mark1');
+  assert.equal(c.mates[1].id, 'a2');
+  assert.equal(c.mates[1].avatar, null);
+});
+
+test('家矩阵：空家沉底＋行汇总文案（助理构成/待绑/失联）', () => {
+  const homes = [
+    { id: 'h1', path: 'D:/ws/a', name: 'A家' },
+    { id: 'h0', path: 'D:/ws/z', name: 'Z家' },
+  ];
+  const assistants = [
+    { id: 'a1', homeId: 'h1', channel: 'feishu', botId: 'b1', status: 'bound', name: '小助' },
+    { id: 'a3', homeId: 'h1', channel: 'qq', botId: null, status: 'unbound', name: '待助' },
+  ];
+  const m = hm.buildHomeMatrix([snap('feishu', 'b1', 'D:/ws/a', 'online')], homes, assistants);
+  assert.deepEqual(m.rows.map((r: any) => r.key), ['h1', 'h0'], '空家（0 助理）沉底');
+  assert.equal(m.rows[1].bound, false);
+  assert.equal(data.rowCrewNote(m.rows[0], 'zh'), '2助理，1已绑，1待绑');
+  assert.equal(data.rowCrewNote(m.rows[1], 'zh'), '');
+  assert.equal(data.rowCrewNote(m.rows[0], 'en'), '2 assistants, 1 bound, 1 pending');
+  assert.equal(data.metaCrewLine(4, 2, 'zh'), '4助理，2机器人');
+  assert.equal(data.metaCrewLine(4, 2, 'en'), '4 assistants, 2 bots');
+  assert.equal(data.healthLabel('orphan', 'zh'), '失联');
+  assert.equal(data.healthLabel('orphan', 'en'), 'Orphaned');
+});
+
+test('状态文案：健康 label + 未绑定后缀（单元格/汇总共用；#140 逗号口径）', () => {
   assert.equal(data.statusText('online', true), '在线');
-  assert.equal(data.statusText('warn', false), '待确认·未绑定');
+  assert.equal(data.statusText('warn', false), '待确认，未绑定');
   assert.equal(data.statusText('offline', true), '离线');
+  const parts = data.statusParts('warn', false);
+  assert.equal(parts.health, '待确认');
+  assert.equal(parts.note, '未绑定', '可见处拆两个节点（分隔靠 gap），statusText 只喂不可见 title');
 });
 
 test('双语：字典/状态词/渠道名 EN（默认 zh 保持旧断言）', () => {
   assert.equal(data.statusText('online', true), '在线');
   assert.equal(data.statusText('online', true, 'en'), 'Online');
-  assert.equal(data.statusText('warn', false, 'en'), 'Pending · Unbound');
+  assert.equal(data.statusText('warn', false, 'en'), 'Pending, Unbound');
   assert.equal(data.healthLabel('empty', 'en'), 'Not connected');
   assert.equal(data.matrixChannelLabel('feishu', 'en'), 'Feishu');
   assert.equal(data.matrixChannelLabel('weixin', 'zh'), '微信');
   assert.equal(data.strings('en').title, 'Fleet Radar');
   assert.equal(data.strings('zh').title, '舰队雷达');
-  assert.match(data.metaLine(3, 9, 5, 'en'), /3 agents/);
+  assert.match(data.metaGridLine(3, 9, 'en'), /3 homes/);
+  assert.equal(data.metaBotsLine(5, 'en'), '5 bots');
+  assert.ok(data.metaGridLine(3, 9, 'en').indexOf('·') < 0, '头部计数零分隔符（#140）');
   const mEn = data.buildMatrix([snap('feishu', 'b1', 'D:/ws/a', 'online')], META, 'en');
   assert.equal(mEn.cols[0].label, 'Feishu');
 });
@@ -169,6 +260,68 @@ test('大弹窗装配：矩阵自管模态 + 装配层零感知 + A1 船按钮�
     /\.hu-head-acts\{[^}]*gap:6px/);
   assert.doesNotMatch(panelSrc, /fleet-radar/);
   assert.match(stylesSrc, /\.fleet-radar-modal/);
+});
+
+test('家行装配：家表主路径＋回落＋钻取 drillKey（源码断言）', () => {
+  const viewSrc = readFileSync(join(FEAT, 'view.ts'), 'utf8');
+  const dataSrc = readFileSync(join(FEAT, 'data.ts'), 'utf8');
+  assert.match(viewSrc, /buildHomeMatrix/);
+  assert.match(viewSrc, /home\.list/);
+  assert.match(viewSrc, /drillKey/);
+  assert.match(viewSrc, /renderHomeHead/);
+  assert.match(viewSrc, /rowCrewNote/);
+  assert.match(viewSrc, /metaCrewLine/);
+  assert.doesNotMatch(viewSrc, /renderAgentHead/);
+  assert.match(dataSrc, /agentCol: '家 ＼ 渠道'/);
+  assert.match(stylesSrc, /\.fleet-radar-dot\.orphan/);
+});
+
+test('格悬浮：助理明细 popover 接线（home-row-tip 纪律：fixed 盒/延迟/拆盒/量后亮）', () => {
+  const viewSrc = readFileSync(join(FEAT, 'view.ts'), 'utf8');
+  const popSrc = readFileSync(join(FEAT, 'cell-pop.ts'), 'utf8');
+  assert.match(viewSrc, /showCellPop/);
+  assert.match(viewSrc, /hideCellPop/);
+  assert.match(viewSrc, /mouseenter/);
+  assert.match(viewSrc, /mouseleave/);
+  /* 重画换格 ⇒ 旧悬停作废：paint 与 dispose 都先收盒 */
+  assert.match(viewSrc, /hideCellPop\(\)\n    const lang = docLang/);
+  assert.match(popSrc, /fleet-radar-poprow/);
+  assert.match(popSrc, /fleet-radar-av/);
+  assert.match(popSrc, /healthLabel\(m\.health/);
+  assert.match(popSrc, /pointer-events:none/);
+  assert.match(popSrc, /120/);
+  assert.match(popSrc, /querySelectorAll\('\.fleet-radar-pop'\)/);
+  assert.match(popSrc, /classList\.add\('on'\)/);
+  assert.match(popSrc, /avatarColor\(m\.name/);
+  /* 真头像：img 标记走 avatar.get 直读（与绿框同端点同形状）；到图重画补上 */
+  assert.match(popSrc, /IMG_MARK = 'img:'/);
+  assert.match(popSrc, /avatar\.get/);
+  assert.match(popSrc, /imageCover\(url\)/);
+  assert.match(popSrc, /imgCache/);
+  assert.match(popSrc, /setCellPopRpc/);
+  assert.match(popSrc, /disposeCellPop/);
+  assert.match(popSrc, /data:image\//);
+  assert.match(viewSrc, /setCellPopRpc\(\(\) => fctx\.rpc\)/);
+  assert.match(viewSrc, /disposeCellPop\(\)/);
+  /* 不引写管道：cell-pop 不 import home-avatar/home-ops/connect-flow（禁引 A1 私有，传导也不行） */
+  assert.doesNotMatch(popSrc, /import[^\n;]*home-avatar/);
+  assert.doesNotMatch(popSrc, /import[^\n;]*home-ops/);
+  assert.doesNotMatch(popSrc, /import[^\n;]*connect-flow/);
+  assert.match(stylesSrc, /\.fleet-radar-pop\b/);
+  assert.match(stylesSrc, /\.fleet-radar-poprow/);
+  assert.match(stylesSrc, /\.fleet-radar-pop\.on/);
+});
+
+test('空格不可点：渠道无机器人 ⇒ 纯展示 span，不进详情抽屉；悬浮头像与名字同高', () => {
+  const viewSrc = readFileSync(join(FEAT, 'view.ts'), 'utf8');
+  /* 空格分支：span、无 onClick（全文件 span 一律无点击，button 才有） */
+  assert.match(viewSrc, /if \(cell\.health === 'empty'\) \{\n    return h\('span'/);
+  assert.doesNotMatch(viewSrc, /h\('span', \{[^}\n]*onClick/);
+  /* 空格 title 不带钻取提示（cellTitle 空分支无 drillHint，button 分支仍有） */
+  assert.doesNotMatch(viewSrc, /empty'\) return cell\.label.*drillHint/);
+  assert.match(stylesSrc, /\.fleet-radar-cell\.ghost \{[^}]*cursor: default/);
+  assert.match(stylesSrc, /\.fleet-radar-poprow \.fleet-radar-av \{[^}]*width: 16px/);
+  assert.match(stylesSrc, /\.fleet-radar-poprow \.fleet-radar-av \{[^}]*height: 16px/);
 });
 
 test('LOGO 洗白：单色 7 渠道白 glyph + feishu/wecom 豁免（BUG #30 根因锁）', () => {

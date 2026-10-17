@@ -2,7 +2,7 @@
  * filter/find 收敛为一次 O(n+m+b) 建表；分组、计数、搜索、命名回落都读同一份索引
  * ⇒ 单一分组缝（契约：不再各写各的 filter）。
  * 呈现策略（分区/排序）也放这里：它属于「先看谁」，不属于持久化不变量。 */
-import type { Assistant, Home, WorkspaceRef } from '../data/home-model'
+import { bucketOf, type Assistant, type Home, type WorkspaceRef } from '../data/home-model'
 import type { BotSnap } from '../data/fleet-api'
 import { isOrphanHome } from '../data/home-orphan'
 
@@ -39,7 +39,7 @@ export function buildIndex(
   const byChannel = new Map<string, Assistant[]>()
   for (const a of assistants) {
     push(byHome, a.homeId || '', a)
-    push(byChannel, a.channel || '', a)
+    push(byChannel, bucketOf(a), a)
   }
   const byId = new Map<string, Home>()
   for (const hm of homes) if (hm && !byId.has(hm.id)) byId.set(hm.id, hm)

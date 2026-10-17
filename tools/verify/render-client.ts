@@ -138,10 +138,11 @@ function bridgeReply(ep: string, p: any): unknown {
     return { ok: true, value: { assistant: a } };
   }
   if (ep === 'assistant.createUnbound') {
-    if (!p?.homeId || !p?.channel) return { ok: false, error: { code: 'bad-request', message: 'homeId/channel 必填', details: {} } };
+    /* #138：未绑定助理**没有渠道**，客户端不再传 channel（宿主也不再要求）——这里跟着放宽。 */
+    if (!p?.homeId) return { ok: false, error: { code: 'bad-request', message: 'homeId 必填', details: {} } };
     const t = String(p.name ?? '').trim().slice(0, 64);
     const row = {
-      id: 'a-' + (homeDb.assistants.length + 1), homeId: p.homeId, channel: p.channel,
+      id: 'a-' + (homeDb.assistants.length + 1), homeId: p.homeId, channel: '',
       botId: null, status: 'unbound', name: t, nameSource: t ? 'user' : 'home',
       avatar: null, avatarSource: 'default', createdAt: Date.now(), boundAt: null,
     };
@@ -485,7 +486,7 @@ const checks: [string, boolean][] = [
   ['搜索框与分段已退场（上部只留标题行 + 绿框页头）', !l1Text.includes('按助理 (') && !l1Text.includes('按渠道 (')],
   ['面板动作簇在绿框页头里（船 / 串门搬家 / 配置 / 刷新 4 枚）', headActs === 1 && l1HeadActBtns === 4],
   ['无按工作区(已砍)', !l1Text.includes('按工作区')],
-  ['页头 家 + N 个 · 每个家对应一个工作区（原型 fhead）', l1Head.includes('家') && l1Head.includes('4 个 · 每个家对应一个工作区')],
+  ['页头 家 + N 个家（每个家对应一个工作区）（原型 fhead）', l1Head.includes('家') && l1Head.includes('4 个家（每个家对应一个工作区）')],
   ['L1 面包屑三级 chip（L1 家 / L2 助理 · … / L3 机器人 · …）', l1CrumbList.length === 3 && l1CrumbList[0].includes('L1家') && l1CrumbList[1].includes('L2助理') && l1CrumbList[2].includes('L3机器人')],
   ['L1 家名（工作区标题回落）', l1Text.includes('小帅窝')],
   ['L1 家名（空标题回落目录基名）', l1Text.includes('wechat')],
@@ -502,7 +503,7 @@ const checks: [string, boolean][] = [
   ['L1 底部主操作＝新建家（随层）', l1Foot.includes('新建家')],
   ['点家行进入 L2（钻取，非展开树）', l2Asst === 2],
   ['L2 页头标题＝家名', l2Head.includes('小帅窝')],
-  ['L2 页头副标＝回落来源 · N 位助理', l2Head.includes('跟随工作区名 · 2 位助理')],
+  ['L2 页头副标＝N 位助理（回落来源）', l2Head.includes('2 位助理（跟随工作区名）')],
   ['L2 面包屑当前层在 L2', l2Crumbs.includes('L2小帅窝')],
   ['L2 助理行两枚（一对一不合并）', l2Asst === 2],
   ['L2 渠道标签 飞书', l2Text.includes('飞书')],
@@ -514,7 +515,7 @@ const checks: [string, boolean][] = [
   ['L3 机器人 id 与只接一个渠道', l3Text.includes('bot_aaaa') && l3Text.includes('只接一个渠道')],
   ['L3 命名链三段（你取的名/机器人名/家名）', l3Text.includes('你取的名') && l3Text.includes('机器人名') && l3Text.includes('家名')],
   ['L3 页头标题＝助理名 + 副标回落来源', l3Head.includes('跟随机器人名')],
-  ['L3 行动作启用集＝接入,详情,改名·头像,删除助理,换工作区,移除渠道（T6c 实做）', enabledActs.join(',') === '接入,详情,改名·头像,删除助理,换工作区,移除渠道'],
+  ['L3 行动作启用集＝接入,详情,改名与头像,删除助理,换工作区,移除渠道（T6c 实做）', enabledActs.join(',') === '接入,详情,改名与头像,删除助理,换工作区,移除渠道'],
   ['L3 待实现清单退场（#115 落地，无假按钮）', l3Soon === '' && disabledActs.length === 0],
   ['L3 底部主操作＝返回助理列表（已绑）', l3Foot.includes('返回助理列表')],
   ['头部返回键回 L2', afterBack === false],

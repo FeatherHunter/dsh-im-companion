@@ -2,7 +2,7 @@
  * 搬迁理由（契约 §10 例外通道）：connect-flow 已 284 行，T4 分支加进来必超 300 行红线；
  * 落定编排是纯函数（无 DOM），移出后 connect-flow 只剩分支调用，renderQr/poll 原样保留。
  * 既有导入方经 connect-flow 重导出兼容（tests 仍从 connect-flow 取 commitBinding）。 */
-import { createMetaStore } from '../data/meta'
+import { HOST_CHANNEL, createMetaStore } from '../data/meta'
 import type { RpcCall } from '../data/fleet-api'
 import type { toast as toastFn } from '../ui/toast'
 import { logLine, logOn } from '../log'
@@ -11,11 +11,17 @@ export interface BindingCommit {
   rpc: RpcCall
   channel: string
   toast: typeof toastFn
-  onDone: () => void
+  /** #141：落定结果回传（true＝机器人认下工作区且归属已写进助理表）。取消流程不调它。 */
+  onDone: (ok?: boolean) => void
   botId: string
   ws: string | null
   prevWorkspace: string
   agentName: string
+  /** #141：发起接入的那个助理。给了它就**必须**落回那一行——workspace.set 只认下工作区，
+   * 「谁拥有这个机器人」只有 assistant.bind 会写；不给则是旧面板的家级接入（名字跟人走）。 */
+  assistantId?: string
+  /** #141：assistant.bind 的名字兜底（宿主只在 nameSource ≠ user 时用它）。 */
+  botName?: string
   /** 服务端登记竞态重试（默认 5 次 × 2s；单测可注入小值）。 */
   notFoundRetry?: { attempts: number; gapMs: number }
 }
@@ -31,7 +37,7 @@ export async function commitBinding(o: BindingCommit): Promise<boolean> {
   if (!o.ws) {
     logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: false, message: '机器人已就绪但未绑定工作区（ws 为空）' })
     o.toast('机器人已就绪但未绑定工作区：请在该机器人所在卡片用 ⋯ 菜单「选择工作区」完成绑定')
-    o.onDone()
+    o.onDone(false)
     return false
   }
   const call = (endpoint: string, payload: Record<string, unknown>) =>
@@ -58,8 +64,25 @@ export async function commitBinding(o: BindingCommit): Promise<boolean> {
     const failMsg = res?.error?.message ?? '绑定失败'
     logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: false, message: failMsg })
     o.toast('绑定失败：' + failMsg)
-    o.onDone()
+    o.onDone(false)
     return false
+  }
+  /* #141：带了助理身份就必须落回那一行——上面只让机器人认下工作区，归属得由 assistant.bind 写。
+   * 不写这一步，就会留下「已绑工作区·无主」的窗口，被家表种子对账当成缺口补成一条**新**助理（#141 真机实证）。 */
+  if (o.assistantId) {
+    try {
+      const raw = await o.rpc(HOST_CHANNEL, 'assistant.bind', {
+        id: o.assistantId, channel: o.channel, botId: o.botId, botName: o.botName ?? '', homeText: '',
+      }, AbortSignal.timeout(8000)) as SetRes
+      if (!raw || raw.ok !== true) throw new Error(raw?.error?.message ?? '宿主未确认绑定')
+      logLine('info', 'assistant.action', { action: 'bind', assistantId: o.assistantId, ok: true, message: '' })
+    } catch (e) {
+      const m = String((e as Error)?.message ?? e)
+      logLine('info', 'assistant.action', { action: 'bind', assistantId: o.assistantId, ok: false, message: m })
+      o.toast('机器人已接入，但没绑上这个助理：' + m)
+      o.onDone(false)
+      return false
+    }
   }
   /* 名字跟人走：无家 Agent 首次落家，家即其名，local 空壳退场；元数据失败不推翻已落地绑定。 */
   if (!o.prevWorkspace && o.agentName.trim()) {
@@ -74,8 +97,8 @@ export async function commitBinding(o: BindingCommit): Promise<boolean> {
       o.toast('名称关联失败：' + m + '（绑定已生效）')
     }
   }
-  logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: true, message: '' })
+  logLine('info', 'assistant.action', { action: 'bind', assistantId: o.assistantId ?? '', ok: true, message: '' })
   o.toast('已接入并绑定工作区', 'check')
-  o.onDone()
+  o.onDone(true)
   return true
 }

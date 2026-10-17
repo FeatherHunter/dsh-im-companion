@@ -179,7 +179,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
     {
       type: 'button',
       className: 'session-header-dotbtn ' + overlay.dotKind,
-      title: overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + '·' + overlay.label + '（点击查看详情）',
+      title: overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + '，' + overlay.label + '（点击查看详情）',
       'aria-label': overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + dotTitle(overlay.dotKind as DotKind),
       onClick: () => {
         setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null)
@@ -198,7 +198,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
       ...overlay.channels.map((ch) =>
         React.createElement(
           'div',
-          { className: 'session-header-chrow', key: ch.channel, title: ch.label + '·' + ch.statusText, 'aria-label': ch.label + ch.statusText },
+          { className: 'session-header-chrow', key: ch.channel, title: ch.label + '，' + ch.statusText, 'aria-label': ch.label + '，' + ch.statusText },
           channelLogo(ch),
           React.createElement('span', null, ch.label),
         ),
@@ -232,7 +232,11 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   const pop = React.createElement(
     'div',
     { className: 'session-header-pop', role: 'dialog', 'aria-label': overlay.agent + ' 状态详情' },
-    React.createElement('div', { className: 'session-header-title' }, overlay.mode === 'unbound' ? '未绑定' : overlay.agent + '·' + overlay.label),
+    React.createElement('div', { className: 'session-header-title' }, overlay.mode === 'unbound'
+      ? '未绑定'
+      : React.createElement('span', { className: 'session-header-twrap' },
+        React.createElement('span', null, overlay.agent),
+        React.createElement('span', { className: 'session-header-tlabel' }, overlay.label))),
     detail,
     sendBtn ? React.createElement('div', { className: 'session-header-row' }, sendBtn) : null,
     chPicker,

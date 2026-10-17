@@ -74,17 +74,18 @@ export function updateAssistantRow(file: string, input: { id: string; name?: str
   })
 }
 
-/** 未绑定占位：channel 必填；botId=null；名字非空即 user 否则 home（验收③，不产生脏数据：不占号）。 */
-export function createUnboundRow(file: string, input: { homeId: string; channel: string; name?: string }): R<AssistantRow> {
+/** 未绑定占位：**channel 不再必填**（#138 渠道诚实性——没绑机器人就是没有渠道，
+ *  旧版客户端在这里替用户编过一个「飞书」，见 home-forms 的注释）；botId=null；
+ *  名字非空即 user 否则 home（验收③，不产生脏数据：不占号）。 */
+export function createUnboundRow(file: string, input: { homeId: string; name?: string }): R<AssistantRow> {
   const homeId = sn(input.homeId, 64).trim()
-  const channel = sn(input.channel, 64).trim()
-  if (!homeId || !channel) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'homeId/channel 必填' })
+  if (!homeId) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'homeId 必填' })
   return modifyHomesDoc(file, (doc) => {
     if (!doc.homes.some((h) => h.id === homeId)) return { ok: false as const, code: 'not-found', message: '家不存在' }
     const t = sn(input.name ?? '', 64).trim()
     const now = Date.now()
     const row: AssistantRow = {
-      id: nid(now), homeId, channel, botId: null, status: 'unbound',
+      id: nid(now), homeId, channel: '', botId: null, status: 'unbound',
       name: t, nameSource: t ? 'user' : 'home',
       avatar: null, avatarSource: 'default', createdAt: now, boundAt: null,
     }

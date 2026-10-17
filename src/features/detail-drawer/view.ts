@@ -99,7 +99,7 @@ function ctxSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
   for (const ch of model.channels) {
     const ready = ch.ctx !== undefined
     const cur = ch.ctx ?? null
-    frag.appendChild(caption('上下文 · ' + ch.label))
+    frag.appendChild(caption('上下文（' + ch.label + '）'))
     const card = h('div', { className: 'detail-drawer-list' })
     card.appendChild(pillSwitch('群聊增强', cur?.groupEnabled === true, ready,
       ready ? '群聊增强（只写本渠道，即时生效）' : '本渠道真值尚未读到，禁用写',
@@ -148,7 +148,7 @@ function workspaceSection(model: DrawerModel, draft: string | null, cbs: DrawerC
 /** 性格/语气：一框写全渠道，应用前二次确认（覆盖各渠道现有引导语，字段开关不动）。 */
 function personalitySection(prefill: string, draft: string | null, cbs: DrawerCallbacks): HTMLElement {
   const frag = h('div', null)
-  frag.appendChild(caption('性格/语气 · 一框写全渠道'))
+  frag.appendChild(caption('性格/语气（一框写全渠道）'))
   const card = h('div', { className: 'detail-drawer-list detail-drawer-nobox' })
   const area = h('textarea', {
     rows: 4, value: draft ?? prefill,
@@ -185,8 +185,10 @@ function routesSection(model: DrawerModel): HTMLElement {
   }
   for (const r of model.routes) {
     const row = h('div', { className: 'detail-drawer-route' + (r.ghost ? ' detail-drawer-ghost' : '') })
-    const who = (r.channel ? channelLabel(r.channel) + '·' : '') + r.chat
-    row.appendChild(h('span', { className: 'detail-drawer-rchat', title: r.ghost ? '旧 direct: 存量映射，可忽略' : who }, who))
+    const chName = r.channel ? channelLabel(r.channel) : ''
+    const who = chName ? chName + '，' + r.chat : r.chat
+    row.appendChild(h('span', { className: 'detail-drawer-rchat', title: r.ghost ? '旧 direct: 存量映射，可忽略' : who },
+      chName ? h('span', null, chName) : null, h('span', null, r.chat)))
     if (r.ghost) row.appendChild(h('span', { className: 'detail-drawer-meta' }, '旧映射'))
     row.appendChild(h('code', null, '→ ' + r.sessionId))
     const btn = makeButton({
@@ -224,7 +226,7 @@ function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement 
     row.appendChild(logo
       ? h('span', { className: 'detail-drawer-chlogo', html: logo })
       : h('span', { className: 'detail-drawer-chlogo detail-drawer-chbadge', title: label }, label.charAt(0) || '?'))
-    row.appendChild(h('span', { title: label + '·' + health + '·' + ch.botId }, label))
+    row.appendChild(h('span', { title: label + '，' + health + '，' + ch.botId }, label))
     const send = makeButton({
       kind: 'tinted', size: 'sm', label: '测试', title: '向本渠道发送测试消息',
       onClick: () => cbs.onTestSend(ch.id, ch.botId),
@@ -254,12 +256,15 @@ export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, dr
   const closeBtn = makeButton({ kind: 'ghost', size: 'sm', label: '关闭', title: '关闭抽屉', onClick: () => cbs.onClose() })
   const head = h('div', { className: 'detail-drawer-dhead' },
     h('span', { className: 'detail-drawer-dot ' + model.status }),
-    h('span', null, model.name + '·详情'),
+    h('span', null, model.name),
+    h('span', { className: 'detail-drawer-meta' }, '详情'),
     h('span', { style: { marginLeft: 'auto' } }, closeBtn))
   const sum = h('div', { className: 'detail-drawer-summary' })
   sum.appendChild(listRow('模式', presetSelect(model, cbs)))
-  const stateVal = h('span', { style: { fontSize: '12px' } },
-    '路由 ' + model.routes.length + ' · 渠道 ' + model.channels.length + ' · ' + model.statusLabel)
+  const stateVal = h('span', { style: { fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '8px' } },
+    h('span', null, '路由 ' + model.routes.length),
+    h('span', null, '渠道 ' + model.channels.length),
+    h('span', null, model.statusLabel))
   sum.appendChild(listRow('状态', stateVal))
   const sumNote = h('div', { className: 'detail-drawer-meta' }, '沟通模式：DSH 用哪种方式回话（如 PTC、标准、创造等），不是角色性格。写入真系统，新会话生效。')
   sumNote.setAttribute('style', 'padding:6px 4px 0')

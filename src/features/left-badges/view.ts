@@ -5,6 +5,7 @@ import { badgeForWorkspace } from '../../client/data/bindings'
 import { logLine, logOn } from '../../client/log'
 import type { BotSnap } from '../../client/data/fleet-api'
 import { buildCardData, mountHoverCard } from './hover-card'
+import { mountAssistantFaces } from './assistant-face'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
 
@@ -153,6 +154,17 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
   let hasSnap = false
   let customNames: Record<string, string> = {}
   let observer: MutationObserver | undefined
+  const faces = mountAssistantFaces(ctx.rpc)
+  let faceSig = ''
+  let faceTicks = 0
+  const faceTick = (): void => {
+    try {
+      faceTicks++
+      const sep = '\0'
+      const sig = current.map((x) => x.channel + sep + (x.botId ?? '') + sep + (x.workspace ?? '')).join('|')
+      if (sig !== faceSig || faceTicks % 4 === 1) { faceSig = sig; void faces.refresh() }
+    } catch { /* 脸刷新失败不影响徽标 */ }
+  }
   const repaint = (): void => {
     if (!hasSnap) return
     try {
@@ -189,6 +201,7 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
     logLine('error', 'feature.mount.fail', { feature: 'left-badges', message: String((e as Error)?.message ?? e) })
     return noop
   }
+  faceTick()
   let stopHover: (() => void) | null = null
   try {
     stopHover = mountHoverCard({
@@ -214,7 +227,7 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
           if (!key) return null
           const ws = resolveWorkspace(key, current)
           const custom = customNames[ws] || customNames[basenameOf(ws)] || ''
-          return buildCardData(ws, current, custom || undefined)
+          return buildCardData(ws, current, custom || undefined, (x) => faces.faceOf(x, ws))
         } catch {
           return null
         }

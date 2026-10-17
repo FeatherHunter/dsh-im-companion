@@ -74,7 +74,7 @@ function noteReject(file: string, state: HomesLoadState, message: string): void 
 export class ConfigReadFailedError extends Error {
   readonly code = 'config-read-failed'
   constructor(file: string, state: HomesLoadState, message: string) {
-    super('配置文件读回不可信（' + state + '），已拒绝落盘以免把权威表覆盖成空表：' + file + ' · ' + message)
+    super('配置文件读回不可信（' + state + '），已拒绝落盘以免把权威表覆盖成空表：' + file + '，' + message)
     this.name = 'ConfigReadFailedError'
   }
 }
@@ -138,12 +138,16 @@ export function cleanAssistant(r: unknown, homeIds: Set<string>): AssistantRow |
   const id = sanitize(o.id, 64)
   const homeId = sanitize(o.homeId, 64)
   const channel = sanitize(o.channel, 64)
-  if (!id || !homeId || !channel || !homeIds.has(homeId)) return null
+  if (!id || !homeId || !homeIds.has(homeId)) return null
   // T6a 只建 bound（createAssistantRow 仍要求 botId 必填），但加载必须保留
   // unbound/orphan（一等状态，T6b/c 数据），否则重读会静默丢数据。
   const botId = typeof o.botId === 'string' && o.botId ? sanitize(o.botId, 256) : null
   const status = o.status === 'unbound' ? 'unbound' : o.status === 'orphan' ? 'orphan' : 'bound'
-  if (status === 'bound' && !botId) return null
+  /* #138 渠道诚实性：**未绑定/孤儿行的 channel 允许为空**——没绑过就没有渠道，旧版客户端替用户编过一个，
+   * 那也不是事实。老写法把 `!channel` 与 id/homeId 并列当必填，会把这类行**整行丢掉**：
+   * 上面那句注释写着「保留 unbound/orphan」，实际却被这一条静默否决——第 0 号风险就长在这一行上。
+   * 绑定行反过来必须两者俱全（渠道与机器人号都是绑定那一刻的事实）。 */
+  if (status === 'bound' && (!channel || !botId)) return null
   const aav = o.avatar
   const aavatar = isAvatarCode(aav) ? aav : null
   const aavSrc = o.avatarSource === 'user' && aavatar ? 'user' : aavatar === null && o.avatarSource === 'bot' ? 'bot' : o.avatarSource === 'home' ? 'home' : 'default'

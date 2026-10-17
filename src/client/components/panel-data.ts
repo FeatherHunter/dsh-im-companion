@@ -97,13 +97,14 @@ export function createPanelData(rpc: RpcCall | null): PanelDataHandle {
         state.error = ''
         state.updatedAt = fmtTime(snap.updatedAt)
       }
-      // 缺口时补种子（内存判定，零 IO 除非真有缺口；新 bot 上线时补齐助理行）。
+      // 缺口时补种子（内存判定，零 IO 除非真有缺口）。#141：只认「工作区缺家」这一种缺口，
+      // 不再按机器人快照补助理行——那会把「已绑工作区·无主」的窗口补成一条抢跑的新助理。
       // T6c #115：同拍顺带孤儿回落（bot 没了→助理变失联，失败渠道 fail-closed）。
       const lite = state.bots.map((b) => ({
         channel: b.channel, botId: b.botId, workspace: b.workspace, botName: b.botName ?? '',
       }))
       const needSeed = state.homesReady && !state.volatile && rpc
-        && seedGap(lastWorkspaces, lite, state.homes, state.assistants)
+        && seedGap(lastWorkspaces, lite, state.homes)
       const needOrphan = state.homesReady && !state.volatile && !!rpc && state.bots.length > 0
         && findOrphans(state.assistants, lite, state.failed ?? []).length > 0
       if (needSeed || needOrphan) {
@@ -170,7 +171,7 @@ export function createPanelData(rpc: RpcCall | null): PanelDataHandle {
     } catch { /* best effort：扫尾失败下轮再试，不掀表 */ }
     // 空表→种子；降级中（内存呈现未落盘）→重试落盘；非空→缺口判定（新 bot 上线补行；已绑齐则静默）。
     if (!state.homes.length || state.volatile
-      || seedGap(lastWorkspaces, botLites(), state.homes, state.assistants)) {
+      || seedGap(lastWorkspaces, botLites(), state.homes)) {
       await ensureSeeded()
     }
     state.homesReady = true
@@ -182,7 +183,9 @@ export function createPanelData(rpc: RpcCall | null): PanelDataHandle {
     seeding = true
     try {
     const legacy: LegacyNames = { names: (state.meta as AgentMetaDoc)?.names ?? {} }
-    const seed = buildSeed(lastWorkspaces, botLites(), legacy)
+    /* #141：只把**已落盘**的家交给 buildSeed（它只给首次进账的工作区补 bound 助理行）；
+     * 降级中的内存临时行不算「进过账」——下面还会清掉重落，照传会让种子漏掉机器人行。 */
+    const seed = buildSeed(lastWorkspaces, botLites(), legacy, Date.now(), state.volatile ? [] : state.homes)
     if (!seed.homes.length && !seed.assistants.length) {
       state.homesReady = true
       return

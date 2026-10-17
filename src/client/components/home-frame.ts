@@ -8,7 +8,8 @@ export type Level = 'L1' | 'L2' | 'L3'
 export interface HeadOpts {
   level: Level
   title: string
-  sub: string
+  /** 副标：字符串或已装配好的节点（元信息原语 `home-meta.metaRow` 产出）——#139 起支持节点。 */
+  sub: string | HTMLElement
   onBack: () => void
   onMore: (anchor: HTMLElement) => void
   /** 面板级动作（船 / 串门搬家 / 刷新）由装配层交进来，与页头同一行右侧成簇——
@@ -33,7 +34,7 @@ export function headEl(o: HeadOpts): HTMLElement {
   if (o.actions) head.appendChild(o.actions)
   if (o.level === 'L2') {
     const more = h('button', {
-      className: 'hu-ibtn', type: 'button', 'aria-label': '更多操作', 'data-tip': '家设置（改名·头像）',
+      className: 'hu-ibtn', type: 'button', 'aria-label': '更多操作', 'data-tip': '家设置（改名与头像）',
     }, huIcon('more', 15))
     more.addEventListener('click', () => o.onMore(more))
     head.appendChild(more)
@@ -55,7 +56,13 @@ export interface CrumbOpts {
   onGo: (level: Level, id?: string) => void
 }
 
-function crumb(level: Level, label: string, opts: { current?: boolean; next?: boolean; off?: boolean; target?: string; onGo: (l: Level, id?: string) => void }): HTMLElement {
+/** 面包屑段内的「层级名 + 对象名」：靠色阶与间距分层，不拼分隔符（#139，owner 选 b——
+ *  信息不丢、改动最小，吸顶栏仍能一眼答出「我在谁家」）。 */
+function crumbLabel(lv: string, name: string): HTMLElement {
+  return h('span', { className: 'hu-cr2' }, h('span', { className: 'hu-cr2lv' }, lv), h('span', { className: 'hu-cr2nm' }, name))
+}
+
+function crumb(level: Level, label: string | Node, opts: { current?: boolean; next?: boolean; off?: boolean; target?: string; onGo: (l: Level, id?: string) => void }): HTMLElement {
   const cls = `hu-crumb${opts.current ? ' cur' : ''}${opts.next ? ' next' : ''}${opts.off ? ' off' : ''}`
   const el = h('button', { className: cls, type: 'button' }, h('span', { className: 'hu-lv' }, level), h('b', {}, label))
   if (opts.current) el.setAttribute('aria-current', 'true')
@@ -83,15 +90,15 @@ export function crumbsEl(o: CrumbOpts): HTMLElement {
   if (o.level === 'L1') {
     push(crumb('L1', '家', { current: true, onGo: o.onGo }))
     split()
-    push(crumb('L2', o.focusHomeName ? `助理 · ${o.focusHomeName}` : '助理', { next: true, off: !o.focusHomeName, target: o.l2Target, onGo: o.onGo }))
+    push(crumb('L2', o.focusHomeName ? crumbLabel('助理', o.focusHomeName) : '助理', { next: true, off: !o.focusHomeName, target: o.l2Target, onGo: o.onGo }))
     split()
-    push(crumb('L3', o.focusAsstName ? `机器人 · ${o.focusAsstName}` : '机器人', { next: true, off: !o.focusAsstName, target: o.l3Target, onGo: o.onGo }))
+    push(crumb('L3', o.focusAsstName ? crumbLabel('机器人', o.focusAsstName) : '机器人', { next: true, off: !o.focusAsstName, target: o.l3Target, onGo: o.onGo }))
   } else if (o.level === 'L2') {
     push(crumb('L1', '家', { onGo: o.onGo }))
     split()
     push(crumb('L2', o.homeName, { current: true, onGo: o.onGo }))
     split()
-    push(crumb('L3', o.focusAsstName ? `机器人 · ${o.focusAsstName}` : '机器人', { next: true, off: !o.focusAsstName, target: o.l3Target, onGo: o.onGo }))
+    push(crumb('L3', o.focusAsstName ? crumbLabel('机器人', o.focusAsstName) : '机器人', { next: true, off: !o.focusAsstName, target: o.l3Target, onGo: o.onGo }))
   } else {
     push(crumb('L1', '家', { onGo: o.onGo }))
     split()
@@ -100,6 +107,13 @@ export function crumbsEl(o: CrumbOpts): HTMLElement {
     push(crumb('L3', o.asstName, { current: true, onGo: o.onGo }))
   }
   return wrap
+}
+
+/** 顶栏吸顶容器（要求2）：页头＋面包屑包一层 sticky，列表没到底时粘住，随父容器到底后自然滑出。
+ * 为什么包一层而不是两个各 sticky：两行高度随层级/按钮变，分别 sticky 要硬编码 top 偏移，包一层零偏移。 */
+export function topEl(head: HTMLElement, crumbs: HTMLElement): HTMLElement {
+  const top = h('div', { className: 'hu-top' }, head, crumbs)
+  return top
 }
 
 /** 液签：在三个 chip 之间**真的滑动**（FLIP：先按回旧位，再放开过渡滑到新位）。

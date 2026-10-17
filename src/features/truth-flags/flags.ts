@@ -62,7 +62,7 @@ export function flagsForSession(input: FlagsInput): SessFlag {
   // 弹窗阻塞 turn（虽 open 但等你拍板），故排在 open（蓝）之前。
   // RedReason['approval'] 仅为类型冻结占位，运行期永不发出。
   if (input.approval) {
-    return { key: '', flag: 'yellow', yellowSrc: 'approval-wait', diag: null, tip: '待确认 · 等你选择' };
+    return { key: '', flag: 'yellow', yellowSrc: 'approval-wait', diag: null, tip: '待确认，等你选择' };
   }
 
   // 执行中（蓝）：open 缺 closer 即执行中——写入是阵发性的，

@@ -45,10 +45,9 @@ function appendClouds(sky: HTMLElement): void {
 export function renderHome(input: {
   copy: TimeCopy;
   model: BannerModel;
-  subSuffix: string;
   callbacks: HomeCallbacks;
 }): HTMLElement {
-  const { copy, model, subSuffix, callbacks } = input;
+  const { copy, model, callbacks } = input;
   const status = model.status;
   const stateLabel = model.stateLabel;
   const root = h("div", { className: "wb-modal", dataset: { wb: copy.seg } });
@@ -76,9 +75,13 @@ export function renderHome(input: {
       h("span", { className: dotClass(status) }),
     ),
     h("div", { className: "wb-title" }, copy.t),
+    /* 状态词与文案是两个独立节点（分隔靠 .wb-sub 的 flex gap，不拼中点）。 */
     h("div", { className: "wb-sub" },
-      h("span", { className: dotClass(status) }),
-      stateLabel + " · " + subSuffix,
+      h("span", { className: "wb-state" },
+        h("span", { className: dotClass(status) }),
+        stateLabel,
+      ),
+      h("span", { className: "wb-text" }, copy.s),
     ),
   ));
   sky.appendChild(h("div", { className: "wb-cta" },

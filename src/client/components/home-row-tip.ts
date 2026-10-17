@@ -120,7 +120,7 @@ function paint(a: HTMLElement, data: TipData): void {
     h('small', {},
       h('i', { className: dotClass(data.status) }),
       data.sub ? h('span', { className: 'hu-ch' }, logoNode(data), data.sub) : null,
-      h('span', { className: 'hu-st' + (data.status === 'unbound' ? ' hu-st-bad' : '') }, data.statusText))))
+      h('span', { className: 'hu-st' + (data.status === 'on' ? ' hu-st-on' : '') + (data.status === 'unbound' ? ' hu-st-bad' : '') }, data.statusText))))
   try {
     const r = a.getBoundingClientRect()
     const w = Number(el.offsetWidth) || 0

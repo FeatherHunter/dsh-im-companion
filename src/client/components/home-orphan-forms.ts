@@ -1,4 +1,4 @@
-/** T10b #127 孤儿家两个动作的 UI 层：重绑（「选择工作区」）＋ 删除家（两步确认）。
+/** T10b #127 孤儿家两个动作的 UI 层：重绑（「选择工作区」）＋ 删除家（popconfirm 确认）。
  *
  * 为什么单独开文件：`home-ops.ts`/`panel.ts` 已 300/300 顶格（单文件红线），`home-forms.ts` 的余量留给 #128 的头像格
  * ⇒ 新动作自成一文件，只向 `panel-body` 暴露**一个**入口（那边只剩 1 行余量）。
@@ -38,16 +38,40 @@ function ownerNameOf(view: RowView, homeId: string, dir: string): string {
 /** 孤儿家动作分发（panel-body 的一行入口）：认识返回 true，其余动作交回那边的链。 */
 export function orphanHomeAct(kind: string, id: string, anchor: HTMLElement, deps: OrphanDeps): boolean {
   if (kind === 'rebind-home') { rebindHomePop(anchor, deps, id); return true }
-  if (kind === 'remove-home') {
-    hLog('remove-home', id, true, '两步确认通过，交给删家管道（先清远端、再打墓碑）')
+  if (kind === 'remove-home') { removeHomePop(anchor, deps, id); return true }
+  return false
+}
+
+/** 「删除家」确认弹（要求1 popconfirm）：点行内「删除家」只开弹，不直接删。
+ *  确认才走删家管道（先清远端、再打墓碑）；取消只关弹，一行不写。 */
+function removeHomePop(anchor: AnchorRef, deps: OrphanDeps, homeId: string): void {
+  const home = deps.view.homes.find((x) => x.id === homeId)
+  const name = home ? homeName(deps.view, home) : homeId
+  const n = deps.view.assistants.filter((a) => a.homeId === homeId).length
+  hLog('remove-home', homeId, true, '打开删除确认')
+  const cancel = h('button', { className: 'hu-pbtn-s', type: 'button' }, '取消')
+  cancel.addEventListener('click', () => closeHomePop())
+  const go = h('button', { className: 'hu-pbtn-s danger', type: 'button' }, '确认删除')
+  go.addEventListener('click', () => {
+    closeHomePop(true)
+    hLog('remove-home', homeId, true, '确认弹窗通过，交给删家管道（先清远端、再打墓碑）')
     /* 与重绑同一条纪律：失败一律 throw 带原文（`home-move-ops` 已经 toast 了原因，这里只记一条日志，
      * 且**不**刷新——删家没成时界面必须停在原地，不能让用户以为删掉了）。 */
-    void deps.ops.removeHome(id).then(() => deps.onDone(), (e: unknown) => {
-      hLog('remove-home', id, false, msgOf(e))
+    void deps.ops.removeHome(homeId).then(() => deps.onDone(), (e: unknown) => {
+      hLog('remove-home', homeId, false, msgOf(e))
     })
-    return true
-  }
-  return false
+  })
+  openHomePop(anchor, {
+    width: 340, label: '删除家', above: true,
+    title: h('div', { className: 'hu-ptitle' }, huIcon('trash', 15), '删除家'),
+    body: [
+      h('p', { className: 'hu-fhint' }, `确定删除「${name}」吗？`),
+      h('p', { className: 'hu-fhint' }, n
+        ? `这个家下面还有 ${n} 位助理，会一并删除。机器人连接保留，工作区不受影响。`
+        : '删除后这个家不再显示，工作区不受影响。'),
+    ],
+    foot: [cancel, go],
+  })
 }
 
 /** 「选择工作区」弹层：选目录 → 收养（DSH 建区/等投影）→ 家改指新工作区。

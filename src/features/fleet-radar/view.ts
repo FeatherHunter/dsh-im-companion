@@ -1,7 +1,9 @@
 /** FleetRadar 舰队雷达（A 稠密表 verdict #10；DSH 正中大弹窗，一次完整展示、无横向滚动）。
+ * 行＝家：每行一个 home，看其下有哪些助理（assistant），助理的渠道由其绑定的机器人决定（channelOf）；
+ * 格＝同家同渠道多助理合并；行汇总＝整行状态（在线/待确认/离线＋助理构成＋待绑/失联）。无家表时回落旧 Agent 矩阵。
  * 事件制（DetailDrawer 抽屉同款）：A1 船按钮经 FLEET_VIEW_EVENT 派发，本特性监听后居中弹模态；
  * 弹窗挂 body（宽版一次放下 9 列），Esc/点外部/关闭键三路可关；开弹窗才订阅、关即退订。
- * 数据：单份 stream 订阅 + meta 读取；无自有轮询；点格派发 OPEN_DRAWER_EVENT（DetailDrawer 真消费者）。
+ * 数据：单份 stream 订阅 + meta 读取 + 家表（home.list）；无自有轮询；点格派发 drillKey（home.path，抽屉兼容）。
  * 双语：跟随 DSH 系统语言（documentElement.lang + 属性监听即时跟随，无开关）+ data.ts 字典。
  * LOGO：渠道 glyph（dsh-im 同款字符串，DetailDrawer 同渲染模式 html 注入）+ 文字，表头同；未知渠道只剩文字。 */
 import { h, mount } from '../../client/dom'
@@ -13,19 +15,14 @@ import { makeEmpty } from '../../client/ui/empty'
 import { logLine, logOn } from '../../client/log'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
+import type { Assistant, Home } from '../../client/data/home-model'
 import type { FeatureCtx } from '../protocol'
 import {
-  buildMatrix, drillEventFor, footAllLine, footSomeLine, healthLabel, langOf, metaLine,
-  statusText, strings, LOGO_TILE_BG, type Lang, type MatrixCell, type MatrixModel, type MatrixRow,
+  avatarColor, buildMatrix, drillEventFor, footAllLine, footSomeLine, healthLabel, langOf, metaCrewLine, metaGridLine, metaBotsLine,
+  rowCrewNote, statusText, strings, LOGO_TILE_BG, type Lang, type MatrixCell, type MatrixModel, type MatrixRow,
 } from './data'
-
-const AVATAR_COLORS = ['#3964fe', '#07c160', '#e8890c', '#8e44ad', '#12b7f5', '#d92d20', '#00b386', '#5865f2']
-
-function avatarColor(key: string): string {
-  let hash = 0
-  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0
-  return AVATAR_COLORS[hash % AVATAR_COLORS.length]
-}
+import { buildHomeMatrix } from './home-matrix'
+import { disposeCellPop, hideCellPop, setCellPopRpc, showCellPop } from './cell-pop'
 
 function emitDrawer(key: string): void {
   try {
@@ -66,35 +63,69 @@ function logoNode(channel: string): HTMLElement | null {
 
 function cellLabel(cell: MatrixCell, lang: Lang): string {
   if (cell.health === 'empty') return healthLabel('empty', lang)
+  if (cell.health === 'orphan') return healthLabel('orphan', lang)
   return statusText(cell.health, cell.bound, lang)
 }
 
+/** 格 title：渠道＋助理名（多位顿号连）＋机器人 id＋状态；stale 时明确“数据过期”。
+ * 空格不钻取 ⇒ title 不带钻取提示（只剩渠道＋未接入）。 */
 function cellTitle(cell: MatrixCell, lang: Lang): string {
   const t = strings(lang)
-  if (cell.health === 'empty') return cell.label + '：' + healthLabel('empty', lang) + '，' + t.drillHint
-  return cell.label + ' ' + cell.botId + ' · ' + cellLabel(cell, lang) + (cell.stale ? t.staleNote : '') + '，' + t.drillHint
+  if (cell.health === 'empty') return cell.label + '：' + healthLabel('empty', lang)
+  const who = cell.names.length ? cell.names.join('、') : cell.botId
+  return cell.label + '，' + who + '，' + cellLabel(cell, lang) + (cell.stale ? t.staleNote : '') + '，' + t.drillHint
 }
 
-/** 格子只留圆点 + 文字：列身份由表头 LOGO 一次性建立，格内重复即噪音（第一性原理：零信息熵不配占像素）。 */
+/** 格内文字：状态词＋（同格多助理时）人数注；失联格只留“失联”字样。 */
+function cellTextNodes(cell: MatrixCell, lang: Lang): (string | HTMLElement)[] {
+  if (cell.health === 'empty') return ['—']
+  if (cell.health === 'orphan') return [healthLabel('orphan', lang)]
+  const nodes: (string | HTMLElement)[] = [healthLabel(cell.health, lang)]
+  if (cell.count > 1) nodes.push(h('span', { className: 'fleet-radar-note' }, lang === 'en' ? ` (${cell.count})` : `（${cell.count}位）`) as HTMLElement)
+  return nodes
+}
+
+/** 格子只留圆点 + 文字：列身份由表头 LOGO 一次性建立，格内重复即噪音（第一性原理：零信息熵不配占像素）。
+ * 有明细的格悬浮出助理清单（cell-pop）；无明细才走原生 title（免双层提示）。
+ * 空格（渠道无机器人）是纯展示 span：不可点、不钻取（点进去的详情抽屉没有主体可讲）。 */
 function renderCell(row: MatrixRow, cell: MatrixCell, lang: Lang): HTMLElement {
-  const cls = 'fleet-radar-cell' + (cell.health === 'empty' ? ' ghost' : cell.bound ? '' : ' unbound')
-  return h('button', {
+  const cls = 'fleet-radar-cell' + (cell.health === 'empty' ? ' ghost' : (cell.health === 'orphan' || !cell.bound) ? ' unbound' : '')
+  if (cell.health === 'empty') {
+    return h('span', { className: cls, title: cellTitle(cell, lang) },
+      h('span', { className: 'fleet-radar-dot ' + cell.health }), ...cellTextNodes(cell, lang)) as HTMLElement
+  }
+  const btn = h('button', {
     type: 'button',
     className: cls,
-    title: cellTitle(cell, lang),
-    onClick: () => emitDrawer(row.key),
-  }, h('span', { className: 'fleet-radar-dot ' + cell.health }), cell.health === 'empty' ? '—' : cellLabel(cell, lang)) as HTMLElement
+    ...(cell.mates.length ? {} : { title: cellTitle(cell, lang) }),
+    onClick: () => emitDrawer(row.drillKey || row.key),
+  }, h('span', { className: 'fleet-radar-dot ' + cell.health }), ...cellTextNodes(cell, lang)) as HTMLElement
+  if (cell.mates.length) {
+    btn.addEventListener('mouseenter', () => showCellPop(btn, cell, lang))
+    btn.addEventListener('mouseleave', () => hideCellPop())
+  }
+  return btn
 }
 
-function renderAgentHead(row: MatrixRow, lang: Lang): HTMLElement {
+function renderHomeHead(row: MatrixRow, lang: Lang): HTMLElement {
   const av = h('span', { className: 'fleet-radar-av', style: { background: avatarColor(row.key) } }, row.name.charAt(0).toUpperCase()) as HTMLElement
   return h('button', {
     type: 'button',
     className: 'fleet-radar-rowbtn',
     title: row.name + '，' + strings(lang).drillHint,
-    onClick: () => emitDrawer(row.key),
+    onClick: () => emitDrawer(row.drillKey || row.key),
   }, h('span', { className: 'fleet-radar-agent' }, av,
-    h('span', null, h('div', { className: 'fleet-radar-nm' }, row.name), h('div', { className: 'fleet-radar-bs' }, row.base || row.key)))) as unknown as HTMLElement
+    h('span', null, h('div', { className: 'fleet-radar-nm' }, row.name), h('div', { className: 'fleet-radar-bs' }, row.base || row.workspace || row.key)))) as unknown as HTMLElement
+}
+
+/** 行汇总：整行状态＝健康词（在线/待确认/离线）＋助理构成（rowCrewNote）。
+ * 空家（0 助理）按未接入；全员待绑（无绑定无失联）按待确认黄点＋“待绑”。 */
+function rowSummary(row: MatrixRow, lang: Lang): { dot: string; health: string; note: string } {
+  if (row.assistantCount === 0) return { dot: 'empty', health: healthLabel('empty', lang), note: '' }
+  if (row.boundCount + row.orphanCount === 0) {
+    return { dot: 'warn', health: lang === 'en' ? 'Pending' : '待绑', note: rowCrewNote(row, lang) }
+  }
+  return { dot: row.status, health: healthLabel(row.status, lang), note: rowCrewNote(row, lang) }
 }
 
 function renderTable(model: MatrixModel, lang: Lang): HTMLElement {
@@ -106,11 +137,13 @@ function renderTable(model: MatrixModel, lang: Lang): HTMLElement {
   }
   head.push(h('th', null, t.summaryCol) as HTMLElement)
   const body = model.rows.map((row) => {
-    const tds: HTMLElement[] = [h('th', null, renderAgentHead(row, lang)) as HTMLElement]
+    const tds: HTMLElement[] = [h('th', null, renderHomeHead(row, lang)) as HTMLElement]
     for (const cell of row.cells) tds.push(h('td', null, renderCell(row, cell, lang)) as HTMLElement)
-    const agg = row.botCount === 0 ? healthLabel('empty', lang) : statusText(row.status, row.bound, lang)
+    const agg = rowSummary(row, lang)
     tds.push(h('td', null, h('span', { className: 'fleet-radar-agg' },
-      h('span', { className: 'fleet-radar-dot ' + (row.botCount === 0 ? 'empty' : row.status) }), agg)) as HTMLElement)
+      h('span', { className: 'fleet-radar-dot ' + agg.dot }),
+      agg.health,
+      agg.note ? h('span', { className: 'fleet-radar-note' }, agg.note) : null)) as HTMLElement)
     return h('tr', null, ...tds)
   })
   return h('div', { className: 'fleet-radar-scroll' },
@@ -126,7 +159,9 @@ function renderInto(root: HTMLElement, model: MatrixModel, updatedAt: number, la
   const t = strings(lang)
   const hd = h('div', { className: 'fleet-radar-hd' },
     h('h2', { className: 'fleet-radar-title' }, t.title),
-    h('span', { className: 'fleet-radar-meta' }, metaLine(model.counts.agents, model.counts.channels, model.counts.bots, lang)),
+    h('span', { className: 'fleet-radar-meta' },
+      metaGridLine(model.counts.agents, model.counts.channels, lang),
+      model.counts.assistants !== undefined ? metaCrewLine(model.counts.assistants, model.counts.bots, lang) : metaBotsLine(model.counts.bots, lang)),
     h('span', { className: 'fleet-radar-sp' }),
     h('button', { type: 'button', className: 'fleet-radar-refresh', title: t.refresh, onClick: cbs.onRefresh }, t.refresh),
     h('button', { type: 'button', className: 'fleet-radar-close', title: t.close, onClick: cbs.onClose }, '× ' + t.close)) as HTMLElement
@@ -148,18 +183,36 @@ export function mountRadarView(fctx: FeatureCtx, root: HTMLElement, opts: { onCl
   let dead = false
   let meta: AgentMetaDoc = EMPTY_META
   let bots: BotSnap[] = []
+  let homes: Home[] = []
+  let assistants: Assistant[] = []
   let updatedAt = 0
   const paint = (): void => {
     if (dead) return
+    /* 表格重画换掉格子：旧悬停随旧格作废，悬浮盒先收（否则 mouseleave 永不到、盒子滞留）。 */
+    hideCellPop()
     const lang = docLang()
     try {
-      renderInto(root, buildMatrix(bots, meta, lang), updatedAt, lang, {
-        onRefresh: () => void fctx.refresh().catch(() => {}),
+      /* 有家表走家矩阵（行＝家）；家表未到（老宿主/桥失败）回落旧 Agent 矩阵，不白屏。 */
+      const model = homes.length || assistants.length ? buildHomeMatrix(bots, homes, assistants, lang) : buildMatrix(bots, meta, lang)
+      renderInto(root, model, updatedAt, lang, {
+        onRefresh: () => { void fctx.refresh().catch(() => {}); void loadHomes() },
         onClose: () => opts.onClose(),
       })
     } catch (e) {
       if (logOn('debug')) logLine('debug', 'ui.action', { area: 'fleet-radar', action: 'paint-fail', ok: false, message: '渲染失败保留旧帧：' + String((e as Error)?.message ?? e) })
     }
+  }
+  /** 家表一次拉取（失败回空、paint 回落旧矩阵；不抛）。 */
+  const loadHomes = async (): Promise<void> => {
+    try {
+      if (!fctx.rpc) return
+      const raw = await fctx.rpc('/im-companion', 'home.list', {}, AbortSignal.timeout(8000)) as
+        { ok?: boolean; value?: { homes?: Home[]; assistants?: Assistant[] } } | null
+      const v = raw?.ok === true ? raw.value : null
+      homes = Array.isArray(v?.homes) ? v.homes as Home[] : []
+      assistants = Array.isArray(v?.assistants) ? v.assistants as Assistant[] : []
+      paint()
+    } catch { /* 回落旧矩阵，paint 已在订阅/meta 路径触发 */ }
   }
   /* 系统语言切换即时跟随：locale 插件改 html lang 属性即重绘；无监听环境靠下次 paint 跟随。 */
   let langMo: MutationObserver | null = null
@@ -189,8 +242,12 @@ export function mountRadarView(fctx: FeatureCtx, root: HTMLElement, opts: { onCl
   } catch (e) {
     logLine('warn', 'bridge.call.fail', { method: 'meta.get', message: '雷达读身份配置不可用（按空表展示）：' + String((e as Error)?.message ?? e) })
   }
+  void loadHomes()
+  /* 悬浮取图通道：与面板同桥（只读 avatar.get；transport 是挂载级，断在 dispose）。 */
+  setCellPopRpc(() => fctx.rpc)
   return () => {
     dead = true
+    disposeCellPop()
     try { unsub?.() } catch { /* ignore */ }
     try { langMo?.disconnect() } catch { /* ignore */ }
   }

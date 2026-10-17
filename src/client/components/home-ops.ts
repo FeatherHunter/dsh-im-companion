@@ -167,7 +167,7 @@ export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: 
   }
 }
 
-export async function createUnbound(rpc: RpcCall, input: { homeId: string; channel: string; name?: string }): Promise<Assistant | null> {
+export async function createUnbound(rpc: RpcCall, input: { homeId: string; name?: string }): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.createUnbound', input as Record<string, unknown>)
     if (v.assistant) { toast('已建好助理，还没有绑机器人', 'check'); aLog('create-unbound', v.assistant.id, true, '') } else aLog('create-unbound', '', false, '宿主未返回助理行')
@@ -208,10 +208,10 @@ export interface DrillOpsBundle {
   createAssistant(homeId: string, channel: string, botId: string, userName?: string): Promise<void>
   updateHome(id: string, patch: { name?: string | null; avatar?: string | null }): Promise<void>
   updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null }): Promise<void>
-  createUnbound(homeId: string, channel: string, name?: string): Promise<void>
+  createUnbound(homeId: string, name?: string): Promise<void> /* #138：不再要 channel（未绑定＝没有渠道） */
   bindAssistant(id: string, channel: string, botId: string): Promise<void>
   removeAssistant(id: string): Promise<void>
-  connect(homeId: string, anchor: HTMLElement): void
+  connect(homeId: string, anchor: HTMLElement, assistantId?: string, after?: (ok: boolean) => void): void
   pickDirectory(): Promise<string | null>
   adoptDirectory(dir: string): Promise<WorkspaceRef | null>
 }
@@ -255,10 +255,10 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
       if (!rpc) { toast('连接服务不可用'); aLog('update', id, false, '连接服务不可用'); return }
       if (await updateAssistant(rpc, { id, ...patch })) await deps.reloadHomes()
     },
-    createUnbound: async (homeId, channel, name) => {
+    createUnbound: async (homeId, name) => {
       const rpc = deps.getRpc()
       if (!rpc) { toast('连接服务不可用'); aLog('create-unbound', '', false, '连接服务不可用'); return }
-      if (await createUnbound(rpc, { homeId, channel, name })) await deps.reloadHomes()
+      if (await createUnbound(rpc, { homeId, name })) await deps.reloadHomes()
     },
     bindAssistant: async (id, channel, botId) => {
       const rpc = deps.getRpc()
@@ -288,12 +288,12 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
     /* T8 #121：新建家的「新建工作区」支路——选目录（原生优先）→ DSH 建区＋等投影；落家仍由表单接 createHome。 */
     pickDirectory: () => pickDirectory(deps.ctx, deps.getRpc()),
     adoptDirectory: async (dir: string) => (await adoptDirectory(deps.ctx, dir))?.ref ?? null,
-    connect: (homeId: string, anchor: HTMLElement) => {
+    connect: (homeId, anchor, assistantId, after) => {
       const home = deps.getHome(homeId)
       if (!home) { toast('找不到这个家'); hLog('connect', homeId, false, '找不到这个家'); return }
       const name = home.name || basenameOf(home.path) || home.path
-      openConnectFlow(deps.ctx, deps.getRpc(), anchor, { name, workspace: home.path }, () => {
-        void deps.refresh().then(() => deps.reloadHomes())
+      openConnectFlow(deps.ctx, deps.getRpc(), anchor, { name, workspace: home.path, assistantId }, (ok) => {
+        void deps.refresh().then(() => deps.reloadHomes()).then(() => after?.(ok === true))
       })
     },
   }

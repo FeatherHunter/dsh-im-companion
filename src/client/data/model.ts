@@ -123,8 +123,14 @@ function channelsOf(snaps: BotSnap[]): AgentChannelView[] {
 
 const STATUS_RANK: Record<HealthKind, number> = { online: 0, warn: 1, offline: 2 }
 
+/** 家路径行（可见）：标签与路径是注解关系（路径限定标签），用括号而不是中点。 */
+function workspaceLineOf(path: string): string {
+  return path ? '工作区（' + path + '）' : '未绑定工作区'
+}
+
+/* healthDetail 只挂在 title 上（不可见文案），分隔一律用中文逗号，不再用中点。 */
 function healthDetailOf(channels: AgentChannelView[], bots: BotSnap[]): string {
-  const parts = channels.map((c) => c.label + '·' + HEALTH_LABELS[c.status])
+  const parts = channels.map((c) => c.label + '，' + HEALTH_LABELS[c.status])
   const last = Math.max(...bots.map((b) => b.lastCheckedAt ?? 0), 0)
   if (last > 0) parts.push('最后检测 ' + new Date(last).toLocaleTimeString('zh-CN', { hour12: false }))
   const firstDown = bots.find((b) => b.healthKind !== 'online')
@@ -165,8 +171,8 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
       status,
       stateLabel: channels.length ? HEALTH_LABELS[status] : '未接入',
       isLocal: false,
-      sub: channels.length ? channels.map((c) => c.label).join('·') : '尚未接入渠道',
-      workspaceLine: path ? '工作区·' + path : '未绑定工作区',
+      sub: channels.length ? channels.map((c) => c.label).join('，') : '尚未接入渠道', /* 只喂 matchQuery 检索（不可见），分隔用中文逗号 */
+      workspaceLine: workspaceLineOf(path),
       healthDetail: healthDetailOf(channels, snaps),
       bots: botRefsOf(snaps),
     })
@@ -185,7 +191,7 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
       stateLabel: '未接入',
       isLocal: true,
       sub: '尚未接入渠道',
-      workspaceLine: l.workspace ? '工作区·' + l.workspace : '未绑定工作区',
+      workspaceLine: workspaceLineOf(l.workspace),
       healthDetail: l.workspace ? '已有家，尚未接入渠道' : '本地 Agent，尚未接入渠道',
       bots: [],
     })
@@ -221,7 +227,7 @@ export function buildModel(bots: BotSnap[], meta: AgentMetaDoc, mode: ViewMode, 
         stateLabel: HEALTH_LABELS[status],
         isLocal: false,
         sub: base || '未绑定工作区',
-        workspaceLine: path ? '工作区·' + path : '未绑定工作区',
+        workspaceLine: workspaceLineOf(path),
         healthDetail: healthDetailOf([{ id: ch, label: channelLabel(ch), status }], list),
         bots: botRefsOf(list),
       }

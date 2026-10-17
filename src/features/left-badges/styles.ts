@@ -21,9 +21,29 @@ div[role="treeitem"][aria-expanded][data-lb-kind="offline"]::after { background:
 .left-badges-card-dot.warn { background: var(--dsw-alias-state-warn-primary, #ff9f0a); }
 .left-badges-card-dot.offline { background: color-mix(in srgb, currentColor 40%, transparent); }
 .left-badges-card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 0; }
+.left-badges-card-avatar { display: inline-flex; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary, #6e6e73); border-radius: 50%; overflow: hidden; background: color-mix(in srgb, currentColor 12%, transparent); font-size: 10px; font-weight: 700; }
 .left-badges-card-glyph { display: inline-flex; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary, #6e6e73); }
+.left-badges-card-avatar img { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; display: block; }
 .left-badges-card-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary, #1c1c1e); }
 .left-badges-card-foot { margin-top: 6px; font-size: 10px; line-height: 14px; color: var(--dsw-alias-label-tertiary, #98989d); font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .left-badges-card-dot.online, div[role="treeitem"][aria-expanded][data-lb-kind="online"]::after { animation: none; } }
 @keyframes left-badges-breathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--dsw-alias-state-success-primary, #30d158) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 `
+
+/* 悬浮卡呼吸节奏（纯函数，与 CSS 动画同源；hover-card 行内圆点用，verify 钉住旧口径）。 */
+export const BREATH_BASE_MS = 1600
+export const BREATH_SLOT_MS = 997 // 组内槽位步进：与 1600 互质，同渠道组内天然散开
+/** 呼吸相位（#33v2）：delay 走同渠道同基 + 组内槽位（构造错开，不靠运气）；duration 按 Bot 种子（有机）；单 Bot（slot 0）= 旧口径；重渲染不跳变。 */
+function hashStr(s: string): number {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  return Math.abs(h)
+}
+export function breathPhase(channel: string, seed = '', slotMs = 0): { delay: string; duration: string } {
+  try {
+    const c = String(channel || '?')
+    const u = hashStr(seed ? c + '\0' + String(seed) : c)
+    const slot = slotMs > 0 ? Math.round(slotMs) % BREATH_BASE_MS : 0
+    return { delay: '-' + (((hashStr(c) + slot) % BREATH_BASE_MS) / 1000).toFixed(2) + 's', duration: (1.6 + ((u >> 3) % 800) / 1000).toFixed(2) + 's' }
+  } catch { return { delay: '0s', duration: '1.6s' } }
+}

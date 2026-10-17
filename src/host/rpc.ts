@@ -159,8 +159,9 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           return ok({ assistant: r.row })
         }
         case 'assistant.createUnbound': {
+          /* #138 渠道诚实性：不再传 channel——未绑定助理**没有渠道**，宿主 createUnboundRow 也不再要求。 */
           const r: any = await createUnboundRow(homesFileFor(dshHome), {
-            homeId: String(p.homeId ?? ''), channel: String(p.channel ?? ''),
+            homeId: String(p.homeId ?? ''),
             ...(p.name !== undefined ? { name: String(p.name ?? '') } : {}),
           })
           if (!r.ok) return fail(r.code, r.message)

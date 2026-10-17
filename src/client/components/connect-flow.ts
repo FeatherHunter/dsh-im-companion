@@ -24,6 +24,9 @@ export type { BindingCommit } from '../data/binding-commit'
 export interface ConnectTarget {
   name: string
   workspace: string
+  /** #141：从某个助理发起的接入必须带身份——落定后补 assistant.bind，否则机器人会「无主」，
+   * 被家表种子对账补成一条新助理（旧面板的家级接入不带它，行为一字不变）。 */
+  assistantId?: string
 }
 
 function safeQrSrc(value: string | undefined): string | null {
@@ -31,7 +34,7 @@ function safeQrSrc(value: string | undefined): string | null {
   return /^data:image\/(?:png|webp|svg\+xml)(?:;charset=[^;,]+)?;base64,/i.test(value) ? value : null
 }
 
-export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLElement, target: ConnectTarget, onDone: () => void): void {
+export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLElement, target: ConnectTarget, onDone: (ok?: boolean) => void): void {
   void ctx
   /* #62 纵深守卫：无家不进扫码（主防线在行按钮置灰＋动作层阻断；此处兜住直调）。 */
   if (!target.workspace) {
@@ -173,7 +176,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
       /* T2 去双 toast：成功只留终态“已接入并绑定工作区”（commitBinding 内），此处不再单独报就绪。 */
       try {
         modal.close()
-        await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })
+        await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name, assistantId: target.assistantId })
       } catch (e) {
         const msg = String((e as Error)?.message ?? e)
         logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: false, message: '接入流程未捕获抛出：' + msg })
@@ -257,7 +260,7 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
           attemptId = undefined
           try {
             modal.close()
-            await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name })
+            await commitBinding({ rpc: rpc!, channel, toast, onDone, botId, ws: target.workspace, prevWorkspace: target.workspace, agentName: target.name, assistantId: target.assistantId })
           } catch (e) {
             const msg = String((e as Error)?.message ?? e)
             logLine('info', 'assistant.action', { action: 'bind', assistantId: '', ok: false, message: '手动链路未捕获抛出：' + msg })

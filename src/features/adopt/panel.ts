@@ -2,6 +2,7 @@
  * 纯展示装配；写操作由 view 的文档级拖放接管（家卡即 data-adopt-ws 目标）。 */
 import { channelLabel } from '../../client/data/config'
 import { h } from '../../client/dom'
+import { channelGlyphSvg } from '../../client/icons'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
@@ -50,7 +51,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
     overlay = h('div', { className: 'adopt-overlay' }) as HTMLElement
     const dialog = h('div', { className: 'adopt-cockpit', role: 'dialog', 'aria-modal': 'true', 'aria-label': '串门搬家' }) as HTMLElement
     const closeBtn = h('button', { className: 'adopt-x', title: '关闭', 'aria-label': '关闭', onClick: () => api.close() }, '×') as HTMLElement
-    dialog.appendChild(h('h2', { className: 'adopt-panel-title' }, '串门 · 搬家') as unknown as Node)
+    dialog.appendChild(h('h2', { className: 'adopt-panel-title' }, '串门与搬家') as unknown as Node)
     dialog.appendChild(h('p', { className: 'adopt-panel-sub' }, '把照片拖到另一家，搬家成功会二次确认。绿灯在岗，黄灯打盹，灰灯睡着了。') as unknown as Node)
     dialog.appendChild(closeBtn as unknown as Node)
     grid = h('div', { className: 'adopt-grid' }) as HTMLElement
@@ -82,7 +83,11 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       top.appendChild(h('span', { className: 'adopt-hdot ' + healthClass(b), title: b.stale ? '状态未知（打盹）' : b.healthKind === 'online' ? '在岗' : '睡着了' }) as unknown as Node)
       top.appendChild(h('span', { className: 'adopt-who' }, botLabel(b)) as unknown as Node)
       row.appendChild(top as unknown as Node)
-      row.appendChild(h('span', { className: 'adopt-cap' }, channelLabel(b.channel) + ' · ' + (b.stale ? '状态未知' : b.healthKind === 'online' ? sloganFor(b.botId) : b.healthKind === 'warn' ? '偶尔打盹' : '睡着了')) as unknown as Node)
+      /* 渠道与健康是两个平级属性：各成一个节点，由 .adopt-cap-pair 的 gap 分隔（不拼中点）。 */
+      const cap = h('span', { className: 'adopt-cap adopt-cap-pair' }) as HTMLElement
+      cap.appendChild(h('span', null, channelLabel(b.channel)) as unknown as Node)
+      cap.appendChild(h('span', null, b.stale ? '状态未知' : b.healthKind === 'online' ? sloganFor(b.botId) : b.healthKind === 'warn' ? '偶尔打盹' : '睡着了') as unknown as Node)
+      row.appendChild(cap as unknown as Node)
       const badge = badgeOf(b)
       if (badge) row.appendChild(h('span', { className: 'adopt-badge' }, badge) as unknown as Node)
       box.appendChild(row as unknown as Node)
@@ -107,7 +112,7 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
         { name: '巷子口', sub: '', initial: '', color: 0 }, null, [...resting, ...unbound], true,
         { 'data-adopt-plaza': '1', class: 'adopt-sec adopt-sec-unbound adopt-sec-new' },
         '串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。',
-        (b) => staged.has(b.botId) ? '歇脚中 · 出来自' + shortName(staged.get(b.botId) ?? '') : '新来的 · 等安家',
+        (b) => staged.has(b.botId) ? '歇脚中（出来自' + shortName(staged.get(b.botId) ?? '') + '）' : '新来的（等安家）',
       ))
       const have = new Set(groups.map((g) => g.workspace))
       for (const w of homeList(bots || [], listHomes(ctx))) {
@@ -137,24 +142,29 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
       if (a.botId) row.setAttribute('data-adopt-bot', a.botId)
       if (a.channel) row.setAttribute('data-adopt-channel', a.channel)
       row.title = ctx.rpc ? '拖到另一个家完成搬家' : '连接服务不可用，暂不能搬家'
-      /* 露脸：有图挂图（img: 已取回），否则预设色首字（同一助理恒同脸）。 */
+      /* 第一行：头像左、名字右（头像未到先露首字脸，同一助理恒同脸）。 */
       const face = assistantFace(a.id, a.name || bot?.botName || a.botId || a.id)
       const faceUrl = assistantImage(a.id)
-      row.appendChild(faceUrl
+      const top = h('div', { className: 'adopt-ph-top' }) as HTMLElement
+      top.appendChild(faceUrl
         ? h('img', { className: 'adopt-ava', src: faceUrl, alt: face.initial }) as unknown as Node
         : h('span', { className: 'adopt-ava', style: 'background:hsl(' + (face.color * 45) + ',55%,45%)' }, face.initial) as unknown as Node)
-      const top = h('div', { className: 'adopt-ph-top' }) as HTMLElement
+      top.appendChild(h('span', { className: 'adopt-who' }, (a.name || bot?.botName || a.botId || '未命名助理')) as unknown as Node)
+      row.appendChild(top as unknown as Node)
+      /* 第二行：状态圆点＋渠道 logo＋在线文字（logo 取自共享 icons.ts，未知渠道回首字徽标，无渠道不画）。 */
       const hk = bot ? (bot.stale ? 'warn' : bot.healthKind) : ''
-      top.appendChild(h('span', {
+      const mid = h('div', { className: 'adopt-mid' }) as HTMLElement
+      mid.appendChild(h('span', {
         className: 'adopt-hdot ' + (hk === 'online' ? 'adopt-h-online' : hk === 'warn' ? 'adopt-h-warn' : 'adopt-h-off'),
         title: !bot ? '还没绑机器人' : bot.stale ? '状态未知（打盹）' : bot.healthKind === 'online' ? '在岗' : '睡着了',
       }) as unknown as Node)
-      top.appendChild(h('span', { className: 'adopt-who' }, (a.name || bot?.botName || a.botId || '未命名助理')) as unknown as Node)
-      row.appendChild(top as unknown as Node)
-      const cap = h('span', { className: 'adopt-cap adopt-cap-pair' }) as HTMLElement
-      cap.appendChild(h('span', null, a.channel ? channelLabel(a.channel) : '未绑定') as unknown as Node)
-      cap.appendChild(h('span', null, !bot ? '等安家' : bot.stale ? '状态未知' : bot.healthKind === 'online' ? sloganFor(bot.botId) : bot.healthKind === 'warn' ? '偶尔打盹' : '睡着了') as unknown as Node)
-      row.appendChild(cap as unknown as Node)
+      const glyph = a.channel ? channelGlyphSvg(a.channel, 14) : null
+      if (glyph) mid.appendChild(h('span', { className: 'adopt-chlogo', title: channelLabel(a.channel), html: glyph }) as unknown as Node)
+      else if (a.channel) mid.appendChild(h('span', { className: 'adopt-chlogo adopt-chfb', title: channelLabel(a.channel) }, channelLabel(a.channel).charAt(0) || '?') as unknown as Node)
+      mid.appendChild(h('span', null, !bot ? '等安家' : bot.stale ? '状态未知' : bot.healthKind === 'online' ? '在岗' : bot.healthKind === 'warn' ? '偶尔打盹' : '睡着了') as unknown as Node)
+      /* 签名挂第二行最右（顶满 auto 边距；未绑定明说还没绑机器人，不另起一行）。 */
+      mid.appendChild(h('span', { className: 'adopt-sig' }, bot ? sloganFor(bot.botId) : '还没绑机器人') as unknown as Node)
+      row.appendChild(mid as unknown as Node)
       const badge = badgeOf(a)
       if (badge) row.appendChild(h('span', { className: 'adopt-badge' }, badge) as unknown as Node)
       box.appendChild(row as unknown as Node)

@@ -8,8 +8,11 @@ export const DUAL_MODE_CSS = `/* 二选一（双支持）：两张方式卡纵�
 .dm-choice { display: grid; gap: 10px; padding: 10px 0 4px; }
 .dm-opt { display: flex; gap: 10px; align-items: center; width: 100%; text-align: left;
   padding: 12px 14px; border-radius: 12px; border: 1px solid var(--af-hairline-strong);
-  background: var(--af-surface); color: var(--af-primary); font-family: inherit; cursor: pointer; }
-.dm-opt:hover { background: var(--af-surface-2); }
+  background: var(--af-surface); color: var(--af-primary); font-family: inherit; cursor: pointer;
+  transition: background .12s ease, border-color .12s ease, transform .1s ease; }
+/* 悬停给底色＋强调描边；按下回弹（owner 2026-10-17：所有可点控件都要有悬停/点击反馈）。 */
+.dm-opt:hover { background: var(--af-surface-2); border-color: color-mix(in srgb, var(--af-accent) 55%, transparent); }
+.dm-opt:active { transform: scale(.985); background: color-mix(in srgb, var(--af-accent) 12%, transparent); }
 .dm-opt b { font-size: 14px; font-weight: 650; }
 .dm-opt span { display: block; font-size: 12px; color: var(--af-secondary); }
 .dm-backrow { display: flex; justify-content: flex-start; margin-top: 4px; }

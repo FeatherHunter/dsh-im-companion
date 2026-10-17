@@ -271,7 +271,9 @@ test('view：路由行渲染全显映射 + 幽灵告警 + 复制按钮', () => {
   });
   const all = texts(root).join('|');
   assert.ok(all.includes('会话路由摘要（2）'));
-  assert.ok(all.includes('飞书·私聊 ou_zhangsan0123456789'));
+  assert.ok(all.includes('飞书|私聊 ou_zhangsan0123456789'), '渠道与对话各自成节点（分隔靠 gap 不靠符号，#139）');
+  assert.equal(findByClass(root, 'detail-drawer-rchat')[0].getAttribute('title'), '飞书，私聊 ou_zhangsan0123456789',
+    'title 走不可见文案口径（逗号，#139）');
   assert.ok(all.includes('session-aaa11111-2222'));
   assert.ok(all.includes('旧映射'));
   assert.ok(all.includes('复制'));

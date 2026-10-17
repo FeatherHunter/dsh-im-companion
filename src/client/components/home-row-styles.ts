@@ -28,9 +28,9 @@ export const HOME_ROW_CSS = `
 .home-ui .hu-acts2 .hu-ract.danger:hover{background:color-mix(in srgb,var(--hu-bad) 26%,transparent);border-color:var(--hu-bad);
   box-shadow:0 2px 10px -3px var(--hu-bad);transform:translateY(-1px)}
 .home-ui .hu-acts2 .hu-ract:active{transform:scale(.94)}
-/* 「删除家」首点只布防：挂 .armed 先变色（次点才上报，见 home-orphan-row.ts） */
-.home-ui .hu-acts2 .hu-ract.danger.armed{background:color-mix(in srgb,var(--hu-bad) 38%,transparent);border-color:var(--hu-bad);
-  color:color-mix(in srgb,var(--hu-bad) 72%,var(--hu-ink));font-weight:700}
+/* 删除确认弹的主按钮（要求1 popconfirm）：危险红底白字，与行内 .danger 同口径，不用 accent 冒充。 */
+.home-ui .hu-pbtn-s.danger{background:var(--hu-bad);border-color:transparent;color:#fff}
+.home-ui .hu-pbtn-s.danger:hover:not([disabled]){background:color-mix(in srgb,var(--hu-bad) 78%,var(--hu-ink))}
 .home-ui .hu-acts2 .hu-ract:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
 .home-ui .hu-btop{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center}
 /* 手改过名才挂的来源 tag（默认命名规则不写出来 —— owner 2026-10-15） */
@@ -108,6 +108,54 @@ export const HOME_ROW_CSS = `
 .home-ui.hu-tiphost .hu-tt small .hu-logo svg{display:block}
 .home-ui.hu-tiphost .hu-tt small .hu-logo-fb{width:14px;height:14px;border-radius:4px;background:var(--hu-panel-2);border:1px solid var(--hu-line-soft);font-size:9px;color:var(--hu-ink-2)}
 .home-ui.hu-tiphost[popover]{margin:0;inset:auto;overflow:visible}
+/* ---- 顶栏吸顶（要求2）：页头＋面包屑同一 sticky 容器（home-frame.topEl），列表滚动时粘住，
+ * 父容器（.home-ui）到底后随页滑出 —— 原生 sticky 即此语义，不另写 JS。背景不透明否则行会透出来；
+ * 下 10px 垫进容器（margin 负抵），与 .hu-fbody 的 10px 上边距视觉同位。基表 home-ui-styles 已 300 行顶格，落这里。 */
+.home-ui .hu-top{position:sticky;top:0;z-index:7;background:var(--hu-panel);padding-bottom:10px;margin-bottom:-10px}
+
+/* ---- 绑定弹层空态的主出口（owner 2026-10-17：原来是文本链接「不明显」）----
+ * 第一性原理：这里是空态下唯一可走的动作，视觉权重必须压过同弹层里被禁用的「创建」。
+ * 与 .go 同底色（accent 实心）但撑满整行＋36px 高＋图标，做「块级主按钮」而不是页脚小按钮。
+ * 父容器是列向 flex（.hu-fld），仍显式 width:100% —— 不赌 align-items 的初始值。
+ * active 必须单独再写一条：hover 的特异性(5) 高于基表的 .hu-pbtn-s:active(4)，
+ * 不给这条，按住时仍浮着 ⇒ 「按下去」的手感消失（同族坑见基表 .go:hover 那条注释）。
+ * （本段是模板字符串，注释里一律不写反引号——反引号会提前结束整个 CSS 字符串。） */
+.home-ui .hu-pbtn-s.cta{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;height:36px;font-weight:650;
+  background:var(--hu-accent);border-color:transparent;color:#fff;box-shadow:0 2px 10px -5px var(--hu-accent)}
+.home-ui .hu-pbtn-s.cta:hover:not([disabled]){background:color-mix(in srgb,var(--hu-accent) 74%,var(--hu-ink));
+  transform:translateY(-1px);box-shadow:0 5px 16px -6px var(--hu-accent)}
+.home-ui .hu-pbtn-s.cta:active:not([disabled]){transform:translateY(0) scale(.97);box-shadow:0 1px 4px -3px var(--hu-accent)}
+
+/* ---- 交互反馈补全（owner 2026-10-17：「所有可点控件都要让人在悬停/点击时感到交互」）----
+ * 基表 home-ui-styles.ts 已 300 行顶格（契约 §5 规模红线）⇒ 缺的伪态补在这里，纯追加、不改既有规则。
+ * 覆盖三类缺口：① 有悬停无按下（面包屑/菜单项）② 全无（失败行内「重试」按钮）③ 文本链接反馈太弱。 */
+.home-ui .hu-crumb:active{transform:scale(.95)}
+.home-ui .hu-menu button:active{background:var(--hu-accent-soft)}
+/* 失败行内「重试」：原来只有 cursor:pointer，悬停/按下都没变化（最该给出反馈的地方反而最安静） */
+.home-ui .hu-err button{transition:background var(--hu-t) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease)}
+.home-ui .hu-err button:hover{background:color-mix(in srgb,var(--hu-bad) 18%,transparent)}
+.home-ui .hu-err button:active{transform:scale(.94)}
+/* 文本链接（恢复默认名 / 清除图片 / 删除助理）：只变色太弱，悬停加下划线（元素选择器压过基表同特异性规则） */
+.home-ui button.hu-plink:hover{text-decoration:underline;text-underline-offset:3px}
+.home-ui button.hu-plink:active{transform:scale(.96);text-decoration:underline}
+/* 元信息行原语（#139）：主/次靠色阶、注解靠括号、并列靠 gap —— 面板可见文案从此不出现分隔符。
+   原语实现在 home-meta.ts；容器类名走 hu-mrow/hu-mi —— 详情卡的 hu-meta 章行另有其用，不许撞名。 */
+.home-ui .hu-mrow{display:inline-flex;align-items:baseline;gap:6px;flex-wrap:wrap;min-width:0}
+.home-ui .hu-mi{min-width:0}
+.home-ui .hu-mi.strong{color:var(--hu-ink);font-weight:600}
+.home-ui .hu-mi.weak{color:var(--hu-ink-2)}
+.home-ui .hu-mi.note{color:var(--hu-ink-3)}
+.home-ui .hu-mi.accent{color:var(--hu-accent-deep);font-weight:600}
+.home-ui .hu-mi.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.94em;color:var(--hu-ink-2)}
+.home-ui .hu-crumb b .hu-cr2{display:inline-flex;align-items:baseline;gap:6px}
+.home-ui .hu-crumb b .hu-cr2lv{color:var(--hu-ink-2);font-weight:500}
+.home-ui .hu-crumb b .hu-cr2nm{color:var(--hu-ink);font-weight:650}
+/* owner 2026-10-17 裁定：**在线一律绿**（文字与圆点同色）——面板里「在线」曾有蓝（accent 胶囊）与
+ * 黑（气泡状态字）两副面孔，而状态点注释早就写着「绿＝在线」（home-row-styles.ts 状态点一段）。
+ * 绿用 --af-success（＝既有 .hu-cdot.on / 会话头呼吸点同款）；文字取绿与 ink 的混合色，
+ * 深色模式下自动跟着 ink 变浅，两套主题都保得住对比度。 */
+.home-ui .hu-son{color:color-mix(in srgb, var(--af-success) 55%, var(--hu-ink));font-weight:600}
+.home-ui.hu-tiphost .hu-tt small .hu-st-on{color:color-mix(in srgb, var(--af-success) 55%, var(--hu-ink))}
 `
 
 let installed = false

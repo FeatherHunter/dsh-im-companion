@@ -15,6 +15,8 @@ export const CSS = `
 .session-header-dot.unbound, .session-header-dotbtn.unbound .session-header-dot { background: transparent; border: 1.5px solid color-mix(in srgb, var(--af-primary) 35%, transparent); width: 7px; height: 7px; }
 .session-header-pop { ${TOKEN_BLOCK} position: absolute; top: calc(100% + 8px); right: 0; z-index: 1200; width: 280px; background: var(--af-surface-2); border: 1px solid var(--af-hairline-strong); border-radius: 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, .25); color: var(--af-primary); font-family: -apple-system, "SF Pro Text", "PingFang SC", sans-serif; padding: 12px; font-size: 12px; line-height: 18px; }
 .session-header-title { font-size: 13px; font-weight: 700; margin-bottom: 2px; }
+.session-header-twrap { display: inline-flex; align-items: center; gap: 6px; }
+.session-header-tlabel { font-weight: 400; color: var(--af-secondary); }
 .session-header-sub { color: var(--af-secondary); margin-bottom: 8px; word-break: break-all; }
 .session-header-row { display: flex; gap: 8px; }
 .session-header-channels { display: grid; gap: 5px; margin-bottom: 8px; }

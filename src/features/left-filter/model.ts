@@ -1,6 +1,7 @@
 /** left-filter 纯逻辑（可单测）：筛选三态 + 行数口径计数 + 绑定判定。
  * 无 DOM；视图只做“按结论藏/显节点”。绑定真相唯一来源 stream 快照。 */
 import type { BotSnap } from '../../client/data/fleet-api'
+import { channelLabel } from '../../client/data/config'
 
 export type FilterId = 'all' | 'bound' | 'unbound'
 
@@ -68,10 +69,10 @@ export function segLabel(filter: FilterId, n: number): string {
   return FILTER_LABEL[filter] + ' ' + n
 }
 
-const CHANNEL_LABEL: Record<string, string> = { feishu: '飞书', qq: 'QQ', wechat: '微信' }
-
+/** 渠道中文名：共用 9 渠道表（client/data/config.ts 的 channelLabel），不再自建局部表——
+ * 旧的 feishu/qq/wechat 三行表把微信的 weixin 写成 wechat，且另 6 个渠道全露英文 id。 */
 export function channelName(ch: string): string {
-  return CHANNEL_LABEL[String(ch ?? '').toLowerCase()] ?? String(ch ?? '')
+  return channelLabel(String(ch ?? '').toLowerCase())
 }
 
 /** 该工作区的助理名牌：去重 Bot 名（无名用路径 basename）；空数组 = 无助理。 */

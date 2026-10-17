@@ -36,7 +36,7 @@ export function openMoreMenu(view: AgentView, anchor: HTMLElement, cb: RowAction
     for (const b of view.bots) {
       const tag = dup.has(b.channel) ? '（' + shortBotId(b.botId) + '）' : ''
       items.push({
-        label: '移除渠道·' + channelLabel(b.channel) + ' 机器人' + tag,
+        label: '移除' + channelLabel(b.channel) + '机器人' + tag,
         iconName: 'trash',
         danger: true,
         confirm: true,

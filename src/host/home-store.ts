@@ -165,7 +165,9 @@ export async function seedDocs(
     const channel = sanitize(r.channel, 64).trim()
     const botId = sanitize((r.botId ?? '') as string, 256).trim() || null
     const wantUnbound = (r.status === 'unbound' || r.status === 'orphan') && !botId
-    if (!channel || (!botId && !wantUnbound)) continue
+    /* #138 渠道诚实性：未绑定/孤儿行的 channel 允许为空（没绑过就没有渠道，客户端不再编）。
+     * **这一行必须先于「停止写假值」落地**——老写法 `if (!channel || …)` 会把空渠道行整行丢掉 = 静默数据丢失。 */
+    if (!wantUnbound && (!channel || !botId)) continue
     if (botId && doc.assistants.some((a) => a.botId === botId && a.channel === channel && a.status === 'bound')) continue
     const rawHome = typeof r.homeId === 'string' ? r.homeId : ''
     const homeId = idMap.get(rawHome) ?? rawHome

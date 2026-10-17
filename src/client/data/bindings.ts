@@ -62,7 +62,7 @@ export function badgeForWorkspace(workspacePath: string, bots: BotSnap[], nowMs 
   const label = HEALTH_LABELS[kind]
   const lines = [agent || label]
   for (const b of bound) {
-    lines.push(b.stale ? channelLabel(b.channel) + ' · 未知（轮询失败）' : channelLabel(b.channel) + ' · ' + HEALTH_LABELS[kindOf(b)])
+    lines.push(b.stale ? channelLabel(b.channel) + '，未知（轮询失败）' : channelLabel(b.channel) + '，' + HEALTH_LABELS[kindOf(b)])
   }
   lines.push(lastCheckedText(bound))
   return { kind, label, tooltip: lines.join('\n'), workspace: workspacePath, agent }

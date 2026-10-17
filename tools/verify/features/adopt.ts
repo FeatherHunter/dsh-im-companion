@@ -393,7 +393,8 @@ test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async ()
   fireDrop(secB, { botId: 'q1', channel: 'qq' });
   await sleep(20);
   assert.equal(writeCalls().length, 0);
-  assert.ok(bodyText().includes('小帅 · QQ'), '弹窗标题有人名有渠道');
+  assert.ok(bodyText().includes('小帅') && bodyText().includes('QQ'), '弹窗标题有人名有渠道（两行两节点）');
+  assert.ok(!bodyText().includes('·'), '弹窗可见文案零分隔符（#140）');
   assert.ok(bodyText().includes('小帅2'), '弹窗有原家门牌名');
   assert.ok(bodyText().includes('D:\\agents\\xiaoshuai'), '弹窗有原家路径');
   findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
@@ -726,6 +727,22 @@ test('view：有家表换助理棋盘（家卡带 data-adopt-home，行带 data-
     .find((r: any) => r.getAttribute('data-adopt-assistant') === 'a-loose');
   const faceLoose = findClass(rowLoose, 'adopt-ava')[0];
   assert.ok(String(faceLoose.getAttribute('src') ?? '').startsWith('data:image/'), '有上传图挂图');
+  /* 三行式：首行头像＋名字，次行圆点＋渠道 logo＋在线文字，末行签名。 */
+  const kidsQ1 = (rowQ1.children ?? []) as any[];
+  assert.equal(kidsQ1.length, 2, '助理行两行（签名进次行右侧）');
+  assert.ok(String(kidsQ1[0].attrs?.class ?? '').split(' ').includes('adopt-ph-top'), '首行是头像＋名字');
+  assert.equal(findClass(kidsQ1[0], 'adopt-who')[0]?.textContent, '小帅', '名字在头像右侧');
+  const midQ1 = kidsQ1[1];
+  assert.ok(String(midQ1.attrs?.class ?? '').split(' ').includes('adopt-mid'), '次行是状态行');
+  assert.equal(findClass(midQ1, 'adopt-hdot').length, 1, '次行有状态圆点');
+  assert.equal(findClass(midQ1, 'adopt-chlogo').length, 1, '次行有渠道 logo');
+  assert.ok(String(midQ1.textContent ?? '').includes('在岗'), '次行是在线文字');
+  assert.equal(findClass(midQ1, 'adopt-sig').length, 1, '签名挂次行');
+  assert.equal(findClass(midQ1, 'adopt-sig')[0]?.textContent, model.sloganFor('q1'), '签名是助理小传');
+  assert.equal(findClass(rowQ1, 'adopt-cap').length, 0, '不再另起签名行');
+  const midLoose = ((rowLoose.children ?? []) as any[])[1];
+  assert.equal(findClass(midLoose, 'adopt-chlogo').length, 0, '未绑定无渠道 logo');
+  assert.ok(String(midLoose.textContent ?? '').includes('等安家'), '未绑定次行等安家');
 });
 
 test('view：助理拖到他家 → 远端先行＋落表（诚实键 fromHomeId/followBot）＋撤销窗', async () => {

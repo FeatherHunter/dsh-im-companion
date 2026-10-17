@@ -112,13 +112,18 @@ test("copyFor 归一化与回绕", () => {
   assert.equal(data.copyFor("dawn", 2).moon, false);
 });
 
-test("displaySub 诚实模板", () => {
-  assert.equal(data.displaySub("飞书在线 · 整个世界都睡了，除了我", 3, "小帅"), "整个世界都睡了，除了我");
-  assert.equal(data.displaySub("飞书在线 · 1 个会话已就位", 5, "小帅"), "5 个会话已就位");
-  assert.equal(data.displaySub("飞书在线 · 1 个会话候着", 0, "小帅"), "0 个会话候着");
-  assert.equal(data.displaySub("飞书在线 · 1 个会话已就位", null, "小帅"), "会话已就位");
-  assert.equal(data.displaySub("飞书在线 · 小帅守着今天", 1, "星火"), "星火守着今天");
-  assert.equal(data.displaySub("飞书在线 · 小帅守着今天", 1, "小帅"), "小帅守着今天");
+test("副标题零分隔符：切分器退役、文案自带整句（#140）", () => {
+  assert.equal((data as any).displaySub, undefined,
+    "displaySub 必须整段删掉——它与 15 条带品牌前缀的格式是一对，留下就是永不命中的暗器");
+  for (const seg of data.TIME_SEGS) {
+    for (let i = 0; i < 3; i++) {
+      const zh = data.copyFor(seg, i);
+      assert.ok(zh.s.indexOf("·") < 0, seg + "#" + i + " 中文副标题零分隔符");
+      assert.ok(zh.s.indexOf("在线") < 0, seg + "#" + i + " 副标题不带渠道品牌前缀（状态由 .wb-state 节点讲）");
+      const en = data.copyFor(seg, i, "en");
+      assert.ok(en.s.indexOf("·") < 0 && en.s.indexOf("Online") < 0, seg + "#" + i + " EN 副标题同样零前缀");
+    }
+  }
 });
 
 test("PH 十五句完整性（原型冻结文案锁死）", () => {
@@ -130,7 +135,7 @@ test("PH 十五句完整性（原型冻结文案锁死）", () => {
       assert.equal(c.seg, seg);
       assert.equal(c.idx, i);
       assert.ok(c.t.length > 0 && c.s.length > 0 && c.b.length > 0 && c.bs.length > 0);
-      assert.ok(c.s.indexOf("·") >= 0, seg + "#" + i + " 副标题须带“·”分隔 mock 健康前缀");
+      assert.ok(c.s.indexOf("·") < 0, seg + "#" + i + " 副标题零分隔符（#140）");
       assert.ok(c.sky.indexOf("wb-sky-") === 0);
     }
   }
@@ -282,7 +287,6 @@ test("渲染 P 弹窗（遮罩+面板+标题+进门）", () => {
   const model2 = data.buildBannerModel(bots2, META2, W1, CATALOGS);
   const el = view.renderHome({
     copy, model: model2,
-    subSuffix: data.displaySub(copy.s, 2, model2.name),
     callbacks: { onEnter: () => calls.push("enter") },
   });
   assert.equal(el.querySelector(".wb-host-name").textContent, "小帅2", "主人行必须显示自取名（原名兜底）");
@@ -347,7 +351,6 @@ test("渲染类名全在 wb- 命名空间", () => {
   const weeModel = data.buildBannerModel([snap({})], META, W1, CATALOGS);
   const el = view.renderHome({
     copy: wee, model: weeModel,
-    subSuffix: data.displaySub(wee.s, null, "小帅"),
     callbacks: { onEnter: () => {} },
   });
   const seen = new Set<string>();
@@ -736,27 +739,27 @@ test("同拍重放不重绘（防15s闪刷）", async () => {
 test("中文新版三处（门口迎+进门办事）", () => {
   assert.equal(data.copyFor("dawn", 1).t, "早，今天听你的");
   assert.equal(data.copyFor("dawn", 1).bs, "我在呢");
-  assert.equal(data.copyFor("dawn", 2).s, "飞书在线 · 就等你了");
+  assert.equal(data.copyFor("dawn", 2).s, "就等你了");
   assert.equal(data.copyFor("dawn", 2).b, "回家");
 });
 
-test("门口迎定稿全量（13处改后锁定）", () => {
-  assert.equal(data.copyFor("wee", 0).s, "飞书在线 · 夜还深，我没睡");
+test("门口迎定稿全量（13处改后锁定；#140 去品牌前缀）", () => {
+  assert.equal(data.copyFor("wee", 0).s, "夜还深，我没睡");
   assert.equal(data.copyFor("wee", 1).t, "天还黑着，我陪你到天亮");
-  assert.equal(data.copyFor("wee", 1).s, "飞书在线 · 你熬夜，我值班");
-  assert.equal(data.copyFor("wee", 2).s, "飞书在线 · 热茶给你倒好了");
+  assert.equal(data.copyFor("wee", 1).s, "你熬夜，我值班");
+  assert.equal(data.copyFor("wee", 2).s, "热茶给你倒好了");
   assert.equal(data.copyFor("dawn", 0).t, "清晨了，我先醒了");
-  assert.equal(data.copyFor("dawn", 0).s, "飞书在线 · 先喝口热的再说");
-  assert.equal(data.copyFor("day", 0).s, "飞书在线 · 我守着今天");
-  assert.equal(data.copyFor("day", 1).s, "飞书在线 · 喝口水，歇口气");
+  assert.equal(data.copyFor("dawn", 0).s, "先喝口热的再说");
+  assert.equal(data.copyFor("day", 0).s, "我守着今天");
+  assert.equal(data.copyFor("day", 1).s, "喝口水，歇口气");
   assert.equal(data.copyFor("day", 1).bs, "不着急");
-  assert.equal(data.copyFor("day", 2).s, "飞书在线 · 外面吵，我这儿静");
+  assert.equal(data.copyFor("day", 2).s, "外面吵，我这儿静");
   assert.equal(data.copyFor("dusk", 2).t, "忙完了？先回家");
-  assert.equal(data.copyFor("night", 0).s, "飞书在线 · 今晚我守着");
+  assert.equal(data.copyFor("night", 0).s, "今晚我守着");
   assert.equal(data.copyFor("night", 0).bs, "还早呢");
   assert.equal(data.copyFor("night", 1).t, "夜深了，早点回来");
-  assert.equal(data.copyFor("wee", 0, "en").s, "Online · Deep night. I'm awake");
-  assert.equal(data.copyFor("day", 2, "en").s, "Online · Quiet in here");
+  assert.equal(data.copyFor("wee", 0, "en").s, "Deep night. I'm awake");
+  assert.equal(data.copyFor("day", 2, "en").s, "Quiet in here");
 });
 
 test("homeLangOf 跟随 DSH 系统语言", () => {
@@ -804,7 +807,7 @@ test("EN 十五句完整性（结构对齐中文）", () => {
       assert.equal(c.seg, seg);
       assert.equal(c.idx, i);
       assert.ok(c.t.length > 0 && c.s.length > 0 && c.b.length > 0 && c.bs.length > 0);
-      assert.ok(c.s.indexOf("·") >= 0, seg + "#" + i + " EN副标题须带分隔符");
+      assert.ok(c.s.indexOf("·") < 0 && c.s.indexOf("Online") < 0, seg + "#" + i + " EN副标题零分隔符与前缀（#140）");
       assert.ok(c.sky.indexOf("wb-sky-") === 0);
     }
   }
@@ -813,15 +816,6 @@ test("EN 十五句完整性（结构对齐中文）", () => {
   assert.equal(data.copyFor("dusk", 0, "en").b, "Home for dinner");
   assert.equal(data.copyFor("nope", 0, "en").seg, "night");
   assert.equal(data.copyFor("day", 0).bs, "门开着");
-});
-
-test("displaySub 英文计数模板", () => {
-  assert.equal(data.displaySub("Online · 1 session ready", 5, undefined, "en"), "5 sessions ready");
-  assert.equal(data.displaySub("Online · 1 session ready", 1, undefined, "en"), "1 session ready");
-  assert.equal(data.displaySub("Online · 1 session waiting", 0, undefined, "en"), "0 sessions waiting");
-  assert.equal(data.displaySub("Online · 1 session ready", null, undefined, "en"), "Sessions ready");
-  assert.equal(data.displaySub("Online · Waiting on you", 3, undefined, "en"), "Waiting on you");
-  assert.equal(data.displaySub("飞书在线 · 整个世界都睡了，除了我", 3, "小帅"), "整个世界都睡了，除了我");
 });
 
 test("改名即时生效：名表后到，弹窗自动纠名", async () => {

@@ -7,7 +7,7 @@ import { isLineageNode } from '../../client/dom';
 var LN = String.fromCharCode(10);
 var attrProbe = '';
 export function sessionAttrProbe(): string { return attrProbe; }
-var SESS_LABEL: Record<string, string> = { exec: '执行中', seen: '待看', done: '刚执行完待看', red: '异常 · 需处理', wait: '待确认 · 等你选择' };
+var SESS_LABEL: Record<string, string> = { exec: '执行中', seen: '待看', done: '刚执行完待看', red: '异常，需处理', wait: '待确认，等你选择' };
 function getA(el: Element, k: string): string {
   try { return el.getAttribute(k) || ''; } catch (e) { return ''; }
 }

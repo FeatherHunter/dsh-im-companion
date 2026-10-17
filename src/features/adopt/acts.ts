@@ -112,7 +112,11 @@ export function askMove(ctx: FeatureCtx, bot: MoveBot, from: string, to: string,
       h('button', { onClick: go }, '确认换绑'))
     const fromPlate = homePlate(from, meta)
     const toPlate = homePlate(to, meta)
-    const title = h('div', { className: 'adopt-who' }, dispName(bot) + ' · ' + channelLabel(bot.channel) + ' · ' + healthText(bot))
+    const title = h('div', { className: 'adopt-who' },
+      h('div', null, dispName(bot)) as unknown as Node,
+      h('div', { className: 'adopt-cap adopt-cap-pair' },
+        h('span', null, channelLabel(bot.channel)) as unknown as Node,
+        h('span', null, healthText(bot)) as unknown as Node) as unknown as Node)
     box.appendChild(h('div', { className: 'adopt-confirm' }, title,
       h('div', {}, '从「' + fromPlate.name + '」') as unknown as Node,
       h('span', { className: 'adopt-cap' }, from) as unknown as Node,

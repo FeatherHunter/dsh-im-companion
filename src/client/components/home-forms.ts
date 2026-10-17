@@ -13,7 +13,7 @@ import { logLine, logOn } from '../log'
 export interface FormOps {
   createHome(workspaceId: string): Promise<void>
   createAssistant(homeId: string, channel: string, botId: string, userName?: string): Promise<void>
-  createUnbound(homeId: string, channel: string, name?: string): Promise<void>
+  createUnbound(homeId: string, name?: string): Promise<void>
   bindAssistant(id: string, channel: string, botId: string): Promise<void>
   updateHome(id: string, patch: { name?: string | null; avatar?: string | null }): Promise<void>
   updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null }): Promise<void>
@@ -35,9 +35,18 @@ export interface FormDeps {
 const fLog = (action: string, ok: boolean, message: string): void => { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'form', action, ok, message }) }
 
 /* 装按钮类控件的字段必须传 'div'——真机实测（2026-10-14）：label 会把内部第一个按钮当 labeled control，悬停/点击/焦点全转过去。 */
-function field(label: string, control: HTMLElement, tag: 'label' | 'div' = 'label'): HTMLElement { return h(tag, { className: 'hu-fld' }, h('span', {}, label), control) }
+export function field(label: string, control: HTMLElement, tag: 'label' | 'div' = 'label'): HTMLElement { return h(tag, { className: 'hu-fld' }, h('span', {}, label), control) }
 
-function optList(items: Array<{ value: string; title: string; sub: string; disabled?: boolean; tip?: string }>, current: string, onPick: (v: string) => void): HTMLElement {
+/** 机器人列表项的副标：渠道名 ＋（在线／离线）。**「在线」二字必须绿**（owner 2026-10-17：属于在线的文字要绿）；
+ * 纯串塞不进颜色 ⇒ 列表项额外吃一个节点（`subNode`，追加式字段，老调用只传 `sub` 照旧）。 */
+export function botSubNode(channel: string, connected: boolean): HTMLElement {
+  return h('span', {},
+    channelLabel(channel) + '（',
+    h('span', { className: connected ? 'hu-son' : undefined }, connected ? '在线' : '离线'),
+    '）')
+}
+
+export function optList(items: Array<{ value: string; title: string; sub?: string; subNode?: HTMLElement; disabled?: boolean; tip?: string }>, current: string, onPick: (v: string) => void): HTMLElement {
   const box = h('div', { className: 'hu-opts' })
   items.forEach((it) => {
     const btn = h('button', {
@@ -45,7 +54,7 @@ function optList(items: Array<{ value: string; title: string; sub: string; disab
       'aria-selected': it.value === current ? 'true' : 'false',
     },
       h('span', { className: 'hu-oi', style: avatarStyle(`opt:${it.value}`, null) }, initialsOf(it.title)),
-      h('span', { className: 'hu-ot' }, h('b', {}, it.title), h('small', {}, it.sub)))
+      h('span', { className: 'hu-ot' }, h('b', {}, it.title), h('small', {}, it.subNode ?? it.sub ?? '')))
     if (it.disabled) {
       btn.disabled = true
       btn.setAttribute('disabled', '')
@@ -63,10 +72,12 @@ function optList(items: Array<{ value: string; title: string; sub: string; disab
   return box
 }
 
-function footBtns(onOk: () => void, disabledReason?: string): HTMLElement[] {
+/** 弹层底钮（取消 / 主按钮）。主按钮文案默认「创建」，按动作可换：绑定机器人＝「绑定」、设置类＝「保存」——
+ * 一个表单的主按钮必须说出**这一步到底做了什么**（owner 2026-10-17：绑定弹层的「创建」让人以为要新建机器人）。 */
+export function footBtns(onOk: () => void, disabledReason?: string, okLabel = '创建'): HTMLElement[] {
   const cancel = h('button', { className: 'hu-pbtn-s', type: 'button' }, '取消')
   cancel.addEventListener('click', () => closeHomePop())
-  const ok = h('button', { className: 'hu-pbtn-s go', type: 'button' }, '创建')
+  const ok = h('button', { className: 'hu-pbtn-s go', type: 'button' }, okLabel)
   if (disabledReason) {
     /* 没有可建的家时必须一眼看出「不可用」：早先静默 return 会被读成「点了没反应」（#112 真机实测）。 */
     ok.disabled = true; ok.setAttribute('disabled', ''); ok.setAttribute('data-tip', disabledReason)
@@ -124,7 +135,8 @@ export function newAsstPop(anchor: AnchorRef, deps: FormDeps): void {
   const locked = deps.lockHome ? homes.find((x) => x.id === homeId) ?? null : null
   const lockedName = locked ? homeName(deps.view, locked) : ''
   let botId = bots.length ? bots[0].botId : ''
-  const unboundChannel = bots.length ? bots[0].channel : 'feishu'
+  /* #138 渠道诚实性：这里原本会替用户编一个渠道（有空闲机器人就抄第一个，没有就写死 feishu）——
+   * 未绑定的助理**没有渠道**，不许在磁盘上留一个猜测值。 */
   const nameInput = h('input', { type: 'text', placeholder: '留空用默认名', 'aria-label': '助理名字' }) as HTMLInputElement
   const body = [
     locked
@@ -137,7 +149,7 @@ export function newAsstPop(anchor: AnchorRef, deps: FormDeps): void {
     field('绑定机器人', bots.length
       ? optList([
         { value: '', title: '以后再绑', sub: '先不选，之后在助理里再绑' },
-        ...bots.map((b) => ({ value: b.botId, title: b.botName || b.botId, sub: `${channelLabel(b.channel)} · ${b.connected ? '在线' : '离线'}` })),
+        ...bots.map((b) => ({ value: b.botId, title: b.botName || b.botId, subNode: botSubNode(b.channel, b.connected) })),
       ], botId, (v) => { botId = v })
       : optList([{ value: '', title: '以后再绑', sub: '先不选，之后在助理里再绑' }], '', (v) => { botId = v })),
     field('名字', nameInput),
@@ -148,7 +160,7 @@ export function newAsstPop(anchor: AnchorRef, deps: FormDeps): void {
     const userName = (nameInput as HTMLInputElement).value.trim()
     closeHomePop(true)
     if (!botId) {
-      void deps.ops.createUnbound(homeId, unboundChannel, userName).then(() => deps.onDone('L3', homeId))
+      void deps.ops.createUnbound(homeId, userName).then(() => deps.onDone('L3', homeId))
       return
     }
     const bot = bots.find((b) => b.botId === botId)
@@ -224,7 +236,7 @@ export function renameHomePop(anchor: AnchorRef, deps: EditDeps & { homeId: stri
     width: 330, label: '家设置',
     title: h('div', { className: 'hu-ptitle' }, huIcon('pencil', 15), '家设置'),
     body: [field('名字', input), reset, field('头像', av.row, 'div'), ...(av.clear ? [av.clear] : [])],
-    foot: footBtns(ok),
+    foot: footBtns(ok, undefined, '保存'),
   })
 }
 
@@ -261,33 +273,8 @@ export function renameAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: stri
     width: 330, label: '助理设置',
     title: h('div', { className: 'hu-ptitle' }, huIcon('pencil', 15), '助理设置'),
     body: [field('名字', input), reset, field('头像', av.row, 'div'), ...(av.clear ? [av.clear] : []), del],
-    foot: footBtns(ok),
+    foot: footBtns(ok, undefined, '保存'),
   })
 }
 
-/** 占位绑定：给未绑定助理认领一个空闲机器人（先 bot.workspace.set 再 assistant.bind，验收③）。 */
-export function bindAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: string }): void {
-  const a = deps.view.assistants.find((x) => x.id === deps.asstId)
-  if (!a) return
-  const bots: BotSnap[] = freeBots(deps.view.bots.map((b) => ({ channel: b.channel, botId: b.botId, workspace: b.workspace, botName: b.botName })), deps.view.assistants)
-    .map((r) => deps.view.bots.find((b) => b.botId === r.botId && b.channel === r.channel))
-    .filter((b): b is BotSnap => !!b)
-  let botId = bots.length ? bots[0].botId : ''
-  const body = [
-    field('选择机器人', bots.length
-      ? optList(bots.map((b) => ({ value: b.botId, title: b.botName || b.botId, sub: `${channelLabel(b.channel)} · ${b.connected ? '在线' : '离线'}` })), botId, (v) => { botId = v })
-      : h('p', { className: 'hu-fhint' }, '每个机器人只能绑一位助理，现在都绑满了。')),
-  ]
-  const ok = (): void => {
-    if (!botId) { fLog('bind-assistant', false, '没选机器人'); return }
-    const bot = bots.find((b) => b.botId === botId)
-    if (!bot) { fLog('bind-assistant', false, '没选到机器人：' + botId); return }
-    closeHomePop(true)
-    void deps.ops.bindAssistant(a.id, bot.channel, bot.botId).then(deps.onDone)
-  }
-  openHomePop(anchor, {
-    width: 330, label: '绑定机器人', above: true,
-    title: h('div', { className: 'hu-ptitle' }, huIcon('link', 15), '绑定机器人'),
-    body, foot: footBtns(ok),
-  })
-}
+/** 占位绑定已搬 `home-bind-forms.ts`（本文件曾 293 行顶格）：调用方改从新文件 import，本文件不留重导出（避运行时循环）。 */

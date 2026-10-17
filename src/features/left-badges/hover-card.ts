@@ -1,15 +1,17 @@
-/** left-badges 自画悬浮卡：行悬停约 0.3s 出卡（渠道 glyph + 状态点 + 检测时间），纯视觉补充。\n * 委托监听不绑行（重渲染免疫）；滚轮/尺寸/Esc/点击/移出即藏；未绑定无卡。\n * 视觉第一：logo 认渠道、点认状态；每行追加 Bot 标识文本（#31：同渠道多 Bot 可辨别）。 */
-import { badgeForWorkspace } from '../../client/data/bindings'
+/** left-badges 自画悬浮卡：行悬停约 0.3s 出卡（渠道 logo + 助理脸 + 助理名 + 状态点 + 检测时间），纯视觉补充。\n * 委托监听不绑行（重渲染免疫）；滚轮/尺寸/Esc/点击/移出即藏；未绑定无卡。\n * 视觉第一：logo 认渠道、脸认助理、点认状态；每行追加 Bot 标识文本（#31：同渠道多 Bot 可辨别）。 */
+import { badgeForWorkspace, lastCheckedText } from '../../client/data/bindings'
 import { botDisplayLabel, type BotSnap } from '../../client/data/fleet-api'
 import { HEALTH_LABELS, channelLabel, healthOf, type HealthKind } from '../../client/data/config'
 import { channelGlyphSvg } from '../../client/icons'
-import { lastCheckedText } from '../../client/data/bindings'
+import { paintFace, type FaceHit, type FaceOf } from './assistant-face'
+import { BREATH_BASE_MS, BREATH_SLOT_MS, breathPhase } from './styles'
 import { logLine, logOn } from '../../client/log'
 
 export interface CardChannel {
   channel: string
   kind: HealthKind
   glyph: string | null
+  face: FaceHit
   label: string
   bot: string
 }
@@ -22,7 +24,7 @@ export interface CardData {
 }
 
 /** 卡片数据（纯函数可单测）：未绑定返回 null（无卡）。 */
-export function buildCardData(workspacePath: string, bots: BotSnap[], displayName?: string): CardData | null {
+export function buildCardData(workspacePath: string, bots: BotSnap[], displayName?: string, faceOf?: FaceOf): CardData | null {
   try {
     const badge = badgeForWorkspace(workspacePath, bots)
     if (badge.kind === 'unbound') return null
@@ -31,13 +33,18 @@ export function buildCardData(workspacePath: string, bots: BotSnap[], displayNam
     return {
       agent: displayName || badge.agent,
       kind: badge.kind,
-      channels: bound.map((b) => ({
-        channel: b.channel,
-        kind: b.stale ? 'warn' : healthOf(b.healthStatus, b.connected),
-        glyph: channelGlyphSvg(b.channel, 16),
-        label: botDisplayLabel(b),
-        bot: b.botId ?? '',
-      })),
+      channels: bound.map((b) => {
+        const hit = faceOf ? faceOf(b) : null
+        const url = (b.avatarUrl || '').trim()
+        return {
+          channel: b.channel,
+          kind: b.stale ? 'warn' : healthOf(b.healthStatus, b.connected),
+          glyph: channelGlyphSvg(b.channel, 16),
+          face: hit ?? { desc: { img: url || null, tint: '', initial: '' }, name: '' },
+          label: (hit && hit.name) || botDisplayLabel(b),
+          bot: b.botId ?? '',
+        }
+      }),
       time: lastCheckedText(bound),
     }
   } catch {
@@ -71,22 +78,6 @@ function el(tag: string, cls: string, text?: string): HTMLElement | null {
   }
 }
 
-const BREATH_BASE_MS = 1600
-const BREATH_SLOT_MS = 997 // 组内槽位步进：与 1600 互质，同渠道组内天然散开
-/** 呼吸相位（#33v2）：delay 走同渠道同基 + 组内槽位（构造错开，不靠运气）；duration 按 Bot 种子（有机）；单 Bot（slot 0）= 旧口径；重渲染不跳变。 */
-function hashStr(s: string): number {
-  let h = 5381
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0
-  return Math.abs(h)
-}
-export function breathPhase(channel: string, seed = '', slotMs = 0): { delay: string; duration: string } {
-  try {
-    const c = String(channel || '?')
-    const u = hashStr(seed ? c + '\0' + String(seed) : c)
-    const slot = slotMs > 0 ? Math.round(slotMs) % BREATH_BASE_MS : 0
-    return { delay: '-' + (((hashStr(c) + slot) % BREATH_BASE_MS) / 1000).toFixed(2) + 's', duration: (1.6 + ((u >> 3) % 800) / 1000).toFixed(2) + 's' }
-  } catch { return { delay: '0s', duration: '1.6s' } }
-}
 
 const dot = (kind: HealthKind): HTMLElement | null => el('span', DOT_CLASS + ' ' + kind)
 
@@ -155,9 +146,7 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
         host.appendChild(card)
       }
       const c = card as unknown as { style?: { display?: string; visibility?: string }; replaceChildren: (...n: unknown[]) => void }
-      try {
-        c.replaceChildren()
-      } catch { /* 忽略 */ }
+      try { c.replaceChildren() } catch { /* 忽略 */ }
       const head = el('div', HEAD_CLASS)
       const name = el('span', NAME_CLASS, data.agent)
       if (!head || !name) return false
@@ -168,10 +157,11 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
         const row = el('div', ROW_CLASS)
         if (!row) continue
         try { row.setAttribute('aria-label', channelLabel(ch.channel) + ' ' + ch.label + ' ' + HEALTH_LABELS[ch.kind]) } catch { /* 忽略 */ }
-        const g = el('span', GLYPH_CLASS)
+        const gl = el('span', GLYPH_CLASS)
+        const fc = paintFace(ch.face.desc)
         const lab = el('span', LABEL_CLASS, ch.label)
         const d = dot(ch.kind)
-        if (!g || !lab || !d) continue
+        if (!gl || !fc || !lab || !d) continue
         try { lab.setAttribute('title', ch.label) } catch { /* 忽略 */ }
         try {
           const i = seen.get(ch.channel) ?? 0
@@ -180,13 +170,9 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
           const st = (d as unknown as { style?: { animationDelay?: string; animationDuration?: string } }).style
           if (st) { st.animationDelay = ph.delay; st.animationDuration = ph.duration }
         } catch { /* 忽略 */ }
-        try {
-          if (ch.glyph) (g as unknown as { innerHTML?: string }).innerHTML = ch.glyph
-          else g.textContent = (ch.channel || '?').slice(0, 1).toUpperCase()
-        } catch {
-          /* glyph 失败回退首字 */
-        }
-        row.appendChild(g)
+        try { if (ch.glyph) (gl as unknown as { innerHTML?: string }).innerHTML = ch.glyph; else gl.textContent = (ch.channel || '?').slice(0, 1).toUpperCase() } catch { /* 忽略 */ }
+        row.appendChild(gl)
+        row.appendChild(fc)
         row.appendChild(lab)
         row.appendChild(d)
         parts.push(row)

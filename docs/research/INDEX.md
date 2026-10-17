@@ -79,6 +79,7 @@
 | `vision-router-screenshot.md`（2026-09-07） | 第三方包 `dsh-vision-router@2.1.3` 截图功能调查（源码级） | **有效** | 基线 `c6e05dc` / `2.1.3` 与本机已装版本一致 |
 | `vision-router-efficiency.md`（2026-09-07） | 同一包的效率机制调查（「云视觉调用是唯一稀缺资源」五条主线） | **有效** | 同上，基线 `c6e05dc` / `2.1.3` |
 | `vision-router-screenshot-local-patch.md`（2026-09-07） | 本机对已装 `dsh-vision-router` 的截屏补丁记录（上游 issue #409） | **有效** | 补丁对象是已安装包内 `index.js`；该包重装后补丁是否仍在**未判定**（见 §F） |
+| `排查-接入流程新建助理而非绑定既有助理.md`（真机 · 2026-10-17 · 未挂票） | 「接入新机器人」空态出口只传家不传助理 ⇒ 接入链全程无助理身份、`commitBinding` 只写 `bot.workspace`；留下的「已绑工作区·无主」窗口被**常驻**种子对账（`seedGap`→`buildSeed`→`home.seed`→`seedDocs`）补成一行**新** bound 助理（**落盘**非投影，`nameSource: bot`），且被 `already-bound` 永久抢占；顺带抓到 `home.seed` 的三个计数**结构性恒为 0**（`log-sites.ts:49-52` 读 `value.summary`，宿主从不回它） | **有效** | **待证项**：真机跑的是 `v0.2.11@2026-10-16T19:12:09Z` 而活树未提交被并发改动（见其 §4 待证 12）；`T3-…md:55` 的「非空归属机器人各一已绑助理」是**迁移**规则，被当**常驻对账**规则用是本 bug 根因 |
 
 ---
 

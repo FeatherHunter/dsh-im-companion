@@ -41,7 +41,6 @@ export interface FirstViewCopy {
   detail: string
   detailTitle: string
   moreActions: (name: string) => string
-  wsPrefix: string
   rowTip: (name: string) => string
   starTitle: string
   starHref: string
@@ -93,7 +92,6 @@ const ZH: FirstViewCopy = {
   detail: '详情',
   detailTitle: '打开助理详情抽屉',
   moreActions: (name) => '更多操作 ' + name + '：重命名 / 更换工作区 / 移除渠道机器人',
-  wsPrefix: '工作区·',
   rowTip: (name) => name + '（整行悬停出按钮；触屏点一下行）',
   starTitle: '你的⭐是我夜空中最亮的星',
   starHref: 'https://github.com/FeatherHunter/dsh-im-companion',
@@ -139,7 +137,6 @@ const EN: FirstViewCopy = {
   detail: 'Details',
   detailTitle: 'Open assistant details',
   moreActions: (name) => 'More actions ' + name + ': Rename / Change workspace / Remove channel bots',
-  wsPrefix: 'Workspace: ',
   rowTip: (name) => name + ' (hover row for actions; tap row on touch)',
   starTitle: 'Your ⭐ is the brightest star in my night sky',
   starHref: 'https://github.com/FeatherHunter/dsh-im-companion',

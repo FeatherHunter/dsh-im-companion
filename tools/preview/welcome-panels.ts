@@ -40,7 +40,7 @@ const hostFrom: string = realId ? realId.path : "mock";
 const idxs = [0, 1, 2];
 const panels = langs.map((lang) => segs.map((seg) => idxs.map((idx) => {
   const c = data.copyFor(seg, idx, lang);
-  const sub = (lang === "en" ? "Online" : "在线") + " · " + data.displaySub(c.s, 2, hostName[lang], lang);
+  const sub = (lang === "en" ? "Online" : "在线") + "，" + c.s; /* 预览台自用串；产品侧是 .wb-state + .wb-text 两个节点（#140） */
   let deco = "";
   if (c.moon) {
     let stars = "";

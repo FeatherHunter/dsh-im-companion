@@ -90,32 +90,33 @@ interface SegDef {
   opts: [TimeOpt, TimeOpt, TimeOpt];
 }
 
-/** PH 原始文案：五段×三套，一字不改：“门开着”是已对过的修订版。 */
+/** PH 文案：五段×三套，品牌无关（只说家/灯/茶，不出现具体 IM 品牌名——“门开着”是已对过的修订版）。
+ * 副标 s 直接就是整句：旧「飞书在线」品牌前缀与配套切分器（displaySub）已整体退役。 */
 const PH: Record<TimeSeg, SegDef> = {
   wee: { tab: "凌晨", sky: "wb-sky-wee", moon: true, horizon: true, opts: [
-    { t: "还没睡？灯给你留着", s: "飞书在线 · 夜还深，我没睡", b: "回家", bs: "夜里凉，进来暖暖" },
-    { t: "天还黑着，我陪你到天亮", s: "飞书在线 · 你熬夜，我值班", b: "回家", bs: "再陪一会儿" },
-    { t: "夜里凉，进来暖暖", s: "飞书在线 · 热茶给你倒好了", b: "回家", bs: "不问为什么晚睡" },
+    { t: "还没睡？灯给你留着", s: "夜还深，我没睡", b: "回家", bs: "夜里凉，进来暖暖" },
+    { t: "天还黑着，我陪你到天亮", s: "你熬夜，我值班", b: "回家", bs: "再陪一会儿" },
+    { t: "夜里凉，进来暖暖", s: "热茶给你倒好了", b: "回家", bs: "不问为什么晚睡" },
   ] },
   dawn: { tab: "清晨", sky: "wb-sky-dawn", moon: false, horizon: false, opts: [
-    { t: "清晨了，我先醒了", s: "飞书在线 · 先喝口热的再说", b: "回家吃早饭", bs: "粥在锅里" },
-    { t: "早，今天听你的", s: "飞书在线 · 今天的事，回来再说", b: "回家", bs: "我在呢" },
-    { t: "天亮了，我把门口扫好了", s: "飞书在线 · 就等你了", b: "回家", bs: "干净了" },
+    { t: "清晨了，我先醒了", s: "先喝口热的再说", b: "回家吃早饭", bs: "粥在锅里" },
+    { t: "早，今天听你的", s: "今天的事，回来再说", b: "回家", bs: "我在呢" },
+    { t: "天亮了，我把门口扫好了", s: "就等你了", b: "回家", bs: "干净了" },
   ] },
   day: { tab: "白天", sky: "wb-sky-day", moon: false, horizon: false, opts: [
-    { t: "家里亮堂，随时回来", s: "飞书在线 · 我守着今天", b: "回家", bs: "门开着" },
-    { t: "正午了，歇会儿？", s: "飞书在线 · 喝口水，歇口气", b: "回家", bs: "不着急" },
-    { t: "外头再闹，家里安静", s: "飞书在线 · 外面吵，我这儿静", b: "回家", bs: "进来静静" },
+    { t: "家里亮堂，随时回来", s: "我守着今天", b: "回家", bs: "门开着" },
+    { t: "正午了，歇会儿？", s: "喝口水，歇口气", b: "回家", bs: "不着急" },
+    { t: "外头再闹，家里安静", s: "外面吵，我这儿静", b: "回家", bs: "进来静静" },
   ] },
   dusk: { tab: "黄昏", sky: "wb-sky-dusk", moon: false, horizon: false, opts: [
-    { t: "黄昏了，家里点灯了", s: "飞书在线 · 等你回来", b: "回家吃饭", bs: "饭在热" },
-    { t: "天暗了，家亮了", s: "飞书在线 · 灯为你开", b: "回家", bs: "天黑请回家" },
-    { t: "忙完了？先回家", s: "飞书在线 · 今天辛苦了", b: "回家", bs: "歇歇" },
+    { t: "黄昏了，家里点灯了", s: "等你回来", b: "回家吃饭", bs: "饭在热" },
+    { t: "天暗了，家亮了", s: "灯为你开", b: "回家", bs: "天黑请回家" },
+    { t: "忙完了？先回家", s: "今天辛苦了", b: "回家", bs: "歇歇" },
   ] },
   night: { tab: "深夜", sky: "wb-sky-night", moon: true, horizon: false, opts: [
-    { t: "深夜了，家里灯还亮着", s: "飞书在线 · 今晚我守着", b: "回家", bs: "还早呢" },
-    { t: "夜深了，早点回来", s: "飞书在线 · 随时回来", b: "回家", bs: "门没锁" },
-    { t: "累了就回来，灯不关", s: "飞书在线 · 不问今天过得怎样", b: "回家", bs: "先睡觉" },
+    { t: "深夜了，家里灯还亮着", s: "今晚我守着", b: "回家", bs: "还早呢" },
+    { t: "夜深了，早点回来", s: "随时回来", b: "回家", bs: "门没锁" },
+    { t: "累了就回来，灯不关", s: "不问今天过得怎样", b: "回家", bs: "先睡觉" },
   ] },
 };
 
@@ -161,30 +162,6 @@ export function copyFor(seg: TimeSeg, idx: number, lang: HomeLang = "zh"): TimeC
   const i = normalizeCopyIdx(idx);
   const o = def.opts[i];
   return { seg: key, idx: i, tab: def.tab, sky: def.sky, moon: def.moon, horizon: def.horizon, t: o.t, s: o.s, b: o.b, bs: o.bs };
-}
-
-/** 副标题后半句：去 mock 前缀拼真实健康态；计数句填真实路由数（null 去数字）；小帅换真名。 */
-export function displaySub(rawSub: string, total: number | null, agentName?: string, lang: HomeLang = "zh"): string {
-  const raw = String(rawSub ?? "");
-  const dot = raw.indexOf("·");
-  let suffix = (dot >= 0 ? raw.slice(dot + 1) : raw).trim();
-  if (lang === "en") {
-    const e = suffix.match(/^1 sessions? (.+)$/);
-    if (e) {
-      if (total === null || total === undefined || !isFinite(total)) return "Sessions " + e[1];
-      const n = Math.max(0, Math.floor(total));
-      return (n === 1 ? "1 session " : n + " sessions ") + e[1];
-    }
-    return suffix;
-  }
-  const name = (agentName ?? "").trim();
-  if (name) suffix = suffix.split("小帅").join(name);
-  const m = suffix.match(/^1 个会话(.+)$/);
-  if (m) {
-    if (total === null || total === undefined || !isFinite(total)) return "会话" + m[1];
-    return Math.max(0, Math.floor(total)) + " 个会话" + m[1];
-  }
-  return suffix;
 }
 
 /** 进门记忆读：旧快照缺 welcomed 字段回空（读方兜底，零破坏）。 */

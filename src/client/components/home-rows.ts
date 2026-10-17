@@ -7,12 +7,13 @@ import { avatarStyle, imageCover, initialsOf } from './home-identity'
 import { avatarSrc } from './home-avatar'
 import { botKey, buildIndex, type FleetIndex } from './home-index'
 import {
-  basenameOf, resolveAssistantDisplay, resolveHomeDisplay,
+  basenameOf, channelOf, resolveAssistantDisplay, resolveHomeDisplay,
   type Assistant, type Display, type Home, type WorkspaceRef,
 } from '../data/home-model'
 import { isOrphanHome } from '../data/home-orphan'
 import { orphanRowActs } from './home-orphan-row'
 import { homeStrip } from './home-row-strip'
+import { asstSubMeta, metaRow } from './home-meta'
 import type { BotSnap } from '../data/fleet-api'
 
 /** 原型回落文案（proto-studio 的 homeFrom/asstFrom）。 */
@@ -203,7 +204,8 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
       path: home.path ?? '',
       assts: list.map((a) => {
         const bot = botOf(view, a)
-        const ch = channelLabel(a.channel)
+        /* #138 渠道诚实性：未绑定没有渠道 ⇒ 空串，气泡连品牌 logo 都不画（回退首字徽标）。 */
+        const ch = channelOf(a)
         const bound = !!a.botId
         return {
           id: a.id,
@@ -211,9 +213,9 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
           avatar: a.avatar ?? null,
           /* 绿＝在线；有机器人但快照没到＝离线（红）；没绑机器人＝空心（未绑定）。与老「每助理一圆点」口径一致。 */
           on: bot ? !!bot.connected : (bound ? false : null),
-          channel: a.channel ?? '',
-          /* 气泡 sub 只讲“渠道＋机器人名”，状态一律由 statusText 讲（owner 禁 · 且禁状态复读）。 */
-          sub: bot ? `${ch}${bot.botName || '未命名机器人'}` : ch,
+          channel: ch ?? '',
+          /* 气泡 sub 只讲“渠道＋机器人名”，状态一律由 statusText 讲（owner 禁分隔符、且禁状态复读）。 */
+          sub: bot ? `${ch ? channelLabel(ch) : ''}${bot.botName || '未命名机器人'}` : (ch ? channelLabel(ch) : '待接入'),
         }
       }),
     }))
@@ -221,10 +223,12 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
   return el
 }
 
-/** 助理行（原型 rowsAsst）：头像(圆) + 名 + 已绑章 + 在线 / 渠道 · 工作区路径 + 接入 · ⋯。 */
+/** 助理行（原型 rowsAsst）：头像(圆) + 名 + 已绑章 + 在线 / 渠道 + 工作区路径 + 接入 / ⋯。
+ *  副标走元信息原语：渠道强（未绑定显示「待接入」）＋工作区等宽弱化，靠间距不靠符号（#139）。 */
 export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLElement {
   const d = asstDisplay(view, a)
   const bot = botOf(view, a)
+  const ch = channelOf(a)
   const home = view.index.byId.get(a.homeId)
   const path = home && home.path ? home.path : '未关联工作区'
   const nm = h('span', { className: 'hu-nm' }, h('b', {}, d.text), statusPillEl(a), onlineTagEl(bot))
@@ -234,7 +238,7 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
   },
     avatarEl(a.id, d.text, a.avatar, { round: true }),
     h('span', { className: 'hu-txt' }, nm,
-      h('span', { className: 'hu-sub' }, `${channelLabel(a.channel)} · 工作区 ${path}`)),
+      h('span', { className: 'hu-sub' }, asstSubMeta(ch, path))),
     h('span', { className: 'hu-acts2' },
       a.status === 'bound'
         ? textBtn('connect-a', '接入', { cls: 'connect', id: a.id })
@@ -244,18 +248,19 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
   return el
 }
 
-/** 渠道行（按渠道模式 L1）：渠道名 + 在线汇总 / N 位助理 · 已绑数 / 助理清单。 */
+/** 渠道行（按渠道模式 L1）：渠道名 + 在线汇总 / N 位助理（已绑数）/ 助理清单。
+ *  空键是**显式的「待接入」组**（#138）：渠道诚实化之后，未绑定助理不能在这个视图里消失。 */
 export function channelRow(view: RowView, channel: string, opts: RowOpts = {}): HTMLElement {
   const list = view.index.byChannel.get(channel) ?? []
   let bound = 0
   for (const a of list) if (a.status === 'bound') bound += 1
-  const label = channelLabel(channel)
+  const label = channel ? channelLabel(channel) : '待接入'
   const names = list.length ? `助理：${list.map((a) => asstName(view, a)).join('、')}` : ''
   const nm = h('span', { className: 'hu-nm' }, h('b', {}, label))
   const onlineEl = homeOnlineTag(view, list)
   if (onlineEl) nm.appendChild(onlineEl)
   const txt = h('span', { className: 'hu-txt' }, nm,
-    h('span', { className: 'hu-sub' }, `${list.length} 位助理 · ${bound} 位已绑`))
+    h('span', { className: 'hu-sub' }, metaRow([{ text: `${list.length} 位助理`, tone: 'strong' }, { text: `${bound} 位已绑`, note: true }])))
   if (names) txt.appendChild(h('span', { className: 'hu-names' }, names))
   const el = h('div', {
     className: `hu-row${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}`,

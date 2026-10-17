@@ -5,7 +5,8 @@ import { h } from '../dom'
 import { channelLabel } from '../data/config'
 import { huIcon } from './home-icons'
 import { asstDisplay, avatarEl, botOf, homeDisplay, onlineTagEl, pillEl, statusPillEl, type RowView } from './home-rows'
-import type { Assistant } from '../data/home-model'
+import { channelOf, type Assistant } from '../data/home-model'
+import { metaRow } from './home-meta'
 
 export interface DetailOpts {
   view: RowView
@@ -50,7 +51,7 @@ function botBlock(o: DetailOpts): HTMLElement {
       h('span', { className: 'hu-bic' }, huIcon('bot', 18)),
       h('div', { className: 'hu-txt' },
         h('b', {}, bot.botName || '未命名机器人'),
-        h('small', {}, `${channelLabel(bot.channel)} · 只接一个渠道`)),
+        h('small', {}, metaRow([{ text: channelLabel(bot.channel), tone: 'strong' }, { text: '只接一个渠道', note: true }]))),
       h('span', { className: 'hu-pill dim hu-mono' }, bot.botId)))
     block.appendChild(h('div', { className: 'hu-steps3' },
       h('span', {}, '先建助理'), h('i', {}),
@@ -75,17 +76,19 @@ export function detailEl(o: DetailOpts): HTMLElement {
   const home = o.view.index.byId.get(a.homeId)
   const homeText = home ? homeDisplay(o.view, home).text : '未关联工作区'
   const bot = botOf(o.view, a)
+  /* 渠道诚实性（#138）：未绑定就是**没有渠道**，显示「尚未接入」而不是旧版客户端编出来的品牌名。 */
+  const ch = channelOf(a)
 
   const card = h('div', { className: 'hu-detail' },
     h('div', { className: 'hu-dhead' },
       avatarEl(a.id, d.text, a.avatar, { round: true }),
       h('div', { className: 'hu-txt' },
         h('b', {}, d.text),
-        h('small', {}, `${d.from} · `, h('span', { className: 'hu-mono' }, a.id))),
+        h('small', {}, metaRow([{ text: d.from, tone: 'weak' }, { text: a.id, tone: 'mono' }]))),
       onlineTagEl(bot)),
     h('div', { className: 'hu-meta' },
       h('span', { className: 'hu-mchip' }, huIcon('home', 13), homeText),
-      h('span', { className: 'hu-mchip' }, huIcon('link', 13), channelLabel(a.channel)),
+      h('span', { className: 'hu-mchip' }, huIcon('link', 13), ch ? channelLabel(ch) : '尚未接入'),
       statusPillEl(a)),
     chainEl(a),
     botBlock(o))
@@ -95,10 +98,10 @@ export function detailEl(o: DetailOpts): HTMLElement {
   else primary.appendChild(abtn('bind-a', '绑定机器人', o, { cls: 'go', icon: 'link' }))
   primary.appendChild(abtn('detail-a', '详情', o, { icon: 'info' }))
 
-  /* T6b #114 已启用：改名·头像（同一设置弹层）＋删除助理（两步确认，只删行不断连）。
+  /* T6b #114 已启用：改名与头像（同一设置弹层）＋删除助理（两步确认，只删行不断连）。
    * T6c #115：换工作区（整户搬，机器人跟随）＋移除渠道（解绑不断连）。 */
   const second = h('div', { className: 'hu-acts' })
-  second.appendChild(abtn('rename-a', '改名·头像', o, { icon: 'pencil' }))
+  second.appendChild(abtn('rename-a', '改名与头像', o, { icon: 'pencil' }))
   const del = h('button', { className: 'hu-abtn', type: 'button', 'data-item-act': 'remove-a' }, huIcon('trash', 14), '删除助理')
   let armed = false
   del.addEventListener('click', () => {

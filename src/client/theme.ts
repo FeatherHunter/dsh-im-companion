@@ -266,7 +266,7 @@ const CSS = `
 }
 .af-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* 弹窗居中：遮罩全屏（token组max-width会压成左侧窄条·全站偏左根因）+小屏滚动；宽卡给长路径；置顶1250>抽屉1200 */
+/* 弹窗居中：遮罩全屏（token组max-width会压成左侧窄条，全站偏左根因）+小屏滚动；宽卡给长路径；置顶1250>抽屉1200 */
 .af-overlay { max-width: none; padding: 20px; overflow: auto; }
 .af-modal--wide { width: min(560px, calc(100vw - 48px)); }
 .af-overlay--top { z-index: 1250; }

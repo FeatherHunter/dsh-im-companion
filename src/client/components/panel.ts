@@ -139,7 +139,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     onDone: (ok) => {
       const t = data.state.updatedAt
       if (!ok) toast('刷新失败：家表没读到最新状态，稍后重试')
-      else toast(t ? `已刷新 · 渠道状态更新于 ${t}` : '已刷新')
+      else toast(t ? `已刷新（渠道状态更新于 ${t}）` : '已刷新')
     },
   })
   const refreshBtn = makeIconButton({ iconName: 'refresh', label: copy.refresh, title: copy.refresh, onClick: () => void refresh() })

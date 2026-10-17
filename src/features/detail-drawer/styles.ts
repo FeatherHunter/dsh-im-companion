@@ -17,7 +17,7 @@ export const CSS = [
 '.detail-drawer-sec{border:1px solid var(--dsw-alias-separator,#eee);border-radius:10px;padding:10px;background:var(--dsw-alias-bg-base,#fff)}',
 '.detail-drawer-sec summary{cursor:pointer;font-size:12px;font-weight:700}',
 '.detail-drawer-route{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--dsw-alias-separator,#eee);overflow-x:auto;white-space:nowrap}',
-'.detail-drawer-rchat{font-size:12px;flex:none}',
+'.detail-drawer-rchat{display:inline-flex;align-items:center;gap:6px;font-size:12px;flex:none}',
 '.detail-drawer-route code{font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;flex:none}',
 '.detail-drawer-ghost{border-left:3px solid var(--dsw-alias-state-warn-primary,#e8890c);padding-left:6px}',
 '.detail-drawer-push{margin-left:auto;flex:none}',

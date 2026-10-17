@@ -156,7 +156,7 @@ export function suggestionLabel(sg: DeliverySuggestion): string {
   const first = Object.values(sg.route ?? {})[0]
   const s = String(first ?? '')
   const tail = s.length > 4 ? '…' + s.slice(-4) : s
-  return tail ? kind + '·' + tail : kind
+  return tail ? kind + '（' + tail + '）' : kind
 }
 
 function codedError(code: string, message: string): Error {
@@ -247,7 +247,7 @@ export async function runTestSend(
       await sendTestMessage(rpc, bot.botId, target.targetId, buildTestText(agent))
       return {
         ok: true,
-        text: '已发送到「' + channelLabel(bot.channel) + '·' + (target.name || target.targetId) + '」。',
+        text: '已发送到「' + (target.name || target.targetId) + '」（' + channelLabel(bot.channel) + '）。',
         event: { workspace: workspacePath, agent, botId: bot.botId, channel: bot.channel, targetId: target.targetId },
       }
     }
@@ -277,7 +277,7 @@ export async function sendToSuggestion(
     await testDraftTarget(rpc, bot.botId, sg)
     return {
       ok: true,
-      text: '已发送到「' + channelLabel(bot.channel) + '·' + suggestionLabel(sg) + '」（一次性，未保存）。',
+      text: '已发送到「' + suggestionLabel(sg) + '」（' + channelLabel(bot.channel) + '）（一次性，未保存）。',
       event: { workspace: workspacePath, agent, botId: bot.botId, channel: bot.channel, targetId: '' },
     }
   } catch (e) {

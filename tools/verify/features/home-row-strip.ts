@@ -54,8 +54,7 @@ const cls = (root: any, c: string): any[] => nodes(root).filter((e) => e.classLi
 const one = (root: any, c: string): any => cls(root, c)[0] ?? null;
 const txt = (e: any): string => String(e?.textContent ?? '').replace(/\s+/g, ' ').trim();
 
-const asst = (o: any = {}): any => ({ id: 'a1', name: '小帅', avatar: null, on: true, channel: 'feishu', sub: '飞书小帅', ...o });
-const LIST = [
+const asst = (o: any = {}): any => ({ id: 'a1', name: '小帅', avatar: null, on: true, channel: 'feishu', sub: '飞书小帅', ...o });const LIST = [
   asst({ id: 'a1', name: '小美', on: true }),
   asst({ id: 'a2', name: 'dsh-prompt', on: false, channel: 'qq', sub: '飞书机器人不在线' }),
   asst({ id: 'a3', name: '未命名助理', on: null, channel: 'nope-unknown', sub: '微信未绑定' }),
@@ -290,9 +289,16 @@ test('T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（�
   assert.ok(css.includes('.hu-acts2 .hu-ract.strong:hover') && css.includes('.hu-acts2 .hu-ract.danger:hover'),
     '孤儿两枚按钮悬停都有反馈（选择工作区加深＋微抬，删除家加深＋微抬）');
   assert.ok(css.includes('.hu-acts2 .hu-ract:active'), '按钮按下保持缩放反馈（不被悬停的位移吃掉）');
-  assert.ok(css.includes('.hu-ract.danger.armed'), '删除家布防态有 .armed 视觉（首点先变色，次点才上报）');
-  assert.ok(orphanSrc.includes('armed'), '布防态真的挂到按钮上（不是只有 CSS 空等）');
   assert.ok(css.includes('.hu-acts2 .hu-ract:focus-visible'), '孤儿按钮键盘可达（焦点环与「＋ 建助理」同口径）');
+  /* 删除改 popconfirm（要求1）：按钮只上报，不改文案；确认弹的主按钮危险红底 */
+  assert.ok(orphanSrc.includes("'remove-home'"), '删除家走 data-item-act 上报（确认在弹层里）');
+  assert.ok(!orphanSrc.includes('armed'), '两段式布防已退役（按钮不再改文案）');
+  assert.ok(css.includes('.hu-pbtn-s.danger'), '删除确认弹主按钮有危险红底（不用 accent 冒充）');
+  /* 顶栏吸顶钉子（要求2）：同一容器 sticky，背景不透明，下垫与列表边距同位 */
+  assert.ok(css.includes('.hu-top') && css.includes('position:sticky') && css.includes('top:0'),
+    '顶栏吸顶：.hu-top sticky 置顶（列表未到底时粘住，父容器到底后自然滑出）');
+  assert.ok(css.includes('.hu-top') && css.includes('background:var(--hu-panel)') && css.includes('z-index:7'),
+    '吸顶容器背景不透明＋层级在行之上（行滚过去不透字）');
   assert.ok(css.includes('.home-ui .hu-row.hrow:hover'), '家行悬停只换边框＋底色（老投影在这里不出现，还原型）');
   assert.ok(rowsSrc.includes('hu-sstrip'), '骨架行两段式（上段身份＋下段条带灰条，与真行同几何）');
   assert.ok(css.includes('.home-ui .hu-sstrip'), '骨架条带样式与新表同注册（不回基表添行）');
