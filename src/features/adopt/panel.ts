@@ -5,12 +5,15 @@ import { h } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { FeatureCtx } from '../protocol'
-import { boardGroups, homeList, homePlate, shortName, sloganFor, type HomePlate } from './model'
+import { assistantFace, boardGroups, groupAssistantsByHome, homeList, homePlate, shortName, sloganFor, unassignedBots, type AssistantRef, type HomePlate, type HomeRef } from './model'
+import { assistantImage } from './assistant-acts'
 import { logLine, logOn } from '../../client/log'
 import type { WorkspaceItem } from '../../client/data/header-overlay'
 
 export interface BoardHandle {
   repaint(bots: BotSnap[], staged: Map<string, string>): void
+  /** 助理棋盘（新增要求，以助理为单位搬家）：家卡即 data-adopt-home 目标，成员行带 data-adopt-assistant。 */
+  repaintAssistants?(homes: HomeRef[], assistants: AssistantRef[], bots: BotSnap[], staged: Map<string, string>): void
   close(): void
 }
 
@@ -114,8 +117,99 @@ export function openBoard(ctx: FeatureCtx, meta: AgentMetaDoc | null): BoardHand
     } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'adopt', action: 'board-repaint-fail', ok: false, message: '面板重绘失败，保持旧面板：' + String((e as Error)?.message ?? e) }) }
   }
 
+  /* ── 助理棋盘（新增要求）：一家一卡，一助理一照片；家卡带 data-adopt-home＋ws 双键 ── */
+  const assistantCard = (
+    plate: HomePlate, home: HomeRef, members: { a: AssistantRef; bot: BotSnap | null }[],
+    dashed: boolean, extra: Record<string, string>, hint = '',
+    badgeOf: (a: AssistantRef) => string = () => '',
+  ): HTMLElement => {
+    const box = h('div', { className: SEC_CLASS + (dashed ? ' adopt-sec-unbound' : '') }) as HTMLElement
+    if (home && home.id) box.setAttribute('data-adopt-home', home.id)
+    if (home && home.path) box.setAttribute('data-adopt-ws', home.path)
+    for (const k of Object.keys(extra)) box.setAttribute(k, extra[k])
+    const head = h('div', { className: 'adopt-sec-name' }) as HTMLElement
+    head.appendChild(h('span', { className: 'adopt-tape' }, plate.name) as unknown as Node)
+    box.appendChild(head as unknown as Node)
+    for (const { a, bot } of members) {
+      const row = h('div', { className: ROW_CLASS }) as HTMLElement
+      row.setAttribute('draggable', ctx.rpc ? 'true' : 'false')
+      row.setAttribute('data-adopt-assistant', a.id)
+      if (a.botId) row.setAttribute('data-adopt-bot', a.botId)
+      if (a.channel) row.setAttribute('data-adopt-channel', a.channel)
+      row.title = ctx.rpc ? '拖到另一个家完成搬家' : '连接服务不可用，暂不能搬家'
+      /* 露脸：有图挂图（img: 已取回），否则预设色首字（同一助理恒同脸）。 */
+      const face = assistantFace(a.id, a.name || bot?.botName || a.botId || a.id)
+      const faceUrl = assistantImage(a.id)
+      row.appendChild(faceUrl
+        ? h('img', { className: 'adopt-ava', src: faceUrl, alt: face.initial }) as unknown as Node
+        : h('span', { className: 'adopt-ava', style: 'background:hsl(' + (face.color * 45) + ',55%,45%)' }, face.initial) as unknown as Node)
+      const top = h('div', { className: 'adopt-ph-top' }) as HTMLElement
+      const hk = bot ? (bot.stale ? 'warn' : bot.healthKind) : ''
+      top.appendChild(h('span', {
+        className: 'adopt-hdot ' + (hk === 'online' ? 'adopt-h-online' : hk === 'warn' ? 'adopt-h-warn' : 'adopt-h-off'),
+        title: !bot ? '还没绑机器人' : bot.stale ? '状态未知（打盹）' : bot.healthKind === 'online' ? '在岗' : '睡着了',
+      }) as unknown as Node)
+      top.appendChild(h('span', { className: 'adopt-who' }, (a.name || bot?.botName || a.botId || '未命名助理')) as unknown as Node)
+      row.appendChild(top as unknown as Node)
+      const cap = h('span', { className: 'adopt-cap adopt-cap-pair' }) as HTMLElement
+      cap.appendChild(h('span', null, a.channel ? channelLabel(a.channel) : '未绑定') as unknown as Node)
+      cap.appendChild(h('span', null, !bot ? '等安家' : bot.stale ? '状态未知' : bot.healthKind === 'online' ? sloganFor(bot.botId) : bot.healthKind === 'warn' ? '偶尔打盹' : '睡着了') as unknown as Node)
+      row.appendChild(cap as unknown as Node)
+      const badge = badgeOf(a)
+      if (badge) row.appendChild(h('span', { className: 'adopt-badge' }, badge) as unknown as Node)
+      box.appendChild(row as unknown as Node)
+    }
+    if (hint) box.appendChild(h('div', { className: 'adopt-plus-hint' }, hint) as unknown as Node)
+    return box
+  }
+
+  const repaintAssistants = (homes: HomeRef[], assistants: AssistantRef[], bots: BotSnap[], staged: Map<string, string>): void => {
+    if (!grid) return
+    try {
+      const live = homes.filter((x) => x && x.id && !x.tombstone)
+      const botByKey = new Map((bots || []).map((b) => [b.channel + '' + b.botId, b] as const))
+      const stagedAssistants = [...staged.keys()]
+        .map((id) => (assistants || []).find((a) => a && a.id === id))
+        .filter((a): a is AssistantRef => !!a)
+      const stagedIds = new Set(stagedAssistants.map((a) => a.id))
+      const groups = groupAssistantsByHome(live, (assistants || []).filter((a) => a && !stagedIds.has(a.id)))
+      const fresh = unassignedBots((bots || []).filter((b) => !staged.has(b.botId)), assistants || [])
+      grid.replaceChildren()
+      for (const g of groups) {
+        if (!g.members.length) continue
+        const plate = homePlate(g.home.path, meta)
+        grid.appendChild(assistantCard(plate, g.home,
+          g.members.map((a) => ({ a, bot: a.botId ? botByKey.get(a.channel + '' + a.botId) ?? null : null })),
+          false, {}, ''))
+      }
+      /* 巷子口是分界线：有人之家在上，无人之家在下（歇脚助理＋新来机器人都在这里）。 */
+      const plazaMembers = [
+        ...stagedAssistants.map((a) => ({ a, bot: a.botId ? botByKey.get(a.channel + '' + a.botId) ?? null : null })),
+        ...fresh.map((b) => ({
+          a: { id: 'bot:' + b.channel + ':' + b.botId, homeId: '', channel: b.channel, botId: b.botId, status: 'bound' as const, name: b.botName },
+          bot: b,
+        })),
+      ]
+      const plaza = assistantCard(
+        { name: '巷子口', sub: '', initial: '', color: 0 },
+        { id: '', path: '' }, plazaMembers, true,
+        { 'data-adopt-plaza': '1', class: 'adopt-sec adopt-sec-unbound adopt-sec-new' },
+        '串门的路过歇一歇，新来的等安家——拖进一家才落实；关面板时没安顿好的，送回原来的家。',
+        (a) => stagedIds.has(a.id) ? '歇脚中（出来自' + shortName(staged.get(a.id) ?? '') + '）' : '新来的（等安家）',
+      )
+      try { plaza.removeAttribute('data-adopt-ws') } catch { /* 巷子口不可落 */ }
+      grid.appendChild(plaza)
+      const have = new Set(groups.filter((g) => g.members.length).map((g) => g.home.id))
+      for (const hm of live) {
+        if (have.has(hm.id)) continue
+        grid.appendChild(assistantCard(homePlate(hm.path, meta), hm, [], false, { class: 'adopt-sec adopt-sec-empty' }, '空无一人，拖个人来安家'))
+      }
+    } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'adopt', action: 'board-repaint-fail', ok: false, message: '助理面板重绘失败，保持旧面板：' + String((e as Error)?.message ?? e) }) }
+  }
+
   const api: BoardHandle & { close(): void } = {
     repaint,
+    repaintAssistants,
     close: () => {
       try { document.removeEventListener('keydown', onKey, true) } catch { /* 忽略 */ }
       try { overlay?.remove() } catch { /* 忽略 */ }

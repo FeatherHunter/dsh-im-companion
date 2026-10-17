@@ -111,3 +111,97 @@ export function boardGroups(bots: BotSnap[]): { unbound: BotSnap[]; groups: Boar
   }
   return { unbound, groups }
 }
+
+/* ── 以助理为单位搬家（新增要求）：助理＋唯一绑定机器人一起切家 ──
+ * 形状只取最少的结构字段（不引 home-model，功能自包含；判定的唯一真相源仍是家表）。
+ * 旧 bot 口径（resolveDrop/boardGroups/homeList）一字不动，老面板与老单测继续走它们。 */
+
+/** 助理最小面（家表行里搬家用到的键；tombstone 只看目标家）。 */
+export interface AssistantRef {
+  id: string
+  homeId: string
+  channel: string
+  botId: string | null
+  status: 'unbound' | 'bound' | 'orphan'
+  name?: string
+  avatar?: string | null
+}
+
+export interface HomeRef {
+  id: string
+  path: string
+  tombstone?: unknown
+}
+
+export type AssistantDropTarget = { kind: 'home'; homeId: string } | { kind: 'empty' }
+
+export type AssistantVerdict =
+  | { kind: 'move'; assistantId: string; from: string; to: string }
+  | { kind: 'noop'; assistantId: string }
+  | { kind: 'reject'; reason: 'empty' | 'no-home' | 'unknown-assistant' }
+
+/** 助理落点判定：目标空位/未知家/未知助理一律拒绝；同家为 noop；其余为 move（只换 homeId 其余原样）。 */
+export function resolveAssistantDrop(
+  assistant: AssistantRef | null | undefined,
+  target: AssistantDropTarget,
+  homes: HomeRef[],
+): AssistantVerdict {
+  if (!assistant || !assistant.id) return { kind: 'reject', reason: 'unknown-assistant' }
+  if (target.kind === 'empty') return { kind: 'reject', reason: 'empty' }
+  const to = String(target.homeId ?? '').trim()
+  if (!to) return { kind: 'reject', reason: 'empty' }
+  const home = (homes || []).find((h) => h && h.id === to)
+  if (!home || home.tombstone) return { kind: 'reject', reason: 'no-home' }
+  if (assistant.homeId === to) return { kind: 'noop', assistantId: assistant.id }
+  return { kind: 'move', assistantId: assistant.id, from: assistant.homeId, to }
+}
+
+/** 机器人反查唯一绑定的助理（bound 且 channel+botId 双命中；一对一由宿主保证，这里只取首中）。 */
+export function assistantOfBot(
+  assistants: AssistantRef[],
+  channel: string,
+  botId: string,
+): AssistantRef | null {
+  if (!channel || !botId) return null
+  return (assistants || []).find((a) => a && a.status === 'bound' && a.channel === channel && a.botId === botId) ?? null
+}
+
+/** 无主机器人（快照里有号、家表里无 bound 认领）：进巷子口“新来的”，拖进一家走“以后再绑”不走搬家。 */
+export function unassignedBots(bots: BotSnap[], assistants: AssistantRef[]): BotSnap[] {
+  const claimed = new Set(
+    (assistants || []).filter((a) => a && a.status === 'bound' && a.botId).map((a) => a.channel + '' + a.botId),
+  )
+  return (bots || []).filter((b) => b && b.botId && !claimed.has(b.channel + '' + b.botId))
+}
+
+/** 按家分组助理（保序：家序即入序；悬空 homeId 不渲染，fail-closed）。 */
+export function groupAssistantsByHome(
+  homes: HomeRef[],
+  assistants: AssistantRef[],
+): { home: HomeRef; members: AssistantRef[] }[] {
+  const byHome = new Map<string, AssistantRef[]>()
+  for (const a of assistants || []) {
+    if (!a || !a.homeId) continue
+    if (!byHome.has(a.homeId)) byHome.set(a.homeId, [])
+    byHome.get(a.homeId)!.push(a)
+  }
+  return (homes || []).filter((h) => h && h.id && !h.tombstone).map((home) => ({
+    home,
+    members: (byHome.get(home.id) ?? []).slice(),
+  }))
+}
+
+/** 助理头像脸（新增要求：每张助理卡先露脸）。
+ * 图片标记与宿主 AVATAR_PREFIX 同字面量（跨端各持一份，home-avatar.ts 同款口径）；
+ * 预设色/默认不走 RPC，首字＋色板恒定，两边（棋盘/确认框）同脸。 */
+export const IMG_MARK = 'img:'
+
+export function hasAssistantImage(avatar: string | null | undefined): boolean {
+  return typeof avatar === 'string' && avatar.startsWith(IMG_MARK) && avatar.length > IMG_MARK.length
+}
+
+/** 头像脸：首字＋色板序号（initialOf/paletteOf，跨渲染稳定，同一助理恒同脸）。 */
+export function assistantFace(id: string, name: string): { initial: string; color: number } {
+  const n = String(name ?? '') || String(id ?? '')
+  return { initial: initialOf(n), color: paletteOf(String(id ?? '') || n) }
+}

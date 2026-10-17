@@ -319,6 +319,8 @@ const mountStage = (rpc: any) => {
   return {};
 };
 const okRpc = async (ch: string, ep: string, payload: any) => { adoptRpcCalls.push({ ch, ep, payload }); return {}; };
+/* 助理棋盘上线后：开面板多一次只读 home.list 探针（回空即旧面板）；“写没写”只数写调用，老断言口径不变。 */
+const writeCalls = () => adoptRpcCalls.filter((c: any) => !(c.ch === '/im-companion' && c.ep === 'home.list'));
 const lastDoc = (t: string) => (docListeners[t] ?? [])[(docListeners[t] ?? []).length - 1];
 const mkTransfer = (desc: any) => ({ types: [MIME], getData: () => JSON.stringify(desc), setData() {}, effectAllowed: '', dropEffect: '' });
 const fireDrop = (target: any, desc: any) => lastDoc('drop')({ target, preventDefault() {}, dataTransfer: mkTransfer(desc) });
@@ -390,18 +392,18 @@ test('view：面板内组间拖放 → 确认后换绑 + 撤销滚回', async ()
   assert.ok(rowQ, 'A 组应有 q1');
   fireDrop(secB, { botId: 'q1', channel: 'qq' });
   await sleep(20);
-  assert.equal(adoptRpcCalls.length, 0);
+  assert.equal(writeCalls().length, 0);
   assert.ok(bodyText().includes('小帅 · QQ'), '弹窗标题有人名有渠道');
   assert.ok(bodyText().includes('小帅2'), '弹窗有原家门牌名');
   assert.ok(bodyText().includes('D:\\agents\\xiaoshuai'), '弹窗有原家路径');
   findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
   await sleep(20);
-  assert.deepEqual(adoptRpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
+  assert.deepEqual(writeCalls()[0]?.payload, { botId: 'q1', workspace: W_B });
   const undo = adoptDoc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-undo'));
   assert.ok(undo, '换绑应开撤销窗');
   findTextBtn(undo, '撤销').listeners.click[0]();
   await sleep(20);
-  assert.deepEqual(adoptRpcCalls[1]?.payload, { botId: 'q1', workspace: W_A });
+  assert.deepEqual(writeCalls()[1]?.payload, { botId: 'q1', workspace: W_A });
 });
 
 test('view：巷子口歇脚——有家暂存不写，关面板送回', async () => {
@@ -413,7 +415,7 @@ test('view：巷子口歇脚——有家暂存不写，关面板送回', async (
   assert.ok(findClass(adoptDoc.body, 'adopt-tape').some((t: any) => t.textContent === '巷子口'), '胶带门牌巷子口');
   fireDrop(plaza, { botId: 'q1', channel: 'qq' });
   await sleep(10);
-  assert.equal(adoptRpcCalls.length, 0, '歇脚不写服务器');
+  assert.equal(writeCalls().length, 0, '歇脚不写服务器');
   const plaza2 = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
   const names = sectionRows(plaza2).map((r: any) => findClass(r, 'adopt-who')[0]?.textContent);
   assert.ok(names.includes('小帅'), '小帅去巷子口歇着');
@@ -429,7 +431,7 @@ test('view：巷子口歇脚——有家暂存不写，关面板送回', async (
   findClass(adoptDoc.body, 'adopt-x')[0].listeners.click[0]();
   await sleep(10);
   assert.ok(bodyText().includes('已送回原来的家'), '关面板点名送回');
-  assert.equal(adoptRpcCalls.length, 0, '全程没写服务器');
+  assert.equal(writeCalls().length, 0, '全程没写服务器');
   openPanel();
   assert.ok(sectionRows(panelSections()[0]).some((r: any) => r.getAttribute('data-adopt-bot') === 'q1'), '重进面板小帅回 A 家');
 });
@@ -456,7 +458,7 @@ test('view：全已分配 → 无未分配组；组内放下 → 不写', async 
   fireDrop(secA, { botId: 'q1', channel: 'qq' });
   await sleep(10);
   void rowQ;
-  assert.equal(adoptRpcCalls.length, 0);
+  assert.equal(writeCalls().length, 0);
 });
 
 test('view：无人之家上墙 + 拖入直接绑定', async () => {
@@ -473,7 +475,7 @@ test('view：无人之家上墙 + 拖入直接绑定', async () => {
   assert.ok(bodyText().includes('空无一人'), '空家提示');
   fireDrop(empty, { botId: 'f1', channel: 'feishu' });
   await sleep(20);
-  assert.deepEqual(adoptRpcCalls[0]?.payload, { botId: 'f1', workspace: 'D:\\agents\\empty' });
+  assert.deepEqual(writeCalls()[0]?.payload, { botId: 'f1', workspace: 'D:\\agents\\empty' });
   assert.ok(bodyText().includes('已绑定到'), '绑定落定提示');
 });
 
@@ -484,7 +486,7 @@ test('view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静
   const overlay = adoptDoc.body.children.find((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-overlay'));
   fireDrop(overlay, { botId: 'f1', channel: 'feishu' });
   await sleep(10);
-  assert.equal(adoptRpcCalls.length, 0);
+  assert.equal(writeCalls().length, 0);
   assert.ok(bodyText().includes('空白处不可放'));
   const secs = panelSections();
   const rowF = sectionRows(secs[0])[0];
@@ -542,13 +544,13 @@ test('view：巷子口→他家确认换绑成功——刷新后即时归位（#
   const plaza = panelSections().find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
   fireDrop(plaza, { botId: 'q1', channel: 'qq' });
   await sleep(10);
-  assert.equal(adoptRpcCalls.length, 0, '歇脚不写服务器');
+  assert.equal(writeCalls().length, 0, '歇脚不写服务器');
   const secB = panelSections().find((s: any) => s.getAttribute('data-adopt-ws') === W_B);
   fireDrop(secB, { botId: 'q1', channel: 'qq' });
   await sleep(10);
   findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
   await sleep(20);
-  assert.deepEqual(adoptRpcCalls[0]?.payload, { botId: 'q1', workspace: W_B });
+  assert.deepEqual(writeCalls()[0]?.payload, { botId: 'q1', workspace: W_B });
   adoptEmit!({ bots: stageBots().map((b) => (b.botId === 'q1' ? { ...b, workspace: W_B } : b)) });
   await sleep(10);
   const secB2 = panelSections().find((s: any) => s.getAttribute('data-adopt-ws') === W_B);
@@ -570,7 +572,7 @@ test('view：巷子口→他家换绑失败——暂存保留仍在巷子口（#
   await sleep(10);
   findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
   await sleep(20);
-  assert.equal(adoptRpcCalls.length, 1, '写过一次且失败');
+  assert.equal(writeCalls().length, 1, '写过一次且失败');
   assert.ok(bodyText().includes('换绑失败'), '失败有错误提示');
   assert.ok(!adoptDoc.body.children.some((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-undo')), '失败不开撤销窗');
   adoptEmit!({ bots: stageBots() });
@@ -627,4 +629,174 @@ test('toolbar：home 图标与悬浮文案', () => {
   const copy = readFileSync(join(REPO, 'src', 'client', 'components', 'first-view-copy.ts'), 'utf8');
   assert.ok(copy.includes('扬帆远航'), '舰队悬浮应为扬帆远航');
   assert.ok(!copy.includes('舰队视图事件入口'), '旧悬浮文案不得残留');
+});
+
+// ---- 以助理为单位搬家（新增要求）：助理＋唯一绑定机器人一起切家 ----
+const H1 = 'home-1', H2 = 'home-2';
+const hHomes = [
+  { id: H1, path: W_A },
+  { id: H2, path: W_B },
+];
+const hAssts = [
+  { id: 'a-q1', homeId: H1, channel: 'qq', botId: 'q1', status: 'bound', name: '小帅', avatar: '3' },
+  { id: 'a-f2', homeId: H2, channel: 'feishu', botId: 'f2', status: 'bound', name: '阿梨' },
+  { id: 'a-loose', homeId: H1, channel: '', botId: null, status: 'unbound', name: '散装', avatar: 'img:x1' },
+];
+
+test('助理落点判定：跨家 move／同家 noop／空位未知家未知助理 reject', () => {
+  assert.deepEqual(model.resolveAssistantDrop(hAssts[0], { kind: 'home', homeId: H2 }, hHomes), { kind: 'move', assistantId: 'a-q1', from: H1, to: H2 });
+  assert.deepEqual(model.resolveAssistantDrop(hAssts[0], { kind: 'home', homeId: H1 }, hHomes), { kind: 'noop', assistantId: 'a-q1' });
+  assert.deepEqual(model.resolveAssistantDrop(hAssts[0], { kind: 'empty' }, hHomes), { kind: 'reject', reason: 'empty' });
+  assert.deepEqual(model.resolveAssistantDrop(hAssts[0], { kind: 'home', homeId: '' }, hHomes), { kind: 'reject', reason: 'empty' });
+  assert.deepEqual(model.resolveAssistantDrop(hAssts[0], { kind: 'home', homeId: 'nope' }, hHomes), { kind: 'reject', reason: 'no-home' });
+  assert.deepEqual(model.resolveAssistantDrop(hAssts[0], { kind: 'home', homeId: H2 }, hHomes.map((h) => (h.id === H2 ? { ...h, tombstone: { at: 1, reason: 'x' } } : h))), { kind: 'reject', reason: 'no-home' });
+  assert.deepEqual(model.resolveAssistantDrop(null, { kind: 'home', homeId: H2 }, hHomes), { kind: 'reject', reason: 'unknown-assistant' });
+});
+
+test('机器人反查唯一绑定助理：渠道＋编号双命中才认', () => {
+  assert.equal(model.assistantOfBot(hAssts, 'qq', 'q1')?.id, 'a-q1');
+  assert.equal(model.assistantOfBot(hAssts, 'qq', 'f2'), null);
+  assert.equal(model.assistantOfBot(hAssts, 'feishu', 'f2')?.id, 'a-f2');
+  assert.equal(model.assistantOfBot(hAssts, 'qq', 'nope'), null);
+});
+
+test('无主机器人：被助理认领的排除，未认领进巷子口', () => {
+  assert.deepEqual(model.unassignedBots(bots, hAssts).map((b: any) => b.botId), ['f1']);
+  assert.deepEqual(model.unassignedBots(bots, []).map((b: any) => b.botId), ['f1', 'q1', 'f2']);
+});
+
+test('按家分组：保家序，悬空 homeId 不渲染（fail-closed）', () => {
+  const gs = model.groupAssistantsByHome(hHomes, [...hAssts, { id: 'ghost', homeId: 'nope', channel: '', botId: null, status: 'unbound' }]);
+  assert.deepEqual(gs.map((g: any) => g.home.id), [H1, H2]);
+  assert.deepEqual(gs[0].members.map((a: any) => a.id), ['a-q1', 'a-loose']);
+  assert.deepEqual(gs[1].members.map((a: any) => a.id), ['a-f2']);
+});
+
+test('家表拉取失败回空（旧面板回落，不抛）', async () => {
+  const aast: any = req('./features/adopt/assistant-acts.js');
+  assert.deepEqual(await aast.fetchHomes({}), { homes: [], assistants: [] });
+  assert.deepEqual(await aast.fetchHomes({ rpc: async () => { throw new Error('down'); } }), { homes: [], assistants: [] });
+  assert.deepEqual(await aast.fetchHomes({ rpc: async () => ({ ok: true, value: { homes: hHomes, assistants: hAssts } }) }), { homes: hHomes, assistants: hAssts });
+});
+
+test('助理头像脸：img: 标记才取图，首字恒定同脸', () => {
+  assert.equal(model.hasAssistantImage('img:x'), true);
+  assert.equal(model.hasAssistantImage('3'), false);
+  assert.equal(model.hasAssistantImage(null), false);
+  assert.equal(model.hasAssistantImage(''), false);
+  assert.equal(model.assistantFace('a-q1', '小帅').initial, '小');
+  assert.deepEqual(model.assistantFace('a-q1', '小帅'), model.assistantFace('a-q1', '小帅'), '同一助理恒同脸');
+});
+
+const homeRpc = async (ch: string, ep: string, payload: any) => {
+  adoptRpcCalls.push({ ch, ep, payload });
+  if (ch === '/im-companion' && ep === 'home.list') return { ok: true, value: { homes: hHomes, assistants: hAssts } };
+  if (ch === '/im-companion' && ep === 'avatar.get') {
+    const images: Record<string, string> = {};
+    for (const id of (payload?.ids ?? [])) if (id === 'a-loose') images[id] = 'data:image/png;base64,AAA';
+    return { ok: true, value: { images } };
+  }
+  if (ep === 'bot.workspace.set') return { ok: true, value: {} };
+  if (ep === 'assistant.move') return { ok: true, value: { assistant: {} } };
+  return {};
+};
+
+test('view：有家表换助理棋盘（家卡带 data-adopt-home，行带 data-adopt-assistant）', async () => {
+  mountStage(homeRpc);
+  adoptEmit!({ bots: stageBots() });
+  openPanel();
+  await sleep(20);
+  const secs = panelSections();
+  const h1 = secs.find((s: any) => s.getAttribute('data-adopt-home') === H1);
+  const h2 = secs.find((s: any) => s.getAttribute('data-adopt-home') === H2);
+  assert.ok(h1 && h2, '两家都摆出来');
+  assert.ok(sectionRows(h1).some((r: any) => r.getAttribute('data-adopt-assistant') === 'a-q1'), 'q1 的助理在 H1');
+  assert.ok(sectionRows(h1).some((r: any) => r.getAttribute('data-adopt-assistant') === 'a-loose'), '未绑定助理也在 H1');
+  assert.ok(sectionRows(h2).some((r: any) => r.getAttribute('data-adopt-assistant') === 'a-f2'), 'f2 的助理在 H2');
+  const plaza = secs.find((s: any) => s.getAttribute('data-adopt-plaza') === '1');
+  assert.ok(sectionRows(plaza).length >= 2, '无主机器人（f1＋新来的）进巷子口');
+  /* 露脸：预设色当初字，上传图挂图（img: 取回后补绘）。 */
+  const rowQ1 = sectionRows(h1).find((r: any) => r.getAttribute('data-adopt-assistant') === 'a-q1');
+  const faceQ1 = findClass(rowQ1, 'adopt-ava')[0];
+  assert.ok(faceQ1, '助理卡先露脸');
+  assert.equal(faceQ1.textContent, '小', '预设脸取首字');
+  assert.equal(faceQ1.getAttribute('src'), null, '预设脸不挂图');
+  await sleep(20);
+  const rowLoose = sectionRows(panelSections().find((s: any) => s.getAttribute('data-adopt-home') === H1))
+    .find((r: any) => r.getAttribute('data-adopt-assistant') === 'a-loose');
+  const faceLoose = findClass(rowLoose, 'adopt-ava')[0];
+  assert.ok(String(faceLoose.getAttribute('src') ?? '').startsWith('data:image/'), '有上传图挂图');
+});
+
+test('view：助理拖到他家 → 远端先行＋落表（诚实键 fromHomeId/followBot）＋撤销窗', async () => {
+  mountStage(homeRpc);
+  adoptEmit!({ bots: stageBots() });
+  openPanel();
+  await sleep(20);
+  const h2 = panelSections().find((s: any) => s.getAttribute('data-adopt-home') === H2);
+  fireDrop(h2, { aid: 'a-q1' });
+  await sleep(10);
+  findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
+  await sleep(20);
+  const sets = adoptRpcCalls.filter((c: any) => c.ep === 'bot.workspace.set');
+  const moves = adoptRpcCalls.filter((c: any) => c.ep === 'assistant.move');
+  assert.equal(sets.length, 1, '远端先切一家一次');
+  assert.equal(sets[0].ch, '/qq');
+  assert.deepEqual(sets[0].payload, { botId: 'q1', workspace: W_B });
+  assert.equal(moves.length, 1, '再落表一次');
+  assert.deepEqual(moves[0].payload, { id: 'a-q1', targetHomeId: H2, fromHomeId: H1, followBot: true });
+  assert.ok(adoptDoc.body.children.some((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-undo')), '落定开撤销窗');
+});
+
+test('view：未绑定助理搬家只换表（不碰远端）', async () => {
+  mountStage(homeRpc);
+  adoptEmit!({ bots: stageBots() });
+  openPanel();
+  await sleep(20);
+  const h2 = panelSections().find((s: any) => s.getAttribute('data-adopt-home') === H2);
+  fireDrop(h2, { aid: 'a-loose' });
+  await sleep(10);
+  findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
+  await sleep(20);
+  assert.equal(adoptRpcCalls.filter((c: any) => c.ep === 'bot.workspace.set').length, 0, '未绑定不碰远端');
+  const moves = adoptRpcCalls.filter((c: any) => c.ep === 'assistant.move');
+  assert.equal(moves.length, 1);
+  assert.deepEqual(moves[0].payload, { id: 'a-loose', targetHomeId: H2, fromHomeId: H1, followBot: false });
+});
+
+test('view：助理放回自己家 → 不写服务器', async () => {
+  mountStage(homeRpc);
+  adoptEmit!({ bots: stageBots() });
+  openPanel();
+  await sleep(20);
+  const n0 = adoptRpcCalls.length;
+  const h1 = panelSections().find((s: any) => s.getAttribute('data-adopt-home') === H1);
+  fireDrop(h1, { aid: 'a-q1' });
+  await sleep(10);
+  assert.ok(bodyText().includes('它已经在这里了'));
+  assert.equal(adoptRpcCalls.length, n0, 'noop 一次不写');
+});
+
+test('view：助理落表失败 → 远端回滚（两边都不脏）', async () => {
+  const flaky = async (ch: string, ep: string, payload: any) => {
+    adoptRpcCalls.push({ ch, ep, payload });
+    if (ch === '/im-companion' && ep === 'home.list') return { ok: true, value: { homes: hHomes, assistants: hAssts } };
+    if (ep === 'bot.workspace.set') return { ok: true, value: {} };
+    if (ep === 'assistant.move') throw new Error('表写不进去');
+    return {};
+  };
+  mountStage(flaky);
+  adoptEmit!({ bots: stageBots() });
+  openPanel();
+  await sleep(20);
+  const h2 = panelSections().find((s: any) => s.getAttribute('data-adopt-home') === H2);
+  fireDrop(h2, { aid: 'a-q1' });
+  await sleep(10);
+  findTextBtn(adoptDoc.body, '确认换绑').listeners.click[0]();
+  await sleep(20);
+  const sets = adoptRpcCalls.filter((c: any) => c.ep === 'bot.workspace.set');
+  assert.equal(sets.length, 2, '远端先切＋回滚各一次');
+  assert.deepEqual(sets[1].payload, { botId: 'q1', workspace: W_A });
+  assert.ok(bodyText().includes('搬家失败'), '失败有提示');
+  assert.ok(!adoptDoc.body.children.some((c: any) => String(c.attrs?.class ?? '').split(' ').includes('adopt-undo')), '失败不开撤销窗');
 });

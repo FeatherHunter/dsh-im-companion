@@ -46,4 +46,5 @@ export const CSS = [
   '.adopt-confirmbox{--adopt-paper:#fffdf8;--adopt-ink:#3d3225;position:fixed;inset:0;z-index:9300;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.35);padding:20px}',
   'body[data-ds-dark-theme] .adopt-confirmbox{--adopt-paper:#1e2432;--adopt-ink:#f0e8d6;background:rgba(0,0,0,.55)}',
   '.adopt-overlay,.adopt-cockpit,.adopt-confirmbox{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Helvetica Neue",Helvetica,Arial,sans-serif}',
+  '.adopt-ava{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff;flex:none;object-fit:cover}',
 ].join('\n')

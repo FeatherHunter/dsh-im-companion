@@ -79,7 +79,8 @@ export function createMoveOps(deps: MoveDeps): MoveOps {
         const src = deps.getHome(a.homeId)
         if (!await bindBot(rpc, a.channel, a.botId, target.path)) return
         try {
-          await bridge(rpc, 'assistant.move', { id, targetHomeId })
+          /* fromHomeId/followBot 只进宿主诚实日志（log-sites 纠正 from/to），落表只认 id/targetHomeId。 */
+          await bridge(rpc, 'assistant.move', { id, targetHomeId, fromHomeId: a.homeId, followBot: true })
         } catch (e) {
           try { if (src) await bindBot(rpc, a.channel, a.botId, src.path) } catch { /* 回滚尽力 */ }
           toast('搬家失败，已恢复原样：' + msgOf(e)); aLog('move', id, false, '搬家失败并已回滚远端：' + msgOf(e))
@@ -87,7 +88,7 @@ export function createMoveOps(deps: MoveDeps): MoveOps {
         }
       } else {
         try {
-          await bridge(rpc, 'assistant.move', { id, targetHomeId })
+          await bridge(rpc, 'assistant.move', { id, targetHomeId, fromHomeId: a.homeId, followBot: false })
         } catch (e) {
           toast('搬家失败：' + msgOf(e)); aLog('move', id, false, msgOf(e))
           return
