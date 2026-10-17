@@ -15,12 +15,12 @@ function cssRuleLines(): string[] {
   return cssSrc.split('\n').filter((l) => l.includes('::before') && l.includes('data-dp-act='));
 }
 
-test('nosig0 永不使用异常红（#d92d20 禁止出现在 nosig0 规则）', () => {
+test('nosig0 永不使用异常红（error 系禁止出现在 nosig0 规则，#151 token 化）', () => {
   const rules = cssRuleLines().filter((l) => l.includes('nosig0'));
   assert.ok(rules.length >= 1, '须保留 nosig0 兜底规则（陈旧属性 display:none），实际 0 条');
   for (const r of rules) {
-    assert.equal(r.includes('#d92d20'), false, 'nosig0 规则不得含异常红：' + r);
-    assert.equal(r.includes('dotted #d92d20'), false, 'nosig0 不得为红色 dotted：' + r);
+    assert.equal(r.includes('#d92d20'), false, 'nosig0 规则不得含旧异常红：' + r);
+    assert.equal(r.includes('state-error-primary'), false, 'nosig0 不得含异常红 token：' + r);
   }
 });
 
@@ -44,15 +44,15 @@ test('红/黄/蓝语义不变（402/aborted/未知收尾红实线闪烁，执行
   const need = rules.find((l) => l.includes('=need]'));
   const exec = rules.find((l) => l.includes('=exec]'));
   const seen = rules.find((l) => l.includes('=seen]'));
-  assert.ok(need && need.includes('#d92d20'), '红 need 须保留 #d92d20：' + need);
-  assert.ok(exec && exec.includes('#1677ff'), '蓝 exec 须保留 #1677ff：' + exec);
-  assert.ok(seen && seen.includes('#dc6803'), '黄 seen 须保留 #dc6803：' + seen);
+  assert.ok(need && need.includes('state-error-primary'), '红 need 须走 error token（#151）：' + need);
+  assert.ok(exec && exec.includes('state-business-primary'), '蓝 exec 须走 business token（#151）：' + exec);
+  assert.ok(seen && seen.includes('state-warn-primary'), '黄 seen 须走 warn token（#151）：' + seen);
 });
 
 test('nosig 灰点诊断保留（未匹配行仍灰色 dotted，不受 #61 影响）', () => {
   const rules = cssRuleLines().filter((l) => l.includes('=nosig]'));
   assert.ok(rules.length >= 1, 'nosig 灰点规则须保留');
-  assert.ok(rules.some((l) => l.includes('#b0b6bd') && l.includes('dotted')), 'nosig 须为灰色 dotted：' + JSON.stringify(rules));
+  assert.ok(rules.some((l) => l.includes('state-idle-primary') && l.includes('dotted')), 'nosig 须为 idle 灰 dotted（#151）：' + JSON.stringify(rules));
 });
 
 test('红线：design-preview 单文件 ≤300 行（规模红线，非解耦检查）', () => {

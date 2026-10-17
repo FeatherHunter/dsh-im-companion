@@ -52,8 +52,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     or
 dsh plugin --profile web add dsh-im-companion
 
-# Pin a version for stability (current: 0.2.12)
-dsh plugin --profile desktop add dsh-im-companion@0.2.12 --registry https://registry.npmjs.org
+# Pin a version for stability (current: 0.2.13)
+dsh plugin --profile desktop add dsh-im-companion@0.2.13 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -82,7 +82,7 @@ then confirm the dsh-im core is in the same profile (install it first if missing
 Below uses desktop as the example; web users replace --profile desktop with --profile web:
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.2.12 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.2.13 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
@@ -224,8 +224,8 @@ MIT © FeatherHunter
 
 Thanks to everyone who files Issues and PRs and joins discussions.
 
+- [Shimmernight](https://github.com/Shimmernight) 🌹🌹🌹🌹 ([#78](https://github.com/FeatherHunter/dsh-im-companion/issues/78))
 - [vk-liu-cn-1](https://github.com/vk-liu-cn-1) 🌹 ([#97](https://github.com/FeatherHunter/dsh-im-companion/issues/97))
-- [Shimmernight](https://github.com/Shimmernight) 🌹 ([#78](https://github.com/FeatherHunter/dsh-im-companion/issues/78))
 
 Also thanks to upstream [dsh-im](https://github.com/xmanrui/dsh-im): no core, no companion.
 

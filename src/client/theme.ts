@@ -1,9 +1,8 @@
 /**
- * Apple 设计令牌 + 全部样式（唯一样式来源）。所有颜色由 DSH 主题别名（--dsw-alias-*）实时派生：
- * 深浅主题自动跟随，项目自身不出现任何硬编码 #fff / #000 等固定色值。
+ * Apple 设计令牌 + 全部样式（唯一样式来源）：颜色全由 DSH 主题别名实时派生，深浅跟随。
  */
 export const STYLE_ID = 'dsh-im-companion-styles'
-
+/** #151 真值见票面（asar 实证）；accent 仍挂 brand（真机可为白，见 #26），常显蓝用 --af-business。 */
 export const TOKEN_BLOCK = `
   --af-accent: var(--dsw-alias-brand-primary, #0a84ff);
   --af-primary: var(--dsw-alias-label-primary, #1c1c1e);
@@ -14,11 +13,12 @@ export const TOKEN_BLOCK = `
   --af-surface-2: color-mix(in srgb, var(--dsw-alias-label-primary, #1c1c1e) 11%, var(--dsw-alias-bg-base, #ffffff));
   --af-hairline: color-mix(in srgb, var(--dsw-alias-label-primary, #1c1c1e) 12%, transparent);
   --af-hairline-strong: color-mix(in srgb, var(--dsw-alias-label-primary, #1c1c1e) 22%, transparent);
-  --af-success: var(--dsw-alias-state-success-primary, #30d158);
-  --af-warn: var(--dsw-alias-state-warn-primary, #ff9f0a);
-  --af-danger: var(--dsw-alias-state-error-primary, #ff453a);
+  --af-success: var(--dsw-alias-state-success-primary, #22c55e);
+  --af-warn: var(--dsw-alias-state-warn-primary, #f59e0b);
+  --af-danger: var(--dsw-alias-state-error-primary, #ec1313);
+  --af-business: var(--dsw-alias-state-business-primary, #4176e6); --af-idle: var(--dsw-alias-state-idle-primary, #d4d4d4);
+  --af-link: var(--dsw-alias-link, #4176e6); --af-warn-label: var(--dsw-alias-state-warn-label, #dd8629);
 `
-
 const CSS = `
 .af-root,
 .af-menu,

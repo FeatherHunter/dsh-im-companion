@@ -2,14 +2,14 @@
  * 注意：左栏行在 .af-root 作用域之外，颜色直接取 DSH 主题别名（带 fallback），深色自动跟随。 */
 export const CSS = `
 div[role="treeitem"][aria-expanded][data-lb-kind]::after { content: attr(data-lb-label); display: inline-block; flex: none; margin-left: 2px; padding: 1px 7px 1px 15px; border-radius: 999px; font-size: 10px; line-height: 14px; font-weight: 600; white-space: nowrap; color: inherit; background: color-mix(in srgb, currentColor 8%, transparent); }
-div[role="treeitem"][aria-expanded][data-lb-kind="online"]::after { background: radial-gradient(circle at 8px 50%, var(--dsw-alias-state-success-primary, #30d158) 3px, transparent 3.8px) no-repeat, color-mix(in srgb, currentColor 8%, transparent); animation: left-badges-breathe 1.6s infinite; }
+div[role="treeitem"][aria-expanded][data-lb-kind="online"]::after { background: radial-gradient(circle at 8px 50%, var(--dsw-alias-state-success-primary, #22c55e) 3px, transparent 3.8px) no-repeat, color-mix(in srgb, currentColor 8%, transparent); animation: left-badges-breathe 1.6s infinite; }
 .left-badges-badge { display: inline-flex; align-items: center; gap: 5px; margin-left: 6px; padding: 1px 7px 1px 5px; border-radius: 999px; font-size: 10px; line-height: 14px; font-weight: 600; background: color-mix(in srgb, currentColor 8%, transparent); color: inherit; white-space: nowrap; cursor: pointer; }
 .left-badges-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
-.left-badges-badge.online .left-badges-dot { background: var(--dsw-alias-state-success-primary, #30d158); animation: left-badges-breathe 1.6s infinite; }
-.left-badges-badge.warn .left-badges-dot { background: var(--dsw-alias-state-warn-primary, #ff9f0a); }
+.left-badges-badge.online .left-badges-dot { background: var(--dsw-alias-state-success-primary, #22c55e); animation: left-badges-breathe 1.6s infinite; }
+.left-badges-badge.warn .left-badges-dot { background: var(--dsw-alias-state-warn-primary, #f59e0b); }
 .left-badges-badge.offline .left-badges-dot { background: color-mix(in srgb, currentColor 35%, transparent); }
 .left-badges-badge.unbound .left-badges-dot { background: transparent; border: 1.5px solid color-mix(in srgb, currentColor 35%, transparent); width: 4px; height: 4px; }
-div[role="treeitem"][aria-expanded][data-lb-kind="warn"]::after { background: radial-gradient(circle at 8px 50%, var(--dsw-alias-state-warn-primary, #ff9f0a) 3px, transparent 3.8px) no-repeat, color-mix(in srgb, currentColor 8%, transparent); }
+div[role="treeitem"][aria-expanded][data-lb-kind="warn"]::after { background: radial-gradient(circle at 8px 50%, var(--dsw-alias-state-warn-primary, #f59e0b) 3px, transparent 3.8px) no-repeat, color-mix(in srgb, currentColor 8%, transparent); }
 div[role="treeitem"][aria-expanded][data-lb-kind="offline"]::after { background: radial-gradient(circle at 8px 50%, color-mix(in srgb, currentColor 40%, transparent) 3px, transparent 3.8px) no-repeat, color-mix(in srgb, currentColor 8%, transparent); }
 /* 脸底色桥：faceStyle 与面板 avatarStyle 同字面量、引用 --hu-panel/--hu-ink；那两个变量只在面板作用域下定义，
    悬浮卡挂在左栏（宿主主题作用域之外）⇒ 在此桥到 --dsw-alias-*，否则 tint 声明无效、色脸退成灰底。 */
@@ -18,9 +18,9 @@ div[role="treeitem"][aria-expanded][data-lb-kind="offline"]::after { background:
 .left-badges-card-name { flex: 1 1 auto; min-width: 0; font-size: 13px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .left-badges-card-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 
-.left-badges-card-dot.online { background: var(--dsw-alias-state-success-primary, #30d158); animation: left-badges-breathe 1.6s infinite; }
+.left-badges-card-dot.online { background: var(--dsw-alias-state-success-primary, #22c55e); animation: left-badges-breathe 1.6s infinite; }
 
-.left-badges-card-dot.warn { background: var(--dsw-alias-state-warn-primary, #ff9f0a); }
+.left-badges-card-dot.warn { background: var(--dsw-alias-state-warn-primary, #f59e0b); }
 .left-badges-card-dot.offline { background: color-mix(in srgb, currentColor 40%, transparent); }
 .left-badges-card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 0; }
 .left-badges-card-avatar { display: inline-flex; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary, #6e6e73); border-radius: 50%; overflow: hidden; background: color-mix(in srgb, currentColor 12%, transparent); font-size: 10px; font-weight: 700; }
@@ -29,7 +29,7 @@ div[role="treeitem"][aria-expanded][data-lb-kind="offline"]::after { background:
 .left-badges-card-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary, #1c1c1e); }
 .left-badges-card-foot { margin-top: 6px; font-size: 10px; line-height: 14px; color: var(--dsw-alias-label-tertiary, #98989d); font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .left-badges-card-dot.online, div[role="treeitem"][aria-expanded][data-lb-kind="online"]::after { animation: none; } }
-@keyframes left-badges-breathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--dsw-alias-state-success-primary, #30d158) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes left-badges-breathe { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--dsw-alias-state-success-primary, #22c55e) 55%, transparent); } 70% { box-shadow: 0 0 0 6px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 `
 
 /* 悬浮卡呼吸节奏（纯函数，与 CSS 动画同源；hover-card 行内圆点用，verify 钉住旧口径）。 */

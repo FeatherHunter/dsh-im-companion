@@ -19,7 +19,7 @@ body[data-presence-level="reduced"] .left-badges-card-dot.online { animation-dur
 body[data-presence-level="static"] .left-badges-card-dot.online { animation: none; }
 .presence-motion-btn { flex: none; width: 14px; height: 14px; margin: 0 -8px 0 -2px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: inherit; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; line-height: 0; -webkit-appearance: none; appearance: none; }
 .presence-motion-btn:hover { background: var(--dsw-alias-interactive-bg-hover, rgba(127, 127, 127, .16)); }
-.presence-motion-btn:focus-visible { outline: 2px solid var(--dsw-alias-state-success-primary, #30d158); outline-offset: 1px; }
-.presence-motion-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dsw-alias-state-success-primary, #30d158); }
+.presence-motion-btn:focus-visible { outline: 2px solid var(--dsw-alias-state-success-primary, #22c55e); outline-offset: 1px; }
+.presence-motion-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--dsw-alias-state-success-primary, #22c55e); }
 .presence-motion-btn[aria-pressed="true"] .presence-motion-dot { background: var(--dsw-alias-label-tertiary, #98989d); }
 `

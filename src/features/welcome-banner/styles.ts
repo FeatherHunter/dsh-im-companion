@@ -56,9 +56,10 @@ const SKY: string[] = [
 ".wb-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: baseline; }",
 ".wb-online { background: var(--af-success); animation: wb-breathe 1.6s infinite; }",
 ".wb-warn { background: var(--af-warn); }",
-".wb-offline { background: var(--af-danger); }",
+"/* #151：offline=idle */",
+".wb-offline { background: var(--af-idle); }",
 ".wb-unbound { background: var(--af-tertiary); }",
-"@keyframes wb-breathe { 0% { box-shadow: 0 0 0 0 rgba(48,209,88,.45); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }",
+"@keyframes wb-breathe { 0% { box-shadow: 0 0 0 0 rgba(34,197,94,.45); } 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }",
 "@media (prefers-reduced-motion: reduce) { .wb-sun { animation: none; } .wb-cirrus { animation: none; } .wb-cloud { animation: none; } .wb-star { animation: none; } .wb-title { opacity: 1; transform: none; animation: none; } .wb-sub { opacity: 1; transform: none; animation: none; } .wb-cta { opacity: 1; transform: none; animation: none; } }",
 ];
 export const SKY_CSS = SKY.join("\n");

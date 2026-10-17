@@ -5,6 +5,26 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
+## [0.2.13] - 2026-10-18
+
+主题：**主题 token 第一性原理映射（#151，DSH 37 别名）＋ 更新包跟随到官方源最新 0.18.11 ＋ 家行/助理行交互收尾（#150/#152）**。
+
+### Added
+- 主题 token 第一性原理映射（#151，asar 实证 bundle）：新增 `--af-business`（执行中蓝）/ `--af-idle`（无信号灰）/ `--af-link` / `--af-warn-label` 四个别名；在线/离线/执行中/待看四态全部收敛到 DSH 37 token，项目内硬编码色退役（`--af-success`/`--af-warn`/`--af-danger` fallback 同步 DSH 静态真值 `#22c55e`/`#f59e0b`/`#ec1313`）。
+- 离线语义纠正：离线/未绑定不再用红色（红只给需处理），统一走 `idle-primary #d4d4d4`（徽标/雷达/详情圆点/欢迎横幅四处一致）。
+
+### Changed
+- 依赖 `dsh-plugin-update` 由 0.18.7 升到 **0.18.11**（npm 官方源 `latest`，exact pin；`npm run check:update-pkg` 复核通过；registry 从 0.18.7 直跳 0.18.11，中间号段未单独发布，四段一次带走）。要点：0.18.8 HMR 守卫 `already-installed` 改“如实移除再装”（#167）；0.18.9 scoped 包 tarball 取 basename ＋ registry 归一 ＋ 全量包文档 4MB 墙 ＋ stable 遇预发布 latest 报 `channel-mismatch` ＋ 12 个宿主拒绝码中文下一步（#178/#183）；0.18.10 任务落盘 `state.json` ＋ 新增可选 `job.previousVersion`（#179/#186）；0.18.11 批量失败横幅双复制按钮 ＋ 安装锁 TTL 自愈与原子建锁（#176/#181）。**本仓接线代码零改**（宿主五电话与七字段快照逐字不变，`update-center.ts` 7/7、`update-host.ts` 10/10）。
+- 家行/助理行交互收尾（#150）：L2 助理行与 L1 家行同形（去掉「更多」，改名进输入态就地改，头像开纯换头像弹层）；改名锚定提示 ＋ 焦点只亮边框（`inset` 环不断裁）＋ 成功提示浮到列表顶部；操作令牌作用域收紧。
+- 头像预置配色重做（#152）：7 档显式实色（含 DeepSeek 蓝白/黑白两档），色块 34→46px。
+- DSH 别名跟随：`separator`→`separator-primary`、`fill-secondary`→`fill-tertiary`（与宿主真实别名对齐）；设计稿竖条/标题色走 `error/business/warn/idle` 四 token（`tools/verify/features/design-preview.ts` 断言同步）。
+- `README.md` / `docs/README.en.md` 安装示例同步到 0.2.13；`CONTEXT.md` 更新包术语行同步到 0.18.11。
+- AGENTS.md：junction 常驻（desktop 仍是 Junction→本仓）＋ 真假安装切换配方（owner 2026-10-17 订正）。
+
+### Fixed
+- `nosig0` 兜底规则不再引用旧异常红（断言改走 `state-error-primary` 缺席检查，#151 token 化）。
+- 改名输入框焦点环被容器裁断、成功提示在底部不易察觉（#150：盒内 `inset` 环 ＋ 顶部 toast）。
+
 ## [0.2.12] - 2026-10-17
 
 主题：**更新包跟随到官方源最新 0.18.7（安装失败翻译官 ＋ 合规版降级）＋ 家行/助理行交互重做与显示规范收口**。

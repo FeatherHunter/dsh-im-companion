@@ -54,7 +54,7 @@ function logoNode(channel: string): HTMLElement | null {
       className: 'fleet-radar-logo',
       dataset: { ch: channel },
       html: svg,
-      style: { background: LOGO_TILE_BG[channel] ?? 'var(--dsw-alias-fill-secondary,rgba(127,127,127,.15))' },
+      style: { background: LOGO_TILE_BG[channel] ?? 'var(--dsw-alias-fill-tertiary,rgba(127,127,127,.15))' },
     }) as HTMLElement
   } catch {
     return null
