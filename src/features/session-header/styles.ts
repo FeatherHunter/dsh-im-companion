@@ -34,6 +34,18 @@ export const CSS = `
 .session-header-btn.primary { background: #0a84ff; border-color: #0a84ff; color: #fff; }
 .session-header-btn.primary:hover { color: #fff; opacity: .88; }
 .session-header-btn:disabled { opacity: .6; cursor: default; }
+/* #144 助理身份：脸（32px 圆标题/20px 行）＋名＋状态字（在线绿/待确认黄/离线灰/未绑定灰，#142 绿档）＋分组＋单选按钮 */
+.session-header-aface { width: 20px; height: 20px; flex: none; border-radius: 50%; overflow: hidden; display: inline-grid; place-items: center; font-weight: 700; }
+.session-header-aface img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.session-header-ahead { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 700; }
+.session-header-astatus { font-weight: 400; }
+.session-header-astatus.online { color: var(--af-success); }
+.session-header-astatus.warn { color: var(--af-warn); }
+.session-header-astatus.offline, .session-header-astatus.unbound { color: var(--af-secondary); }
+.session-header-agroup { display: grid; gap: 4px; padding: 6px 0 2px; border-top: 1px solid var(--af-hairline); }
+.session-header-agroup:first-child { border-top: 0; padding-top: 0; }
+.session-header-btn.session-header-abtn { display: inline-flex; align-items: center; gap: 7px; flex: 1; min-width: 0; }
+.session-header-abname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .session-header-result { margin-top: 8px; font-size: 12px; color: var(--af-secondary); word-break: break-all; }
 .session-header-result.ok { color: var(--af-success); }
 .session-header-result.err { color: var(--af-danger); }

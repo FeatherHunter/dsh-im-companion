@@ -1,10 +1,6 @@
-/** SessionHeader Header 浮层（C 变体 verdict #8）：conversation.session.header.utilities 呼吸点 + 详情。
- * 平时仅圆点零打扰；点击展开详情（Agent 健康 + 绑定渠道 + 发测试消息）。
+/** SessionHeader Header 浮层（C 变体 verdict #8）：呼吸点 + 详情（#32 渠道/机器人二选，#144 助理身份＋助理单选）。
  * 防御式：任何异常只隐藏自己，绝不影响原生 Header；订阅 stream 纯渲染，卸载即退订。
- * 发测试消息：优先已保存目标；无目标时用已聊会话做草稿测试（不存任何东西），
- * 多个会话先选再发，成功同时派发 SEND_TEST_EVENT；未绑定只给静态指引，无死按钮。
- * #32：选渠道后同渠道多 Bot 再选机器人（单 Bot 仍直发）；多 Bot 成功文案追加机器人标识。
- * 归属：session-header 特性自有面板（#18 收编自共享层，原样迁移，行为零改）。 */
+ * 归属：session-header 特性自有面板（#18 收编自共享层）。 */
 import * as React from 'react'
 import { botDisplayLabel, type BotSnap, type RpcCall } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
@@ -12,7 +8,8 @@ import {
   SEND_TEST_EVENT, SESSION_VIEWED_EVENT, botsInChannel, chooseBot, headerOverlayFor, runTestSend, sendToSuggestion,
   suggestionLabel, type DeliverySuggestion, type DotKind, type OverlayChannel, type TestSendOutcome,
 } from '../../client/data/header-overlay'
-import { channelLogo, pickerBlock } from './pickers'
+import { assistantGroups, assistantName, assistantPickerBlock, pickerBlock } from './pickers'
+import { fetchAssistBriefs, type AssistBrief } from './assistants'
 import { logLine, logOn } from '../../client/log'
 
 export interface SessionHeaderDeps {
@@ -51,6 +48,8 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   const [chPick, setChPick] = React.useState<OverlayChannel[] | null>(null)
   const [botPick, setBotPick] = React.useState<BotSnap[] | null>(null)
   const [names, setNames] = React.useState<Record<string, string>>({})
+  const [assists, setAssists] = React.useState<AssistBrief[]>([])
+  const [assistPick, setAssistPick] = React.useState<AssistBrief[] | null>(null)
   React.useEffect(() => {
     let disposed = false
     let unsub: (() => void) | null = null
@@ -72,9 +71,23 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
     }
   }, [sessionId, subscribe])
   React.useEffect(() => {
-    setOpen(false); setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null)
+    setOpen(false); setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null); setAssistPick(null)
     try { emit(SESSION_VIEWED_EVENT, { sessionId: sessionId }) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'session-header', action: 'viewed-emit-fail', ok: false, message: '已读回写上报失败（不影响展示）：' + String((e as Error)?.message ?? e) }) }
   }, [sessionId])
+  /* #144：弹窗打开时一次性拉取家表助理身份（无轮询）；失败留空回落旧渲染。 */
+  React.useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    let path: string | undefined
+    try { path = getWorkspacePath(sessionId) } catch { path = undefined }
+    void (async () => {
+      try {
+        const briefs = await fetchAssistBriefs(createRpc(), bots, path ?? '')
+        if (!cancelled) setAssists(briefs)
+      } catch { if (!cancelled) setAssists([]) }
+    })()
+    return () => { cancelled = true }
+  }, [open, sessionId])
   React.useEffect(() => {
     if (!open || typeof document === 'undefined') return
     const onDoc = (ev: Event): void => {
@@ -107,9 +120,9 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
     setSgBot(outcome.suggestions?.length ? target : null)
     let text = outcome.text
     try {
-      if (outcome.ok && target && botsInChannel(bots, workspacePath ?? '', target.channel).length > 1) {
-        text += '（机器人：' + botDisplayLabel(target) + '）'
-      }
+      const owner = target ? assists.find((a) => a.bot?.botId === target.botId && (!a.bot?.channel || a.bot.channel === target.channel)) : undefined
+      if (outcome.ok && target && owner) text += '（助理：' + owner.name + '）'
+      else if (outcome.ok && target && botsInChannel(bots, workspacePath ?? '', target.channel).length > 1) text += '（机器人：' + botDisplayLabel(target) + '）'
     } catch { /* 标识追加失败不影响主文案 */ }
     setResult({ ok: outcome.ok, text })
   }
@@ -124,6 +137,19 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
   }
   const onSendTest = async (): Promise<void> => {
     if (busy) return
+    /* #144：多助理先选发送助理（以助理为单位）；单助理直发，不打扰。 */
+    if (assists.length > 1) {
+      logLine('debug', 'ui.action', { area: 'session-header', action: 'pick-assistant', ok: true, message: '多助理（' + assists.length + ' 位），先选发送助理' })
+      setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null)
+      setAssistPick(assists)
+      return
+    }
+    const first = assists[0]
+    if (assists.length === 1 && first && first.bot) {
+      setAssistPick(null)
+      await sendViaBot(first.bot)
+      return
+    }
     if (overlay.mode === 'full' && overlay.channels.length > 1) {
       logLine('debug', 'ui.action', { area: 'session-header', action: 'pick-channel', ok: true, message: '多渠道（' + overlay.channels.length + ' 个），先选发送渠道' })
       setResult(null); setSgList(null); setSgBot(null); setBotPick(null)
@@ -157,6 +183,15 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
     if (logOn('debug')) logLine('debug', 'ui.action', { area: 'session-header', action: 'pick-bot', ok: true, message: '选中机器人 ' + botDisplayLabel(target) + '，直发测试' })
     void sendViaBot(target)
   }
+  const onPickAssistant = (brief: AssistBrief): void => {
+    setAssistPick(null)
+    if (!brief.bot) {
+      setResult({ ok: false, text: '该助理（' + brief.name + '）尚未绑定机器人，先去绑定后再试。' })
+      return
+    }
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'session-header', action: 'pick-assistant', ok: true, message: '选中助理 ' + brief.name + '，直发测试' })
+    void sendViaBot(brief.bot)
+  }
   const onPickSg = async (sg: DeliverySuggestion): Promise<void> => {
     const target = sgBot ?? bot
     if (busy || !target) return
@@ -182,7 +217,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
       title: overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + '，' + overlay.label + '（点击查看详情）',
       'aria-label': overlay.mode === 'unbound' ? '未绑定，点击查看指引' : overlay.agent + dotTitle(overlay.dotKind as DotKind),
       onClick: () => {
-        setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null)
+        setResult(null); setSgList(null); setSgBot(null); setChPick(null); setBotPick(null); setAssistPick(null)
         logLine('debug', 'ui.action', { area: 'session-header', action: open ? 'close-detail' : 'open-detail', ok: true, message: '呼吸点详情' + (open ? '收起' : '展开') + (workspacePath ? '：' + workspacePath : '：未绑定') })
         setOpen(!open)
       },
@@ -190,20 +225,10 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
     React.createElement('span', { className: dotCls }),
   )
   if (!open) return React.createElement('span', { className: 'session-header' }, btn)
+  /* #144：有助理行按助理分组（组头助理脸＋名＋状态，组下其渠道），无行回落旧平铺。 */
   const detail = overlay.mode === 'unbound'
     ? React.createElement('div', { className: 'session-header-sub' }, '该工作区尚未绑定机器人。到 dsh-im 设置页接入后，圆点会显示状态。')
-    : React.createElement(
-      'div',
-      { className: 'session-header-channels', title: overlay.tooltip },
-      ...overlay.channels.map((ch) =>
-        React.createElement(
-          'div',
-          { className: 'session-header-chrow', key: ch.channel, title: ch.label + '，' + ch.statusText, 'aria-label': ch.label + '，' + ch.statusText },
-          channelLogo(ch),
-          React.createElement('span', null, ch.label),
-        ),
-      ),
-    )
+    : assistantGroups(assists, overlay.channels)
   const sendBtn = overlay.mode === 'full'
     ? React.createElement(
       'button',
@@ -215,6 +240,12 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
     ? pickerBlock('选择发送会话：', sgList.map((sg) => suggestionLabel(sg)), busy, (i) => {
       const sg = sgList[i]
       if (sg) void onPickSg(sg)
+    })
+    : null
+  const assistPicker = assistPick && assistPick.length > 1 && overlay.mode === 'full'
+    ? assistantPickerBlock(assistPick, overlay.channels, busy, (i) => {
+      const b = assistPick[i]
+      if (b) onPickAssistant(b)
     })
     : null
   const chPicker = chPick && chPick.length > 1 && overlay.mode === 'full'
@@ -229,16 +260,19 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
       if (b) onPickBot(b)
     })
     : null
+  const firstAssist = assists.length === 1 ? assists[0] : undefined
+  const titleNode = overlay.mode === 'unbound' ? '未绑定'
+    : firstAssist ? assistantName(firstAssist, 28)
+    : React.createElement('span', { className: 'session-header-twrap' },
+      React.createElement('span', null, overlay.agent + (assists.length > 1 ? '（' + assists.length + ' 位助理）' : '')),
+      React.createElement('span', { className: 'session-header-tlabel' }, overlay.label))
   const pop = React.createElement(
     'div',
-    { className: 'session-header-pop', role: 'dialog', 'aria-label': overlay.agent + ' 状态详情' },
-    React.createElement('div', { className: 'session-header-title' }, overlay.mode === 'unbound'
-      ? '未绑定'
-      : React.createElement('span', { className: 'session-header-twrap' },
-        React.createElement('span', null, overlay.agent),
-        React.createElement('span', { className: 'session-header-tlabel' }, overlay.label))),
+    { className: 'session-header-pop', role: 'dialog', 'aria-label': overlay.agent + (assists.length ? '（' + assists.map((a) => a.name).join('、') + '）' : '') + ' 状态详情' },
+    React.createElement('div', { className: 'session-header-title' }, titleNode),
     detail,
     sendBtn ? React.createElement('div', { className: 'session-header-row' }, sendBtn) : null,
+    assistPicker,
     chPicker,
     botPicker,
     sgBtns,
