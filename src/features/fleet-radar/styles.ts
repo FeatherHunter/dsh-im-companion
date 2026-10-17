@@ -43,7 +43,7 @@ export const CSS = `
 .fleet-radar-loading, .fleet-radar-foot { padding: 14px; font-size: 12px; color: var(--dsw-alias-label-tertiary,#98989d); text-align: center; }
 .fleet-radar-pop { position: fixed; z-index: 1300; display: flex; flex-direction: column; gap: 6px; max-width: 260px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--dsw-alias-separator,#e5e6eb); background: var(--dsw-alias-bg-base,#fff); box-shadow: 0 8px 24px rgba(0,0,0,.18); opacity: 0; pointer-events: none; font-size: 12px; }
 .fleet-radar-pop.on { opacity: 1; }
-.fleet-radar-pop-hd { font-size: 11px; color: var(--dsw-alias-label-tertiary,#98989d); }
+.fleet-radar-pop-hd { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--dsw-alias-label-tertiary,#98989d); }
 .fleet-radar-poprow { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .fleet-radar-poprow .fleet-radar-av { width: 16px; height: 16px; font-size: 10px; border-radius: 5px; }
 .fleet-radar-poprow .fleet-radar-st { color: var(--dsw-alias-label-secondary,#6e6e73); }

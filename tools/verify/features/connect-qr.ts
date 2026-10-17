@@ -139,6 +139,59 @@ test('connect-flow 回归钉：三根因不复发', () => {
   assert.ok(!src.includes('setInterval(() => void poll()'), 'poll 不得每次新建 interval');
 });
 
+/* owner 2026-10-17 真机意见：菜单出现在「新机器人」附近才不怪；列表要从设计师角度做（含渠道品牌 logo）。
+ * 两步各自可回归：① 发起方把**CTA 本体**当锚点、且先开菜单再关弹层（showMenu 同步读 rect）；
+ * ② 菜单每行＝品牌 logo ＋ 渠道名 ＋ 能力注解（`menu.ts` 只加可选字段，老调用一字不变）。 */
+test('#143 渠道菜单：锚点＝被点的按钮 ＋ 品牌 logo ＋ 能力注解', () => {
+  const cf = readFileSync(join(REPO, 'src', 'client', 'components', 'connect-flow.ts'), 'utf8');
+  assert.ok(cf.includes('channelGlyphSvg'), '每行要用渠道品牌 logo（icons.ts 的 channelGlyphSvg）');
+  assert.ok(cf.includes("channelGlyphSvg(ch, 18)"), 'logo 尺寸 18（与菜单行高一致）');
+  assert.ok(cf.includes("hint: mode === 'dual' ? '扫码或手动' : mode === 'qr-only' ? '扫码' : '手动'"),
+    '行尾注解＝该渠道可走的接入方式（能力来自 dual-mode-capabilities 单一真相）');
+  assert.ok(!cf.includes("label: '接入 ' + channelLabel"), '标签不再拼「接入 X」——logo 已承担识别，重复前缀只会显得挤');
+  const menu = readFileSync(join(REPO, 'src', 'client', 'ui', 'menu.ts'), 'utf8');
+  assert.ok(menu.includes('iconNode?: HTMLElement | null'), 'menu 支持自定义图标节点（Added-only 可选字段）');
+  assert.ok(menu.includes('hint?: string') && menu.includes('af-menu-hint'), 'menu 支持行尾注解节点');
+  assert.ok(menu.includes('it.iconNode ?? (it.iconName ? icon(it.iconName, 16) : null)'), '老调用（只给 iconName）行为一字不变');
+  const bind = readFileSync(join(REPO, 'src', 'client', 'components', 'home-bind-forms.ts'), 'utf8');
+  /* owner 2026-10-17 追加意见之后：锚点是**卡片本体**（菜单接替卡片位置、从它左上角往下展开），
+   * 不再是卡片里那个 CTA 按钮。顺序仍是「先开菜单（卡片还在 DOM 里，rect 有效）→ 再关弹层」；
+   * 反过来卡片已游离、rect 全 0，菜单会跳到窗口左上。 */
+  const cardAt = bind.indexOf("go.closest?.('.hu-pop')");
+  const openAt = bind.indexOf('deps.ops.connect(home.id, card, a.id');
+  const closeAt = bind.indexOf('closeHomePop(true)', openAt);
+  assert.ok(cardAt > 0, '锚点取卡片本体（go.closest(\'.hu-pop\')）');
+  assert.ok(openAt > cardAt, '空态出口把卡片本体当锚点传下去（#147：菜单接替弹层位置）');
+  assert.ok(closeAt > openAt, '顺序＝先开菜单（卡片还在 DOM 里，rect 有效）再关弹层；反了菜单会跳到窗口左上');
+});
+
+/* owner 2026-10-17 追加意见：菜单要**从原弹层的顶部开始往下展示**（接替那张卡的位置），
+ * 不是在卡片里那个按钮下方冒出来。三处各自可回归：menu 的新档位、connect-flow 的锚点换成卡片本体、
+ * home-ops 声明「这次接入的菜单接替弹层」。 */
+test('#147 渠道菜单落点：从原弹层顶部往下展开（menuAtTop ⇒ 卡片左上角对齐）', () => {
+  const menu = readFileSync(join(REPO, 'src', 'client', 'ui', 'menu.ts'), 'utf8');
+  assert.ok(menu.includes("| 'top-left'"), 'MenuPlacement 新增 top-left（老两档一字不变）');
+  assert.ok(menu.includes("let top = placement === 'top-left' ? rect.top : rect.bottom + 6"),
+    'top-left ⇒ 菜单顶边对齐锚点顶边（往下展开）');
+  assert.ok(menu.includes("let left = placement === 'bottom-left' ? rect.right - mw : rect.left"),
+    'bottom-left 仍是右对齐、bottom-right 仍是左对齐（老调用落点不许漂移）');
+  assert.ok(menu.includes('Math.min(top, vh - mh - 8)'),
+    'top-left 的越界兜底是「往上收」，不是老档位的「翻到锚点上方」');
+  const cf = readFileSync(join(REPO, 'src', 'client', 'components', 'connect-flow.ts'), 'utf8');
+  assert.ok(cf.includes("target.menuAtTop ? 'top-left' : 'bottom-left'"),
+    '只有声明了 menuAtTop 的调用改档位；旧面板的家级接入行为一字不变');
+  assert.ok(cf.includes('menuAtTop?: boolean'), 'ConnectTarget 的开关是可选字段（Added-only）');
+  const bind = readFileSync(join(REPO, 'src', 'client', 'components', 'home-bind-forms.ts'), 'utf8');
+  assert.ok(bind.includes("go.closest?.('.hu-pop')"),
+    '锚点给**卡片本体**（菜单接替卡片位置，不是卡片里某个按钮的位置）');
+  assert.ok(bind.includes('deps.ops.connect(home.id, card, a.id'),
+    '传下去的就是卡片锚点（找不到卡片时回退 CTA 本体）');
+  assert.ok(bind.indexOf('deps.ops.connect(home.id, card') < bind.indexOf('closeHomePop(true)', bind.indexOf('deps.ops.connect(home.id, card')),
+    '顺序＝先开菜单（卡片还在 DOM 里，rect 有效）再关弹层；反了菜单会跳到窗口左上');
+  assert.ok(readFileSync(join(REPO, 'src', 'client', 'components', 'home-ops.ts'), 'utf8').includes('menuAtTop: true'),
+    'home-ops 的 connect（弹层那条路）声明 menuAtTop');
+});
+
 // ---- #49：P1 选择器统一 + P2 绑定落地 ----
 test('#49 resolveNewBotId：prov 优先、单 fresh 兜底、多 fresh 不认', () => {
   const bots = (ids: string[]) => ids.map((botId) => ({ botId }));
@@ -552,7 +605,14 @@ test('#62 connect：有家仍走扫码菜单（回归）', async () => {
   actsMod.createPanelActions(deps).connect({ name: '小帅', workspace: 'D:\\agents\\xiaoshuai', bots: [], isLocal: true }, issue62Anchor());
   await new Promise((r) => setTimeout(r, 20));
   const all = texts((doc as any).body).join('|');
-  assert.ok(all.includes('接入'), '有家应保留扫码入口：' + all.slice(0, 200));
+  /* owner 2026-10-17：行标签去掉「接入 X」前缀（改成 渠道名＋品牌 logo），能力注解在行尾 —— 老面板这条路径共用同一张菜单。 */
+  assert.ok(all.includes('飞书') && all.includes('扫码或手动'), '有家应保留扫码入口（渠道名＋能力注解）：' + all.slice(0, 200));
+  assert.equal((doc as any).body.querySelectorAll('.af-menu-logo').length, 9,
+    '渠道菜单每行都带品牌 logo 位（九行；DOM 桩会把 svg 标签吃掉，所以只数包装节点）');
+  const iconsSrc = readFileSync(join(REPO, 'src', 'client', 'icons.ts'), 'utf8');
+  assert.ok(iconsSrc.includes('data-channel-logo=') && iconsSrc.includes("feishu: { viewBox:"),
+    'logo 内容＝品牌 svg（channelGlyphSvg 单一真相，不是通用 external 图标；本测试开头已钉 connect-flow 的调用）');
+  assert.equal((doc as any).body.querySelectorAll('.af-menu-hint').length, 9, '九行都带能力注解');
   (doc as any).body.replaceChildren();
 });
 

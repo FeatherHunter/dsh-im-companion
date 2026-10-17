@@ -22,7 +22,7 @@ import {
   rowCrewNote, statusText, strings, LOGO_TILE_BG, type Lang, type MatrixCell, type MatrixModel, type MatrixRow,
 } from './data'
 import { buildHomeMatrix } from './home-matrix'
-import { disposeCellPop, hideCellPop, setCellPopRpc, showCellPop } from './cell-pop'
+import { disposeCellPop, hideCellPop, setCellPopRpc, showCellPop, warmCellPopImages } from './cell-pop'
 
 function emitDrawer(key: string): void {
   try {
@@ -198,6 +198,12 @@ export function mountRadarView(fctx: FeatureCtx, root: HTMLElement, opts: { onCl
         onRefresh: () => { void fctx.refresh().catch(() => {}); void loadHomes() },
         onClose: () => opts.onClose(),
       })
+      /* 首悬即见真图：随表预热全格有图助理（同缓存同端点；全命中零请求；通道挂载级已就绪）。 */
+      try {
+        const all: MatrixCell[] = []
+        for (const r of model.rows) for (const c of r.cells) all.push(c)
+        warmCellPopImages(all)
+      } catch { /* 预热失败只影响首悬速度 */ }
     } catch (e) {
       if (logOn('debug')) logLine('debug', 'ui.action', { area: 'fleet-radar', action: 'paint-fail', ok: false, message: '渲染失败保留旧帧：' + String((e as Error)?.message ?? e) })
     }

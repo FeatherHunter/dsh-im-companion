@@ -227,7 +227,8 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
           if (!key) return null
           const ws = resolveWorkspace(key, current)
           const custom = customNames[ws] || customNames[basenameOf(ws)] || ''
-          return buildCardData(ws, current, custom || undefined, (x) => faces.faceOf(x, ws))
+          const agent = custom || badgeForWorkspace(ws, current).agent
+          return buildCardData(ws, current, custom || undefined, (x) => faces.faceOf(x, ws), faces.homeFaceOf(ws, agent))
         } catch {
           return null
         }

@@ -148,7 +148,7 @@ export async function createAssistant(
 export async function updateHome(rpc: RpcCall, input: { id: string; name?: string | null; avatar?: string | null }): Promise<Home | null> {
   try {
     const v = await bridge<{ home?: Home }>(rpc, 'home.update', input as Record<string, unknown>)
-    if (v.home) { toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check'); hLog('update', v.home.id, true, '') } else hLog('update', input.id, false, '宿主未返回家行')
+    if (v.home) { toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check', input.name === undefined ? undefined : 'home-ui hu-toast-top'); hLog('update', v.home.id, true, '') } else hLog('update', input.id, false, '宿主未返回家行')
     return v.home ?? null
   } catch (e) {
     hLog('update', input.id, false, msgOf(e)); toast('家更新失败：' + msgOf(e))
@@ -159,7 +159,7 @@ export async function updateHome(rpc: RpcCall, input: { id: string; name?: strin
 export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: string | null; avatar?: string | null }): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.update', input as Record<string, unknown>)
-    if (v.assistant) { toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check'); aLog('update', v.assistant.id, true, '') } else aLog('update', input.id, false, '宿主未返回助理行')
+    if (v.assistant) { toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check', input.name === undefined ? undefined : 'home-ui hu-toast-top'); aLog('update', v.assistant.id, true, '') } else aLog('update', input.id, false, '宿主未返回助理行')
     return v.assistant ?? null
   } catch (e) {
     aLog('update', input.id, false, msgOf(e)); toast('助理更新失败：' + msgOf(e))
@@ -292,7 +292,7 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
       const home = deps.getHome(homeId)
       if (!home) { toast('找不到这个家'); hLog('connect', homeId, false, '找不到这个家'); return }
       const name = home.name || basenameOf(home.path) || home.path
-      openConnectFlow(deps.ctx, deps.getRpc(), anchor, { name, workspace: home.path, assistantId }, (ok) => {
+      openConnectFlow(deps.ctx, deps.getRpc(), anchor, { name, workspace: home.path, assistantId, menuAtTop: true }, (ok) => {
         void deps.refresh().then(() => deps.reloadHomes()).then(() => after?.(ok === true))
       })
     },

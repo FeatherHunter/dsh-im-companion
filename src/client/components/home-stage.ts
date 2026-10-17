@@ -26,6 +26,8 @@ export interface StageCtx {
   onGo(next: Level, id?: string): void
   onOpen(id: string): void
   onAct(kind: string, id: string, anchor: HTMLElement): void
+  /** 行内改名提交（owner 2026-10-17）：铅笔就地改完 → 落盘（空串＝回落跟随工作区）。 */
+  onRenameHome?(id: string, value: string): void
 }
 
 /** 真渠道集合：**未绑定助理不算渠道**（#138 渠道诚实性）——它们的 channel 是旧版客户端编的猜测值。 */
@@ -143,7 +145,7 @@ export function stageList(c: StageCtx): HTMLElement {
   const q = c.query.trim().toLowerCase()
   const match = (t: string): boolean => !q || t.toLowerCase().indexOf(q) >= 0
   const list = h('div', { className: 'hu-fbody' })
-  const rowOpts = { onOpen: c.onOpen, onItemAct: c.onAct }
+  const rowOpts = { onOpen: c.onOpen, onItemAct: c.onAct, onRenameHome: c.onRenameHome }
   if (c.level === 'L3') {
     const a = v.assistants.find((x) => x.id === c.selAsst)
     list.appendChild(a

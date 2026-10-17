@@ -240,6 +240,26 @@ export function renameHomePop(anchor: AnchorRef, deps: EditDeps & { homeId: stri
   })
 }
 
+/** 更换头像（owner 2026-10-17）：**只管头像**——行上的头像按钮与点头像本身都走它，不带名字字段。
+ *  图片格点了就落（见 avatarRow 注释），预设色攒进「保存」；两者都与家设置弹层同源。 */
+export function avatarHomePop(anchor: AnchorRef, deps: EditDeps & { homeId: string }): void {
+  const home = deps.view.homes.find((x) => x.id === deps.homeId)
+  if (!home) return
+  let avatar: string | null = home.avatar ?? null
+  const av = avatarRow(homeName(deps.view, home), home.id, 'home', avatar, (v) => { avatar = v }, () => { closeHomePop(true); deps.onDone() })
+  const ok = (): void => {
+    closeHomePop(true)
+    if (avatar === (home.avatar ?? null)) { fLog('noop', false, '头像没变，换头像弹层直接关'); return }
+    void deps.ops.updateHome(home.id, { avatar }).then(deps.onDone)
+  }
+  openHomePop(anchor, {
+    width: 300, label: '更换头像', above: true,
+    title: h('div', { className: 'hu-ptitle' }, huIcon('image', 15), '更换头像'),
+    body: [field('头像', av.row, 'div'), ...(av.clear ? [av.clear] : [])],
+    foot: footBtns(ok, undefined, '保存'),
+  })
+}
+
 /** 助理设置：改名＋配图＋恢复默认＋删除助理（只删行不断连，验收④）。 */
 export function renameAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: string }): void {
   const a = deps.view.assistants.find((x) => x.id === deps.asstId)

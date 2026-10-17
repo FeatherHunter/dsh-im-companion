@@ -3,7 +3,7 @@ import { badgeForWorkspace, lastCheckedText } from '../../client/data/bindings'
 import { botDisplayLabel, type BotSnap } from '../../client/data/fleet-api'
 import { HEALTH_LABELS, channelLabel, healthOf, type HealthKind } from '../../client/data/config'
 import { channelGlyphSvg } from '../../client/icons'
-import { paintFace, type FaceHit, type FaceOf } from './assistant-face'
+import { initialsOf, paintFace, type FaceDesc, type FaceHit, type FaceOf } from './assistant-face'
 import { BREATH_BASE_MS, BREATH_SLOT_MS, breathPhase } from './styles'
 import { logLine, logOn } from '../../client/log'
 
@@ -18,20 +18,23 @@ export interface CardChannel {
 
 export interface CardData {
   agent: string
+  face: FaceDesc
   kind: HealthKind
   channels: CardChannel[]
   time: string
 }
 
 /** 卡片数据（纯函数可单测）：未绑定返回 null（无卡）。 */
-export function buildCardData(workspacePath: string, bots: BotSnap[], displayName?: string, faceOf?: FaceOf): CardData | null {
+export function buildCardData(workspacePath: string, bots: BotSnap[], displayName?: string, faceOf?: FaceOf, homeFace?: FaceHit | null): CardData | null {
   try {
     const badge = badgeForWorkspace(workspacePath, bots)
     if (badge.kind === 'unbound') return null
     const bound = bots.filter((b) => b.workspace === workspacePath)
     if (!bound.length) return null
+    const agent = displayName || badge.agent
     return {
-      agent: displayName || badge.agent,
+      agent,
+      face: homeFace?.desc ?? { img: null, tint: '', initial: initialsOf(agent) },
       kind: badge.kind,
       channels: bound.map((b) => {
         const hit = faceOf ? faceOf(b) : null
@@ -148,8 +151,10 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
       const c = card as unknown as { style?: { display?: string; visibility?: string }; replaceChildren: (...n: unknown[]) => void }
       try { c.replaceChildren() } catch { /* 忽略 */ }
       const head = el('div', HEAD_CLASS)
+      const face = paintFace(data.face)
       const name = el('span', NAME_CLASS, data.agent)
-      if (!head || !name) return false
+      if (!head || !face || !name) return false
+      head.appendChild(face)
       head.appendChild(name)
       const parts: unknown[] = [head]
       const seen = new Map<string, number>()

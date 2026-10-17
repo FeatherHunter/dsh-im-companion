@@ -14,6 +14,8 @@ import { isOrphanHome } from '../data/home-orphan'
 import { orphanRowActs } from './home-orphan-row'
 import { homeStrip } from './home-row-strip'
 import { asstSubMeta, metaRow } from './home-meta'
+import { iconBtn, textBtn } from './home-btns'
+import { avatarButton, renameField } from './home-row-edit'
 import type { BotSnap } from '../data/fleet-api'
 
 /** 原型回落文案（proto-studio 的 homeFrom/asstFrom）。 */
@@ -106,36 +108,12 @@ export function onlineTagEl(bot: BotSnap | null): HTMLElement {
 }
 
 export function statusPillEl(a: Assistant): HTMLElement {
-  if (a.status === 'unbound') return pillEl('warn', '未绑定')
+  if (a.status === 'unbound') return pillEl('bad', '未绑定')
   return pillEl(a.status === 'bound' ? 'ok' : 'bad', a.status === 'bound' ? '已绑' : '失联')
 }
 
-/** 未实现钮（T6b/T6c）：照原型画出但语义化禁用（不用 opacity .45）；悬停说明归属票号（owner 裁定 2026-10-12）。 */
-export function pendingTip(label: string, ticket: string): string {
-  return `${label}（#${ticket} 待实现）`
-}
-
-function planned(el: HTMLElement, label: string, ticket: string): HTMLElement {
-  const btn = el as HTMLButtonElement
-  btn.disabled = true
-  btn.setAttribute('disabled', '')
-  btn.setAttribute('aria-disabled', 'true')
-  btn.setAttribute('data-tip', pendingTip(label, ticket))
-  btn.classList.add('planned')
-  return btn
-}
-
-export function iconBtn(act: string, label: string, iconName: HuIconName, opts: { ticket?: string } = {}): HTMLElement {
-  const el = h('button', { className: 'hu-ract icon', type: 'button', 'data-item-act': act,
-    'aria-label': label, 'data-tip': opts.ticket ? pendingTip(label, opts.ticket) : label }, huIcon(iconName, 15))
-  return opts.ticket ? planned(el, label, opts.ticket) : el
-}
-
-export function textBtn(act: string, label: string, opts: { cls?: string; ticket?: string; id?: string } = {}): HTMLElement {
-  const el = h('button', { className: `hu-ract ${opts.cls ?? ''}`.trim(), type: 'button',
-    'data-item-act': act, ...(opts.id ? { 'data-id': opts.id } : {}) }, label)
-  return opts.ticket ? planned(el, label, opts.ticket) : el
-}
+/** 行按钮词汇搬到 `home-btns.ts`（行内改名/换头像要腾地方）；这里原样再导出，老调用点一字不改。 */
+export { iconBtn, pendingTip, textBtn } from './home-btns'
 
 /** 在线汇总（渠道行用）：0 助理不渲染——计数已由副标承担（真机反馈 2026-10-13）。O(m)。 */
 export function homeOnlineTag(view: RowView, list: Assistant[]): HTMLElement | null {
@@ -152,6 +130,8 @@ export interface RowOpts {
   flash?: boolean
   onOpen?: (id: string) => void
   onItemAct?: (act: string, id: string, anchor: HTMLElement) => void
+  /** 行内改名提交（owner 2026-10-17）：值已 trim，空串＝回落「跟随工作区」。不给＝铅笔只进编辑不落盘。 */
+  onRenameHome?: (id: string, value: string) => void
 }
 
 function wireRow(el: HTMLElement, opts: RowOpts, id: string): void {
@@ -182,21 +162,27 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
   const d = homeDisplay(view, home)
   const list = asstOfHome(view, home.id)
   const orphan = isOrphanHome(home, view.workspaces)
-  const nm = h('span', { className: 'hu-nm' }, h('b', {}, d.text))
-  if (home.nameSource === 'user' && home.name.trim()) nm.appendChild(h('span', { className: 'hu-scr' }, '你取的名'))
+  /* owner 2026-10-17：名字块交给原位编辑器（点铅笔就地变输入框）；徽标仍是展示态的一部分。 */
+  const nmParts: HTMLElement[] = [h('b', {}, d.text)]
+  if (home.nameSource === 'user' && home.name.trim()) nmParts.push(h('span', { className: 'hu-scr' }, '你取的名'))
+  const rf = renameField({ parts: nmParts, initial: home.nameSource === 'user' ? home.name : '', placeholder: d.text,
+    onCommit: (v) => opts.onRenameHome?.(home.id, v) })
   const acts = h('span', { className: 'hu-acts2' })
   if (orphan) orphanRowActs(acts, home.id, opts.onItemAct)
   else {
-    acts.appendChild(iconBtn('rename-h', '重命名', 'pencil'))
-    acts.appendChild(iconBtn('more-home', '更多', 'more'))
+    /* 铅笔＝**就地改名**（不再开弹层）；「更多」已按 owner 2026-10-17 拆成两个直白动作，行上不留歧义入口。 */
+    const pencil = iconBtn('rename-h', '改名', 'pencil')
+    pencil.addEventListener('click', (e) => { e.stopPropagation(); rf.edit() })
+    acts.appendChild(pencil)
+    acts.appendChild(iconBtn('avatar-h', '更换头像', 'image'))
   }
   const el = h('div', {
     className: `hu-row hrow${orphan ? ' orphan' : ''}${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}`,
     role: 'button', tabindex: 0, 'data-open': 'L2', 'data-id': home.id, 'aria-label': `家 ${d.text}`,
   },
     h('div', { className: 'hu-btop' },
-      avatarEl(home.id, d.text, home.avatar),
-      h('span', { className: 'hu-txt' }, nm),
+      avatarButton(avatarEl(home.id, d.text, home.avatar)),
+      h('span', { className: 'hu-txt' }, rf.el),
       acts),
     homeStrip({
       homeId: home.id,
@@ -223,7 +209,7 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
   return el
 }
 
-/** 助理行（原型 rowsAsst）：头像(圆) + 名 + 已绑章 + 在线 / 渠道 + 工作区路径 + 接入 / ⋯。
+/** 助理行（原型 rowsAsst）：头像(圆) + 名 + 已绑章 + 在线 / 渠道 + 工作区路径 + 更换/绑定机器人 / ⋯。
  *  副标走元信息原语：渠道强（未绑定显示「待接入」）＋工作区等宽弱化，靠间距不靠符号（#139）。 */
 export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLElement {
   const d = asstDisplay(view, a)
@@ -241,8 +227,8 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
       h('span', { className: 'hu-sub' }, asstSubMeta(ch, path))),
     h('span', { className: 'hu-acts2' },
       a.status === 'bound'
-        ? textBtn('connect-a', '接入', { cls: 'connect', id: a.id })
-        : textBtn('bind-a', '绑定机器人', { id: a.id }),
+        ? textBtn('change-a', '更换机器人', { cls: 'swap', id: a.id })
+        : textBtn('bind-a', '绑定机器人', { cls: 'danger', id: a.id }),
       iconBtn('more-asst', '更多', 'more')))
   wireRow(el, opts, a.id)
   return el

@@ -6,8 +6,9 @@
  * 无标记回落首字色块（与雷达行头同语言，不混绿框色相环）。 */
 import { h } from '../../client/dom'
 import { imageCover } from '../../client/components/home-identity'
+import { channelGlyphSvg } from '../../client/icons'
 import type { RpcCall } from '../../client/data/fleet-api'
-import { avatarColor, healthLabel, strings, type CellMate, type Lang, type MatrixCell } from './data'
+import { avatarColor, healthLabel, LOGO_TILE_BG, strings, type CellMate, type Lang, type MatrixCell } from './data'
 
 /** 图片标记前缀：与 `home-avatar.ts` 的 MARK 同字面量（读口径对齐；写/缓存仍归 T11）。 */
 const IMG_MARK = 'img:'
@@ -40,13 +41,14 @@ function queueImage(m: CellMate): void {
   }
 }
 
-/** 同一 tick 的多行合并成一条 `avatar.get`（home-avatar 同款批量思路，失败绝不抛）。 */
+/** 同一 tick 的多行合并成一条 `avatar.get`（home-avatar 同款批量思路，失败绝不抛）。
+ * 通道未就绪（挂载前）⇒ 留队不丢，下次排队/刷新时顺带发出。 */
 function flushImages(): void {
   imgScheduled = false
+  const rpc = getRpc?.()
+  if (!rpc || imgPending.size === 0) return
   const ask = Array.from(imgPending.entries())
   imgPending.clear()
-  const rpc = getRpc?.()
-  if (!ask.length || !rpc) return
   const markers = new Map(ask)
   void (rpc('/im-companion', 'avatar.get', { ids: ask.map(([id]) => id) }, AbortSignal.timeout(8000)) as Promise<unknown>)
     .then((raw) => {
@@ -109,12 +111,33 @@ function mateRow(m: CellMate, lang: Lang): HTMLElement {
     h('span', { className: 'fleet-radar-nm' }, m.name || m.botId)) as HTMLElement
 }
 
+/** 首行渠道 LOGO：照抄 view 侧 logoNode（读共享 icons＋data 底色，不 import view，免循环）。
+ * 未知渠道回 null，首行只剩文字。 */
+function logoNode(channel: string): HTMLElement | null {
+  try {
+    const svg = channelGlyphSvg(channel, 12)
+    if (!svg) return null
+    return h('span', {
+      className: 'fleet-radar-logo',
+      dataset: { ch: channel },
+      html: svg,
+      style: { background: LOGO_TILE_BG[channel] ?? 'var(--dsw-alias-fill-secondary,rgba(127,127,127,.15))' },
+    }) as HTMLElement
+  } catch {
+    return null
+  }
+}
+
 function paint(a: HTMLElement, cell: MatrixCell, lang: Lang): void {
   try {
     if (typeof document === 'undefined' || !a.isConnected) return
     hideCellPop()
     const el = h('div', { className: 'fleet-radar-pop', role: 'tooltip' }) as HTMLElement
-    el.appendChild(h('div', { className: 'fleet-radar-pop-hd' }, cell.label) as unknown as Node)
+    const hd = h('div', { className: 'fleet-radar-pop-hd' }) as HTMLElement
+    const logo = logoNode(cell.channel)
+    if (logo) hd.appendChild(logo as unknown as Node)
+    hd.appendChild(h('span', {}, cell.label) as unknown as Node)
+    el.appendChild(hd as unknown as Node)
     for (const m of cell.mates) el.appendChild(mateRow(m, lang) as unknown as Node)
     document.body.appendChild(el)
     box = el
@@ -132,6 +155,19 @@ function paint(a: HTMLElement, cell: MatrixCell, lang: Lang): void {
     /* 定位落定了才点亮（CSS 侧 opacity:0 先量尺寸，.on 再亮）：几何拿不到 ⇒ 盒子保持熄灭。 */
     el.classList.add('on')
   } catch { /* 拿不到几何就不显示 */ }
+}
+
+/** 预热：表格画完即把全格有图助理排进批量取图（与悬浮同缓存同端点，不新增请求种类）。
+ * 用户从看到表到悬停通常有数秒 ⇒ 首悬即见真图，无占位闪。命中/失败/排队中自动跳过，
+ * 全命中时连一条请求都不发；预热永不干扰渲染。 */
+export function warmCellPopImages(cells: MatrixCell[]): void {
+  try {
+    for (const c of cells) {
+      const mates = c?.mates
+      if (!mates) continue
+      for (const m of mates) queueImage(m)
+    }
+  } catch { /* 预热失败只影响首悬速度，不影响表 */ }
 }
 
 /** 悬停进入：延迟 120ms 再显（扫过一排格子不刷屏），期间离开则作废。 */

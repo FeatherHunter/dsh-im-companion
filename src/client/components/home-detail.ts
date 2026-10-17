@@ -14,7 +14,7 @@ export interface DetailOpts {
   onAct: (act: string, anchor: HTMLElement) => void
 }
 
-function abtn(act: string, label: string, o: DetailOpts, opts: { cls?: string; icon?: 'link' | 'info' | 'pencil' | 'image' | 'move' | 'unlink' | 'trash'; ticket?: string } = {}): HTMLElement {
+function abtn(act: string, label: string, o: DetailOpts, opts: { cls?: string; icon?: 'link' | 'info' | 'pencil' | 'image' | 'move' | 'unlink' | 'trash' | 'refresh'; ticket?: string } = {}): HTMLElement {
   const el = h('button', { className: `hu-abtn ${opts.cls ?? ''}`.trim(), type: 'button', 'data-item-act': act },
     ...(opts.icon ? [huIcon(opts.icon, 14)] : []), label)
   if (opts.ticket) {
@@ -63,7 +63,7 @@ function botBlock(o: DetailOpts): HTMLElement {
       h('div', { className: 'hu-txt' },
         h('b', {}, '还没绑机器人'),
         h('small', {}, '先建助理，之后再选机器人')),
-      pillEl('warn', a.status === 'orphan' ? '失联' : '未绑定')))
+      pillEl('bad', a.status === 'orphan' ? '失联' : '未绑定')))
     block.appendChild(h('p', { className: 'hu-fhint' }, '点下面的「绑定机器人」给它选一个机器人；名字默认跟随家名。'))
   }
   return block
@@ -94,8 +94,9 @@ export function detailEl(o: DetailOpts): HTMLElement {
     botBlock(o))
 
   const primary = h('div', { className: 'hu-acts' })
-  if (a.status === 'bound') primary.appendChild(abtn('connect-a', '接入', o, { cls: 'go', icon: 'link' }))
-  else primary.appendChild(abtn('bind-a', '绑定机器人', o, { cls: 'go', icon: 'link' }))
+  /* owner 2026-10-17：详情页与行按钮同口径——没有「接入」，只有未绑定时的红档「绑定机器人」与已绑后的「更换机器人」。 */
+  if (a.status === 'bound') primary.appendChild(abtn('change-a', '更换机器人', o, { cls: 'swap', icon: 'refresh' }))
+  else primary.appendChild(abtn('bind-a', '绑定机器人', o, { cls: 'danger', icon: 'link' }))
   primary.appendChild(abtn('detail-a', '详情', o, { icon: 'info' }))
 
   /* T6b #114 已启用：改名与头像（同一设置弹层）＋删除助理（两步确认，只删行不断连）。

@@ -41,6 +41,10 @@ function resolveAnchor(ref: AnchorRef): HTMLElement | null {
 export function bindAsstPop(anchor: AnchorRef, deps: BindDeps): void {
   const a = deps.view.assistants.find((x) => x.id === deps.asstId)
   if (!a) return
+  /* owner 2026-10-17：已绑定的助理点的是「更换机器人」——同一张弹层，只是把动作的名字说准
+   * （挑另一个空闲机器人＝换，或「新机器人」造一个＝也換）；未绑定叫「绑定机器人」。 */
+  const bound = a.status === 'bound'
+  const verb = bound ? '更换机器人' : '绑定机器人'
   const bots: BotSnap[] = freeBots(deps.view.bots.map((b) => ({ channel: b.channel, botId: b.botId, workspace: b.workspace, botName: b.botName })), deps.view.assistants)
     .map((r) => deps.view.bots.find((b) => b.botId === r.botId && b.channel === r.channel))
     .filter((b): b is BotSnap => !!b)
@@ -55,9 +59,12 @@ export function bindAsstPop(anchor: AnchorRef, deps: BindDeps): void {
       const home = deps.view.homes.find((x) => x.id === a.homeId)
       const el = resolveAnchor(anchor)
       fLog('bind-assistant', true, '空态转新建：给「' + (home?.path ?? a.homeId) + '」新增机器人')
-      closeHomePop(true)
-      if (!home || !el) { fLog('bind-assistant', false, '家或锚点不在了，接入不开'); return }
-      deps.ops.connect(home.id, el, a.id, (ok) => {
+      if (!home) { fLog('bind-assistant', false, '家不在了，接入不开'); closeHomePop(true); return }
+      /* owner 2026-10-17：渠道菜单要**接替这张卡**——从它左上角往下展开，所以锚点给卡片本体而不是按钮。
+       * `showMenu` 在调用那一刻同步读锚点 rect（此后只监听 scroll 关闭、不做重定位）⇒ 顺序必须是
+       * 「先拿还在 DOM 里的卡片打开菜单 → 再关弹层」；反过来卡片已游离、rect 全 0，菜单跳到窗口左上。 */
+      const card = (go.closest?.('.hu-pop') as HTMLElement | null | undefined) ?? go
+      deps.ops.connect(home.id, card, a.id, (ok) => {
         /* #141 C：落定没成功（失败/被拒）⇒ 把用户送回**同一个助理**的绑定面：新机器人此刻已在空闲池，
          * 弹层默认首选就是它；成功则由 A 在落定编排里直接绑上 a，这里不再弹（免得给已绑助理开绑定弹层）。
          * 锚点用函数式（同 config-pop 手法）——刷新会把原按钮换掉，重开时现判连接性，取不到就不弹；
@@ -65,19 +72,21 @@ export function bindAsstPop(anchor: AnchorRef, deps: BindDeps): void {
         if (ok) return
         fLog('bind-assistant', true, '接入未落定，回同助理的绑定面：' + a.id)
         bindAsstPop(() => {
-          const on = typeof el.isConnected === 'boolean' ? el.isConnected : !!el.parentNode
+          const on = !!el && (typeof el.isConnected === 'boolean' ? el.isConnected : !!el.parentNode)
           return on ? el : null
         }, deps)
       })
+      /* 菜单已经定位好了（rect 是上面那一步同步读的）⇒ 现在收掉弹层：留着会盖住菜单，也挡不住 scale 动画的残影。 */
+      closeHomePop(true)
     })
     openHomePop(anchor, {
-      width: 330, label: '绑定机器人', above: true,
-      title: h('div', { className: 'hu-ptitle' }, huIcon('link', 15), '绑定机器人'),
+      width: 330, label: verb, above: true,
+      title: h('div', { className: 'hu-ptitle' }, huIcon(bound ? 'refresh' : 'link', 15), verb),
       body: [
-        field('选择机器人', h('p', { className: 'hu-fhint' }, '每个机器人只能绑一位助理，现在都绑满了。'), 'div'),
+        field('选择机器人', h('p', { className: 'hu-fhint' }, bound ? '现在没有空闲的机器人可以换。' : '每个机器人只能绑一位助理，现在都绑满了。'), 'div'),
         go,
       ],
-      foot: footBtns(() => { fLog('bind-assistant', false, '没选机器人') }, '没有空闲机器人，先新建一个', '绑定'),
+      foot: footBtns(() => { fLog('bind-assistant', false, '没选机器人') }, '没有空闲机器人，先新建一个', bound ? '更换' : '绑定'),
     })
     return
   }
@@ -93,8 +102,8 @@ export function bindAsstPop(anchor: AnchorRef, deps: BindDeps): void {
     void deps.ops.bindAssistant(a.id, bot.channel, bot.botId).then(deps.onDone)
   }
   openHomePop(anchor, {
-    width: 330, label: '绑定机器人', above: true,
-    title: h('div', { className: 'hu-ptitle' }, huIcon('link', 15), '绑定机器人'),
-    body, foot: footBtns(ok, undefined, '绑定'),
+    width: 330, label: verb, above: true,
+    title: h('div', { className: 'hu-ptitle' }, huIcon(bound ? 'refresh' : 'link', 15), verb),
+    body, foot: footBtns(ok, undefined, bound ? '更换' : '绑定'),
   })
 }

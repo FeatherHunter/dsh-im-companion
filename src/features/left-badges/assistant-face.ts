@@ -21,7 +21,7 @@ function hueOf(id: string, avatar: string | null = null): number {
   if (Number.isInteger(i) && i >= 0 && i < HUE.length) return HUE[i]
   return HUE[hash32(String(id ?? '')) % HUE.length]
 }
-function initialsOf(name: string): string {
+export function initialsOf(name: string): string {
   const s = String(name ?? '').trim()
   if (!s) return '?'
   if (!/^[\x20-\x7e]+$/.test(s)) return Array.from(s)[0] ?? '?'
@@ -74,6 +74,16 @@ export function faceFor(bot: BotSnap, assistants: Assistant[], homes: Home[], ws
   return { desc: { img: null, tint: '', initial: initialsOf(shown) }, name: shown }
 }
 
+/** 顶栏工作区脸（纯函数可单测）：同路家的 avatar → 上传图（已到）/色脸（面板同款）；无家回名首字灰底（paintFace 回落款）。 */
+export function homeFaceFor(wsPath: string, agentName: string, homes: Home[], images: ReadonlyMap<string, string>): FaceHit {
+  const shown = String(agentName ?? '').trim() || '?'
+  const home = (homes || []).find((h) => h && !h.tombstone && normPath(h.path) === normPath(wsPath)) ?? null
+  if (!home) return { desc: { img: null, tint: '', initial: initialsOf(shown) }, name: shown }
+  const hit = hasFaceImage(home.avatar) ? images.get(home.id) : undefined
+  if (hit) return { desc: { img: hit, tint: '', initial: '' }, name: shown }
+  return { desc: { img: null, tint: faceStyle(home.id, home.avatar), initial: initialsOf(shown) }, name: shown }
+}
+
 /** 脸格渲染（hover-card 行内调用；有图挂 img，无图色脸首字）。 */
 export function paintFace(desc: FaceDesc): HTMLElement | null {
   try {
@@ -97,6 +107,7 @@ const BRIDGE = '/im-companion'
 /** 家表 + 上传图缓存（view.ts 快照 gate 里 refresh；resolve 只纯读，不等）。 */
 export function mountAssistantFaces(rpc: RpcCall | null): {
   faceOf: (b: BotSnap, wsPath: string) => FaceHit
+  homeFaceOf: (wsPath: string, agentName: string) => FaceHit
   refresh: () => Promise<void>
 } {
   let homes: Home[] = []
@@ -104,6 +115,7 @@ export function mountAssistantFaces(rpc: RpcCall | null): {
   const images = new Map<string, string>()
   const asked = new Set<string>()
   const faceOf = (b: BotSnap, wsPath: string): FaceHit => faceFor(b, assistants, homes, wsPath, images)
+  const homeFaceOf = (wsPath: string, agentName: string): FaceHit => homeFaceFor(wsPath, agentName, homes, images)
   const refresh = async (): Promise<void> => {
     if (!rpc) return
     try {
@@ -112,7 +124,10 @@ export function mountAssistantFaces(rpc: RpcCall | null): {
       homes = Array.isArray(v?.homes) ? v.homes as Home[] : []
       assistants = Array.isArray(v?.assistants) ? v.assistants as Assistant[] : []
     } catch { /* 家表读不到就留旧表（脸回落渠道/首字） */ }
-    const need = assistants.filter((a) => a && hasFaceImage(a.avatar) && !images.has(a.id) && !asked.has(a.id)).map((a) => a.id)
+    const needIds = new Set<string>()
+    for (const a of assistants) if (a && hasFaceImage(a.avatar) && !images.has(a.id) && !asked.has(a.id)) needIds.add(a.id)
+    for (const h of homes) if (h && hasFaceImage(h.avatar) && !images.has(h.id) && !asked.has(h.id)) needIds.add(h.id)
+    const need = [...needIds]
     if (!need.length) return
     for (const id of need) asked.add(id)
     try {
@@ -124,5 +139,5 @@ export function mountAssistantFaces(rpc: RpcCall | null): {
       }
     } catch { /* 图未到留色脸 */ }
   }
-  return { faceOf, refresh }
+  return { faceOf, homeFaceOf, refresh }
 }

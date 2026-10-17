@@ -309,6 +309,17 @@ test('格悬浮：助理明细 popover 接线（home-row-tip 纪律：fixed 盒/
   assert.doesNotMatch(popSrc, /import[^\n;]*connect-flow/);
   assert.match(stylesSrc, /\.fleet-radar-pop\b/);
   assert.match(stylesSrc, /\.fleet-radar-poprow/);
+  /* 首行渠道 LOGO：复用共享 icons＋底色（不 import view，免循环）；未知渠道只剩文字 */
+  assert.match(popSrc, /logoNode\(cell\.channel\)/);
+  assert.match(popSrc, /channelGlyphSvg\(channel, 12\)/);
+  assert.match(popSrc, /LOGO_TILE_BG\[channel\]/);
+  assert.match(popSrc, /fleet-radar-logo/);
+  /* 预热：随表预热全格有图助理 ⇒ 首悬即见真图（同缓存同端点；通道未就绪留队不丢） */
+  assert.match(popSrc, /export function warmCellPopImages/);
+  assert.match(popSrc, /if \(!rpc \|\| imgPending\.size === 0\) return/);
+  assert.match(viewSrc, /warmCellPopImages\(all\)/);
+  assert.doesNotMatch(popSrc, /from '\.\/view'/);
+  assert.match(stylesSrc, /\.fleet-radar-pop-hd \{[^}]*display: flex/);
   assert.match(stylesSrc, /\.fleet-radar-pop\.on/);
 });
 

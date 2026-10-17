@@ -147,6 +147,7 @@ export const HOME_ROW_CSS = `
 .home-ui .hu-mi.note{color:var(--hu-ink-3)}
 .home-ui .hu-mi.accent{color:var(--hu-accent-deep);font-weight:600}
 .home-ui .hu-mi.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.94em;color:var(--hu-ink-2)}
+.home-ui .hu-mi.bad{color:var(--hu-bad);font-weight:600}
 .home-ui .hu-crumb b .hu-cr2{display:inline-flex;align-items:baseline;gap:6px}
 .home-ui .hu-crumb b .hu-cr2lv{color:var(--hu-ink-2);font-weight:500}
 .home-ui .hu-crumb b .hu-cr2nm{color:var(--hu-ink);font-weight:650}
@@ -156,6 +157,32 @@ export const HOME_ROW_CSS = `
  * 深色模式下自动跟着 ink 变浅，两套主题都保得住对比度。 */
 .home-ui .hu-son{color:color-mix(in srgb, var(--af-success) 55%, var(--hu-ink));font-weight:600}
 .home-ui.hu-tiphost .hu-tt small .hu-st-on{color:color-mix(in srgb, var(--af-success) 55%, var(--hu-ink))}
+/* owner 2026-10-17：行按钮只留两档——未绑定「绑定机器人」走红档（.hu-ract.danger 基表已有），
+ * 已绑定「更换机器人」走**琥珀档**（.swap）：不是主行动（不抢 accent），也不是危险动作（不红），
+ * 颜色本身示意「会换掉现有的东西」，图标再用 refresh 补一层语义。 */
+.home-ui .hu-ract.swap{color:var(--hu-warn);border-color:color-mix(in srgb, var(--hu-warn) 55%, transparent);background:color-mix(in srgb, var(--hu-warn) 12%, transparent)}
+.home-ui .hu-abtn.swap{color:var(--hu-warn);border-color:color-mix(in srgb, var(--hu-warn) 55%, transparent);background:color-mix(in srgb, var(--hu-warn) 12%, transparent)}
+.home-ui .hu-acts2 .hu-ract.swap:hover{background:color-mix(in srgb, var(--hu-warn) 24%, transparent);border-color:var(--hu-warn)}
+.home-ui .hu-abtn.swap:hover:not([disabled]){background:color-mix(in srgb, var(--hu-warn) 24%, transparent);border-color:var(--hu-warn)}
+/* owner 2026-10-17：头像本身就是「换头像」的入口（包成 <button> ⇒ 先抹掉按钮底，再补悬停/按下的手感）。 */
+.home-ui .hu-avbtn{padding:0;border:0;background:none;line-height:0;border-radius:12px;cursor:pointer;
+  transition:transform var(--hu-t-fast) var(--hu-ease),box-shadow var(--hu-t-fast) var(--hu-ease)}
+.home-ui .hu-avbtn:hover{box-shadow:0 0 0 3px color-mix(in srgb, var(--hu-accent) 24%, transparent)}
+.home-ui .hu-avbtn:active{transform:scale(.94)}
+.home-ui .hu-avbtn:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
+/* 原位改名的输入框：字号/字重跟展示态（.hu-nm b 是 13.5px/620）对齐，进出编辑态行高不跳。
+ * 焦点环走 **inset**（owner 2026-10-17 真机：外环右侧被裁）——输入框长在 .hu-nm／.hu-txt
+ * 两层 overflow:hidden 里，只有画在盒内的环才不可能被容器裁掉；色值仍取 accent 22%。 */
+.home-ui .hu-nminput{font-family:inherit;font-size:13.5px;font-weight:620;line-height:1.2;color:var(--hu-ink);
+  background:var(--hu-panel-2);border:1px solid var(--hu-accent);border-radius:7px;padding:2px 7px;
+  min-width:120px;max-width:190px;outline:none;
+  box-shadow:inset 0 0 0 3px color-mix(in srgb, var(--af-accent) 22%, transparent)}
+.home-ui .hu-nminput::placeholder{color:var(--hu-ink-3);font-weight:400}
+/* owner 2026-10-17②：改名确认要出现在**被改的那一行旁边**（列表在顶部），不再沉到视口底部。
+ * toast 是 body 级 float ⇒ 宿主自带 .home-ui（同 .home-ui.hu-tiphost 那条纪律：作用域不破、
+ * 令牌在），规则也按「只挂 .home-ui 之下」写（home-row-strip.ts 的门禁）。变异只挪位置、
+ * 不动基样式：.af-toast.show 的 translateX(-50%) 动画照旧。 */
+.home-ui.hu-toast-top{top:16px;bottom:auto}
 `
 
 let installed = false

@@ -9,7 +9,7 @@ import { h, clear } from '../dom'
 import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, topEl, type Level } from './home-frame'
-import { newAsstPop, newHomePop, renameAsstPop, renameHomePop, type FormOps } from './home-forms'
+import { newAsstPop, newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'
 import { bindAsstPop } from './home-bind-forms'
 import { moveAsstPop, unbindAsstPop } from './home-move-forms'
 import { orphanHomeAct } from './home-orphan-forms'
@@ -102,6 +102,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     onGo: (next, id) => go(next, id),
     onOpen: (id) => go(level === 'L1' ? 'L2' : 'L3', id),
     onAct: (kind, id, anchor) => act(kind, id, anchor),
+    /* owner 2026-10-17：铅笔**就地**改名——提交即落盘，不弹层（与家设置弹层同一条写路径）。 */
+    onRenameHome: (id, value) => { void deps.ops.updateHome(id, { name: value }).then(() => render()) },
   })
 
   /** 锚点一律**现取**（T7 #112 真机 bug）：面板刷新会 clear 重建，捕获的元素随即游离、rect 全 0 ⇒ 弹层跳到窗口左上。
@@ -115,8 +117,8 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
   }
   const liveAnchor = (btn: HTMLElement | null) => (): HTMLElement | null => (btn && live(btn) ? btn : null)
 
-  /** 行动作（T6b #114＋T6c #115）：接入 / 详情 / 绑定 / 改名·头像 / 删除（clean 版）/ 换工作区 / 移除渠道；
-   * 未绑定点接入直接拒收（fail-closed）；每个前置拒收都落一条 ok:false＋原因——「点了没反应」必须能定位到被谁挡的。 */
+  /** 行动作（T6b #114＋T6c #115）：绑定 / 更换机器人 / 详情 / 改名与头像 / 删除（clean 版）/ 换工作区 / 移除渠道；
+   * 状态对不上直接拒收（fail-closed）；每个前置拒收都落一条 ok:false＋原因——「点了没反应」必须能定位到被谁挡的。 */
   function act(kind: string, id: string, anchor: HTMLElement): void {
     const v = view()
     if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel.body', action: 'act:' + kind, ok: true, message: 'id=' + id })
@@ -136,19 +138,23 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
       const a = v.assistants.find((x) => x.id === id)
       const home = a ? v.homes.find((x) => x.id === a.homeId) : undefined
       emitDrawer(home ? home.path : '')
-    } else if (kind === 'bind-a') {
+    } else if (kind === 'bind-a' || kind === 'change-a') {
       const a = v.assistants.find((x) => x.id === id)
-      if (!a || a.status === 'bound') {
-        logLine('info', 'assistant.action', { action: 'bind', assistantId: id, ok: false, message: a ? '已经绑过机器人，无需再绑' : '助理不在表里（可能刚被删），绑定弹层不开' })
+      /* owner 2026-10-17：行上不再有「接入」——未绑定走「绑定机器人」（红档），已绑定走「更换机器人」（琥珀档）。
+       * 两者开的是**同一张弹层**（挑空闲机器人或「新机器人」走全链路），差别只在状态与文案。 */
+      if (!a || (a.status === 'bound') !== (kind === 'change-a')) {
+        logLine('info', 'assistant.action', { action: 'bind', assistantId: id, ok: false, message: a ? (kind === 'change-a' ? '还没绑定机器人，没什么可更换' : '已经绑过机器人，无需再绑') : '助理不在表里（可能刚被删），绑定弹层不开' })
         return
       }
       bindAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: a.id, onDone: () => render() })
-    } else if (kind === 'rename-h' || kind === 'more-home') {
+    } else if (kind === 'avatar-h') {
+      /* owner 2026-10-17：行上的「更换头像」图标钮与**点头像本身**都落这里——一张纯换头像弹层。
+       * 铅笔（rename-h）不再走弹层：它在行内**就地**改名（home-row-edit.renameField）。 */
       if (!v.homes.some((x) => x.id === id)) {
-        logLine('info', 'home.action', { action: 'update', homeId: id, ok: false, message: '家不在表里（可能刚被删），设置弹层不开' })
+        logLine('info', 'home.action', { action: 'update', homeId: id, ok: false, message: '家不在表里（可能刚被删），换头像弹层不开' })
         return
       }
-      renameHomePop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, homeId: id, onDone: () => render() })
+      avatarHomePop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, homeId: id, onDone: () => render() })
     } else if (kind === 'rename-a' || kind === 'more-asst') {
       if (!v.assistants.some((x) => x.id === id)) {
         logLine('info', 'assistant.action', { action: 'update', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），设置弹层不开' })

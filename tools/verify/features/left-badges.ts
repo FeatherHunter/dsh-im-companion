@@ -200,6 +200,14 @@ test('styles：命名空间前缀，不占 .af-', () => {
   assert.ok(!styles.CSS.includes('.af-'), '不得占用 .af-* 私有约定');
 });
 
+test('styles：悬浮卡桥接 --hu-*（色脸在左栏也有色）', () => {
+  const m = /\.left-badges-card\s*\{([^}]*)\}/.exec(styles.CSS);
+  assert.ok(m && m[1], '卡规则在');
+  const body = String(m && m[1]);
+  assert.match(body, /--hu-panel\s*:\s*var\(--dsw-alias-bg-base/, '面板底桥到左栏底');
+  assert.match(body, /--hu-ink\s*:\s*var\(--dsw-alias-label-primary/, '墨色桥到左栏主字');
+});
+
 test('view：行属性徽标 + 悬停标题 + 复写幂等', () => {
   const row = stubEl('div');
   row.textContent = 'xiaoshuai';
@@ -543,6 +551,101 @@ test('assistant-face：mountAssistantFaces（home.list + avatar.get，rpc 空回
   assert.equal(fb.desc.img, 'https://c/b.png', '无 rpc 回落渠道图');
 });
 
+
+test('assistant-face：homeFaceFor（顶栏工作区脸：上传图>色脸>无家首字）', () => {
+  const H = (over = {}) => ({ id: 'h1', path: W1, avatar: null, ...over });
+  const imgs = new Map([['h1', 'data:image/png;base64,HOME']]);
+  // 家上传图已到
+  const up = face.homeFaceFor(W1, 'xiaowan', [H({ avatar: 'img:face.png' })], imgs);
+  assert.equal(up.desc.img, 'data:image/png;base64,HOME', '家上传图');
+  assert.equal(up.name, 'xiaowan', '名用顶栏名');
+  // 图未到 → 预设色脸 + 顶栏名派字
+  const tint = face.homeFaceFor(W1, 'xiaowan', [H({ avatar: '3' })], new Map());
+  assert.equal(tint.desc.img, null);
+  assert.equal(tint.desc.tint, face.faceStyle('h1', '3'), '家预设色脸');
+  assert.equal(tint.desc.initial, 'XI', '拉丁取前两字母');
+  // CJK 顶栏名取首字；默认按家 id 派生（改名不换色）
+  const cjk = face.homeFaceFor(W1, '小婉的区', [H({ avatar: null })], new Map());
+  assert.equal(cjk.desc.initial, '小');
+  assert.equal(cjk.desc.tint, face.faceStyle('h1', null), '默认按家 id 派生');
+  // 无家/墓碑家 → 灰底首字
+  const bare = face.homeFaceFor(W1, 'xiaowan', [], new Map());
+  assert.equal(bare.desc.img, null);
+  assert.equal(bare.desc.tint, '');
+  assert.equal(bare.desc.initial, 'XI');
+  const tomb = face.homeFaceFor(W1, 'xiaowan', [H({ tombstone: { at: 1, reason: 'x' } })], new Map());
+  assert.equal(tomb.desc.tint, '', '墓碑家视同无家');
+});
+
+test('hover-card：顶栏工作区头像（脸+名，数据直通）', () => {
+  const bots = [snap({ botId: 'f1', botName: '小婉', lastCheckedAt: 5000 })];
+  const homeFace = { desc: { img: null, tint: 'background:rgb(9,9,9);color:#fff', initial: 'X' }, name: 'xiaowan' };
+  const d = hover.buildCardData(W1, bots, 'xiaowan', undefined, homeFace);
+  assert.equal(d.agent, 'xiaowan');
+  assert.equal(d.face, homeFace.desc, '顶栏脸直通');
+  const fb = hover.buildCardData(W1, bots, 'xiaowan');
+  assert.equal(fb.face.img, null);
+  assert.equal(fb.face.initial, 'XI', '不传脸回名派字');
+});
+
+test('hover-card：顶栏两段（头像+工作区名，头像在前）', async () => {
+  const bots = [snap({ botId: 'f1', botName: '小婉', lastCheckedAt: 5000 })];
+  const data = hover.buildCardData(W1, bots, 'xiaowan', undefined,
+    { desc: { img: 'data:image/png;base64,HOME', tint: '', initial: '' }, name: 'xiaowan' });
+  const row = stubEl('div');
+  const body = stubEl('body');
+  const listeners = {};
+  const docStub = {
+    createElement: (t) => stubEl(t),
+    body,
+    documentElement: stubEl('html'),
+    addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); },
+    removeEventListener: () => {},
+  };
+  const winStub = { innerWidth: 1024, innerHeight: 768, addEventListener: () => {}, removeEventListener: () => {} };
+  globalThis.document = docStub;
+  globalThis.window = winStub;
+  try {
+    const dispose = hover.mountHoverCard({ matchRow: (n) => (n === row ? row : null), resolve: () => data }, 0);
+    try {
+      for (const fn of listeners.mouseover || []) fn({ target: row });
+      await new Promise((r) => setTimeout(r, 20));
+      const card = body.children.find((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card'));
+      assert.ok(card, '悬浮卡已挂载');
+      const head = card.children.find((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card-head'));
+      assert.ok(head, '顶栏在');
+      const cls = (n) => String(n.attrs && n.attrs.class || '').split(' ');
+      assert.ok(cls(head.children[0]).includes('left-badges-card-avatar'), '顶栏首格是工作区头像');
+      const img = head.children[0].children.find((c) => c.tag === 'img');
+      assert.ok(img, '家上传图挂 img');
+      assert.equal(img.attrs.src, 'data:image/png;base64,HOME');
+      assert.ok(cls(head.children[1]).includes('left-badges-card-name'), '次格是工作区名');
+      assert.equal(head.children[1].text, 'xiaowan');
+    } finally {
+      dispose();
+    }
+  } finally {
+    delete globalThis.document;
+    delete globalThis.window;
+  }
+});
+
+test('assistant-face：mountAssistantFaces 兼取家图 + homeFaceOf', async () => {
+  const homes = [{ id: 'h1', path: W1, avatar: 'img:home.png' }];
+  const assistants = [];
+  let askedIds = [];
+  const rpc = async (ch, endpoint, payload, signal) => {
+    if (endpoint === 'home.list') return { ok: true, value: { homes, assistants } };
+    if (endpoint === 'avatar.get') { askedIds = payload.ids; return { ok: true, value: { images: { h1: 'data:image/png;base64,HOME' } } }; }
+    throw new Error('bad ' + endpoint);
+  };
+  const faces = face.mountAssistantFaces(rpc);
+  await faces.refresh();
+  assert.ok(askedIds.includes('h1'), '家 img: 标记也进批量取图：' + askedIds.join(','));
+  const hit = faces.homeFaceOf(W1, 'xiaowan');
+  assert.equal(hit.desc.img, 'data:image/png;base64,HOME', '顶栏家图');
+  assert.equal(hit.name, 'xiaowan');
+});
 
 rmSync(tmp, { recursive: true, force: true });
 console.log('features/left-badges: ALL PASS');

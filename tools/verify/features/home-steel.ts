@@ -165,6 +165,8 @@ const clickEl = (e: any): void => { e.dispatchEvent({ type: 'click' }); };
 /** 弹层里的按钮按文案找：按钮从底部行搬进标题栏（owner 2026-10-15）后 DOM 顺序变了，不许再用下标。 */
 const popBtn = (pop: any, label: string): any => (pop ? cls(pop, 'hu-pbtn-s').find((b: any) => txt(b) === label) ?? null : null);
 
+/** owner 2026-10-17：行内改名走 `ops.updateHome`（面板不再为改名开弹层）⇒ 桩里记下来当回执。 */
+const renamed: Array<{ id: string; patch: any }> = [];
 function renderBox(mode = 'agent'): { bodyEl: any; handle: any } {
   const bodyEl = new El('div', domDoc);
   const handle = bodyMod.createPanelBody({
@@ -174,7 +176,10 @@ function renderBox(mode = 'agent'): { bodyEl: any; handle: any } {
 
 
     getWorkspaces: () => BOX_WS,
-    ops: { createHome: async () => {}, createAssistant: async () => {}, connect: () => {} },
+    ops: {
+      createHome: async () => {}, createAssistant: async () => {}, connect: () => {},
+      updateHome: async (id: string, patch: any) => { renamed.push({ id, patch }) },
+    },
     onRetry: () => {},
   });
   handle.render();
@@ -432,21 +437,64 @@ test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连�
     '宿主 home-edit 只引 home-store（同队列落盘，无旁路）');
 });
 
-test('T6b 绿框呈现：家设置弹层改名＋配图、绑定弹层可开（验收①③）', () => {
+test('T6b 绿框呈现：纯头像弹层＋行内改名（owner 2026-10-17 口径）', () => {
   const { bodyEl } = renderBox();
-  const renameBtn = byAttr(rowsOf(bodyEl)[0], 'data-item-act', 'rename-h')[0];
-  assert.ok(renameBtn && !off(renameBtn));
-  clickEl(renameBtn);
+  const row = rowsOf(bodyEl)[0];
+  /* owner 2026-10-17：行上不再有「更多」；铅笔＝就地改名，头像钮／头像本身＝换头像弹层；
+   * 改名与头像就此分家（服务端 updateHomeRow 的 name/avatar 仍是同一张行、同一个口径）。 */
+  assert.equal(byAttr(row, 'data-item-act', 'more-home').length, 0, '家行不再有「更多」按钮');
+  const renameBtn = byAttr(row, 'data-item-act', 'rename-h')[0];
+  assert.ok(renameBtn && !off(renameBtn), '铅笔（改名）在');
+  assert.ok(byAttr(row, 'data-item-act', 'avatar-h')[0], '更换头像钮在');
+  const avBtn = cls(row, 'hu-avbtn')[0];
+  assert.equal(avBtn?.getAttribute('data-item-act'), 'avatar-h', '头像本身也是换头像入口（真 <button>，键盘可达）');
+  clickEl(avBtn);
   const pop = cls(domDoc.body, 'hu-pop')[0];
-  assert.ok(pop, '点重命名→家设置弹层');
-  assert.ok(txt(pop).includes('家设置'));
+  assert.ok(pop, '点头像→换头像弹层');
+  assert.ok(txt(pop).includes('更换头像') && !txt(pop).includes('家设置'), '是纯换头像弹层（不再顶着「家设置」的名）');
+  assert.equal(cls(pop, 'hu-fld').length, 1, '只有一个字段（头像）——名字不在这一层改');
   assert.equal(cls(pop, 'hu-avopt').length, 8, '配图行＝默认＋6 色＋图片格（T11 #128 收编）');
   assert.equal(cls(pop, 'hu-avimg-cell').length, 1, '图片格在色板行里（第 8 格）');
   assert.ok(!txt(pop).includes('清除图片'), '无图时不出现「清除图片」（回落预设色＝默认态）');
-  assert.ok(txt(pop).includes('恢复默认'));
+  assert.ok(popBtn(pop, '保存') && !off(popBtn(pop, '保存')), '主按钮＝保存（可点）');
+  popMod.closeHomePop(true);
+  /* 两个入口同一张卡：头像本身与「更换头像」图标钮。 */
+  clickEl(byAttr(row, 'data-item-act', 'avatar-h')[0]);
+  assert.ok(txt(cls(domDoc.body, 'hu-pop')[0]).includes('更换头像'), '图标钮与头像本身落同一张弹层');
   clickEl(cls(domDoc.body, 'hu-scrim')[0]);
   assert.equal(popMod.homePopOpen(), false, '点遮罩→弹层逻辑关闭（DOM 渐隐 130ms 后移除）');
   popMod.closeHomePop(true);
+  /* 铅笔＝原位改名：不开弹层，名字处直接变输入框；回车落盘、Esc 不落盘。 */
+  const before = renamed.length;
+  clickEl(renameBtn);
+  assert.equal(cls(domDoc.body, 'hu-pop').length, 0, '改名不再开弹层（就地改）');
+  const input = one(one(row, 'hu-nm'), 'hu-nminput');
+  assert.ok(input, '名字处就地变输入框');
+  input.value = '湖畔';
+  input.dispatchEvent({ type: 'keydown', key: 'Enter' });
+  assert.equal(renamed.length, before + 1, '回车→落盘一次');
+  assert.equal(renamed.at(-1)?.id, 'h1', '落盘到这一家');
+  assert.equal(renamed.at(-1)?.patch.name, '湖畔', '补丁只带名字');
+  assert.equal(one(row, 'hu-nminput'), null, '提交后退出编辑态（输入框撤掉、展示态回来）');
+  clickEl(renameBtn);
+  const i2 = one(row, 'hu-nminput');
+  assert.ok(i2, '再点铅笔又进编辑态');
+  i2.value = '不要这个名字';
+  i2.dispatchEvent({ type: 'keydown', key: 'Escape' });
+  assert.equal(renamed.length, before + 1, 'Esc 不落盘');
+  assert.equal(one(row, 'hu-nminput'), null, 'Esc 也退回展示态');
+  assert.equal(one(row, 'hu-nm') && txt(one(row, 'hu-nm')), '客厅', '展示的还是原名');
+  /* 清空＝「恢复默认名（跟随工作区）」的老能力，改走行内：空串就是回落。
+   * 挑 h2（书房基地，nameSource: user）——h1 是 system 取名，清空本来就是「没有改动」。 */
+  const row2 = rowsOf(bodyEl)[1];
+  clickEl(byAttr(row2, 'data-item-act', 'rename-h')[0]);
+  const i3 = one(row2, 'hu-nminput');
+  assert.ok(i3, '第二家也走行内改名');
+  i3.value = '   ';
+  i3.dispatchEvent({ type: 'keydown', key: 'Enter' });
+  assert.equal(renamed.length, before + 2, '清空也落盘（不静默丢弃）');
+  assert.equal(renamed.at(-1)?.id, 'h2', '落在被改的那一家');
+  assert.equal(renamed.at(-1)?.patch.name, '', '空名字＝回落跟随工作区（老「恢复默认名」按钮的等价物）');
   /* L1→L2→未绑助理行点绑机器人→绑定弹层（空闲号 野号 可选） */
   clickEl(rowsOf(bodyEl)[0]);
   const l2rows = rowsOf(bodyEl);
@@ -461,6 +509,34 @@ test('T6b 绿框呈现：家设置弹层改名＋配图、绑定弹层可开（�
   clickEl(cls(domDoc.body, 'hu-scrim')[0]);
   assert.equal(popMod.homePopOpen(), false);
   popMod.closeHomePop(true);
+});
+
+/* owner 2026-10-17 真机两条：① 改名输入框的焦点环右侧被裁（外扩环落在 overflow:hidden 里）；
+ * ② 「改名成功」的 toast 沉在视口底部，离被改的那一行太远。两条一起钉在这里。 */
+test('owner 2026-10-17②：改名确认浮在被改那行旁边（顶部变异），焦点环改盒内不再被裁', async () => {
+  const css = readFileSync(join(COMP, 'home-row-styles.ts'), 'utf8');
+  const ring = css.slice(css.indexOf('.home-ui .hu-nminput{'), css.indexOf('.hu-nminput::placeholder'));
+  assert.ok(ring.includes('inset 0 0 0'), '焦点环必须画在盒内（inset）：外扩环会被 .hu-nm／.hu-txt 的 overflow:hidden 裁掉——' + ring);
+  assert.ok(!ring.includes('var(--hu-ring)'), '不许再用外扩的 --hu-ring（右侧必被裁，owner 截图实证）');
+  const top = css.slice(css.indexOf('.home-ui.hu-toast-top{')).split('\n')[0];
+  assert.ok(top.includes('top:') && top.includes('bottom:auto'), '顶部变异只挪位置（基样式与 .show 动画不动）：' + top);
+  /* 行为级：走真 updateHome／updateAssistant 的名字支路 ⇒ 真 toast 节点带变异类；头像支路照旧。 */
+  const opsMod: any = (() => {
+    try { return boxReq('./client/components/home-ops.js'); } catch { return boxReq('./components/home-ops.js'); }
+  })();
+  const rpc: any = async () => ({ ok: true, value: { home: H({ id: 'h9' }), assistant: A({ id: 'a9' }) } });
+  const lastToast = (): any => nodes(domDoc.body).filter((n) => n.classList?.contains('af-toast')).at(-1);
+  /* 宿主自带 `home-ui`（同 `.hu-tiphost` 那条纪律：body 级 float 只有带上它，规则才挂得上、作用域才不破）。 */
+  const atTop = (): boolean => !!lastToast()?.classList.contains('hu-toast-top') && !!lastToast()?.classList.contains('home-ui');
+  await opsMod.updateHome(rpc, { id: 'h9', name: '湖畔' });
+  assert.equal(txt(lastToast()), '改名成功', '名字支路如实报成功（位置改动不影响文案）');
+  assert.ok(atTop(), '改名成功的 toast 走顶部——落在被改的那一行旁边');
+  await opsMod.updateHome(rpc, { id: 'h9', name: '' });
+  assert.ok(atTop(), '清空＝恢复默认名，同一条顶部口径');
+  await opsMod.updateHome(rpc, { id: 'h9', avatar: 'blue' });
+  assert.ok(!lastToast()?.classList.contains('hu-toast-top'), '头像支路不被顺手改（照旧落底部）');
+  await opsMod.updateAssistant(rpc, { id: 'a9', name: '小婉' });
+  assert.ok(atTop(), '助理改名同口径（同一张列表、同一个道理）');
 });
 
 test('T6b 两步删除：首点布防、次点真删且只走行删除（验收④）', () => {
@@ -883,16 +959,22 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.equal(txt(curCrumb(bodyEl)), 'L2客厅', '当前层＝L2 家（链路条跟着钻取走）');
   assert.equal(txt(foot()), '新建助理', 'L2 底部主操作＝新建助理');
   assert.ok(txt(rows()[0]).includes('已绑') && txt(rows()[0]).includes('小帅'), '已绑助理行：机器人名回落＋已绑章');
+  /* owner 2026-10-17：行上**没有「接入」**——已绑定＝琥珀档「更换机器人」，未绑定＝红档「绑定机器人」。 */
+  assert.equal(txt(one(rows()[0], 'hu-ract')), '更换机器人', '已绑助理行：右侧按钮＝更换机器人（不是接入）');
+  assert.ok(one(rows()[0], 'hu-ract').className.includes('swap'), '更换机器人走 .swap 琥珀档（暗示「会换掉现有的」）');
   assert.ok(!off(one(rows()[1], 'hu-ract')) && txt(one(rows()[1], 'hu-ract')) === '绑定机器人',
     '未绑助理的「绑定机器人」可用（开绑定弹层，T6b #114）');
+  assert.ok(one(rows()[1], 'hu-ract').className.includes('danger'), '未绑定＝红档控件（owner 2026-10-17）');
+  assert.ok(cls(rows()[1], 'hu-pill').map(txt).includes('未绑定'), '未绑定胶囊在场');
+  assert.equal(one(rows()[1], 'hu-pill').className.includes('bad'), true, '未绑定文字走红档 .hu-pill.bad（owner 2026-10-17）');
 
-  /* 点助理行 → L3 详情：T6b #114 接入/详情/改名与头像/删除助理全可用；T6c #115 换工作区/移除渠道已启用 */
+  /* 点助理行 → L3 详情：T6b #114 更换机器人/详情/改名与头像/删除助理全可用；T6c #115 换工作区/移除渠道已启用 */
   clickEl(rows()[0]);
   assert.ok(one(bodyEl, 'hu-detail'), 'L3 详情卡 .hu-detail 必须在');
   const acts = cls(bodyEl, 'hu-abtn');
-  assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['接入', '详情', '改名与头像', '删除助理', '换工作区', '移除渠道'], 'L3 六枚全可用（已绑助理，T6c #115）');
+  assert.deepEqual(acts.filter((b) => !off(b)).map((b) => txt(b)), ['更换机器人', '详情', '改名与头像', '删除助理', '换工作区', '移除渠道'], 'L3 六枚全可用（已绑助理，T6c #115）');
   assert.equal(acts.filter(off).length, 0, 'L3 无禁用钮');
-  assert.deepEqual(acts.map((b) => b.getAttribute('data-item-act')), ['connect-a', 'detail-a', 'rename-a', 'remove-a', 'move-a', 'unbind-a'], '行动作 data-item-act 口径');
+  assert.deepEqual(acts.map((b) => b.getAttribute('data-item-act')), ['change-a', 'detail-a', 'rename-a', 'remove-a', 'move-a', 'unbind-a'], '行动作 data-item-act 口径');
   assert.equal(cls(bodyEl, 'hu-soon').length, 0, '待实现清单退场（#115 落地，无 planned 假按钮）');
   assert.equal(txt(one(one(bodyEl, 'hu-chain'), 'on')), '机器人名', '命名链高亮命中来源（nameSource=bot）');
   assert.equal(txt(foot()), '返回助理列表', 'L3 已绑：底部主操作＝返回助理列表');
@@ -1196,6 +1278,10 @@ test('T8 #121 新建家「新建工作区」支路：选目录 → 建区 → �
   assert.match(rowCss, /\.hu-pbtn-s\.cta\{[^}]*background:var\(--hu-accent\)/, '接入按钮＝实心 accent 块级主按钮');
   assert.match(rowCss, /\.hu-pbtn-s\.cta:hover:not\(\[disabled\]\)\{[^}]*translateY\(-1px\)/, '接入按钮悬停抬起');
   assert.match(rowCss, /\.hu-pbtn-s\.cta:active:not\(\[disabled\]\)\{[^}]*scale\(\.97\)/, '接入按钮按下回弹');
+  /* owner 2026-10-17：未绑定＝红档（文字与胶囊同色），已绑定＝琥珀档「更换机器人」（颜色本身示意「会换掉」）。 */
+  assert.match(rowCss, /\.hu-mi\.bad\{[^}]*color:var\(--hu-bad\)/, '未绑定/待接入文字走红档 .hu-mi.bad');
+  assert.match(rowCss, /\.hu-ract\.swap\{[^}]*var\(--hu-warn\)/, '行上「更换机器人」＝琥珀档 .hu-ract.swap');
+  assert.match(rowCss, /\.hu-abtn\.swap\{[^}]*var\(--hu-warn\)/, '详情页「更换机器人」同一琥珀档 .hu-abtn.swap');
   assert.equal(String(one(pop1, 'hu-dirpath').className).includes('picked'), false, '未选目录时框是虚线态');
   assert.ok(off(popBtn(pop1, '创建')), '未选目录时「创建」禁用');
   clickEl(byAttr(pop1, 'data-act', 'pick-dir')[0]);
@@ -1309,7 +1395,7 @@ test('绑定空态打通接入：无空闲时创建禁用＋给接入出口（�
   const solo = B({ channel: 'feishu', botId: 'b1', workspace: 'D:\\agents\\keting', botName: '小帅', connected: true });
   const holder = A({ id: 'ah', homeId: 'h1', channel: 'feishu', botId: 'b1', status: 'bound', name: '占位', nameSource: 'bot' });
   const lone = A({ id: 'a9', homeId: 'h1', channel: 'feishu', botId: null, status: 'unbound', name: '', nameSource: 'home' });
-  const connected: Array<{ homeId: string; asst?: string; after?: (ok: boolean) => void }> = [];
+  const connected: Array<{ homeId: string; anchor?: any; asst?: string; after?: (ok: boolean) => void }> = [];
   const bodyEl = new El('div', domDoc);
   const handle = bodyMod.createPanelBody({
     state: { homes: [H({ id: 'h1', workspaceId: 'ws-1', path: 'D:\\agents\\keting' })], assistants: [holder, lone], bots: [solo], query: '', mode: 'agent', loading: false, failed: [], homesReady: true, volatile: false },
@@ -1319,8 +1405,8 @@ test('绑定空态打通接入：无空闲时创建禁用＋给接入出口（�
     ops: {
       createHome: async () => {}, createAssistant: async () => {},
       bindAssistant: async () => {},
-      connect: (homeId: string, _anchor: unknown, assistantId?: string, after?: (ok: boolean) => void) => {
-        connected.push({ homeId, asst: assistantId, after })
+      connect: (homeId: string, anchor: unknown, assistantId?: string, after?: (ok: boolean) => void) => {
+        connected.push({ homeId, anchor, asst: assistantId, after })
       },
     },
     onRetry: () => {},
@@ -1350,6 +1436,10 @@ test('绑定空态打通接入：无空闲时创建禁用＋给接入出口（�
   clickEl(go);
   assert.equal(popMod.homePopOpen(), false, '点接入先关弹层');
   assert.deepEqual(connected.map((c) => c.homeId), ['h1'], '接入带对家（复用 connect 全链路）');
+  /* owner 2026-10-17：渠道菜单要落在**被点的「新机器人」按钮**旁边（原来贴着行按钮，离点击处很远）。
+   * 锚点因此必须是那个 CTA；`showMenu` 同步读 rect ⇒ 顺序必须是「先开菜单、再关弹层」。 */
+  assert.equal(connected[0].anchor?.getAttribute?.('data-act'), 'to-connect',
+    '锚点＝被点的「新机器人」按钮（不是行按钮）——菜单才贴着点击处出现');
   /* #141 A：只带家不带助理 ⇒ 接入落成「无主机器人」，会被家表对账补成一条新助理（真机实证）。
    * 发起方必须把本助理身份带下去。 */
   assert.equal(connected[0].asst, 'a9', '#141：接入必须带上本助理身份（只传家会让机器人无主）');
@@ -1359,6 +1449,17 @@ test('绑定空态打通接入：无空闲时创建禁用＋给接入出口（�
   popMod.closeHomePop(true);
   connected[0].after?.(true);
   assert.equal(popMod.homePopOpen(), false, '#141：落定成功不弹（免得给已绑助理开绑定弹层）');
+  /* owner 2026-10-17：已绑定行＝「更换机器人」——开的是**同一张弹层**，只把动词说准（换＝挑另一个空闲机器人，
+   * 或「新机器人」造一个）。状态对不上时动作层 fail-closed，所以这里只有已绑定的 holder 能点开。 */
+  const holderRow = nodes(bodyEl).filter((r: any) => r.getAttribute?.('data-id') === 'ah')[0];
+  assert.equal(txt(one(holderRow, 'hu-ract')), '更换机器人', '已绑定行右侧＝更换机器人（不再有「接入」）');
+  assert.ok(one(holderRow, 'hu-ract').className.includes('swap'), '更换机器人＝琥珀档 .swap');
+  clickEl(byAttr(holderRow, 'data-item-act', 'change-a')[0]);
+  const popCh = one(domDoc.body, 'hu-pop');
+  assert.ok(popCh && txt(one(popCh, 'hu-ptitle')).includes('更换机器人'), '弹层标题＝更换机器人（动词跟着状态走）');
+  assert.ok(txt(popCh).includes('现在没有空闲的机器人可以换。'), '空态文案也说「换」（不再说「都绑满了」）');
+  assert.ok(off(popBtn(popCh, '更换')), '无空闲时「更换」禁用（不假装可点）');
+  popMod.closeHomePop(true);
   handle.dispose();
 });
 

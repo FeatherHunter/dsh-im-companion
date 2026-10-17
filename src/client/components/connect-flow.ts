@@ -2,7 +2,7 @@
  * #29 修复：begin 先清上一轮（曾误取消本轮致秒失效）；poll 单链（曾指数增殖）；
  * 倒计时 ceil+引用直写+变更才刷（曾 round+全局 query 致闪烁漂移）；关闭即停即取消。 */
 import { h, mount } from '../dom'
-import { icon } from '../icons'
+import { icon, channelGlyphSvg } from '../icons'
 import { showMenu, type MenuItem } from '../ui/menu'
 import { showModal, type ModalHandle } from '../ui/modal'
 import { makeButton, type BtnKind } from '../ui/button'
@@ -27,6 +27,9 @@ export interface ConnectTarget {
   /** #141：从某个助理发起的接入必须带身份——落定后补 assistant.bind，否则机器人会「无主」，
    * 被家表种子对账补成一条新助理（旧面板的家级接入不带它，行为一字不变）。 */
   assistantId?: string
+  /** owner 2026-10-17：菜单**接替**弹层的位置——调用方把锚点给成卡片本体，菜单左上角就对齐它左上角、
+   * 往下展开（点「新机器人」＝换一张卡接着往下讲）。不给＝老行为：菜单挂在锚点下方。 */
+  menuAtTop?: boolean
 }
 
 function safeQrSrc(value: string | undefined): string | null {
@@ -48,12 +51,22 @@ export function openConnectFlow(ctx: unknown, rpc: RpcCall | null, anchor: HTMLE
     logLine('warn', 'bridge.call.fail', { method: 'connect:provision.begin', message: 'host 桥不可用（rpc 未就绪），无法发起接入' })
     return
   }
-  const items: MenuItem[] = CHANNEL_ORDER.map((ch) => ({
-    label: '接入 ' + channelLabel(ch),
-    iconName: 'external' as const,
-    onSelect: () => void run(ch),
-  }))
-  showMenu(anchor, items)
+  /* owner 2026-10-17：渠道菜单是「新建机器人」的第一步，得让人一眼认出**是哪家的**——
+   * 每行换上渠道品牌 logo（`channelGlyphSvg` 自带品牌色，装饰性、配文字标签），行尾标能力（扫码/手动）。
+   * 文字标签仍走 channelLabel（#140 起渠道名表只有一份真相，不许再长出局部小表）。 */
+  const items: MenuItem[] = CHANNEL_ORDER.map((ch) => {
+    const mode = getChannelMode(ch)
+    const logo = channelGlyphSvg(ch, 18)
+    return {
+      label: channelLabel(ch),
+      ...(logo
+        ? { iconNode: h('span', { className: 'af-menu-logo', html: logo }) }
+        : { iconName: 'external' as const }),
+      hint: mode === 'dual' ? '扫码或手动' : mode === 'qr-only' ? '扫码' : '手动',
+      onSelect: () => void run(ch),
+    }
+  })
+  showMenu(anchor, items, target.menuAtTop ? 'top-left' : 'bottom-left')
 
   async function run(channel: string): Promise<void> {
     const label = channelLabel(channel)

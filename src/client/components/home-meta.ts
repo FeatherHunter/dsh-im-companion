@@ -14,7 +14,7 @@
 import { h } from '../dom'
 import { channelLabel } from '../data/config'
 
-export type MetaTone = 'strong' | 'weak' | 'mono' | 'accent'
+export type MetaTone = 'strong' | 'weak' | 'mono' | 'accent' | 'bad'
 
 export interface MetaPart {
   text: string
@@ -42,10 +42,11 @@ export function metaText(main: string, note?: string): string {
 }
 
 /** 助理行副标（#139）：渠道强（**未绑定＝「待接入」**，#138 渠道诚实性）＋工作区路径等宽弱化。
- *  两段靠 `.hu-mrow` 的 gap 分开，文案里零符号——故它必须走原语，不许在调用处手拼字符串。 */
+ *  两段靠 `.hu-mrow` 的 gap 分开，文案里零符号——故它必须走原语，不许在调用处手拼字符串。
+ *  owner 2026-10-17：未绑定是红档（与「未绑定」胶囊同色）——一个状态一个颜色，不拆成橙+红两说。 */
 export function asstSubMeta(ch: string | null | undefined, path: string): HTMLElement {
   return metaRow([
-    ch ? { text: channelLabel(ch), tone: 'strong' } : { text: '待接入', tone: 'accent' },
+    ch ? { text: channelLabel(ch), tone: 'strong' } : { text: '待接入', tone: 'bad' },
     { text: `工作区 ${path}`, tone: 'mono' },
   ])
 }

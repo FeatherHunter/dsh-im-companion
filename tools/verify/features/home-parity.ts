@@ -295,7 +295,7 @@ if (verbox) {
   if (self) self.textContent = 'v0.2.8'
   const im = new El('a', doc)
   im.classList.add('af-cap', 'af-cap--im')
-  im.textContent = 'dsh-im 4.21.1'
+  im.textContent = 'dsh-im 4.39.0'
   verbox.appendChild(im)
 }
 const hdEl = all(container).find((e) => e.classList.contains('af-hd'))
