@@ -130,10 +130,11 @@ export interface RowOpts {
   flash?: boolean
   onOpen?: (id: string) => void
   onItemAct?: (act: string, id: string, anchor: HTMLElement) => void
-  /** 行内改名提交（owner 2026-10-17）：值已 trim，空串＝回落「跟随工作区」。不给＝铅笔只进编辑不落盘。 */
-  onRenameHome?: (id: string, value: string) => void
+  /** 行内改名提交（owner 2026-10-17）：值已 trim，空串＝回落「跟随工作区」；`el`＝名字控件本体，
+   *  给调用方**量锚框**用（owner 2026-10-17③：确认提示要贴在这个控件上）。不给回调＝铅笔只进编辑不落盘。 */
+  onRenameHome?: (id: string, value: string, el?: HTMLElement) => void
   /** 助理侧同口径（owner 2026-10-17：L2 与 L1 功能一致），空串＝回落「跟随机器人/家」。 */
-  onRenameAssistant?: (id: string, value: string) => void
+  onRenameAssistant?: (id: string, value: string, el?: HTMLElement) => void
 }
 
 function wireRow(el: HTMLElement, opts: RowOpts, id: string): void {
@@ -168,7 +169,7 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
   const nmParts: HTMLElement[] = [h('b', {}, d.text)]
   if (home.nameSource === 'user' && home.name.trim()) nmParts.push(h('span', { className: 'hu-scr' }, '你取的名'))
   const rf = renameField({ parts: nmParts, initial: home.nameSource === 'user' ? home.name : '', placeholder: d.text,
-    onCommit: (v) => opts.onRenameHome?.(home.id, v) })
+    onCommit: (v) => opts.onRenameHome?.(home.id, v, rf.el) })
   const acts = h('span', { className: 'hu-acts2' })
   if (orphan) orphanRowActs(acts, home.id, opts.onItemAct)
   else {
@@ -222,7 +223,7 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
   const path = home && home.path ? home.path : '未关联工作区'
   const nmParts: HTMLElement[] = [h('b', {}, d.text), statusPillEl(a), onlineTagEl(bot)]
   const rf = renameField({ parts: nmParts, initial: a.nameSource === 'user' ? a.name : '', placeholder: d.text,
-    onCommit: (v) => opts.onRenameAssistant?.(a.id, v) })
+    onCommit: (v) => opts.onRenameAssistant?.(a.id, v, rf.el) })
   const acts = h('span', { className: 'hu-acts2' })
   acts.appendChild(a.status === 'bound'
     ? textBtn('change-a', '更换机器人', { cls: 'swap', id: a.id })

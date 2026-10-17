@@ -10,6 +10,7 @@ import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, topEl, type Level } from './home-frame'
 import { newAsstPop, newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'
+import { finishRename } from './home-toast'
 import { avatarAsstPop } from './home-avatar-act'
 import { bindAsstPop } from './home-bind-forms'
 import { moveAsstPop, unbindAsstPop } from './home-move-forms'
@@ -103,9 +104,10 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     onGo: (next, id) => go(next, id),
     onOpen: (id) => go(level === 'L1' ? 'L2' : 'L3', id),
     onAct: (kind, id, anchor) => act(kind, id, anchor),
-    /* owner 2026-10-17：铅笔**就地**改名——提交即落盘，不弹层（与家设置弹层同一条写路径）；助理侧同口径。 */
-    onRenameHome: (id, value) => { void deps.ops.updateHome(id, { name: value }).then(() => render()) },
-    onRenameAssistant: (id, value) => { void deps.ops.updateAssistant(id, { name: value }).then(() => render()) },
+    /* owner 2026-10-17：铅笔**就地**改名——提交即落盘，不弹层（与家设置弹层同一条写路径）；助理侧同口径。
+     * 2026-10-17③：确认提示改锚在被改的控件正上方（`finishRename` 先量后写＋quiet）。 */
+    onRenameHome: (id, value, el) => finishRename(el, value, (q) => deps.ops.updateHome(id, { name: value }, q), render),
+    onRenameAssistant: (id, value, el) => finishRename(el, value, (q) => deps.ops.updateAssistant(id, { name: value }, q), render),
   })
 
   /** 锚点一律**现取**（T7 #112 真机 bug）：面板刷新会 clear 重建，捕获的元素随即游离、rect 全 0 ⇒ 弹层跳到窗口左上。

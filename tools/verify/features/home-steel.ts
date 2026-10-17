@@ -169,6 +169,8 @@ const popBtn = (pop: any, label: string): any => (pop ? cls(pop, 'hu-pbtn-s').fi
 const renamed: Array<{ id: string; patch: any }> = [];
 /** 助理侧同口径（owner 2026-10-17：L2 与 L1 功能一致）：铅笔提交走 `ops.updateAssistant`。 */
 const asstRenamed: Array<{ id: string; patch: any }> = [];
+/** owner 2026-10-17③：行内改名必须**走 quiet**（成功提示让给锚定提示，否则两条一起冒）⇒ 把标记也记下来。 */
+const renamedQuiet: boolean[] = [];
 function renderBox(mode = 'agent'): { bodyEl: any; handle: any } {
   const bodyEl = new El('div', domDoc);
   const handle = bodyMod.createPanelBody({
@@ -180,8 +182,8 @@ function renderBox(mode = 'agent'): { bodyEl: any; handle: any } {
     getWorkspaces: () => BOX_WS,
     ops: {
       createHome: async () => {}, createAssistant: async () => {}, connect: () => {},
-      updateHome: async (id: string, patch: any) => { renamed.push({ id, patch }) },
-      updateAssistant: async (id: string, patch: any) => { asstRenamed.push({ id, patch }) },
+      updateHome: async (id: string, patch: any, quiet?: boolean) => { renamed.push({ id, patch }); renamedQuiet.push(quiet === true); return true },
+      updateAssistant: async (id: string, patch: any, quiet?: boolean) => { asstRenamed.push({ id, patch }); renamedQuiet.push(quiet === true); return true },
     },
     onRetry: () => {},
   });
@@ -542,15 +544,19 @@ test('L2 助理行＝L1 家行（owner 2026-10-17）：「更多」退场＋铅�
   handle.dispose();
 });
 
-/* owner 2026-10-17 真机两条：① 改名输入框的焦点环右侧被裁（外扩环落在 overflow:hidden 里）；
- * ② 「改名成功」的 toast 沉在视口底部，离被改的那一行太远。两条一起钉在这里。 */
-test('owner 2026-10-17②：改名确认浮在被改那行旁边（顶部变异），焦点环改盒内不再被裁', async () => {
+/* owner 2026-10-17 真机②（旧口令）：「改名成功」的 toast 沉在视口底部，离被改的那一行太远。
+ * 本票只钉**弹层类写操作**那条路（行内就地改名已改走锚定提示，见下一条）。 */
+test('owner 2026-10-17②：弹层类改名把确认挪到顶部变异（不改基样式）', async () => {
   const css = readFileSync(join(COMP, 'home-row-styles.ts'), 'utf8');
-  const ring = css.slice(css.indexOf('.home-ui .hu-nminput{'), css.indexOf('.hu-nminput::placeholder'));
-  assert.ok(ring.includes('inset 0 0 0'), '焦点环必须画在盒内（inset）：外扩环会被 .hu-nm／.hu-txt 的 overflow:hidden 裁掉——' + ring);
-  assert.ok(!ring.includes('var(--hu-ring)'), '不许再用外扩的 --hu-ring（右侧必被裁，owner 截图实证）');
-  const top = css.slice(css.indexOf('.home-ui.hu-toast-top{')).split('\n')[0];
+  const top = css.slice(css.indexOf('.home-ui.hu-toast-top{'), css.indexOf('.home-ui.hu-toast{'));
   assert.ok(top.includes('top:') && top.includes('bottom:auto'), '顶部变异只挪位置（基样式与 .show 动画不动）：' + top);
+  /* owner 2026-10-17④：「改名成功」走的正是这条共享 toast，而共享 .af-toast 的底是
+   * color-mix(--af-primary 86%, --af-bg)——color-mix 的 alpha 是**加权平均**，宿主 label 色带 alpha
+   * 时混出来仍半透明（真机「背景是透明的」就是它）。故本命名空间必须补不透明底：先铺 --hu-panel，
+   * 再把同一档 86% 混色当渐变叠上去。别被后来人当成冗余合并掉。 */
+  assert.ok(top.includes('background-color:var(--hu-panel)'), '加固：共享 toast 用不透明令牌打底（宿主 label 带 alpha 也不透）');
+  assert.ok(top.includes('linear-gradient(color-mix(in srgb, var(--hu-ink) 86%, var(--hu-panel))'), '加固：同档 86% 混色当渐变叠上去（观感与共享基样式一致）');
+  assert.ok(top.includes('color:var(--hu-panel)'), '加固：字色用页面底色令牌（与实色块互为反色）');
   /* 行为级：走真 updateHome／updateAssistant 的名字支路 ⇒ 真 toast 节点带变异类；头像支路照旧。 */
   const opsMod: any = (() => {
     try { return boxReq('./client/components/home-ops.js'); } catch { return boxReq('./components/home-ops.js'); }
@@ -568,6 +574,74 @@ test('owner 2026-10-17②：改名确认浮在被改那行旁边（顶部变异�
   assert.ok(!lastToast()?.classList.contains('hu-toast-top'), '头像支路不被顺手改（照旧落底部）');
   await opsMod.updateAssistant(rpc, { id: 'a9', name: '小婉' });
   assert.ok(atTop(), '助理改名同口径（同一张列表、同一个道理）');
+  /* quiet＝true：那条路自带锚定提示，这里必须闭嘴（否则两处同时冒）。 */
+  const afBefore = nodes(domDoc.body).filter((n) => n.classList?.contains('af-toast')).length;
+  await opsMod.updateHome(rpc, { id: 'h9', name: '湖畔' }, true);
+  assert.equal(nodes(domDoc.body).filter((n) => n.classList?.contains('af-toast')).length, afBefore, 'quiet 不再新增 toast（写盘与日志照旧）');
+});
+
+/* owner 2026-10-17③：① 焦点特效重做——不加任何环，只把边框点亮（前两版环都被 .hu-nm／.hu-txt 的
+ * overflow:hidden 裁过，内环虽不越界仍像盒子套盒子）；② 改名确认要**贴在被改的名字控件正上方**、
+ * 对比度够。②的落点是纯函数 `toastPlace`（可单测），本用例同时钉几何与真 DOM 行为。 */
+test('owner 2026-10-17③：改名提示锚在被改的控件正上方（反色令牌保对比度），焦点只点亮边框', async () => {
+  const css = readFileSync(join(COMP, 'home-row-styles.ts'), 'utf8');
+  const toastSrc = readFileSync(join(COMP, 'home-toast.ts'), 'utf8');
+  const inp = css.slice(css.indexOf('.home-ui .hu-nminput{'), css.indexOf('.hu-nminput::placeholder'));
+  assert.ok(!inp.includes('box-shadow'), '焦点不再画环（外环被裁、内环像套盒子 ⇒ owner 口径：只点亮边框）：' + inp);
+  assert.ok(inp.includes('border:1px solid var(--hu-line)'), '静止态是 hairline 边框（聚焦才有对比可言）');
+  assert.ok(inp.includes('transition:border-color'), '过渡只做边框色（动画特效重做：不加缩放/不加位移）');
+  const focus = css.slice(css.indexOf('.home-ui .hu-nminput:focus'), css.indexOf('.hu-nminput::placeholder'));
+  assert.ok(focus.includes('border-color:var(--hu-accent)'), '聚焦＝边框变亮（owner 口径：亮一些即可）');
+  assert.ok(focus.includes('outline:none'), '连全局的 focus-visible 外描边也要收掉（同一条裁切原因）');
+  const tip = css.slice(css.indexOf('.home-ui.hu-toast{'));
+  /* owner 2026-10-17④：chip 必须**实色**。宿主可能把 --hu-ink（← --dsw-alias-label-primary）定义成带 alpha 的
+   * 语义色，直接拿它当 background 就会透出面板、看不清字 ⇒ 用**不透明**的 --hu-panel 打底，再把 ink 叠上去
+   * （两层写法的用意别被后来人当成冗余合并掉）。 */
+  assert.ok(tip.includes('background-color:var(--hu-panel)'), '提示底：用不透明令牌打底（宿主 label 带 alpha 也不透）');
+  assert.ok(tip.includes('background-image:linear-gradient(var(--hu-ink),var(--hu-ink))'),
+    '提示底：再把正文色叠上去（实际观感仍是不透明反色块，不是面板色）');
+  assert.ok(tip.includes('color:var(--hu-panel)'), '提示字用页面底色令牌：与叠出来的实色块互为反色');
+  assert.ok(!/background:var\(--hu-ink\)/.test(tip), '不许退回单层 background:var(--hu-ink)（半透明时会糊）');
+  assert.ok(tip.includes('position:fixed'), 'body 级 float，坐标系与锚框一致（都在视口坐标）');
+  /* owner 2026-10-17④ 真机「背景是透明的」：提示挂 document.body（在 .af-root 之外）⇒ 光有 .home-ui 不够，
+   * `.home-ui` 只把 --hu-* 映射到 --af-*，而 --af-* 由 theme.ts 的令牌块只发给 .af-root/.af-menu/.af-toast/
+   * .af-overlay/.af-portal（theme.ts:23-37）。少这一个类 ⇒ --hu-* 全成计算期无效值 ⇒ background 整条失效
+   * （computed 透明）、color 退回继承（浅色）。两道门：元素自带 af-portal ＋ 抵消那组选择器上的 780px 限宽。 */
+  assert.ok(tip.includes('max-width:none'), '抵消 .af-portal 那组选择器上的 780px 限宽（否则长文案被截）');
+  assert.ok(toastSrc.includes("'hu-toast home-ui af-portal'"), '提示元素自带 af-portal（body 级挂载的令牌载体，缺它整块透明）');
+  assert.ok(tip.includes('.home-ui.hu-toast.show'), '进场动画在（od 淡入＋上浮 4px），不靠 JS 写内联样式');
+  /* 纯几何：默认落在控件**正上方**，顶上放不下才翻到下方，左右夹进视口；无锚框＝顶部居中兜底。 */
+  const tm: any = (() => {
+    try { return boxReq('./client/components/home-toast.js'); } catch { return boxReq('./components/home-toast.js'); }
+  })();
+  const anchor = { left: 400, top: 300, width: 120, height: 22 };
+  assert.deepEqual(tm.toastPlace(180, 32, anchor, 1024, 768), { left: 370, top: 260, above: true }, '贴在控件正上方（gap 8、水平居中）');
+  assert.equal(tm.toastPlace(180, 32, { ...anchor, top: 10 }, 1024, 768).above, false, '上方放不下 ⇒ 翻到下方（宁可翻，不丢）');
+  assert.equal(tm.toastPlace(180, 32, { ...anchor, left: -60 }, 1024, 768).left, 8, '左越界夹进视口');
+  assert.equal(tm.toastPlace(180, 32, { ...anchor, left: 1000 }, 1024, 768).left, 836, '右越界夹进视口');
+  assert.deepEqual(tm.toastPlace(180, 32, null, 1024, 768), { left: 422, top: 16, above: true }, '没有锚框（桩 DOM／控件已重建）＝顶部居中，提示不丢');
+  assert.equal(tm.boxOf(undefined), null, '拿不到元素＝null（调用方据此走兜底）');
+  /* 行为级：面板里就地改名 ⇒ 走 quiet ＋ 锚定提示带文案；且不再出现系统 .af-toast（owner 说的「太远」那条）。 */
+  const afBefore = cls(domDoc.body, 'af-toast').length;
+  const { bodyEl, handle } = renderBox();
+  const row = rowsOf(bodyEl)[0];
+  clickEl(byAttr(row, 'data-item-act', 'rename-h')[0]);
+  const box = one(one(row, 'hu-nm'), 'hu-nminput');
+  box.value = '湖畔';
+  box.dispatchEvent({ type: 'keydown', key: 'Enter' });
+  await new Promise((r) => setTimeout(r, 0));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(renamed.at(-1), { id: 'h1', patch: { name: '湖畔' } }, '照旧落盘一次（写路径不变）');
+  assert.equal(renamedQuiet.at(-1), true, '行内改名必须走 quiet：成功提示由锚定提示独占');
+  assert.equal(cls(domDoc.body, 'af-toast').length, afBefore, '系统 toast 不再新增（这就是「离输入框太远」那条）');
+  const shown = cls(domDoc.body, 'hu-toast').at(-1);
+  assert.ok(shown, '锚定提示挂上了');
+  assert.ok(shown.classList.contains('home-ui'), '宿主自带 .home-ui（body 级 float 也要拿得到 --hu-* 令牌）');
+  assert.ok(shown.classList.contains('af-portal'),
+    '还必须自带 af-portal：令牌块（theme.ts:23-37）只发给 .af-root/.af-menu/.af-toast/.af-overlay/.af-portal，'
+    + '少这一个类 ⇒ --hu-* 全成计算期无效值 ⇒ 底透明、字继承（owner 2026-10-17④ 真机形态）');
+  assert.ok(txt(shown).includes('已改名：湖畔'), '文案说清改成了什么：' + txt(shown));
+  handle.dispose();
 });
 
 test('T6b 两步删除：首点布防、次点真删且只走行删除（验收④）', () => {

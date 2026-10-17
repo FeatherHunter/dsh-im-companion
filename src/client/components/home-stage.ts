@@ -27,9 +27,9 @@ export interface StageCtx {
   onOpen(id: string): void
   onAct(kind: string, id: string, anchor: HTMLElement): void
   /** 行内改名提交（owner 2026-10-17）：铅笔就地改完 → 落盘（空串＝回落跟随工作区）。 */
-  onRenameHome?(id: string, value: string): void
+  onRenameHome?(id: string, value: string, el?: HTMLElement): void
   /** 助理行内改名提交（owner 2026-10-17：L2 与 L1 功能一致），空串＝回落「跟随机器人/家」。 */
-  onRenameAssistant?(id: string, value: string): void
+  onRenameAssistant?(id: string, value: string, el?: HTMLElement): void
 }
 
 /** 真渠道集合：**未绑定助理不算渠道**（#138 渠道诚实性）——它们的 channel 是旧版客户端编的猜测值。 */

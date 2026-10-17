@@ -171,18 +171,46 @@ export const HOME_ROW_CSS = `
 .home-ui .hu-avbtn:active{transform:scale(.94)}
 .home-ui .hu-avbtn:focus-visible{outline:2px solid var(--hu-accent);outline-offset:2px}
 /* 原位改名的输入框：字号/字重跟展示态（.hu-nm b 是 13.5px/620）对齐，进出编辑态行高不跳。
- * 焦点环走 **inset**（owner 2026-10-17 真机：外环右侧被裁）——输入框长在 .hu-nm／.hu-txt
- * 两层 overflow:hidden 里，只有画在盒内的环才不可能被容器裁掉；色值仍取 accent 22%。 */
+ * 焦点态＝owner 2026-10-17③ 口径：**不加环、不加缩放，只把边框点亮**（静止 hairline → 聚焦 accent，
+ * 120ms 过渡）。前两版都栽在同一处：输入框长在 .hu-nm／.hu-txt 两层 overflow:hidden 里（home-ui-styles
+ * 的 .hu-nm/.hu-txt），外环右侧会被平切、内环虽不越界仍像「盒子套盒子」⇒ 换边框色既不出血也看得见。 */
 .home-ui .hu-nminput{font-family:inherit;font-size:13.5px;font-weight:620;line-height:1.2;color:var(--hu-ink);
-  background:var(--hu-panel-2);border:1px solid var(--hu-accent);border-radius:7px;padding:2px 7px;
+  background:var(--hu-panel-2);border:1px solid var(--hu-line);border-radius:7px;padding:2px 7px;
   min-width:120px;max-width:190px;outline:none;
-  box-shadow:inset 0 0 0 3px color-mix(in srgb, var(--af-accent) 22%, transparent)}
+  transition:border-color var(--hu-t-fast) var(--hu-ease)}
+.home-ui .hu-nminput:focus,.home-ui .hu-nminput:focus-visible{border-color:var(--hu-accent);outline:none}
 .home-ui .hu-nminput::placeholder{color:var(--hu-ink-3);font-weight:400}
 /* owner 2026-10-17②：改名确认要出现在**被改的那一行旁边**（列表在顶部），不再沉到视口底部。
  * toast 是 body 级 float ⇒ 宿主自带 .home-ui（同 .home-ui.hu-tiphost 那条纪律：作用域不破、
  * 令牌在），规则也按「只挂 .home-ui 之下」写（home-row-strip.ts 的门禁）。变异只挪位置、
- * 不动基样式：.af-toast.show 的 translateX(-50%) 动画照旧。 */
-.home-ui.hu-toast-top{top:16px;bottom:auto}
+ * 不动基样式：.af-toast.show 的 translateX(-50%) 动画照旧。
+ * owner 2026-10-17④ 追加：**改名的「改名成功」走的正是这条共享 toast**（home-ops.ts 的两处
+ * 成功提示带 home-ui hu-toast-top），而共享 .af-toast 的底是 color-mix(--af-primary 86%, --af-bg)
+ * ——color-mix 的 alpha 是**加权平均**，宿主 label 色带 alpha（macOS 系语义色就是半透明）时，
+ * 混出来仍是半透明 ⇒ 真机看着像「透底的胶囊」。这里在本命名空间里补一层**不透明**底：
+ * 先铺不透明的 --hu-panel，再把同一档 86% 混色当渐变叠上去（观感与共享基样式一致，但不再透）。 */
+.home-ui.hu-toast-top{top:16px;bottom:auto;
+  background-color:var(--hu-panel);
+  background-image:linear-gradient(color-mix(in srgb, var(--hu-ink) 86%, var(--hu-panel)),color-mix(in srgb, var(--hu-ink) 86%, var(--hu-panel)));
+  color:var(--hu-panel)}
+/* owner 2026-10-17③：**锚定**轻提示（落在被改的控件正上方，落点由 home-toast.ts 的 toastPlace 算，这里只管长相）。
+ * 为什么自实现而不用共享 .af-toast：那条只钉视口底部（变异类也只能挪到顶），不知道控件在哪。
+ * 对比度：底 = --hu-ink（正文色）、字 = --hu-panel（页面底色），两个令牌在深浅两套主题下互为反色
+ * ⇒ 与页面底色的对比实测 ≥ 10:1（.scratch/rename-toast-proof 双主题量过），字与图标同色不会糊。
+ * owner 2026-10-17④ 真机：「背景半透明会看不清楚」——宿主给的 label 色**可能自带 alpha**（macOS 系
+ * label 语义色就是半透明的），直接拿它当 background 会把面板透出来。故底改成**两层**：
+ * 不透明的 --hu-panel 打底 ＋ --hu-ink 叠上去 ⇒ 无论宿主令牌带不带 alpha，观感都是实色。
+ * 边框用面板色的低透明描一圈，让浅色 chips 压在浅色面板上也有边界。
+ * 注意：本段是模板字符串，注释里**不许出现反引号**（会提前闭合整张表、规则静默消失）。 */
+.home-ui.hu-toast{position:fixed;z-index:1350;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:10px;
+  max-width:none; /* 元素自带 af-portal（令牌作用域）⇒ 抵消那组选择器上的 780px 限宽（否则提示会被截） */
+  background-color:var(--hu-panel);background-image:linear-gradient(var(--hu-ink),var(--hu-ink));
+  color:var(--hu-panel);font-size:12.5px;font-weight:600;line-height:1.2;white-space:nowrap;
+  box-shadow:0 8px 22px rgba(0,0,0,.3),0 0 0 1px color-mix(in srgb, var(--hu-panel) 22%, transparent);
+  opacity:0;transform:translateY(4px);pointer-events:none;
+  transition:opacity var(--hu-t-fast) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease)}
+.home-ui.hu-toast.show{opacity:1;transform:translateY(0)}
+.home-ui.hu-toast .hu-i{width:14px;height:14px}
 `
 
 let installed = false
