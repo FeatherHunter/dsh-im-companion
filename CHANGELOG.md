@@ -5,6 +5,14 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
+## [0.2.16] - 2026-10-18
+
+主题：**更新包跟随到官方源最新 0.18.25**（纯依赖跟随发版，本仓产品代码零改）。
+
+### Changed
+- 依赖 `dsh-plugin-update` 由 0.18.24 升到 **0.18.25**（npm 官方源 `latest`，exact pin；`npm run check:update-pkg` 复核通过）。要点：#174 失败之后「还剩不剩路」不再平铺——新增纯派生模块 `last-resort.ts` 给出四态 `last-resort` / `salvageable` / `dead-end` / `unknown`，单插件失败块、批量失败行与槽位安装按钮三处同形（红轨＋行内警示图标＋「最后手段」徽标＋状态短语，`data-last-resort` 是统一钩子），只有「没有救援且当帧命令可信」才高亮，没命令也不画空高亮；#177 失败回包沿用的旧手工命令按帧判可信度（`manualSource`：`frame` / `carried-over` / `null`），carried-over 一律 fail-closed（不展示、不复制、不高亮）并在失败帧后静默补读一次 `updateStatus`；复制成功反馈移到按钮外气泡（按钮文案与图标不再跳变）；#204 宿主内使用范围解析改走 DSH 权威身份链（显式覆盖 → `ctx.profileContext` → 第三方 Desktop 的 `ctx.desktopProfiles.current` → `env.DSH_PROFILE_DIR` → 目标包反推兜底），只有全无 profile 上下文才 `unknown-profile`，开发态挂载的 `dev-source` 语义不变；#92 手工命令为空按五类原因分因话术（源码安装 / 开发态 / 范围认不出 / 运行版未知 / 没有安全候选）。**快照字段、verify 事件字段、`src/codes.ts` 码值与手工命令安全政策全部不变**（公开面只增可选入参与类型转出），故本仓宿主五电话与快照透传代码零改（`update-center.ts` / `update-host.ts` 用例原样全绿）。
+- `package.json` / `package-lock.json` 版本号 0.2.15 → 0.2.16；`README.md` / `docs/README.en.md` 安装示例同步；`CONTEXT.md` 更新包术语行同步到 0.18.25；致谢榜不动（仍 Shimmernight ×4、vk-liu-cn-1 ×1，中英一致）。
+
 ## [0.2.15] - 2026-10-18
 
 主题：**头像选择器 10 格重做（#152 追修）＋ 更新包跟随到官方源最新 0.18.24**。
