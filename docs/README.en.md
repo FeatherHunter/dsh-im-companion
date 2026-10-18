@@ -227,7 +227,7 @@ Thanks to everyone who files Issues and PRs and joins discussions.
 - [Shimmernight](https://github.com/Shimmernight) 🌹🌹🌹🌹 ([#78](https://github.com/FeatherHunter/dsh-im-companion/issues/78))
 - [vk-liu-cn-1](https://github.com/vk-liu-cn-1) 🌹 ([#97](https://github.com/FeatherHunter/dsh-im-companion/issues/97))
 
-Also thanks to upstream [dsh-im](https://github.com/xmanrui/dsh-im): no core, no companion.
+Also thanks to upstream [dsh-im](https://github.com/xmanrui/dsh-im): no core, no companion plugin.
 
 </div>
 
@@ -239,6 +239,8 @@ Bugs and ideas go straight to ISSUEs — faster and traceable.
 
 [File an ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues) · [Upstream dsh-im](https://github.com/xmanrui/dsh-im)
 
-<sub>Topic-group QR coming — a permanent one will live here once there is a group.</sub>
+**👇 DSH plugin chat group (Feishu), scan to join:**
+
+<img src="../assets/DSH插件交流群-飞书二维码.png" width="330" alt="DSH plugin chat group Feishu QR code">
 
 </div>

@@ -227,7 +227,7 @@ MIT © FeatherHunter
 - [Shimmernight](https://github.com/Shimmernight) 🌹🌹🌹🌹（[#78](https://github.com/FeatherHunter/dsh-im-companion/issues/78)）
 - [vk-liu-cn-1](https://github.com/vk-liu-cn-1) 🌹（[#97](https://github.com/FeatherHunter/dsh-im-companion/issues/97)）
 
-也感谢上游 [dsh-im](https://github.com/xmanrui/dsh-im)：没有本体，就没有辅助。
+也感谢上游 [dsh-im](https://github.com/xmanrui/dsh-im)：没有本体，就没有本插件。
 
 </div>
 
@@ -239,6 +239,8 @@ Bug 与需求请直接提 ISSUE，更高效可追溯。
 
 [提交 ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues) · [上游 dsh-im](https://github.com/xmanrui/dsh-im)
 
-<sub>话题群二维码待补——有群后这里放永久有效二维码。</sub>
+**👇 DSH插件交流群（飞书），扫码加入：**
+
+<img src="assets/DSH插件交流群-飞书二维码.png" width="330" alt="DSH插件交流群飞书二维码">
 
 </div>
