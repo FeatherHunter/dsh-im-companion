@@ -108,7 +108,7 @@ function bridgeReply(ep: string, p: any): unknown {
     }
     return { ok: true, value: { homes: mapped, assistants: outA } };
   }
-  /* T6b #114：改名/配图/占位/绑定/删除（内存镜像同口径：user 冻结、avatar 1-6、一对一、删行不断连）。 */
+  /* T6b #114：改名/配图/占位/绑定/删除（内存镜像同口径：user 冻结、avatar 1-9、一对一、删行不断连）。 */
   if (ep === 'home.update') {
     const h = homeDb.homes.find((x) => x.id === p?.id);
     if (!h) return { ok: false, error: { code: 'not-found', message: '家不存在', details: {} } };
@@ -118,7 +118,7 @@ function bridgeReply(ep: string, p: any): unknown {
     }
     if (p?.avatar !== undefined) {
       if (p.avatar === null) { h.avatar = null; h.avatarSource = 'default'; }
-      else if (/^[1-6]$/.test(String(p.avatar))) { h.avatar = String(p.avatar); h.avatarSource = 'user'; }
+      else if (/^[1-9]$/.test(String(p.avatar))) { h.avatar = String(p.avatar); h.avatarSource = 'user'; }
       else return { ok: false, error: { code: 'bad-request', message: 'avatar 非法', details: {} } };
     }
     return { ok: true, value: { home: h } };
@@ -132,7 +132,7 @@ function bridgeReply(ep: string, p: any): unknown {
     }
     if (p?.avatar !== undefined) {
       if (p.avatar === null) { a.avatar = null; a.avatarSource = 'default'; }
-      else if (/^[1-6]$/.test(String(p.avatar))) { a.avatar = String(p.avatar); a.avatarSource = 'user'; }
+      else if (/^[1-9]$/.test(String(p.avatar))) { a.avatar = String(p.avatar); a.avatarSource = 'user'; }
       else return { ok: false, error: { code: 'bad-request', message: 'avatar 非法', details: {} } };
     }
     return { ok: true, value: { assistant: a } };
@@ -166,7 +166,7 @@ function bridgeReply(ep: string, p: any): unknown {
     return { ok: true, value: {} };
   }
   /* T11 #128：头像图片三端点（内存镜像宿主 home-avatar 的形状：`img:<stem>.<ext>` 标记 ＋ 文件另存）。
-   * 值域口径不变：`home.update`/`assistant.update` 仍只收 1-6，图片只走 avatar.set。 */
+   * 值域口径不变：`home.update`/`assistant.update` 仍只收 1-9，图片只走 avatar.set。 */
   if (ep === 'avatar.get') {
     const ids = Array.isArray(p?.ids) ? p.ids.map((x: unknown) => String(x ?? '')) : [];
     const images: Record<string, string> = {};

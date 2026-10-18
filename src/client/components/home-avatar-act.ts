@@ -21,7 +21,7 @@ export function avatarAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: stri
     void deps.ops.updateAssistant(a.id, { avatar }).then(deps.onDone)
   }
   openHomePop(anchor, {
-    width: 300, label: '更换头像', above: true,
+    width: 320, label: '更换头像', above: true,
     title: h('div', { className: 'hu-ptitle' }, huIcon('image', 15), '更换头像'),
     body: [field('头像', av.row, 'div'), ...(av.clear ? [av.clear] : [])],
     foot: footBtns(ok, undefined, '保存'),

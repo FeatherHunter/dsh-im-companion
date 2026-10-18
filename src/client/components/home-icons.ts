@@ -3,7 +3,7 @@
  * 颜色一律 currentColor，尺寸由调用方给（默认 15）。 */
 export type HuIconName =
   | 'home' | 'person' | 'bot' | 'plus' | 'chev' | 'back' | 'more' | 'close'
-  | 'pencil' | 'image' | 'reset' | 'move' | 'link' | 'unlink' | 'refresh'
+  | 'pencil' | 'image' | 'camera' | 'reset' | 'move' | 'link' | 'unlink' | 'refresh'
   | 'trash' | 'check' | 'alert' | 'info' | 'search' | 'data' | 'flask'
 
 const HU_PATHS: Record<HuIconName, string> = {
@@ -17,6 +17,7 @@ const HU_PATHS: Record<HuIconName, string> = {
   close: '<path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>',
   pencil: '<path d="M11.2 2.4l2.4 2.4L6.2 12.2 3 13l.8-3.2 7.4-7.4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>',
   image: '<rect x="2.5" y="3" width="11" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="6" cy="6.6" r="1.2" fill="currentColor"/><path d="M3.4 11.6L6.8 8.6l2.2 2 1.6-1.4 1.9 1.8" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  camera: '<rect x="2" y="5.2" width="12" height="8" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="9.2" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="9.2" r="1" fill="currentColor"/><path d="M5.6 5.2L6.4 3.6h3.2l.8 1.6" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="11.9" cy="7.2" r=".8" fill="currentColor"/>',
   reset: '<path d="M13.2 8a5.2 5.2 0 1 1-1.5-3.7M13.2 1.8v3h-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>',
   move: '<path d="M8 2.2v11.6M2.2 8h11.6M5.2 5L2.6 8l2.6 3M10.8 5l2.6 3-2.6 3" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',
   link: '<path d="M6.6 9.4a2.6 2.6 0 0 0 3.7 0l2.2-2.2a2.6 2.6 0 0 0-3.7-3.7l-.9.9M9.4 6.6a2.6 2.6 0 0 0-3.7 0L3.5 8.8a2.6 2.6 0 0 0 3.7 3.7l.9-.9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>',

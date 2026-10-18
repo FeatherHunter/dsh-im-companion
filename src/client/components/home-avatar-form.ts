@@ -1,4 +1,4 @@
-/** T11 #128 头像图片上传格（UI 侧）：家/助理设置弹层里的第 8 格 ＋ 隐藏文件选择器 ＋ 明文拒绝。
+/** T11 #128 头像图片上传格（UI 侧）：家/助理设置弹层里的第 1 格（2026-10-18 前移到首格）＋ 隐藏文件选择器 ＋ 明文拒绝。
  *
  * 交互与既有「恢复默认名」同一套先例：**点了就落**（不排进「确定」的补丁里）——图片要经宿主写文件
  * 才成得了标记，攒到确定再传会造出「弹层里的待传图」与「行里的真图」两套状态；落完由调用方
@@ -13,7 +13,8 @@ import { toast } from '../ui/toast'
 import { logLine, logOn } from '../log'
 import { avatarSrc, clearAvatarImage, hasImage, onAvatarImage, uploadAvatarImage } from './home-avatar'
 import { aLog, hLog, msgOf } from './home-ops'
-import { avatarStyle, imageCover } from './home-identity'
+import { imageCover } from './home-identity'
+import { huIcon } from './home-icons'
 
 const ACCEPT = 'image/png,image/jpeg,image/webp'
 /** 存盘上限（与宿主 AVATAR_MAX_BYTES 同值；两侧都卡，客户端这层只为即时反馈——选完文件当场给明文，不先读进内存）。 */
@@ -93,13 +94,14 @@ export async function commitAvatarFile(id: string, kind: Kind, file: FileLike | 
   return { ok: true }
 }
 
-/** 图片格的底色/内容：有图用图（cover），无图用「图」字 ＋ id 派生色相（与列表头像同一套色相口径）。 */
+/** 图片格的底色/内容（2026-10-18）：有图用图（cover）；无图＝中性底＋相机 SVG（不再写「图」字、不再按 id 派生色相）。 */
 function cellStyle(id: string, url: string | null): string {
-  const base = avatarStyle(id + ':img', null)
+  void id
+  const base = 'background:color-mix(in srgb,var(--hu-ink) 7%,transparent);color:var(--hu-ink-2)'
   return url ? base + ';' + imageCover(url) : base
 }
 
-/** 图片格：`{cell}` 塞进头像色板行（第 8 格），`{clear}` 由调用方摆在色板行下面（有图时才有）。 */
+/** 图片格：`{cell}` 塞进头像色板行（第 1 格，照片入口），`{clear}` 由调用方摆在色板行下面（有图时才有）。 */
 export function avatarImageCell(opts: {
   id: string
   kind: Kind
@@ -117,17 +119,18 @@ export function avatarImageCell(opts: {
   const btn = h('button', {
     type: 'button',
     className: 'hu-avopt hu-avimg',
-    title: '图片头像：png / jpg / webp，2 MB 以内',
-    'aria-label': '图片头像',
+    title: '上传头像照片：png / jpg / webp，2 MB 以内',
+    'aria-label': '上传头像照片',
     'aria-selected': hasImage(current) ? 'true' : 'false',
     'data-avatar': 'img',
     style: cellStyle(id, shown),
-  }, shown ? '' : '图')
+  })
+  if (shown) { btn.style.cssText = cellStyle(id, shown) } else { btn.appendChild(huIcon('camera', 20)) }
   if (hasImage(current) && !shown) {
     /* 弹层是常驻 portal，不随面板重渲染 ⇒ 图取回来后自己补一次底色（一次性回调，见 home-avatar.onAvatarImage）。 */
     onAvatarImage(id, (url) => {
       btn.style.cssText = cellStyle(id, url)
-      btn.textContent = ''
+      while (btn.firstChild) btn.removeChild(btn.firstChild)
     })
   }
   btn.addEventListener('click', () => {

@@ -96,11 +96,11 @@ function sanitize(v: unknown, max: number): string {
   return typeof v === 'string' ? v.slice(0, max) : ''
 }
 
-/** 头像值域（读表清洗的**唯一放行口**）：预设色码 `1`..`6`（T6b）∪ 图片标记 `img:<文件名>`（T11 #128，
+/** 头像值域（读表清洗的**唯一放行口**）：预设色码 `1`..`9`（T6b，2026-10-18 由 6 扩 9）∪ 图片标记 `img:<文件名>`（T11 #128，
  *  文件名由 `home-avatar.ts` 生成：`[A-Za-z0-9_-]{1,64}` ＋ png/jpg/webp 后缀，无斜杠 ⇒ 不可能目录穿越）。
  *  这里少认一种，重启后那张图就会被清洗成「没图」——加值域必须同时改这条。 */
 export function isAvatarCode(v: unknown): v is string {
-  return typeof v === 'string' && (/^[1-6]$/.test(v) || /^img:[A-Za-z0-9_-]{1,64}\.(png|jpg|webp)$/.test(v))
+  return typeof v === 'string' && (/^[1-9]$/.test(v) || /^img:[A-Za-z0-9_-]{1,64}\.(png|jpg|webp)$/.test(v))
 }
 
 export function cleanHome(r: unknown): HomeRow | null {

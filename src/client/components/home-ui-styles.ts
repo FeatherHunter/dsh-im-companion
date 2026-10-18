@@ -273,7 +273,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-locked .hu-ot b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-locked .hu-ot small{display:block;font-size:11px;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.home-ui .hu-avrow{display:grid;grid-template-columns:repeat(4,46px);gap:8px}
+.home-ui .hu-avrow{display:grid;grid-template-columns:repeat(5,46px);gap:8px}
 .home-ui .hu-avopt{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:14px;font-weight:650;cursor:pointer;border:2px solid color-mix(in srgb,var(--hu-ink) 12%,transparent)}
 .home-ui .hu-avopt[aria-selected="true"]{border-color:var(--hu-accent);box-shadow:var(--hu-ring)}
 .home-ui .hu-plink{font:inherit;font-size:12px;text-align:left;background:none;border:0;color:var(--hu-accent-deep);cursor:pointer;padding:2px 0}
@@ -286,7 +286,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-plink.danger:hover{color:color-mix(in srgb,var(--hu-bad) 78%,var(--hu-ink))}
 .home-ui .hu-avopt:hover:not([aria-selected="true"]){border-color:color-mix(in srgb,var(--hu-ink) 32%,var(--hu-line))}
 .home-ui .hu-avopt:active{transform:scale(.94)}
-/* T11 #128 图片格（色板第 8 格）：虚线边框＝「可上传」。owner 2026-10-17：色块 34→46px、改 4 列网格（8 格整齐两行，不再靠 flex 折行的巧合）。 */
+/* T11 #128 图片格（色板第 1 格）：虚线边框＝「可上传」。2026-10-18：10 格 5×2＋相机 SVG＋中性底（不再写「图」字）。 */
 .home-ui .hu-avimg-cell{display:flex;align-items:center}
 .home-ui .hu-avimg{border-style:dashed;border-color:color-mix(in srgb,var(--hu-ink) 26%,transparent)}
 .home-ui .hu-dirpath:active{border-color:var(--hu-accent);background:var(--hu-panel-3)}

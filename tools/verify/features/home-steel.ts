@@ -346,7 +346,8 @@ test('T6b 改名配图纯逻辑：user 覆盖/恢复默认/非法拒收（验收
   assert.ok(h3 && h3.avatar === '3' && h3.avatarSource === 'user');
   const h4: any = editMod.applyHomeUpdate(H({ avatar: '3', avatarSource: 'user' }), { avatar: null });
   assert.ok(h4 && h4.avatar === null && h4.avatarSource === 'default');
-  assert.equal(editMod.applyHomeUpdate(H({}), { avatar: '9' }), null, '非法配图拒收');
+  assert.equal(editMod.applyHomeUpdate(H({}), { avatar: '10' }), null, '非法配图拒收');
+  assert.ok(editMod.applyHomeUpdate(H({}), { avatar: '9' }), '9 档合法（2026-10-18 由 6 扩 9）');
   assert.equal(editMod.applyHomeUpdate(H({}), { avatar: 'red' }), null, '非法配图拒收');
   const h5: any = editMod.applyHomeUpdate(H({}), { name: 'x'.repeat(100) });
   assert.equal(h5.name.length, 64, '名字截断 64');
@@ -357,6 +358,9 @@ test('T6b 改名配图纯逻辑：user 覆盖/恢复默认/非法拒收（验收
   assert.ok(a2 && a2.nameSource === 'home', '未绑恢复默认→走家名');
   assert.equal(editMod.isAvatarCode('1'), true);
   assert.equal(editMod.isAvatarCode('6'), true);
+  assert.equal(editMod.isAvatarCode('7'), true);
+  assert.equal(editMod.isAvatarCode('9'), true);
+  assert.equal(editMod.isAvatarCode('10'), false);
   assert.equal(editMod.isAvatarCode('0'), false);
   assert.equal(editMod.isAvatarCode(''), false);
   assert.equal(editMod.isAvatarCode(null), false);
@@ -399,7 +403,8 @@ test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连�
   assert.ok(uh.row.name === '湖畔' && uh.row.nameSource === 'user' && uh.row.avatar === '2' && uh.row.avatarSource === 'user');
   const uh2: any = await homeEdit.updateHomeRow(file, { id: hid, name: '', avatar: null });
   assert.ok(uh2.ok && uh2.row.name === '' && uh2.row.nameSource === 'system' && uh2.row.avatar === null);
-  const bad: any = await homeEdit.updateHomeRow(file, { id: hid, avatar: '9' });
+  const bad: any = await homeEdit.updateHomeRow(file, { id: hid, avatar: '10' });
+  assert.equal((await homeEdit.updateHomeRow(file, { id: hid, avatar: '9' })).ok, true, '9 档宿主放行');
   assert.equal(bad.ok, false);
   assert.equal(bad.code, 'bad-request');
   assert.equal((await homeEdit.updateHomeRow(file, { id: hid })).ok, false, '无字段→拒收');
@@ -458,9 +463,12 @@ test('T6b 绿框呈现：纯头像弹层＋行内改名（owner 2026-10-17 口�
   assert.ok(pop, '点头像→换头像弹层');
   assert.ok(txt(pop).includes('更换头像') && !txt(pop).includes('家设置'), '是纯换头像弹层（不再顶着「家设置」的名）');
   assert.equal(cls(pop, 'hu-fld').length, 1, '只有一个字段（头像）——名字不在这一层改');
-  assert.equal(cls(pop, 'hu-avopt').length, 8, '配图行＝默认＋6 色＋图片格（T11 #128 收编）');
-  assert.equal(cls(pop, 'hu-avimg-cell').length, 1, '图片格在色板行里（第 8 格）');
-  assert.ok(!txt(pop).includes('清除图片'), '无图时不出现「清除图片」（回落预设色＝默认态）');
+  assert.equal(cls(pop, 'hu-avopt').length, 10, '配图行＝照片首格＋9 预置（2026-10-18，默认格退场）');
+  assert.equal(cls(pop, 'hu-avimg-cell').length, 1, '图片格在色板行里（第 1 格，照片入口）');
+  assert.equal(one(pop, 'hu-avrow').children[0].classList.contains('hu-avimg-cell'), true, '照片格在第一位');
+  assert.equal(byAttr(pop, 'data-avatar', 'img').length, 1, '照片入口唯一（data-avatar=img）');
+  assert.equal(byAttr(byAttr(pop, 'data-avatar', 'img')[0], 'data-hu-icon', 'camera').length, 1, '照片格是相机 SVG（不再写「图」字）');
+  assert.ok(!txt(pop).includes('清除图片'), '无图时不出现「清除图片」（回落预设色）');
   assert.ok(popBtn(pop, '保存') && !off(popBtn(pop, '保存')), '主按钮＝保存（可点）');
   popMod.closeHomePop(true);
   /* 两个入口同一张卡：头像本身与「更换头像」图标钮。 */
@@ -523,9 +531,16 @@ test('头像预置色：DeepSeek 蓝白/黑白＋实色高对比＋色块放大�
     try { return boxReq('./client/components/home-identity.js'); } catch { return boxReq('./components/home-identity.js'); }
   })();
   const presets: Array<[string, string]> = idMod.PRESETS;
-  assert.equal(presets.length, 6, '预置 6 档（弹层里 ＋默认 1 格 ＝ 7 格）');
-  assert.equal(presets[0][0].toUpperCase(), '#4D6BFE', '第 1 档＝DeepSeek 蓝白（品牌蓝）');
-  assert.equal(presets[1][0].toUpperCase(), '#17181C', '第 2 档＝黑白（近黑底＋白字）');
+  assert.equal(presets.length, 9, '预置 9 档（弹层里照片首格＋9 预置＝10 格，默认格退场）');
+  assert.equal(presets[0][0].toUpperCase(), '#17181C', '第 1 档＝黑白（近黑底＋白字，2026-10-18 前移到首位）');
+  assert.equal(presets[1][0].toUpperCase(), '#4D6BFE', '第 2 档＝DeepSeek 蓝白（品牌蓝）');
+  assert.equal(presets[2][0].toUpperCase(), '#2F4A44', '第 3 档＝墨绿（新莫兰迪）');
+  assert.equal(presets[3][0].toUpperCase(), '#4E6E8E', '第 4 档＝深雾蓝（新莫兰迪）');
+  assert.equal(presets[4][0].toUpperCase(), '#7A3E5A', '第 5 档＝梅子（新莫兰迪）');
+  assert.equal(presets[5][0].toUpperCase(), '#C4B49A', '第 6 档＝燕麦（浅色深字，新莫兰迪）');
+  assert.equal(presets[6][0].toUpperCase(), '#B5473A', '第 7 档＝砖红（新莫兰迪，代旧玫红）');
+  assert.equal(presets[7][0].toUpperCase(), '#7C3AED', '第 8 档＝紫罗兰（旧锚，保可辨距离）');
+  assert.equal(presets[8][0].toUpperCase(), '#0E8A43', '第 9 档＝翠绿（旧锚，保可辨距离）');
   const rgb = (hex: string): number[] => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
   const lum = (hex: string): number => {
     const [r, g, b] = rgb(hex).map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 });
@@ -545,12 +560,14 @@ test('头像预置色：DeepSeek 蓝白/黑白＋实色高对比＋色块放大�
       assert.ok(d >= 60, '第 ' + (i + 1) + ' 与第 ' + (j + 1) + ' 档底色可辨（RGB 距离 ' + d.toFixed(0) + ' ≥ 60）');
     }
   }
-  assert.equal(idMod.avatarStyle('h1', '1'), 'background:#4D6BFE;color:#FFFFFF', '选色＝实色（不再 color-mix 到主题底）');
+  assert.equal(idMod.avatarStyle('h1', '1'), 'background:#17181C;color:#FFFFFF', '选色＝实色（1 档黑白前移，旧蓝白到 2 档）');
+  assert.equal(idMod.avatarStyle('h1', '2'), 'background:#4D6BFE;color:#FFFFFF', '2 档＝DeepSeek 蓝白');
+  assert.equal(idMod.avatarStyle('h1', '9'), 'background:#0E8A43;color:#FFFFFF', '9 档＝翠绿（旧锚）');
   assert.ok(idMod.avatarStyle('h1', null).includes('hsl('), '未选色仍按 id 派生色相（改名不换色）');
   assert.notEqual(idMod.avatarStyle('h1', null), idMod.avatarStyle('h2', null), '不同 id 派生不同色（列表身份感）');
   const avCss = readFileSync(join(COMP, 'home-ui-styles.ts'), 'utf8');
-  assert.ok(avCss.includes('.home-ui .hu-avrow{display:grid;grid-template-columns:repeat(4,46px);gap:8px}'),
-    '色板＝4 列网格（8 格整齐两行，不再靠 flex 碰巧折行）');
+  assert.ok(avCss.includes('.home-ui .hu-avrow{display:grid;grid-template-columns:repeat(5,46px);gap:8px}'),
+    '色板＝5 列网格（10 格整齐两行：照片＋9 预置）');
   assert.ok(avCss.includes('.home-ui .hu-avopt{width:46px;height:46px'), '色块 46×46（旧 34×34 显小）');
 });
 
@@ -576,7 +593,7 @@ test('L2 助理行＝L1 家行（owner 2026-10-17）：「更多」退场＋铅�
   const pop = cls(domDoc.body, 'hu-pop')[0];
   assert.ok(pop && txt(pop).includes('更换头像'), '头像入口开换头像弹层');
   assert.equal(cls(pop, 'hu-fld').length, 1, '纯换头像：只有头像一个字段（不带名字字段）');
-  assert.equal(cls(pop, 'hu-avopt').length, 8, '默认＋6 色＋图片格（与家侧同一份 avatarRow）');
+  assert.equal(cls(pop, 'hu-avopt').length, 10, '照片首格＋9 预置（与家侧同一份 avatarRow）');
   assert.ok(popBtn(pop, '保存') && !off(popBtn(pop, '保存')), '保存可点');
   popMod.closeHomePop(true);
   handle.dispose();
@@ -705,7 +722,7 @@ test('T6b 两步删除：首点布防、次点真删且只走行删除（验收�
   const links = cls(pop, 'hu-plink');
   const del = links.find((b: any) => txt(b).includes('删除助理'));
   assert.ok(del, '助理设置弹层有删除助理（恢复默认旁，不再是假按钮）');
-  assert.equal(cls(pop, 'hu-avopt').length, 8, '助理设置弹层也有配图行＝默认＋6 色＋图片格（T11 #128）');
+  assert.equal(cls(pop, 'hu-avopt').length, 10, '助理设置弹层也有配图行＝照片首格＋9 预置（T11 #128 追修）');
   assert.equal(cls(pop, 'hu-avimg-cell').length, 1, '助理侧上传口与家设置共用 avatarImageCell（不是两份实现）');
   clickEl(del);
   assert.ok(txt(del).includes('再点一次确认删除') && removed.length === 0, '首点只布防不删除');

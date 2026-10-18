@@ -1,7 +1,7 @@
 // T11 #128 头像图片自验证：跑**真宿主代码**（home-avatar/home-store/home-orphan/home-edit）＋真文件 IO。
 // 只测外部行为：给一张图 → 盘上有什么、行里写什么、用户能取回什么；给脏输入 → 明文拒且盘上不多东西。
 // 断言落点（票面五条口径）：落盘路径/值域、magic-bytes 白名单与 2 MiB 上限、批量 get、clear 回落、
-// 删家不级联删图、`img:` 只走 avatar.set（home.update 仍只收 1-6）、seed 清洗不放目录穿越。
+// 删家不级联删图、`img:` 只走 avatar.set（home.update 仍只收 1-9）、seed 清洗不放目录穿越。
 import { mkdtempSync, readFileSync, existsSync, readdirSync, symlinkSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -194,11 +194,11 @@ test('T11 #128 删家不级联删图：墓碑 ＋ 级联删助理行，图片文
   assert.ok(existsSync(join(dir, homeImg)) && existsSync(join(dir, asstImg)), '图片文件保留（当前口径：不级联删，回收留给后续票）');
 });
 
-test('T11 #128 值域钉子：img: 只走 avatar.set；update 仍只收 1-6；seed 清洗不放目录穿越', async () => {
+test('T11 #128 值域钉子：img: 只走 avatar.set；update 仍只收 1-9；seed 清洗不放目录穿越', async () => {
   const { file, call, homeId } = await mkTable();
   const r: any = await call('avatar.set', { id: homeId, dataUrl: url('image/png', png()) });
   const marker = r.value.avatar as string;
-  /* ① home.update 不许收 img:（值域仍是 1-6）——收编 UI 后必须走 avatar.set，别把标记塞回 update */
+  /* ① home.update 不许收 img:（值域仍是 1-9）——收编 UI 后必须走 avatar.set，别把标记塞回 update */
   const up: any = await edit.updateHomeRow(file, { id: homeId, avatar: marker });
   assert.equal(up.ok, false, 'home.update 收 img: 必须拒');
   assert.equal(up.code, 'bad-request', '错误码');

@@ -8,7 +8,7 @@ function sn(v: unknown, max: number): string {
   return typeof v === 'string' ? v.slice(0, max) : ''
 }
 function okAvatar(v: unknown): v is string {
-  return typeof v === 'string' && /^[1-6]$/.test(v)
+  return typeof v === 'string' && /^[1-9]$/.test(v)
 }
 function nid(now: number): string {
   try {
@@ -20,7 +20,7 @@ function nid(now: number): string {
 
 type R<T> = Promise<{ ok: true; row: T } | { ok: false; code: string; message: string }>
 
-/** 家改名/配图：name undefined=不动，""=恢复默认；avatar undefined=不动，null=默认，"1"-"6"=选色。 */
+/** 家改名/配图：name undefined=不动，""=恢复默认；avatar undefined=不动，null=默认（仅兼容旧数据），"1"-"9"=选色。 */
 export function updateHomeRow(file: string, input: { id: string; name?: string | null; avatar?: string | null }): R<HomeRow> {
   const id = sn(input.id, 64).trim()
   if (!id) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'id 必填' })
@@ -28,7 +28,7 @@ export function updateHomeRow(file: string, input: { id: string; name?: string |
   const hasAvatar = input.avatar !== undefined
   if (!hasName && !hasAvatar) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'name/avatar 至少其一' })
   if (hasAvatar && input.avatar !== null && input.avatar !== undefined && !okAvatar(input.avatar)) {
-    return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'avatar 取 1-6 或空' })
+    return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'avatar 取 1-9 或空' })
   }
   return modifyHomesDoc(file, (doc) => {
     const h = doc.homes.find((x) => x.id === id)
@@ -56,7 +56,7 @@ export function updateAssistantRow(file: string, input: { id: string; name?: str
   const hasAvatar = input.avatar !== undefined
   if (!hasName && !hasAvatar) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'name/avatar 至少其一' })
   if (hasAvatar && input.avatar !== null && input.avatar !== undefined && !okAvatar(input.avatar)) {
-    return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'avatar 取 1-6 或空' })
+    return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'avatar 取 1-9 或空' })
   }
   return modifyHomesDoc(file, (doc) => {
     const a = doc.assistants.find((x) => x.id === id)

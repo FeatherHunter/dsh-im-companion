@@ -182,20 +182,21 @@ export interface EditDeps {
   onDone: () => void
 }
 
-/** 配图行：默认＋6 色（avatar "1".."6"，见 home-identity.PRESETS；实色、不随主题混色）＋第 8 格「上传图片」（T11 #128）。
+/** 配图行（2026-10-18）：第 1 格照片入口＋9 预置（avatar "1".."9"，实色）＝10 格 5×2；默认派生格退场（仅兼容旧 null）。
  *  返回 `{row, clear}` 两件：色板行由调用方塞进「头像」字段，`clear`（有图时才有）单摆在色板行下面。
- *  `onCommitted` 在图片真落盘后回调——图片**点了就落**（不攒进「确定」的补丁），故调用方应关弹层并重读，
- *  否则弹层里那份旧 `avatar` 快照会反手把刚落的图覆盖回预设色。 */
+ *  `onCommitted` 在图片真落盘后回调——图片**点了就落**（不攒进「确定」的补丁），故调用方应关弹层并重读。 */
 export function avatarRow(
   name: string, id: string, kind: 'home' | 'assistant', current: string | null,
   onPick: (v: string | null) => void, onCommitted: () => void,
 ): { row: HTMLElement; clear: HTMLElement | null } {
   const wrap = h('div', { className: 'hu-avrow' })
-  const opts: Array<string | null> = [null, '1', '2', '3', '4', '5', '6']
+  const img = avatarImageCell({ id, kind, current, onCommitted })
+  wrap.appendChild(img.cell)
+  const opts: Array<string> = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
   opts.forEach((v) => {
     const b = h('button', {
-      type: 'button', className: 'hu-avopt', 'aria-selected': (v ?? '') === (current ?? '') ? 'true' : 'false',
-      style: avatarStyle(id + (v ?? 'd'), v), 'aria-label': v ? '头像' + v : '默认头像', 'data-avatar': v ?? '',
+      type: 'button', className: 'hu-avopt', 'aria-selected': v === (current ?? '') ? 'true' : 'false',
+      style: avatarStyle(id + v, v), 'aria-label': '头像' + v, 'data-avatar': v,
     }, initialsOf(name))
     b.addEventListener('click', () => {
       const all = wrap.querySelectorAll('.hu-avopt')
@@ -205,8 +206,6 @@ export function avatarRow(
     })
     wrap.appendChild(b)
   })
-  const img = avatarImageCell({ id, kind, current, onCommitted })
-  wrap.appendChild(img.cell)
   return { row: wrap, clear: img.clear }
 }
 
@@ -253,7 +252,7 @@ export function avatarHomePop(anchor: AnchorRef, deps: EditDeps & { homeId: stri
     void deps.ops.updateHome(home.id, { avatar }).then(deps.onDone)
   }
   openHomePop(anchor, {
-    width: 300, label: '更换头像', above: true,
+    width: 320, label: '更换头像', above: true,
     title: h('div', { className: 'hu-ptitle' }, huIcon('image', 15), '更换头像'),
     body: [field('头像', av.row, 'div'), ...(av.clear ? [av.clear] : [])],
     foot: footBtns(ok, undefined, '保存'),

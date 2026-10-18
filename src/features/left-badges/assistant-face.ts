@@ -29,10 +29,11 @@ export function initialsOf(name: string): string {
   if (words.length >= 2) return ((words[0][0] ?? '') + (words[1][0] ?? '')).toUpperCase()
   return s.slice(0, 2).toUpperCase()
 }
-/** 面板同款底色（home-identity.avatarStyle 同字面量，见文件头 parity 说明）。预置表 owner 2026-10-17 重做。 */
+/** 面板同款底色（home-identity.avatarStyle 同字面量，见文件头 parity 说明）。预置表 owner 2026-10-17 重做，2026-10-18 追修 9 档。 */
 const PRESETS: ReadonlyArray<readonly [string, string]> = [
-  ['#4D6BFE', '#FFFFFF'], ['#17181C', '#FFFFFF'], ['#0E8A43', '#FFFFFF'],
-  ['#F5A524', '#1B1B1F'], ['#7C3AED', '#FFFFFF'], ['#D32F3A', '#FFFFFF'],
+  ['#17181C', '#FFFFFF'], ['#4D6BFE', '#FFFFFF'], ['#2F4A44', '#FFFFFF'],
+  ['#4E6E8E', '#FFFFFF'], ['#7A3E5A', '#FFFFFF'], ['#C4B49A', '#1B1B1F'],
+  ['#B5473A', '#FFFFFF'], ['#7C3AED', '#FFFFFF'], ['#0E8A43', '#FFFFFF'],
 ]
 export function faceStyle(id: string, avatar: string | null = null): string {
   const i = avatar == null ? -1 : Number.parseInt(avatar, 10) - 1

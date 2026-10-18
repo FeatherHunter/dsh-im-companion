@@ -261,19 +261,20 @@ test('T7-1b changelog 电话已接线：经 rpc.ts 可达，回包形态合法',
   proof('changelog', '第四电话可达 + 形态合法 + 未知端点对照');
 });
 
-/* ---------- ② snapshot 恰好七字段（0.17.0 起新增 installed；快照三电话同源；changelog 无 snapshot 不在列） ---------- */
-test('T7-2 snapshot 恰好七字段（快照三电话同源；changelog 无 snapshot 不在列）', async () => {
+/* ---------- ② snapshot 恰好九字段（0.17.0 起新增 installed；0.18.24 起新增 identity #197＋registered #190；快照三电话同源；changelog 无 snapshot 不在列） ---------- */
+test('T7-2 snapshot 恰好九字段（快照三电话同源；changelog 无 snapshot 不在列）', async () => {
   installPlugin({ version: '1.2.3' });
-  const h = withJob(); // 注入 readJob ⇒ job 字段真的非空，七字段全被走到
-  const SEVEN = ['blockedReason', 'canInstall', 'installed', 'installedVersion', 'job', 'latestVersion', 'runningVersion'];
+  const h = withJob(); // 注入 readJob ⇒ job 字段真的非空，九字段全被走到
+  // 包 CHANGELOG 明示这是有意的公开加法扩展（字段只增不改，老调用方不读也能用；包自带 tests 按九字段更新）
+  const NINE = ['blockedReason', 'canInstall', 'identity', 'installed', 'installedVersion', 'job', 'latestVersion', 'registered', 'runningVersion'];
   for (const ep of [STATUS, CHECK, INSTALL]) {
     const payload = ep === INSTALL ? { checkId: 'c0', requestId: 'r1' } : {};
     const raw: any = await h.bridge.handlers[ep](payload);
     assert.equal(raw.ok, true, ep + ' 应回 ok（' + JSON.stringify(raw) + '）');
-    assert.deepEqual(Object.keys(raw.snapshot).sort(), SEVEN, ep + ' snapshot 字段集合');
+    assert.deepEqual(Object.keys(raw.snapshot).sort(), NINE, ep + ' snapshot 字段集合');
     assert.deepEqual(raw.job ?? raw.snapshot.job, raw.snapshot.job, ep + ' job 在 snapshot 内');
   }
-  proof('snapshot-seven', '三电话 snapshot 恰七字段');
+  proof('snapshot-nine', '三电话 snapshot 恰九字段');
 });
 
 /* ---------- ③ source-install：判据全在包内（本仓不再自算） ---------- */
