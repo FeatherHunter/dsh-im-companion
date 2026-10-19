@@ -5,6 +5,15 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
+## [0.2.17] - 2026-10-19
+
+主题：**更新包跟随到官方源最新 0.18.32**（纯依赖跟随发版，本仓产品代码零改）。
+
+### Changed
+- 依赖 `dsh-plugin-update` 由 0.18.25 升到 **0.18.32**（npm 官方源 `latest`，exact pin；`npm run check:update-pkg` 复核通过）。要点：0.18.26～0.18.32 这一段把批量更新面板的显示缺陷与批次日志补齐——#215 缺席目标不再被旧失败任务判成 recovery-required（诊断不再漏出占位版号 0.0.0）；#216 批量面板三处显示缺陷（待重启误判已最新、占位版号不进版本列、档案卷主按钮与在装按钮不可见，在装按钮加动效）；#217 批次停下时自家排队占位不再造成全局 update-busy；#218 假成功（已装待重启不再被说成「已是最新」）；#219 批量在装按钮只留一枚转圈、本体可排批量面板第一行（`selfOrder: 'first'`）；#231 批量面板先渲染旧批次账本的误导帧（改为「正在查询版本信息」／「正在按最新版本重新检查…」）；#232 批量进行中未轮到的行不再说「加入队列」，改说「已排队 · 前方还有 N 项」。日志侧新增 `update.batch.run.start`、`update.install.retry`，总账改活跃时长（`activeMs`／`sessionAgeMs`／`resumed`），`update.check.done` 增 `pendingRestart`／`jobState`，`update.log.degraded` 带被丢事件名。0.18.32 与 0.18.31 代码相同，只是把这条已验收的修复线钉成可依赖的版本号。
+- 0.18.31 起的公开面加法（`logContract`／`logHealth` 字段、CHANGELOG `cached` 语义）同步进本仓更新宿主校验用例 `tools/verify/features/update-host.ts`；**本仓产品代码零改**（宿主五电话与快照透传原样全绿）。
+- `package.json` / `package-lock.json` 版本号 0.2.16 → 0.2.17；`README.md` / `docs/README.en.md` 安装示例同步；`CONTEXT.md` 更新包术语行同步到 0.18.32；致谢榜不动（仍 Shimmernight ×4、vk-liu-cn-1 ×1，中英一致）。
+
 ## [0.2.16] - 2026-10-18
 
 主题：**更新包跟随到官方源最新 0.18.25**（纯依赖跟随发版，本仓产品代码零改）。

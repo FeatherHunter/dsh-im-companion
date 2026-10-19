@@ -1,6 +1,6 @@
 {
   "name": "dsh-im-companion",
-  "version": "0.2.16",
+  "version": "0.2.17",
   "dshImCompat": {
     "verified": "4.39.0",
     "range": ">=4.17.1 || <=4.17.0"
