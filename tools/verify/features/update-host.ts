@@ -196,8 +196,9 @@ test('T7-1 五通电话可经 rpc.ts 派发，回包是本仓信封且包字段�
     const result: any = await h.handle(ep, {});
     assert.equal(result.ok, true, ep + ' 应回 ok:true');
     assert.equal(result.error, undefined, ep + ' 成功信封不带 error');
-    assert.deepEqual(Object.keys(raw).sort(), ['manual', 'ok', 'receipt', 'snapshot'], ep + ' 包载荷字段');
-    assert.deepEqual(result.value, raw, ep + ' 包字段原样（ok/snapshot/manual/receipt 一个不少，无 autoCheck）');
+    const expectedKeys = ep === STATUS ? ['logContract', 'logHealth', 'manual', 'ok', 'receipt', 'snapshot'] : ['manual', 'ok', 'receipt', 'snapshot'];
+    assert.deepEqual(Object.keys(raw).sort(), expectedKeys, ep + ' 包载荷字段（STATUS 在 0.18.31 起额外带 logContract/logHealth，#196/#212）');
+    assert.deepEqual({ ...result.value, logHealth: { ...result.value.logHealth, lastEventAt: 0 } }, { ...raw, logHealth: { ...raw.logHealth, lastEventAt: 0 } }, ep + ' 包字段原样（除 logHealth.lastEventAt 计时外逐字同）');
     assert.equal('autoCheck' in result.value, false, ep + ' 成功载荷不再注入 autoCheck');
     assert.deepEqual((h.bridge.reply(raw) as any).value, raw, ep + ' 翻译层不换壳/不深拷贝掉引用');
   }
@@ -250,7 +251,7 @@ test('T7-1b changelog 电话已接线：经 rpc.ts 可达，回包形态合法',
   }
   const result: any = await h.handle(CHANGELOG, { version: '9.9.9' });
   if (result.ok === true) {
-    assert.deepEqual(result.value, raw, 'changelog 成功载荷原样进 value（无 autoCheck 注入）');
+    assert.deepEqual(result.value, { ...raw, cached: result.value.cached }, 'changelog 成功载荷原样进 value（cached 第二次命中允许不同，#196）');
   } else {
     assert.equal(result.value, undefined, '失败信封不带 value');
     assert.notMatch(String(result.error?.code ?? ''), /^bad-request$/, '接线存在，不得报未知端点：' + JSON.stringify(result.error));
