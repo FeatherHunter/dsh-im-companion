@@ -78,7 +78,7 @@
   },
   "dependencies": {
     "dsh-log": "0.3.4",
-    "dsh-plugin-update": "0.18.33",
+    "dsh-plugin-update": "0.18.37",
     "yaml": "2.9.1"
   }
 }
