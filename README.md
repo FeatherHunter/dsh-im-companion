@@ -210,7 +210,7 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 **[dsh-prompt](https://github.com/FeatherHunter/dsh-prompt)** —— 经常反复重复的模板化提示词，存成自定义模板，选中后直接注入，不再需要耗费精力。
 
-**[ilife](https://github.com/FeatherHunter/ilife)** —— 爱生活：居家生活套件，一个仓库七个插件，记账、卡路里、大厨、管家一次装好
+**[ilife](https://github.com/FeatherHunter/ilife)** —— 爱生活：居家生活套件，记账、运动、饮食、体重、食谱、物品管理、作息规划、备忘录等。⚠️建设中⚠️待正式发布
 
 </div>
 

@@ -210,7 +210,7 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 **[dsh-prompt](https://github.com/FeatherHunter/dsh-prompt)** —— save those prompt templates you keep retyping as custom templates and inject them on selection - no more wasted effort.
 
-**[ilife](https://github.com/FeatherHunter/ilife)** —— love life: a home-life suite, seven plugins in one repo - bookkeeping, calories, chef, housekeeping all at once
+**[ilife](https://github.com/FeatherHunter/ilife)** —— love life: a home-life suite - bookkeeping, exercise, diet, weight, recipes, item management, schedule planning, notes and more. ⚠️Under construction⚠️ pending official release
 
 </div>
 
