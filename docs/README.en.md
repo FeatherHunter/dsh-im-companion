@@ -214,8 +214,6 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 Any question, suggestion, idea, feedback, or rant - [file an ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues)! 🌹
 
-MIT © FeatherHunter
-
 </div>
 
 <h2 align="center"><sub>THANKS</sub><br>Thanks</h2>
