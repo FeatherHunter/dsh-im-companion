@@ -225,6 +225,7 @@ MIT © FeatherHunter
 Thanks to everyone who files Issues and PRs and joins discussions.
 
 - [Shimmernight](https://github.com/Shimmernight) 🌹🌹🌹🌹 ([#78](https://github.com/FeatherHunter/dsh-im-companion/issues/78))
+- [cxin21](https://github.com/cxin21) 🌹🌹 ([#154](https://github.com/FeatherHunter/dsh-im-companion/issues/154), [#155](https://github.com/FeatherHunter/dsh-im-companion/issues/155))
 - [vk-liu-cn-1](https://github.com/vk-liu-cn-1) 🌹 ([#97](https://github.com/FeatherHunter/dsh-im-companion/issues/97))
 
 Also thanks to upstream [dsh-im](https://github.com/xmanrui/dsh-im): no core, no companion plugin.
@@ -245,11 +246,9 @@ Bugs and ideas go straight to ISSUEs — faster and traceable.
 
 </div>
 
-<h2 align="center"><sub>STAR HISTORY</sub><br>Star curve</h2>
+---
 
 <div align="center">
-
-**👇 Every ⭐ lands on this curve.**
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=20261021" />
