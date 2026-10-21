@@ -202,13 +202,17 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 <div align="center">
 
-**[dsh-opencode-palette](https://github.com/FeatherHunter/dsh-opencode-palette)** —— 34 classic opencode themes, one-click switch
+<div align="left">
 
-**[dsh-mattpocock-skills-deck](https://github.com/FeatherHunter/dsh-mattpocock-skills-deck)** —— Matt Pocock skills deck: 25 engineering and productivity skills, ready to use
+**[dsh-opencode-palette](https://github.com/FeatherHunter/dsh-opencode-palette)** —— 38 classic opencode themes + 20+ custom themes, one-click DSH restyle
 
-**[dsh-chinese-skill-patch](https://github.com/FeatherHunter/dsh-chinese-skill-patch)** —— Chinese skill names that just work, no English rename needed
+**[dsh-mattpocock-skills-deck](https://github.com/FeatherHunter/dsh-mattpocock-skills-deck)** —— the full mattpocock/skills deck (~300k stars) preinstalled: 27 skills, ready to use.
 
-**[dsh-prompt](https://github.com/FeatherHunter/dsh-prompt)** —— Prompt toolbox: 24 deep templates at hand
+**[dsh-prompt](https://github.com/FeatherHunter/dsh-prompt)** —— save those prompt templates you keep retyping as custom templates and inject them on selection - no more wasted effort.
+
+**[ilife](https://github.com/FeatherHunter/ilife)** —— love life: a home-life suite, seven plugins in one repo - bookkeeping, calories, chef, housekeeping all at once
+
+</div>
 
 ---
 
