@@ -244,3 +244,19 @@ Bugs and ideas go straight to ISSUEs — faster and traceable.
 <img src="../assets/DSH插件交流群-飞书二维码.png" width="330" alt="DSH plugin chat group Feishu QR code">
 
 </div>
+
+<h2 align="center"><sub>STAR HISTORY</sub><br>Star curve</h2>
+
+<div align="center">
+
+**👇 Every ⭐ lands on this curve.**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=20261021" />
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261021" />
+  <img alt="Star History Chart" width="720" src="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261021" />
+</picture>
+
+<sub>Left axis reads Total Stars, right axis reads Daily New. Refreshed every day.</sub>
+
+</div>

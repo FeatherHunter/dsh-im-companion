@@ -244,3 +244,19 @@ Bug 与需求请直接提 ISSUE，更高效可追溯。
 <img src="assets/DSH插件交流群-飞书二维码.png" width="330" alt="DSH插件交流群飞书二维码">
 
 </div>
+
+<h2 align="center"><sub>STAR HISTORY</sub><br>星标曲线</h2>
+
+<div align="center">
+
+**👇 每一次 ⭐，都落在这条曲线上。**
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=20261021" />
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261021" />
+  <img alt="Star History Chart" width="720" src="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261021" />
+</picture>
+
+<sub>左轴读总星标（Total Stars），右轴读每日新增（Daily New），每天自动更新。</sub>
+
+</div>

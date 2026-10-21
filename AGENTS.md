@@ -52,6 +52,13 @@ Single-context layout — root `CONTEXT.md` + `docs/adr/`. See `docs/agents/doma
   - **单写者纪律**：同一日志目录同一时刻只许一个活跃写者 ⇒ 让位分支（路由已被别的实例注册）**不建库**，只走宿主 logger；热重载让位窗口靠 dsh-log 的写盘租约自愈。
   - **门禁**：`tools/verify/log-pipeline.ts`——清单合法、调用点与清单**双向不漂移**、语义映射字段、resident 放行判定、临时 dshHome **真落盘**再读回、接缝断言。改埋点必须让它全绿。
 
+* **Star History 星标曲线（2026-10-21 接入，移植自 `dsh-mattpocock-skills-deck`）**：README 末尾（CONNECT 之后）内嵌一张手绘风双 Y 轴图——左轴读总星标（Total Stars）、右轴读每日新增（Daily New），深浅两版按系统主题自动切换。
+  - **链路**：`.github/workflows/star-history.yml`（每天 02:17 UTC）→ `gh api` 拉 stargazers 的 `starred_at` → `tools/star-history/update.ts` 归一化写 `docs/star-history.json` → `tools/star-history/generate-svg.ts` 重画 `docs/star-history-dark.svg` / `docs/star-history-light.svg` → bump README 的 `?v=YYYYMMDD` 缓存戳 → 有变化才中文提交并 push。
+  - **本地重画**：`npm run star-history`（= `node tools/star-history/generate-svg.ts`）；重新取数：`gh api -H "Accept: application/vnd.github.star+json" repos/FeatherHunter/dsh-im-companion/stargazers --paginate --jq ".[].starred_at" > stars.txt` 再 `node tools/star-history/update.ts stars.txt`。脚本路径**相对仓库根**推出，与当前工作目录无关。
+  - **确定性是硬要求**：`buildSvg` 纯函数、手绘抖动走 fnv1a+mulberry32 固定种子 ⇒ 同数据必同字节，否则每日任务会天天刷噪声提交。改生成器后必须重跑并确认 `git diff` 只动预期内容。
+  - **两个别踩的坑**：① 默认字色只能写在根 `<svg fill>` 上，写进 `<style>` 会以 CSS 优先级盖掉所有元素自己的 `fill`（轴名/刻度的系列色会全哑掉）；② 每日新增曲线必须用单调三次插值（Fritsch–Carlson），用 Catmull-Rom 会在两个低点之间冲出数据里没有的波峰。
+  - **门禁**：`tools/verify/features/star-history.ts`（已接进 `npm run verify`）——聚合口径、双 Y 轴契约、峰值标注来自数据、浅色主题色板不倒退、`<style>` 不许写 `fill:`、**落盘的两张 SVG 必须与 JSON 逐字节一致**（数据改了没重画 ⇒ 红）、两份 README 都得内嵌这张图。
+
 ## Labels required (GitHub)
 
 本仓库为 GitHub Issues 模式，技能所需标签共 10 个（triage 5 + wayfinder 5），已按技能规范预定命名，不额外强制任何标签：

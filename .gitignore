@@ -12,3 +12,7 @@ lib/
 # 机器本地运行态（如 .local/state/gh/device-id）：随机器不同、可再生，不进仓库；
 # .local/ 下的取证脚本与 issue 草稿仍照常入库（本仓惯例：开发产物要留痕）。
 .local/state/
+# tools/verify 里那几个验证器用 `tsc --ignoreConfig` 转译暂存副本时，会把被牵连进来的
+# 真实源文件在 src/ 旁边再落一份 .js 副本（src/log-events.js、src/client/log.js …）。
+# 它们是可再生的转译产物，本仓 src/ 只有 .ts（无任何入库的 .js），一律不入库。
+src/**/*.js
