@@ -675,3 +675,19 @@ test('#94 单组树：条带仍锚在 role="tree" 列表里，且藏的是组而
   assert.equal(root.getAttribute('data-left-filter'), null, '#94：隐藏标记也不许落在应用根上');
   dispose();
 });
+
+/* ---- #159：条带宽度跟随容器 + 三分段悬停/按下反馈（owner 拍板 Q1=A / Q2=A） ---- */
+
+test('styles：#159 条带不吃 360 封顶（宽度跟随容器），三段 hover/active 只做左栏命名空间后代覆盖', () => {
+  const stripLine = styles.CSS.split('\n').find((l: string) => l.trim().startsWith('.left-filter-strip{'));
+  assert.ok(stripLine, '条带基础规则存在');
+  const rule = stripLine.slice(stripLine.indexOf('{') + 1, stripLine.lastIndexOf('}'));
+  assert.match(rule, /width:100%/, '条带宽度跟随容器');
+  assert.doesNotMatch(rule, /max-width\s*:/, '#159：条带不得有 max-width 封顶（宽度由容器决定，防又改成 380/400 之类字面量）');
+  assert.doesNotMatch(rule, /margin\s*:[^;]*\bauto\b/, '#159：不得居中留侧缝');
+  /* 三段悬停/按下：沿用设置面板同一套原语表现，但必须挂在 .left-filter-strip 后代上（启动期随 FEATURES 安装）。 */
+  assert.match(styles.CSS, /\.left-filter-strip \.af-seg-item:not\(\.active\):hover\s*\{[^}]*color:var\(--af-primary\)/, '非当前段 hover 提升文字对比');
+  assert.match(styles.CSS, /\.left-filter-strip \.af-seg-item:not\(\.active\):hover\s*\{[^}]*background:/, '#159 用户验收：悬停要有可见底药丸（深色窄栏纯文字提亮太轻，肉眼看不到）');
+  assert.match(styles.CSS, /\.left-filter-strip \.af-seg-item:active\s*\{[^}]*transform:scale\(\.96\)/, '按下缩放反馈');
+  /* 行首 .af-* 定义由本文件既有两处守卫覆盖（styles 命名空间测试），此处不重复。 */
+});
