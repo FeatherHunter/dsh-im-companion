@@ -26,6 +26,9 @@ try {
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
     ...ENTRIES,
     '--ignoreConfig',
+    /* rootDir 钉死 src：#154 起 home-model 链牵到 src/workspace-default.ts（共享层），
+     * 不钉时 tsc 推断的公共根上移到 src/，产物层级随 import 图漂移（同 T9 log-events 的老坑）。 */
+    '--rootDir', join(REPO, 'src'),
     '--outDir', tmp, '--module', 'commonjs', '--target', 'es2023',
     '--moduleResolution', 'bundler', '--skipLibCheck',
     '--declaration', 'false', '--sourceMap', 'false',
@@ -38,9 +41,10 @@ try {
   symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction');
 } catch { /* 已存在跳过 */ }
 const req = createRequire(join(tmp, 'run.cjs'));
-const model: any = req('./home-model.js');
-const editMod: any = req('./home-edit.js');
-const moveMod: any = req('./home-move.js');
+/* rootDir 钉死 src ⇒ 产物在 client/data/ 下（见上方注释）。 */
+const model: any = req('./client/data/home-model.js');
+const editMod: any = req('./client/data/home-edit.js');
+const moveMod: any = req('./client/data/home-move.js');
 
 // —— 宿主 home-store 单独转译（真文件 IO，盘换临时目录） ——
 const tmpHost = mkdtempSync(join(tmpdir(), 'home-steel-host-'));
@@ -2088,7 +2092,7 @@ test('T10b #127 孤儿家：行内两动作只给孤儿家，重绑走 T8 收养
   handle.dispose();
 });
 
-test('T10b #127 重绑/删家编排：失败一律 throw 带原文、远端先跟随、写后先读表再刷新（验收②③）', async () => {
+test('T10b #127 重绑/删家编排：失败一律 throw 带原文、重绑远端先跟随、写后先读表再刷新；#156 删家不写远端（验收②③）', async () => {
   const { createMoveOps } = boxReq('./client/components/home-move-ops.js');
   const home = H({ id: 'h9', workspaceId: 'ws-gone', path: 'D:\\agents\\gone' });
   const as = [A({ id: 'a1', homeId: 'h9', channel: 'feishu', botId: 'b1', status: 'bound' })];
@@ -2118,23 +2122,25 @@ test('T10b #127 重绑/删家编排：失败一律 throw 带原文、远端先�
   const badRemote = mkOps((ep) => (ep === 'bot.workspace.set' ? { ok: false, error: { message: '渠道 502' } } : { ok: true, value: {} }));
   await assert.rejects(() => badRemote.rebindHome('h9', 'ws-9', 'D:\\agents\\newhome'), /远端工作区没切过去/, 'fail-closed：远端清不动就不动表');
   assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set'], '一行没写（home.rebind 从未发出）');
-  /* ④ 删家：先清远端（空目录）→ home.remove 一次 → 读表 → 刷新 */
+  /* ④ 删家（#156 Q1(a) 拍板）：**不写远端工作区**——上游 dsh-im 没有「清空/释放工作区」的语义
+   *   （落盘强制非空绝对路径），先前那一步必被拒收 ⇒ 删家必现失败。现在只打墓碑：
+   *   home.remove 一次 → 读表 → 刷新；机器人的远端指针原样留着（连接不断，指针由后续绑定/重绑覆盖自愈）。 */
   calls.length = 0;
   const delOps = mkOps(() => ({ ok: true, value: {} }));
   await delOps.removeHome('h9');
-  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set', 'home.remove', 'reloadHomes', 'refresh'], '删家顺序：清远端 → 打墓碑 → 读表 → 刷新');
-  assert.equal(calls[0].p.workspace, '', '删家前把机器人工作区清空（不留看不见的脏指向）');
-  assert.deepEqual(calls[1].p, { id: 'h9' }, 'home.remove 只带 id（墓碑＋级联由宿主做）');
-  /* ④b 删家落表失败：原文抛出（不静默）＋回滚远端＋不读表不刷新 */
+  assert.deepEqual(calls.map((c) => c.ep), ['home.remove', 'reloadHomes', 'refresh'], '删家顺序：打墓碑 → 读表 → 刷新（不碰远端）');
+  assert.equal(calls.filter((c) => c.ep === 'bot.workspace.set').length, 0, '删家不写远端工作区（远端指针原样保留）');
+  assert.deepEqual(calls[0].p, { id: 'h9' }, 'home.remove 只带 id（墓碑＋级联由宿主做）');
+  /* ④b 删家落表失败：原文抛出（不静默）＋不读表不刷新（没有远端可回滚） */
   calls.length = 0;
   const delFail = mkOps((ep) => (ep === 'home.remove' ? { ok: false, error: { message: '写盘失败' } } : { ok: true, value: {} }));
   await assert.rejects(() => delFail.removeHome('h9'), /写盘失败/, '删家失败也抛原文（界面不许装作删掉了）');
-  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set', 'home.remove', 'bot.workspace.set'], '失败 ⇒ 回滚远端，且不读表不刷新');
-  /* ④c 删家前远端清不动：fail-closed——墓碑一行不打 */
+  assert.deepEqual(calls.map((c) => c.ep), ['home.remove'], '失败 ⇒ 不读表不刷新');
+  /* ④c 删家没有远端失败点：远端再坏也照发 home.remove（解绑链不该有可失败点） */
   calls.length = 0;
   const delBadRemote = mkOps((ep) => (ep === 'bot.workspace.set' ? { ok: false, error: { message: '渠道 502' } } : { ok: true, value: {} }));
-  await assert.rejects(() => delBadRemote.removeHome('h9'), /远端工作区没清掉/, '清不动远端就不打墓碑');
-  assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set'], 'home.remove 从未发出（一行没写）');
+  await delBadRemote.removeHome('h9');
+  assert.deepEqual(calls.map((c) => c.ep), ['home.remove', 'reloadHomes', 'refresh'], '不写远端 ⇒ 远端失败挡不住删家');
   /* ⑤ 无 rpc / 家已墓碑：如实拒绝，不发任何请求 */
   calls.length = 0;
   const noRpc: any = createMoveOps({
@@ -2144,6 +2150,33 @@ test('T10b #127 重绑/删家编排：失败一律 throw 带原文、远端先�
   await assert.rejects(() => noRpc.rebindHome('h9', 'ws-9', 'D:\\x'), /连接服务不可用/);
   await assert.rejects(() => noRpc.removeHome('h9'), /连接服务不可用/, '删家同样如实拒绝（两条路一个口径）');
   assert.deepEqual(calls, [], '没有连接就一个请求都不发');
+});
+
+/* #156 Q1(a)：移除渠道 / 删除助理**不写远端工作区**——上游 dsh-im 没有「清空/释放工作区」的语义
+ * （落盘强制非空绝对路径、对外状态恒非空），先前那一步必被拒收 ⇒ 这两条链必现失败（点「确认移除」没反应）。
+ * 契约钉死：这两条链**一个远端请求都不许发**（本地解绑/删除即完成；机器人指针原样保留，连接不断）。 */
+test('#156 移除渠道/删除助理：不写远端工作区（解绑链没有可失败点）', async () => {
+  const { createMoveOps } = boxReq('./client/components/home-move-ops.js');
+  const home = H({ id: 'h9', workspaceId: 'ws-9', path: 'D:\\agents\\h9' });
+  const asst = A({ id: 'a1', homeId: 'h9', channel: 'feishu', botId: 'b1', status: 'bound' });
+  const calls: Array<{ ep: string; p: any }> = [];
+  const mkOps = (): any => createMoveOps({
+    getRpc: () => async (_path: string, ep: string, p: any) => { calls.push({ ep, p }); return { ok: true, value: {} } },
+    getHome: () => home, getAssistant: () => asst, getAssistants: () => [asst],
+    reloadHomes: async () => { calls.push({ ep: 'reloadHomes', p: null }) },
+    refresh: async () => { calls.push({ ep: 'refresh', p: null }) },
+  });
+  /* ① 移除渠道：本地解绑即完成，不碰远端 */
+  calls.length = 0;
+  await mkOps().unbindAssistant('a1');
+  assert.deepEqual(calls.map((c) => c.ep), ['assistant.unbind', 'reloadHomes', 'refresh'], '移除渠道：只解本地归属');
+  assert.equal(calls.filter((c) => c.ep === 'bot.workspace.set').length, 0, '不写远端工作区（远端指针原样保留）');
+  assert.deepEqual(calls[0].p, { id: 'a1', orphan: false }, '解绑走 assistant.unbind（显式移除，非孤儿回落）');
+  /* ② 删除助理：只删本地行，不碰远端 */
+  calls.length = 0;
+  await mkOps().removeAssistant('a1');
+  assert.deepEqual(calls.map((c) => c.ep), ['assistant.remove', 'reloadHomes'], '删除助理：只删本地行');
+  assert.equal(calls.filter((c) => c.ep === 'bot.workspace.set').length, 0, '不写远端工作区（机器人连接保留）');
 });
 
 test('T14 #136 孤儿置顶：工作区不存在的家排在 L1 最顶部（红卡＋警示行跟着一起上去）', () => {
