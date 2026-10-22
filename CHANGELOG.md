@@ -5,6 +5,17 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
+## [Unreleased]
+
+主题：**dsh-im 兼容声明收口到实际验证过的 5.1.0**（#175 · spec #168 兼容小节）——旧范围恒真、等于没写；4.x 回退代码保留但不再声明。
+
+### Changed
+- dsh-im 兼容声明由 `verified: 4.39.0` / `range: >=4.17.1 || <=4.17.0` 收口为 **`verified: 5.1.0`** / **`range: >=5.1.0 <6`**（#175）。单点真相仍是 `package.json.dshImCompat`：`tsdown.config.ts` 构建时注入 `__DSH_IM_COMPAT__`，面板胶囊与悬停文案自动跟随；悬停口径同步改说真实基线（中英），并提示 6.0 前须重跑兼容取证。
+- 4.x 回退代码（≤4.17.0 旧路由直调、`/api` 传输方向记忆）保留在运行期，但不再对外声明兼容 4.x——未验证过的范围不再宣称；运行期仍不做版本分支（诚实性落在声明与门禁上）。
+- 夹具同步：`tools/verify/features/first-view.ts`（兼容胶囊/悬停）与 `tools/verify/features/home-parity.ts`（页头胶囊按 `package.json` 派生）不再钉旧版本号；`tools/verify/render-client.ts` 本就按真相源推导，无需改。
+- 新增版本门禁 `tools/verify/features/compat-claim.ts`（已接进 `npm run verify`）：声明字段逐字断言、`tsdown` 注入派生、`check` 先 build 后 verify、产物含声明值、范围语义（5.1.0 / 5.9.9 通过；4.17.1 / 4.39.0 / 5.0.9 / 6.0.0 拒绝）、中英悬停文案基线。
+- 升级回归钉子（#168）：dsh-im **6.0 之前必须重跑 T1/T2 两份取证**（系统提示词注入面 + 会话归属落盘映射）再决定是否扩大范围；绑定表形状、`section` 注册契约（order 非有限数报错 / 空文本被过滤 / `interpolate` 行为）、与上游 `dsh-im` order 115/125 的共存、`bots/` 与 `accounts/` 双路径由 T8-2（#170）的 persona 注入 verify 钉住——本票只引用，不在此实现。
+
 ## [0.2.19] - 2026-10-20
 
 主题：**更新包跟随到官方源最新 0.18.37**（纯依赖跟随发版，本仓产品代码零改）。
