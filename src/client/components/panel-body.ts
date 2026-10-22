@@ -6,7 +6,7 @@
  * 旧 buildModel 列表退役（data/model.ts 保留：抽屉/徽标/会话头仍读它，verify 照旧）。
  * T6b #114／T6c #115：改名配图/占位绑定/删助理、换工作区/移除渠道已接线（删助理走 clean 版，防种子复活）。 */
 import { h, clear } from '../dom'
-import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
+import { emitDrawer } from './home-events'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, topEl, type Level } from './home-frame'
 import { newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'; import { newAsstPop } from './home-asst-create' /* T8-3 #171：本文件 300 行顶格，新文件的 import 并入本行以保持行数中性。 */
@@ -39,16 +39,6 @@ export interface PanelBodyHandle {
   render(): void
   openCreate(): void
   dispose(): void
-}
-
-function emitDrawer(key: string): void {
-  try {
-    if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
-    const detail: OpenDrawerDetail = { key }
-    window.dispatchEvent(new window.CustomEvent(OPEN_DRAWER_EVENT, { detail }))
-  } catch (e) {
-    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel.body', action: 'open-drawer', ok: false, message: '派发失败，抽屉打不开：' + String((e as Error)?.message ?? e) })
-  }
 }
 
 export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
