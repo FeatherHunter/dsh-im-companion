@@ -100,7 +100,7 @@ const ZH: FirstViewCopy = {
   versionTitle: (v) => 'dsh-im-companion ' + v + '（点跳 GitHub 仓库首页）',
   compatChip: (v) => 'dsh-im ' + v,
   compatTitle: (v, range) => '本插件已在 dsh-im ' + v + ' 上验收；兼容范围 ' + range
-    + '（4.17.1+ 走 /api 新载体，旧版自动回退旧路由）。点开看兼容性说明。',
+    + '（4.x 回退代码保留但不声明；6.0 前须重跑兼容取证）。点开看兼容性说明。',
   compatHref: 'https://github.com/FeatherHunter/dsh-im-companion#compat',
   promoTitle: '作者其他插件',
   promoDeck: 'dsh-mattpocock-skills-deck',
@@ -145,7 +145,7 @@ const EN: FirstViewCopy = {
   versionTitle: (v) => 'dsh-im-companion ' + v + ' (open repo on GitHub)',
   compatChip: (v) => 'dsh-im ' + v,
   compatTitle: (v, range) => 'Verified against dsh-im ' + v + '; compatible with ' + range
-    + ' (4.17.1+ uses the /api carrier, older falls back automatically). Open the compatibility notes.',
+    + ' (4.x fallback is retained but undeclared; re-run the compatibility evidence before 6.0). Open the compatibility notes.',
   compatHref: 'https://github.com/FeatherHunter/dsh-im-companion/blob/master/docs/README.en.md#compat',
   promoTitle: 'Related projects',
   promoDeck: 'dsh-mattpocock-skills-deck',

@@ -295,7 +295,9 @@ if (verbox) {
   if (self) self.textContent = 'v0.2.8'
   const im = new El('a', doc)
   im.classList.add('af-cap', 'af-cap--im')
-  im.textContent = 'dsh-im 4.39.0'
+  /* 兼容胶囊按真相源派生（#175）：不在夹具里抄一份版本号。 */
+  const compatPkg = JSON.parse(readFileSync(join(REPO, 'package.json'), 'utf8'))
+  im.textContent = 'dsh-im ' + (compatPkg?.dshImCompat?.verified ?? '')
   verbox.appendChild(im)
 }
 const hdEl = all(container).find((e) => e.classList.contains('af-hd'))
