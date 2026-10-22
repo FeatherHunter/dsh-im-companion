@@ -256,7 +256,7 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
   });
   const all = texts(root).join('|');
-  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '性格', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
+  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
   assert.ok(findByClass(root, 'detail-drawer-summary').length >= 1);
@@ -447,33 +447,6 @@ test('dir-picker：原生优先（成功/取消类抛错静默，真故障回退
   assert.ok(cancel4);
   cancel4.dispatchEvent({ type: 'click' });
   assert.equal(await p4.promise, null);
-});
-
-test('data：性格预填一致回填、分歧置空', () => {
-  const same = [{ ctx: { ...CTX0, guidance: 'warm' } }, { ctx: { ...CTX0, guidance: ' warm ' } }];
-  assert.equal(data.personalityPrefill(same), 'warm');
-  const diff = [{ ctx: { ...CTX0, guidance: 'a' } }, { ctx: { ...CTX0, guidance: 'b' } }];
-  assert.equal(data.personalityPrefill(diff), '');
-  assert.equal(data.personalityPrefill([]), '');
-});
-
-test('actions：性格应用覆盖各渠道引导语且保留字段开关', async () => {
-  const sent: any[] = [];
-  const deps = {
-    rpc: async (_ch: string, _ep: string, p: any) => { sent.push(p); return { ok: true, value: {} }; },
-    refresh: async () => undefined,
-    reloadMeta: async () => undefined,
-    paint: () => undefined,
-    notify: (_m: string) => undefined,
-  };
-  const m = { bots: [{ channel: 'feishu', botId: 'b1', ctx: { ...CTX0 } }] };
-  await actions.applyPersonality(m, deps, '幽默一点');
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].config.guidance, '幽默一点');
-  assert.deepEqual(sent[0].config.fields, ['senderId']);
-  assert.equal(sent[0].config.directEnabled, true);
-  await actions.applyPersonality(m, deps, '   ');
-  assert.equal(sent.length, 1);
 });
 
 test('data：路由取数经自有通道，失败静默空数组', async () => {

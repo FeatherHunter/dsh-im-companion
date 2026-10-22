@@ -8,7 +8,7 @@ import { chooseBot, runTestSend } from '../../client/data/header-overlay'
 import type { AgentPresetCatalog } from '../../client/data/fleet-api'
 import type { FeatureCtx } from '../protocol'
 import { OPEN_ASSIST_EDIT_EVENT, channelLabel, type AssistBrief, type AssistEditDetail, type OpenDrawerDetail } from '../../client/data/config'
-import { applyPersonality, rpcOf, writeBots, type WriteDeps } from './actions'
+import { rpcOf, writeBots, type WriteDeps } from './actions'
 import {
   OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, fetchRoutes, loadingModel,
   modelSig, presetPayloadFor, type DrawerModel, type RouteEntry,
@@ -137,7 +137,7 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
     const st = bd ? bd.scrollTop : 0
     const sl = bd ? bd.scrollLeft : 0
     try {
-      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, draftPers))
+      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs))
     } catch (e) {
       if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'paint-fail', ok: false, message: '保留旧帧：' + String((e as Error)?.message ?? e) })
     }
@@ -153,7 +153,6 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
     }
   }
   let draftWs: string | null = null
-  let draftPers: string | null = null
   const deps = (): WriteDeps => ({ rpc: fctx.rpc, refresh: () => fctx.refresh(), reloadMeta, paint, notify: toast })
   const cbs = (model: DrawerModel): DrawerCallbacks => {
     const flipOne = (channel: string, botId: string, which: 'group' | 'direct'): void => {
@@ -223,24 +222,6 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
     },
     onDraftWorkspace: (v) => {
       draftWs = v
-    },
-    onApplyPersonality: (text) => {
-      if (model.bots.some((b) => b.ctx === undefined)) {
-        toast('有渠道真值尚未读到，稍后再应用（防覆盖）')
-        return
-      }
-      if (!text.trim()) {
-        toast('先写点性格描述再应用')
-        return
-      }
-      void (async () => {
-        await applyPersonality(model, deps(), text)
-        draftPers = null
-        paint()
-      })()
-    },
-    onDraftPersonality: (v) => {
-      draftPers = v
     },
     onRemoveBot: (channel, botId) => {
       if (!fctx.rpc) {
