@@ -5,7 +5,11 @@
  *
  * 对外只承诺 `AsstFieldsUi` 这一层：调用方拿 `nodes` 摊进弹层、拿 `values()` 当 RPC 入参、
  * 拿 `reason()` 当主按钮的 disabled 说明。`.hu-fldbar` / `.hu-count` / `.hu-flderr` 只是样式钩子，
- * 取件一律按 aria-label 与可见文案（外部行为），别在验证里认内部结构。 */
+ * 取件一律按 aria-label 与可见文案（外部行为），别在验证里认内部结构。
+ *
+ * 计数口径是**Unicode 码点**（与 `src/assistant-fields.ts` 同一把尺）：因此这里**不设 maxlength**——
+ * 浏览器原生 maxlength 按 UTF-16 码元截停（4000 个 emoji 就吃满 8000），会静默挡住合法输入、
+ * 还让码点计数看起来「没超限却打不进去」；超限一律由计数 + 红字 + 主按钮禁用兜底（#168 评审 P2-3）。 */
 import {
   ASSISTANT_FIELDS, ASSISTANT_FIELD_SPECS, checkFieldValue, countCodePoints, normalizeFieldText,
   validateAssistantFields, type AssistantField, type AssistantFieldsValue,
@@ -53,7 +57,6 @@ export function asstFieldsUi(initial?: AssistantFieldsValue, onChange?: () => vo
     const el = h(multiline ? 'textarea' : 'input', {
       type: multiline ? undefined : 'text',
       rows: multiline ? 5 : undefined,
-      maxlength: spec.max,
       placeholder: HINTS[f] + '（最多 ' + spec.max + ' 字）',
       'aria-label': '助理' + spec.label,
       value: initial?.[f] ?? '',

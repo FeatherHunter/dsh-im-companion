@@ -132,5 +132,8 @@ export function profileAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: str
     title: h('div', { className: 'hu-ptitle' }, huIcon('person', 15), '编辑助理资料'),
     body: [...ui.nodes, errRow],
     foot,
+    /* 保存中不许中途关闭（遮罩/ Esc 也会被这条挡住）：否则失败提示渲染进已脱离的弹层，
+     * 用户会误以为已保存（规格 #168 item 45；#172 评审 P2-2）。成功/noop 走程序化 closeHomePop，不受影响。 */
+    onBeforeClose: () => !busy,
   })
 }

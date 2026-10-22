@@ -311,6 +311,13 @@ test('#172 保存中：保存与取消禁用、按钮显示「保存中…」', 
   assert.equal(off(save), true, '保存中保存按钮禁用');
   assert.equal(off(popBtn(pop, '取消')), true, '保存中取消按钮禁用');
   assert.equal(popMod.homePopOpen(), true, '保存中弹层还在');
+  /* 保存中「不能中途关闭」（规格 #168 item 45 / 评审 P2-2）：遮罩与 Esc 都必须被否决。 */
+  const scrim = cls(domDoc.body, 'hu-scrim')[0];
+  assert.ok(scrim, '弹层有遮罩');
+  clickEl(scrim);
+  assert.equal(popMod.homePopOpen(), true, '保存中点遮罩不得关窗');
+  domDoc.dispatchEvent({ type: 'keydown', key: 'Escape' });
+  assert.equal(popMod.homePopOpen(), true, '保存中按 Esc 不得关窗');
   await sleep(180); /* 让 120ms 的兜底定时器落定，测试不留长计时器 */
   popMod.closeHomePop(true);
   anchorEl.remove();

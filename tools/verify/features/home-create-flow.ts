@@ -778,8 +778,10 @@ test('⑪创建弹窗内嵌两栏：简介单行/人物设定多行带计数，�
     assert.ok(desc && persona, '名字之后内嵌两栏（aria-label「助理简介」「助理人物设定」可定位）\n弹层文本：' + popText().slice(0, 400))
     assert.equal(desc.tagName, 'INPUT', '简介＝单行 input（规格写「简介单行」，不是 textarea）')
     assert.equal(persona.tagName, 'TEXTAREA', '人物设定＝多行 textarea')
-    assert.equal(attr(desc, 'maxlength'), '200', '简介 maxlength=200')
-    assert.equal(attr(persona, 'maxlength'), '8000', '人物设定 maxlength=8000')
+    /* 计数口径是 Unicode 码点：浏览器 maxlength 按 UTF-16 码元截停（4000 个 emoji 就吃满 8000），
+     * 会静默挡住合法输入 ⇒ 不用 maxlength，超限交给计数 + 红字 + 主按钮禁用（#171 评审 P2-3）。 */
+    assert.equal(attr(desc, 'maxlength'), '', '简介不用 maxlength（码点口径）')
+    assert.equal(attr(persona, 'maxlength'), '', '人物设定不用 maxlength（码点口径）')
     assert.equal(attr(persona, 'rows'), '5', '人物设定 rows=5')
     assert.equal(attr(desc, 'placeholder'), '一句话介绍这个助理（最多 200 字）', '简介 placeholder 照规格')
     assert.equal(attr(persona, 'placeholder'), '这个助理是谁、怎么说话（最多 8000 字）', '人物设定 placeholder 照规格')
@@ -819,6 +821,14 @@ test('⑪创建弹窗内嵌两栏：简介单行/人物设定多行带计数，�
     assert.equal(fldErrsOf()[1], '人物设定（persona）最多 8000 字，当前 8001 字')
     typeInto(persona, '人'.repeat(8000))
     assert.ok(!okOf().hasAttribute('disabled'), '8000 字（边界）⇒ 主按钮恢复可用')
+
+    /* 码点口径反证（评审 P2-3）：4001 个 emoji＝4001 码点、8002 码元，仍在 8000 上限内 ⇒ 合法。 */
+    typeInto(persona, '😀'.repeat(4001))
+    assert.ok(!okOf().hasAttribute('disabled'), '4001 个 emoji（4001 码点）在 8000 上限内 ⇒ 主按钮可用')
+    assert.equal(countsOf()[1], '4001/8000', '计数按码点，不按 UTF-16 长度')
+    typeInto(persona, '人'.repeat(7999) + '😀')
+    assert.ok(!okOf().hasAttribute('disabled'), '7999 字 + 1 emoji＝8000 码点（8001 码元）⇒ 合法')
+    assert.equal(countsOf()[1], '8000/8000')
 
     /* 填真值（带 CRLF 与两端空白，顺带钉归一）再创建：两栏随创建一次性进 RPC 与账本。 */
     typeInto(desc, '  我的简介\r\n第二行  ')
