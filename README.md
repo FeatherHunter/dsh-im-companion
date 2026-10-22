@@ -226,9 +226,13 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 感谢每一位提交 Issue、PR 与参与讨论的朋友。
 
-- [Shimmernight](https://github.com/Shimmernight) 🌹🌹🌹🌹（[#78](https://github.com/FeatherHunter/dsh-im-companion/issues/78)）
-- [cxin21](https://github.com/cxin21) 🌹🌹（[#154](https://github.com/FeatherHunter/dsh-im-companion/issues/154)、[#155](https://github.com/FeatherHunter/dsh-im-companion/issues/155)）
-- [vk-liu-cn-1](https://github.com/vk-liu-cn-1) 🌹（[#97](https://github.com/FeatherHunter/dsh-im-companion/issues/97)）
+<!-- THANKS-TABLE-ZH-START -->
+| 贡献者 | 致敬 | 贡献 |
+| --- | --- | --- |
+| [@cxin21](https://github.com/cxin21) | 🌹🌹 | [#154](https://github.com/FeatherHunter/dsh-im-companion/issues/154) [#155](https://github.com/FeatherHunter/dsh-im-companion/issues/155) |
+| [@vk-liu-cn-1](https://github.com/vk-liu-cn-1) | 🌹 | [#97](https://github.com/FeatherHunter/dsh-im-companion/issues/97) |
+| [@Shimmernight](https://github.com/Shimmernight) | 🌹 | [#78](https://github.com/FeatherHunter/dsh-im-companion/issues/78) |
+<!-- THANKS-TABLE-ZH-END -->
 
 也感谢上游 [dsh-im](https://github.com/xmanrui/dsh-im)：没有本体，就没有本插件。
 
