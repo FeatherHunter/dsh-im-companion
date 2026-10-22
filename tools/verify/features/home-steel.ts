@@ -1451,7 +1451,7 @@ test('T8 #121 新建家「新建工作区」支路：选目录 → 建区 → �
   /* owner 2026-10-17：未绑定＝红档（文字与胶囊同色），已绑定＝琥珀档「更换机器人」（颜色本身示意「会换掉」）。 */
   assert.match(rowCss, /\.hu-mi\.bad\{[^}]*color:var\(--hu-bad\)/, '未绑定/待接入文字走红档 .hu-mi.bad');
   assert.match(rowCss, /\.hu-ract\.swap\{[^}]*var\(--hu-warn\)/, '行上「更换机器人」＝琥珀档 .hu-ract.swap');
-  assert.match(rowCss, /\.hu-abtn\.swap\{[^}]*var\(--hu-warn\)/, '详情页「更换机器人」同一琥珀档 .hu-abtn.swap');
+  assert.match(rowCss, /\.hu-abtn\.swap\{[^}]*var\(--hu-warn\)/, '详情面板「更换机器人」同一琥珀档 .hu-abtn.swap');
   assert.equal(String(one(pop1, 'hu-dirpath').className).includes('picked'), false, '未选目录时框是虚线态');
   assert.ok(off(popBtn(pop1, '创建')), '未选目录时「创建」禁用');
   clickEl(byAttr(pop1, 'data-act', 'pick-dir')[0]);

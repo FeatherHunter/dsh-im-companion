@@ -4,7 +4,7 @@ import { h } from '../../client/dom'
 import { makeButton } from '../../client/ui/button'
 import { HEALTH_LABELS, channelLabel } from '../../client/data/config'
 import { channelGlyphSvg } from '../../client/icons'
-import { PRESET_FOLLOW, PRESET_MIXED, personalityPrefill, type DrawerChannel, type DrawerModel } from './data'
+import { PRESET_FOLLOW, PRESET_MIXED, type DrawerChannel, type DrawerModel } from './data'
 import { renderProfileSection } from './profile-section'
 
 /** 加载态静默回调：除关闭外全是空操作（数据到之前误点不写坏任何东西）。 */
@@ -16,8 +16,6 @@ export function quietCallbacks(onClose: () => void): DrawerCallbacks {
     onSaveWorkspace: () => undefined,
     onBrowseWorkspace: () => undefined,
     onDraftWorkspace: () => undefined,
-    onApplyPersonality: () => undefined,
-    onDraftPersonality: () => undefined,
     onEditAssistant: () => undefined,
     onRemoveBot: () => undefined,
     onTestSend: () => undefined,
@@ -32,8 +30,6 @@ export interface DrawerCallbacks {
   onSaveWorkspace(path: string): void
   onBrowseWorkspace(): void
   onDraftWorkspace(draft: string): void
-  onApplyPersonality(text: string): void
-  onDraftPersonality(draft: string): void
   onRemoveBot(channel: string, botId: string): void
   onTestSend(channel: string, botId: string): void
   /** #173 助理人设块的「编辑」：抽屉层派发 OPEN_ASSIST_EDIT_EVENT 并关面板。 */
@@ -121,7 +117,7 @@ function ctxSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
     card.appendChild(h('div', { className: 'detail-drawer-note', title: g || '无引导语' }, g || '无引导语'))
     frag.appendChild(card)
   }
-  const note = h('div', { className: 'detail-drawer-meta' }, '打开后 AI 能看到消息哪来的；字段与引导语请去 dsh-im 上游改（或用性格页覆盖）。')
+  const note = h('div', { className: 'detail-drawer-meta' }, '打开后 AI 能看到消息哪来的；字段与引导语请去 dsh-im 上游改。')
   note.setAttribute('style', 'padding:0 4px')
   frag.appendChild(note)
   return frag
@@ -148,36 +144,6 @@ function workspaceSection(model: DrawerModel, draft: string | null, cbs: DrawerC
   row.appendChild(save)
   card.appendChild(row)
   frag.appendChild(card)
-  return frag
-}
-
-/** 性格/语气：一框写全渠道，应用前二次确认（覆盖各渠道现有引导语，字段开关不动）。 */
-function personalitySection(prefill: string, draft: string | null, cbs: DrawerCallbacks): HTMLElement {
-  const frag = h('div', null)
-  frag.appendChild(caption('性格/语气（一框写全渠道）'))
-  const card = h('div', { className: 'detail-drawer-list detail-drawer-nobox' })
-  const area = h('textarea', {
-    rows: 4, value: draft ?? prefill,
-    placeholder: '比如：说话幽默，像朋友一样；群里严肃、私聊放飞等',
-    'aria-label': '性格语气',
-  }) as HTMLTextAreaElement
-  area.addEventListener('change', () => cbs.onDraftPersonality(area.value))
-  const apply = makeButton({
-    kind: 'primary', size: 'sm', label: '应用', title: '覆盖全部渠道引导语（字段与开关不动）',
-    onClick: () => {
-      if (apply.dataset.armed !== '1') {
-        apply.dataset.armed = '1'
-        apply.textContent = '确认覆盖各渠道引导语？'
-        return
-      }
-      cbs.onApplyPersonality(area.value)
-    },
-  })
-  apply.classList.add('detail-drawer-hero')
-  card.appendChild(area)
-  card.appendChild(apply)
-  frag.appendChild(card)
-  frag.appendChild(h('div', { className: 'detail-drawer-meta' }, '应用后覆盖各渠道现有引导语，新会话生效。'))
   return frag
 }
 
@@ -258,8 +224,8 @@ function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement 
 }
 
 /** 纯渲染（dom-shim 可测）：模型 + 回调 → 抽屉体。 */
-export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, draftWs: string | null = null, draftPers: string | null = null): HTMLElement {
-  const closeBtn = makeButton({ kind: 'ghost', size: 'sm', label: '关闭', title: '关闭抽屉', onClick: () => cbs.onClose() })
+export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, draftWs: string | null = null): HTMLElement {
+  const closeBtn = makeButton({ kind: 'ghost', size: 'sm', label: '关闭', title: '关闭详情面板', onClick: () => cbs.onClose() })
   const head = h('div', { className: 'detail-drawer-dhead' },
     h('span', { className: 'detail-drawer-dot ' + model.status }),
     h('span', null, model.name),
@@ -272,11 +238,10 @@ export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, dr
     h('span', null, '渠道 ' + model.channels.length),
     h('span', null, model.statusLabel))
   sum.appendChild(listRow('状态', stateVal))
-  const sumNote = h('div', { className: 'detail-drawer-meta' }, '沟通模式：DSH 用哪种方式回话（如 PTC、标准、创造等），不是角色性格。写入真系统，新会话生效。')
+  const sumNote = h('div', { className: 'detail-drawer-meta' }, '沟通模式：DSH 用哪种方式回话（如 PTC、标准、创造等），与助理人物设定无关。写入真系统，新会话生效。')
   sumNote.setAttribute('style', 'padding:6px 4px 0')
   const body = h('div', { className: 'detail-drawer-dbody' }, sum, sumNote, renderProfileSection(model, cbs),
   ctxSection(model, cbs),
-    personalitySection(personalityPrefill(model.bots), draftPers, cbs),
     workspaceSection(model, draftWs, cbs), routesSection(model), channelsSection(model, cbs))
   return h('div', { className: 'detail-drawer' }, head, body)
 }

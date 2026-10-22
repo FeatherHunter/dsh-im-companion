@@ -99,12 +99,6 @@ export function clipRect(rect: PanelRect, clips: PanelRect[]): PanelRect | null 
   return out
 }
 
-/** 性格框预填：各渠道引导语一致则回填（接着改），不一致/全空则空（防把别家的话塞进框）。 */
-export function personalityPrefill(bots: DrawerBot[]): string {
-  const guides = [...new Set(bots.map((b) => ((b.ctx as UpstreamCtx | null)?.guidance ?? '').trim()))]
-  return guides.length === 1 ? guides[0] : ''
-}
-
 export interface RouteEntry {
   chat: string
   sessionId: string

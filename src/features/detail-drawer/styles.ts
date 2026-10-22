@@ -49,7 +49,6 @@ export const CSS = [
 '.detail-drawer-chlogo svg{width:16px;height:16px;display:block}',
 '.detail-drawer-chbadge{border-radius:50%;background:#0a84ff;color:#fff;font-size:10px;font-weight:700}',
 '.detail-drawer-chctx{border-top:1px solid var(--dsw-alias-separator-primary,#eee);padding:6px 0;display:grid;gap:4px}',
-'.detail-drawer-list textarea,.detail-drawer-sec textarea{display:block;width:100%;height:96px;box-sizing:border-box;padding:8px 10px;border:1px solid var(--dsw-alias-separator-primary,#ddd);border-radius:8px;font:inherit;font-size:12px;background:var(--dsw-alias-bg-base,#fff);color:inherit;resize:none}',
 '.detail-drawer-note{font-size:12px;word-break:break-all;background:var(--dsw-alias-bg-layer-1,#f6f8fa);color:var(--dsw-alias-label-primary,#1c1c1e);border:1px solid var(--dsw-alias-separator-primary,#ddd);border-radius:8px;padding:6px 8px}',
 '/* #173 助理人设（只读投影）：三行 + persona 3 行折叠 + 复制/编辑 */',
 '.detail-drawer-profile-card{padding:2px 14px}',

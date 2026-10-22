@@ -1,4 +1,4 @@
-// DetailDrawer 详情抽屉自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
+// DetailDrawer 详情面板自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
 // 做法：tsc 转译相关链到临时目录再断言（照抄 left-badges.ts 模式）。B 变体 verdict（#9）：摘要直改 + 折叠详情 + 即时写（无保存按钮）。
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -256,7 +256,7 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
   });
   const all = texts(root).join('|');
-  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '性格', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
+  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
   assert.ok(findByClass(root, 'detail-drawer-summary').length >= 1);
@@ -447,33 +447,6 @@ test('dir-picker：原生优先（成功/取消类抛错静默，真故障回退
   assert.ok(cancel4);
   cancel4.dispatchEvent({ type: 'click' });
   assert.equal(await p4.promise, null);
-});
-
-test('data：性格预填一致回填、分歧置空', () => {
-  const same = [{ ctx: { ...CTX0, guidance: 'warm' } }, { ctx: { ...CTX0, guidance: ' warm ' } }];
-  assert.equal(data.personalityPrefill(same), 'warm');
-  const diff = [{ ctx: { ...CTX0, guidance: 'a' } }, { ctx: { ...CTX0, guidance: 'b' } }];
-  assert.equal(data.personalityPrefill(diff), '');
-  assert.equal(data.personalityPrefill([]), '');
-});
-
-test('actions：性格应用覆盖各渠道引导语且保留字段开关', async () => {
-  const sent: any[] = [];
-  const deps = {
-    rpc: async (_ch: string, _ep: string, p: any) => { sent.push(p); return { ok: true, value: {} }; },
-    refresh: async () => undefined,
-    reloadMeta: async () => undefined,
-    paint: () => undefined,
-    notify: (_m: string) => undefined,
-  };
-  const m = { bots: [{ channel: 'feishu', botId: 'b1', ctx: { ...CTX0 } }] };
-  await actions.applyPersonality(m, deps, '幽默一点');
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].config.guidance, '幽默一点');
-  assert.deepEqual(sent[0].config.fields, ['senderId']);
-  assert.equal(sent[0].config.directEnabled, true);
-  await actions.applyPersonality(m, deps, '   ');
-  assert.equal(sent.length, 1);
 });
 
 test('data：路由取数经自有通道，失败静默空数组', async () => {
@@ -758,4 +731,67 @@ test('view：详情面板正文出现「助理人设」块（#173 接入）', ()
   const all = texts(root).join('|');
   assert.ok(all.includes('助理人设'), '详情面板有助理人设块');
   assert.ok(all.includes('客服小帅'), '显示简介原文');
+});
+
+// ---- #174 旧写入口退役 + 词面硬门 ----
+test('view：旧引导语写入口已退役（无 textarea 与旧文案，正向块仍在）', () => {
+  const model = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], briefA);
+  const noop = () => {};
+  const root = view.renderDrawerContent(model, {
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
+    onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
+    onRemoveBot: noop, onTestSend: noop, onClose: noop,
+  });
+  const all = texts(root).join('|');
+  assert.ok(!all.includes(['性', '格'].join('')), '退役块文案仍在');
+  assert.ok(!all.includes('语气'), '退役块文案仍在（语气）');
+  const areas: any[] = [];
+  const walk = (n: any) => {
+    if (n?.nodeType === 1 && n?.tagName === 'TEXTAREA') areas.push(n);
+    for (const c of n?.childNodes ?? []) walk(c);
+  };
+  walk(root);
+  assert.equal(areas.length, 0, '详情面板里还有 ' + areas.length + ' 个 textarea（旧写入口）');
+  for (const needle of ['上下文', '群聊增强', '绑定工作区', '助理人设', '详情']) {
+    assert.ok(all.includes(needle), '缺正向文案: ' + needle);
+  }
+});
+
+test('源码词面硬门：退役词与旧称在 src 与 tools/verify 零残留', async () => {
+  const { readdirSync } = await import('node:fs');
+  const { relative } = await import('node:path');
+  const banned = [['性', '格'].join(''), '详情' + '抽屉', '详情' + '页'];
+  const files: string[] = [];
+  const walkDir = (dir: string): void => {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, ent.name);
+      if (ent.isDirectory()) { if (ent.name !== 'node_modules') walkDir(p); }
+      else if (ent.isFile() && p.endsWith('.ts')) files.push(p);
+    }
+  };
+  walkDir(join(REPO, 'src'));
+  walkDir(join(REPO, 'tools', 'verify'));
+  assert.ok(files.length > 100, '扫描面异常：只读到 ' + files.length + ' 个 .ts');
+  const hits: string[] = [];
+  for (const f of files) {
+    const body = readFileSync(f, 'utf8');
+    for (const w of banned) if (body.includes(w)) hits.push(relative(REPO, f).replace(/\\/g, '/') + ' ← ' + w);
+  }
+  assert.deepEqual(hits, [], '硬门残留：' + hits.join('；'));
+});
+
+test('first-view-copy：详情面板中英词面统一（中文叫面板，英文无 drawer）', () => {
+  const body = readFileSync(join(REPO, 'src', 'client', 'components', 'first-view-copy.ts'), 'utf8');
+  const enAt = body.indexOf('const EN');
+  assert.ok(enAt > 0, '找不到英文段');
+  const pick = (src: string): string => {
+    const m = /detailTitle:\s*'([^']+)'/.exec(src);
+    assert.ok(m, '缺 detailTitle');
+    return m![1];
+  };
+  const zh = pick(body.slice(0, enAt));
+  const en = pick(body.slice(enAt));
+  assert.ok(zh.includes('详情面板'), '中文 detailTitle 应叫「详情面板」：' + zh);
+  assert.ok(!zh.includes('抽屉'), '中文 detailTitle 仍有旧称：' + zh);
+  assert.ok(!/drawer/i.test(en), '英文 detailTitle 含 drawer：' + en);
 });
