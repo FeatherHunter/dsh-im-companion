@@ -2,6 +2,9 @@
  * 命名 + 分组 + 1:1 校验 + 种子迁移同一模块；宿主落盘与机器人归属只做薄封装。
  * 绿框真相源：homes.json（version:2）；旧账本 names/avatars/locals 只做种子回落与显示兼容，不双写。
  * T6a 钢线：建家选已有区、建助理同时绑机器人、三级钻取显示；不做图片/未绑定行/搬家/恢复默认。 */
+import { type AssistantFieldsValue } from '../../assistant-fields'
+
+export type { AssistantFieldsValue } /* #169 两栏类型来自共享单点（src/assistant-fields.ts），客户端与宿主同一个定义。 */
 export interface Home {
   id: string
   workspaceId: string | null
@@ -15,7 +18,7 @@ export interface Home {
   tombstone?: { at: number; reason: string }
 }
 
-export interface Assistant {
+export interface Assistant extends AssistantFieldsValue {
   id: string
   homeId: string
   channel: string

@@ -128,6 +128,7 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
             botId: String(p.botId ?? ''),
             botName: String(p.botName ?? ''),
             homeText: String(p.homeText ?? ''),
+            description: p.description, persona: p.persona,
           })
           if (!r.ok) return fail(r.code, r.message)
           return ok({ assistant: r.assistant })
@@ -154,6 +155,7 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
             id: String(p.id ?? ''),
             ...(p.name !== undefined ? { name: p.name as string | null } : {}),
             ...(p.avatar !== undefined ? { avatar: p.avatar as string | null } : {}),
+            description: p.description, persona: p.persona,
           })
           if (!r.ok) return fail(r.code, r.message)
           return ok({ assistant: r.row })
@@ -163,6 +165,7 @@ export function createAgentFleetHandler(store: AgentMetaStore, opts: AgentFleetH
           const r: any = await createUnboundRow(homesFileFor(dshHome), {
             homeId: String(p.homeId ?? ''),
             ...(p.name !== undefined ? { name: String(p.name ?? '') } : {}),
+            description: p.description, persona: p.persona,
           })
           if (!r.ok) return fail(r.code, r.message)
           return ok({ assistant: r.row })

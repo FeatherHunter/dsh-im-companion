@@ -3,6 +3,7 @@
  * 删助理只删助理行，不碰机器人连接（不断连、不调 bot.delete，验收④）。 */
 import { modifyHomesDoc } from './home-store.js'
 import type { AssistantRow, HomeRow } from './home-store.js'
+import { ASSISTANT_FIELDS, stripEmptyFields, validateAssistantFields } from '../assistant-fields.js'
 
 function sn(v: unknown, max: number): string {
   return typeof v === 'string' ? v.slice(0, max) : ''
@@ -48,13 +49,20 @@ export function updateHomeRow(file: string, input: { id: string; name?: string |
   })
 }
 
-/** 助理改名/配图：""恢复默认（有号走bot、无号走home）。 */
-export function updateAssistantRow(file: string, input: { id: string; name?: string | null; avatar?: string | null }): R<AssistantRow> {
+/** 助理改名/配图/两栏：""恢复默认（有号走bot、无号走home）；两栏"空串=清空（删键）"。 */
+export function updateAssistantRow(
+  file: string,
+  input: { id: string; name?: string | null; avatar?: string | null; description?: unknown; persona?: unknown },
+): R<AssistantRow> {
   const id = sn(input.id, 64).trim()
   if (!id) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'id 必填' })
   const hasName = input.name !== undefined
   const hasAvatar = input.avatar !== undefined
-  if (!hasName && !hasAvatar) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'name/avatar 至少其一' })
+  /* #169 闸门放宽：任一一栏（含两栏）都算「有动作」——空串也算（清空是动作）。 */
+  const hasFields = input.description !== undefined || input.persona !== undefined
+  if (!hasName && !hasAvatar && !hasFields) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'name/avatar/description/persona 至少其一' })
+  const fields = validateAssistantFields({ description: input.description, persona: input.persona })
+  if (!fields.ok) return Promise.resolve({ ok: false as const, code: fields.code, message: fields.message })
   if (hasAvatar && input.avatar !== null && input.avatar !== undefined && !okAvatar(input.avatar)) {
     return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'avatar 取 1-9 或空' })
   }
@@ -70,6 +78,13 @@ export function updateAssistantRow(file: string, input: { id: string; name?: str
       if (input.avatar === null || input.avatar === undefined) { a.avatar = null; a.avatarSource = 'default' }
       else { a.avatar = input.avatar; a.avatarSource = 'user' }
     }
+    /* 两栏：显式给空串 ⇒ 删键（空与缺失同形）；没提供的栏不动。 */
+    for (const field of ASSISTANT_FIELDS) {
+      const v = fields.value[field]
+      if (v === undefined) continue
+      if (v) a[field] = v
+      else delete a[field]
+    }
     return { ok: true as const, row: a }
   })
 }
@@ -77,9 +92,14 @@ export function updateAssistantRow(file: string, input: { id: string; name?: str
 /** 未绑定占位：**channel 不再必填**（#138 渠道诚实性——没绑机器人就是没有渠道，
  *  旧版客户端在这里替用户编过一个「飞书」，见 home-forms 的注释）；botId=null；
  *  名字非空即 user 否则 home（验收③，不产生脏数据：不占号）。 */
-export function createUnboundRow(file: string, input: { homeId: string; name?: string }): R<AssistantRow> {
+export function createUnboundRow(
+  file: string,
+  input: { homeId: string; name?: string; description?: unknown; persona?: unknown },
+): R<AssistantRow> {
   const homeId = sn(input.homeId, 64).trim()
   if (!homeId) return Promise.resolve({ ok: false as const, code: 'bad-request', message: 'homeId 必填' })
+  const fields = validateAssistantFields({ description: input.description, persona: input.persona })
+  if (!fields.ok) return Promise.resolve({ ok: false as const, code: fields.code, message: fields.message })
   return modifyHomesDoc(file, (doc) => {
     if (!doc.homes.some((h) => h.id === homeId)) return { ok: false as const, code: 'not-found', message: '家不存在' }
     const t = sn(input.name ?? '', 64).trim()
@@ -88,6 +108,7 @@ export function createUnboundRow(file: string, input: { homeId: string; name?: s
       id: nid(now), homeId, channel: '', botId: null, status: 'unbound',
       name: t, nameSource: t ? 'user' : 'home',
       avatar: null, avatarSource: 'default', createdAt: now, boundAt: null,
+      ...stripEmptyFields(fields.value),
     }
     doc.assistants.push(row)
     return { ok: true as const, row }

@@ -48,7 +48,7 @@ function transpile(entries: string[], extra: string[] = []): string {
   try { symlinkSync(join(REPO, 'node_modules'), join(out, 'node_modules'), 'junction') } catch { /* 已存在 */ }
   return out
 }
-const tmpClient = transpile([join(CLIENT, 'components', 'panel.ts')])
+const tmpClient = transpile([join(CLIENT, 'components', 'panel.ts'), join(CLIENT, 'data', 'home-edit.ts'), join(CLIENT, 'components', 'home-ops.ts')])
 const tmpHost = transpile([join(HOST, 'rpc.ts')], ['--types', 'node'])
 
 /* 被测模块在渲染路径里裸用 document/window（dom.ts / ui/*）与 requestAnimationFrame（toast）：
@@ -84,6 +84,8 @@ const reqHost = createRequire(join(tmpHost, 'run.cjs'))
 const panelMod: any = reqClient('./client/components/panel.js')
 const popMod: any = reqClient('./client/components/home-pop.js')
 const streamMod: any = reqClient('./client/data/connection-stream.js')
+const homeEditMod: any = reqClient('./client/data/home-edit.js')
+const homeOpsMod: any = reqClient('./client/components/home-ops.js')
 const hostMod: any = reqHost('./host/rpc.js')
 const storeMod: any = reqHost('./host/home-store.js')
 
@@ -455,6 +457,9 @@ test('②建助理点击级：点家钻进 L2→「新建助理」→弹层点�
       'assistant.create 必须带宿主真 homeId（种子临时 id 会 not-found）',
     )
     assert.equal((ac.reply as any).ok, true)
+    /* #169：老 UI 调用点不传两栏 ⇒ 载荷里连键都没有（老宿主零感知），账本行也不多空键。 */
+    assert.equal('description' in ac.payload, false, '未填简介 ⇒ 载荷无 description 键')
+    assert.equal('persona' in ac.payload, false, '未填人物设定 ⇒ 载荷无 persona 键')
     assert.ok(!popNode(), '创建后弹层必须收掉')
 
     /* 建完即落到新助理的 L3 详情（原型钻取：建助理 → 进详情），再返回 L2 看行。 */
@@ -464,6 +469,10 @@ test('②建助理点击级：点家钻进 L2→「新建助理」→弹层点�
 
     const disk = readDoc(b.homesFile)
     assert.equal(disk.assistants.length, 4, '宿主助理表多出 1 行（3→4）')
+    const newRow = disk.assistants.find((a: any) => a.botId === 'bot_dddd')
+    assert.ok(newRow, '新行落盘')
+    assert.equal('description' in newRow, false, '向后兼容：没填就不写键（老账本形态不变）')
+    assert.equal('persona' in newRow, false)
     /* 顺序契约（Lead 修 home-ops）：createAssistantFlow 必须**先 reloadHomes 再 refresh**。
      * 倒过来时快照回调拿着旧 state.assistants 判缺口 ⇒ 把刚绑上的这枚误判成「有 workspace 有家却没 bound 行」
      * ⇒ 触发一次 home.seed 全集 sweep（探针实测序列 …assistant.create, meta.get, home.list, home.seed），
@@ -697,6 +706,53 @@ test('⑨投影超时点击级：DSH 建区成功但 8s 等不到投影 ⇒ 灰�
     assert.match(String(err.textContent), /再点一次「创建」/, '超时同样提示可重试')
     assert.equal(readDoc(b.homesFile).homes.length, before, '等不到不落家（一行没写）')
   } finally { await b.dispose() }
+})
+
+/* ---------- ⑩ 客户端写管道（#169 两栏）：模型类型/纯逻辑/ops 入参都把两栏带到 RPC 载荷 ---------- */
+test('⑩两栏客户端管道：预览归一/清空、建行带两栏、create/update/createUnbound 的 RPC 载荷都带两栏键', async () => {
+  /* 纯逻辑：归一 + 空串＝删键（与宿主同一套规则，UI 只剩接线）。 */
+  const base0 = { id: 'a1', homeId: 'h1', channel: 'ch', botId: 'b1', status: 'bound', name: '甲', nameSource: 'user', avatar: null, avatarSource: 'default', createdAt: 1, boundAt: 1 }
+  const next = homeEditMod.applyAssistantUpdate(base0, { description: '  第一行\r\n第二行  ', persona: '' })
+  assert.equal(next.description, '第一行\n第二行', '预览侧同样 CRLF→LF、trim')
+  assert.equal('persona' in next, false, '空串＝清空（键不留在预览行上）')
+  assert.equal(base0.description, undefined, '纯函数不改入参')
+
+  const unbound = homeEditMod.makeUnboundAssistant({ homeId: 'h1', channel: 'ch', name: '', description: ' 简介 ', persona: '   ' })
+  assert.equal(unbound.description, '简介')
+  assert.equal('persona' in unbound, false, '纯空白＝没设置（不 materialize 空键）')
+
+  /* ops：内部 bridge 的 rpc 形状是 (channel, endpoint, payload, signal)。 */
+  const mkRpc = () => {
+    const calls: any[] = []
+    const rpc: any = async (channel: string, endpoint: string, payload: any) => {
+      calls.push({ channel, endpoint, payload })
+      return { ok: true, value: { assistant: { id: 'a9', homeId: 'h1', ...payload } } }
+    }
+    return { rpc, calls }
+  }
+  const a = mkRpc()
+  await homeOpsMod.updateAssistant(a.rpc, { id: 'a9', persona: '人设' })
+  assert.equal(a.calls[0].endpoint, 'assistant.update', '走既有三通电话，不新开端点')
+  assert.equal(a.calls[0].payload.persona, '人设')
+  assert.equal('description' in a.calls[0].payload, false, '没给的栏不上载荷（＝不动）')
+
+  const c = mkRpc()
+  await homeOpsMod.createAssistant(c.rpc, { homeId: 'h1', channel: 'ch', botId: 'b1', botName: '机器人', homeText: '', description: '简介', persona: '人设' })
+  assert.equal(c.calls[0].endpoint, 'assistant.create')
+  assert.equal(c.calls[0].payload.description, '简介')
+  assert.equal(c.calls[0].payload.persona, '人设')
+
+  const u = mkRpc()
+  await homeOpsMod.createUnbound(u.rpc, { homeId: 'h1', description: '简介' })
+  assert.equal(u.calls[0].endpoint, 'assistant.createUnbound')
+  assert.equal(u.calls[0].payload.description, '简介', '未绑定行也带两栏')
+  assert.equal('persona' in u.calls[0].payload, false)
+
+  /* 反证：不传两栏时载荷里没有这两个键（老调用点零变化、老宿主零感知）。 */
+  const d = mkRpc()
+  await homeOpsMod.createAssistant(d.rpc, { homeId: 'h1', channel: 'ch', botId: 'b1', botName: '机器人', homeText: '' })
+  assert.equal('description' in d.calls[0].payload, false)
+  assert.equal('persona' in d.calls[0].payload, false)
 })
 
 console.log('features/home-create-flow: ALL PASS')

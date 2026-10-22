@@ -9,6 +9,7 @@
  * 拆的直接原因：行数红线 300 与数据保护闸撞在一起（见 home-store-io.ts 顶部的事故复盘口径）。 */
 import path from 'node:path'
 import { configDirFor } from './config-yaml.js'
+import { pickAssistantFields, stripEmptyFields, validateAssistantFields } from '../assistant-fields.js'
 import {
   assertWritable, cleanAssistant, cleanHome, isAvatarCode, loadHomesDocState, writeGuarded,
   type AssistantRow, type HomeRow, type HomesDoc, type HomesLoadState,
@@ -96,12 +97,15 @@ export async function createHomeRow(
 
 export async function createAssistantRow(
   file: string,
-  input: { homeId: string; channel: string; botId: string; botName?: string; homeText?: string },
+  input: { homeId: string; channel: string; botId: string; botName?: string; homeText?: string; description?: unknown; persona?: unknown },
 ): Promise<{ ok: true; assistant: AssistantRow } | { ok: false; code: string; message: string }> {
   const homeId = sanitize(input.homeId, 64).trim()
   const channel = sanitize(input.channel, 64).trim()
   const botId = sanitize(input.botId, 256).trim()
   if (!homeId || !channel || !botId) return { ok: false, code: 'bad-request', message: 'homeId/channel/botId 必填' }
+  /* #169：写入口才校验（超长/非字符串诚实拒绝、CRLF 归一、trim）；账本上已有的超长值不经这里。 */
+  const fields = validateAssistantFields({ description: input.description, persona: input.persona })
+  if (!fields.ok) return { ok: false, code: fields.code, message: fields.message }
   const { doc, state, original } = await loadHomesDocState(file)
   assertWritable(file, state)
   if (!doc.homes.some((h) => h.id === homeId)) return { ok: false, code: 'not-found', message: '家不存在' }
@@ -116,6 +120,7 @@ export async function createAssistantRow(
     name: botName || homeText || '未命名助理',
     nameSource: botName ? 'bot' : 'home',
     avatar: null, avatarSource: 'default', createdAt: now, boundAt: now,
+    ...stripEmptyFields(fields.value),
   }
   doc.assistants.push(assistant)
   await persistDoc(file, doc, state, original)
@@ -183,6 +188,7 @@ export async function seedDocs(
         name: botName || '未命名助理',
         nameSource: (r.nameSource === 'user' ? 'user' : 'home'),
         avatar, avatarSource: avatar ? 'user' : 'default', createdAt: now, boundAt: null,
+        ...pickAssistantFields(r),
       })
       continue
     }
@@ -192,6 +198,7 @@ export async function seedDocs(
       name: botName || '未命名助理',
       nameSource: (r.nameSource === 'home' ? 'home' : 'bot'),
       avatar, avatarSource: avatar ? 'user' : 'default', createdAt: now, boundAt: now,
+      ...pickAssistantFields(r),
     })
   }
   doc.assistants.push(...outAssistants)
