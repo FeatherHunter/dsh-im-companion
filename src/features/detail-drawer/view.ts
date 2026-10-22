@@ -225,7 +225,7 @@ function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement 
 
 /** 纯渲染（dom-shim 可测）：模型 + 回调 → 抽屉体。 */
 export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, draftWs: string | null = null): HTMLElement {
-  const closeBtn = makeButton({ kind: 'ghost', size: 'sm', label: '关闭', title: '关闭抽屉', onClick: () => cbs.onClose() })
+  const closeBtn = makeButton({ kind: 'ghost', size: 'sm', label: '关闭', title: '关闭详情面板', onClick: () => cbs.onClose() })
   const head = h('div', { className: 'detail-drawer-dhead' },
     h('span', { className: 'detail-drawer-dot ' + model.status }),
     h('span', null, model.name),
