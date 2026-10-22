@@ -755,4 +755,106 @@ test('⑩两栏客户端管道：预览归一/清空、建行带两栏、create/
   assert.equal('persona' in d.calls[0].payload, false)
 })
 
+/* ---------- ⑪ 创建弹窗内嵌两栏（#171）：简介单行 / 人物设定多行＋实时计数 / 超限闸门 / 随创建写两栏 ---------- */
+/* 取件只靠 aria-label 与可见文案（外部行为），不认私有函数名与内部结构。 */
+function fldOf(label: string): any { const p = popNode(); return p ? all(p).find((e: any) => attr(e, 'aria-label') === label) ?? null : null }
+function typeInto(el: any, v: string): void { el.value = v; el.dispatchEvent({ type: 'input' }) }
+function okOf(): any { const p = popNode(); return p ? all(p).find((x: any) => x.tagName === 'BUTTON' && String(x.textContent).trim() === '创建') ?? null : null }
+const countsOf = (): string[] => { const p = popNode(); return p ? all(p).filter((e: any) => hasCls(e, 'hu-count')).map((e: any) => String(e.textContent)) : [] }
+const fldErrsOf = (): string[] => { const p = popNode(); return p ? all(p).filter((e: any) => hasCls(e, 'hu-flderr')).map((e: any) => String(e.textContent)) : [] }
+const tipOf = (btn: any): string => attr(btn, 'data-tip')
+
+test('⑪创建弹窗内嵌两栏：简介单行/人物设定多行带计数，超限禁用主按钮＋可定位原文，边界 200/8000 通过后随创建写入', async () => {
+  const b = await boot()
+  try {
+    clickRow(b.panel(), '客厅')
+    await waitFor('钻进客厅 L2', () => asstsOf(b.panel()).length === 1)
+    clickPrimary(b.panel(), '新建助理')
+    await waitFor('建助理弹层出现', () => popTitle() === '新建助理')
+
+    /* 控件形状（规格 #168：简介单行、人物设定多行带计数）。 */
+    const desc = fldOf('助理简介')
+    const persona = fldOf('助理人物设定')
+    assert.ok(desc && persona, '名字之后内嵌两栏（aria-label「助理简介」「助理人物设定」可定位）\n弹层文本：' + popText().slice(0, 400))
+    assert.equal(desc.tagName, 'INPUT', '简介＝单行 input（规格写「简介单行」，不是 textarea）')
+    assert.equal(persona.tagName, 'TEXTAREA', '人物设定＝多行 textarea')
+    assert.equal(attr(desc, 'maxlength'), '200', '简介 maxlength=200')
+    assert.equal(attr(persona, 'maxlength'), '8000', '人物设定 maxlength=8000')
+    assert.equal(attr(persona, 'rows'), '5', '人物设定 rows=5')
+    assert.equal(attr(desc, 'placeholder'), '一句话介绍这个助理（最多 200 字）', '简介 placeholder 照规格')
+    assert.equal(attr(persona, 'placeholder'), '这个助理是谁、怎么说话（最多 8000 字）', '人物设定 placeholder 照规格')
+    const nameInput = fldOf('助理名字')
+    assert.ok(nameInput, '名字字段还在（原表单不动）')
+    const idxOf = (el: any): number => all(popNode()).indexOf(el)
+    assert.ok(idxOf(nameInput) < idxOf(desc) && idxOf(desc) < idxOf(persona), '顺序：名字 → 简介 → 人物设定')
+
+    /* 实时计数：空表 0/200 与 0/8000（按 Unicode 码点数，不按 UTF-16 长度）。 */
+    assert.deepEqual(countsOf(), ['0/200', '0/8000'], '两栏都带实时计数')
+    assert.deepEqual(fldErrsOf(), ['', ''], '未超限时没有红字')
+    assert.ok(!okOf().hasAttribute('disabled'), '留空可正常创建：主按钮可用')
+
+    /* 超限：201 字简介 ⇒ 主按钮禁用 ＋ data-tip/红字都是 fieldErrorMessage 原文（可定位字段）。 */
+    typeInto(desc, 'a'.repeat(201))
+    assert.ok(okOf().hasAttribute('disabled'), '201 字简介 ⇒ 主按钮禁用')
+    assert.equal(tipOf(okOf()), '简介（description）最多 200 字，当前 201 字', 'data-tip＝超限原文（带字段定位）')
+    assert.equal(fldErrsOf()[0], '简介（description）最多 200 字，当前 201 字', '栏下红字与 data-tip 同源')
+    assert.equal(countsOf()[0], '201/200', '计数照实报（不静默截断）')
+    /* 禁用不是装饰：禁用态点下去一个写请求都不许发。 */
+    click(okOf())
+    await sleep(60)
+    assert.equal(b.calls.filter((c) => c.endpoint === 'assistant.create').length, 0, '禁用态点击不落助理')
+    assert.ok(popNode(), '超限时弹层不关（就地可改）')
+
+    /* 边界 200 通过：主按钮恢复、提示撤回。 */
+    typeInto(desc, 'b'.repeat(200))
+    assert.ok(!okOf().hasAttribute('disabled'), '200 字（边界）⇒ 主按钮恢复可用')
+    assert.equal(tipOf(okOf()), '', '合法时不留禁用说明')
+    assert.equal(countsOf()[0], '200/200')
+    assert.equal(fldErrsOf()[0], '', '合法时红字清空')
+
+    /* 人物设定同理：8001 拒、8000 收。 */
+    typeInto(persona, '人'.repeat(8001))
+    assert.ok(okOf().hasAttribute('disabled'), '8001 字人物设定 ⇒ 主按钮禁用')
+    assert.equal(tipOf(okOf()), '人物设定（persona）最多 8000 字，当前 8001 字', '人物设定的超限原文')
+    assert.equal(fldErrsOf()[1], '人物设定（persona）最多 8000 字，当前 8001 字')
+    typeInto(persona, '人'.repeat(8000))
+    assert.ok(!okOf().hasAttribute('disabled'), '8000 字（边界）⇒ 主按钮恢复可用')
+
+    /* 填真值（带 CRLF 与两端空白，顺带钉归一）再创建：两栏随创建一次性进 RPC 与账本。 */
+    typeInto(desc, '  我的简介\r\n第二行  ')
+    typeInto(persona, '说话简短\n只答要点')
+    assert.ok(!okOf().hasAttribute('disabled'), '归一后合法（trim 掉的空白不算字数）')
+    clickPop('创建')
+    await waitFor('assistant.create 到达宿主', () => b.calls.some((c) => c.endpoint === 'assistant.create'))
+    const ac = b.calls.find((c) => c.endpoint === 'assistant.create')
+    assert.equal(ac.payload.description, '我的简介\n第二行', 'RPC 载荷带归一后的简介（CRLF→LF、trim）')
+    assert.equal(ac.payload.persona, '说话简短\n只答要点', 'RPC 载荷带归一后的人物设定')
+    await waitFor('落到新助理 L3', () => headTitle(b.panel()).includes('小空'))
+    const row = readDoc(b.homesFile).assistants.find((a: any) => a.botId === 'bot_dddd')
+    assert.ok(row, '新行落盘')
+    assert.equal(row.description, '我的简介\n第二行', '账本行带简介')
+    assert.equal(row.persona, '说话简短\n只答要点', '账本行带人物设定')
+  } finally { await b.dispose() }
+
+  /* 阶段 B：未绑定占位只填简介 ⇒ createUnbound 带 description、**没有** persona 键。 */
+  const u = await boot()
+  try {
+    clickRow(u.panel(), '客厅')
+    await waitFor('钻进客厅 L2', () => asstsOf(u.panel()).length === 1)
+    clickPrimary(u.panel(), '新建助理')
+    await waitFor('建助理弹层出现', () => popTitle() === '新建助理')
+    clickOpt(popBoxes()[0], '') /* 「以后再绑」＝未绑定占位 */
+    typeInto(fldOf('助理简介'), '  简介草稿  ')
+    assert.ok(!okOf().hasAttribute('disabled'), '只填简介：主按钮可用（人物设定可留空）')
+    clickPop('创建')
+    await waitFor('assistant.createUnbound 到达宿主', () => u.calls.some((c) => c.endpoint === 'assistant.createUnbound'))
+    const cu = u.calls.find((c) => c.endpoint === 'assistant.createUnbound')
+    assert.equal(cu.payload.description, '简介草稿', '未绑定也带简介（归一后）')
+    assert.equal('persona' in cu.payload, false, '没填的栏连键都不带（不是 undefined 值）')
+    const row2 = readDoc(u.homesFile).assistants.find((a: any) => a.description === '简介草稿')
+    assert.ok(row2, '未绑定行落盘带简介：' + JSON.stringify(readDoc(u.homesFile).assistants.map((a: any) => a.description)))
+    assert.equal('persona' in row2, false, '未填不 materialize 空键')
+  } finally { await u.dispose() }
+})
+
 console.log('features/home-create-flow: ALL PASS')

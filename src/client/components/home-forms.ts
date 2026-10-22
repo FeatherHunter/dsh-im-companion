@@ -7,12 +7,14 @@ import { avatarStyle, initialsOf } from './home-identity'
 import { avatarImageCell } from './home-avatar-form'
 import { closeHomePop, homePopOpen, openHomePop, updateHomePop, type AnchorRef } from './home-pop'
 import { type Assistant, type WorkspaceRef } from '../data/home-model'
+import { type AssistantFieldsValue } from '../../assistant-fields'
 import { asstName, homeName, type RowView } from './home-rows'
 import { logLine, logOn } from '../log'
 export interface FormOps {
   createHome(workspaceId: string): Promise<void>
-  createAssistant(homeId: string, channel: string, botId: string, userName?: string): Promise<void>
-  createUnbound(homeId: string, name?: string): Promise<void>
+  /* 两栏（#169 起可带）：未填的栏**不带键**，由表单侧 values() 保证；缺省照旧（老调用不动）。 */
+  createAssistant(homeId: string, channel: string, botId: string, userName?: string, fields?: AssistantFieldsValue): Promise<void>
+  createUnbound(homeId: string, name?: string, fields?: AssistantFieldsValue): Promise<void>
   bindAssistant(id: string, channel: string, botId: string): Promise<void>
   updateHome(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
   updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
