@@ -97,6 +97,16 @@ export const LOG_EVENTS: Record<string, LogEventSpec> = {
   /* T12 #129 配置入口的两条用户动作（复制路径 / 在文件浏览器打开）：**点击态**——用户做一次落一次，
    * 成功 info、失败 error（同事件两档，客户端调用点不查档位），`message` 带原文或走哪条复制路径。 */
   'config.action': { level: 'info', kind: 'resident', fields: ['action', 'dir', 'ok', 'message'] },
+
+  /* ── 人设注入（T8 #170）：归属索引 + 系统提示词段 ─────────────────
+   * 红线：人设正文绝不进日志；只记长度 / sha8 / 渠道 / 机器人 / 会话 id 定位字段。
+   * resolve / refresh 是逐渲染、逐刷新的高频明细 ⇒ 只 debug + ondemand（开关关着不落）；
+   * 歧义、读失败是异常态 ⇒ warn + resident；绑定集合真变化 ⇒ info + resident（状态跃迁）。 */
+  'persona.resolve': { level: 'debug', kind: 'ondemand', fields: ['sessionId', 'hit', 'reason', 'channel', 'botId', 'ambiguous', 'textChars', 'personaChars', 'sha8', 'cacheAgeMs'] },
+  'persona.refresh': { level: 'debug', kind: 'ondemand', fields: ['reason', 'files', 'changedFiles', 'sessions', 'assistants', 'statMs', 'parseMs', 'errors', 'cached'] },
+  'persona.refresh.fail': { level: 'warn', kind: 'resident', fields: ['phase', 'file', 'code', 'reason', 'message', 'sessionId'] },
+  'persona.ownership.ambiguity': { level: 'warn', kind: 'resident', fields: ['sessionId', 'channel', 'bots', 'winner', 'rule'] },
+  'persona.binding.sync': { level: 'info', kind: 'resident', fields: ['added', 'removed', 'unchanged', 'total'] },
 }
 
 /** 交给 dsh-log 的清单本体（包侧只认 `{version,pluginId,events}`；counts 由包自算，别手填）。 */
