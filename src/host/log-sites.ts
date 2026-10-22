@@ -46,6 +46,10 @@ export function describeCall(endpoint: string, payload: Record<string, unknown>,
       return { level, event: 'home.create', fields: { homeId: id, workspaceId: str(p.workspaceId ?? row.workspaceId), name: str(row.name ?? p.name), ok: okFlag, message } }
     case 'home.update':
       return { level, event: 'home.update', fields: { homeId: id, changed: changedKeys(p, ['id']), ok: okFlag, message } }
+    case 'home.rebind':
+      return { level, event: 'home.rebind', fields: { homeId: id, changed: changedKeys(p, ['id']), ok: okFlag, message } }
+    case 'home.remove':
+      return { level, event: 'home.remove', fields: { homeId: id, ok: okFlag, message } }
     case 'home.seed': {
       const summary = rec(value.summary ?? value)
       return { level, event: 'home.seed', fields: { created: num(summary.created), adopted: num(summary.adopted), skipped: num(summary.skipped), ok: okFlag, message } }
