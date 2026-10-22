@@ -1176,7 +1176,8 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.equal(txt(one(pop, 'hu-ptitle')), '新建助理', '弹层标题＝新建助理');
   const head = one(pop, 'hu-phead');
   assert.ok(head && one(head, 'hu-ptitle') && cls(head, 'hu-pbtn-s').length === 2, '标题栏＝标题 + 取消/创建同一行（按钮在弹层右上角，owner 2026-10-15）');
-  assert.deepEqual(cls(pop, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['属于哪个家', '绑定机器人', '名字'], '建单字段');
+  /* T8-3 #171：名字之后内嵌两栏（简介 / 人物设定）——建单字段从三项变五项，顺序即视觉顺序。 */
+  assert.deepEqual(cls(pop, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['属于哪个家', '绑定机器人', '名字', '简介', '人物设定'], '建单字段');
   /* 家内建助理（L2 开的这一单）：归属锁死——无家候选可点，直接告知当前家（h2 书房基地） */
   assert.equal(byAttr(pop, 'data-value', 'h1').length + byAttr(pop, 'data-value', 'h2').length, 0, '锁家：无家候选可点');
   assert.ok(txt(pop).includes('书房基地'), '归属告知当前家');

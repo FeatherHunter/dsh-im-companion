@@ -9,7 +9,7 @@ import { h, clear } from '../dom'
 import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, topEl, type Level } from './home-frame'
-import { newAsstPop, newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'
+import { newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'; import { newAsstPop } from './home-asst-create' /* T8-3 #171：本文件 300 行顶格，新文件的 import 并入本行以保持行数中性。 */
 import { finishRename } from './home-toast'
 import { avatarAsstPop } from './home-avatar-act'
 import { bindAsstPop } from './home-bind-forms'

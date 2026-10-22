@@ -6,14 +6,15 @@ import { huIcon } from './home-icons'
 import { avatarStyle, initialsOf } from './home-identity'
 import { avatarImageCell } from './home-avatar-form'
 import { closeHomePop, homePopOpen, openHomePop, updateHomePop, type AnchorRef } from './home-pop'
-import { freeBots, type Assistant, type Home, type WorkspaceRef } from '../data/home-model'
-import type { BotSnap } from '../data/fleet-api'
-import { asstName, avatarEl, homeName, type RowView } from './home-rows'
+import { type Assistant, type WorkspaceRef } from '../data/home-model'
+import { type AssistantFieldsValue } from '../../assistant-fields'
+import { asstName, homeName, type RowView } from './home-rows'
 import { logLine, logOn } from '../log'
 export interface FormOps {
   createHome(workspaceId: string): Promise<void>
-  createAssistant(homeId: string, channel: string, botId: string, userName?: string): Promise<void>
-  createUnbound(homeId: string, name?: string): Promise<void>
+  /* 两栏（#169 起可带）：未填的栏**不带键**，由表单侧 values() 保证；缺省照旧（老调用不动）。 */
+  createAssistant(homeId: string, channel: string, botId: string, userName?: string, fields?: AssistantFieldsValue): Promise<void>
+  createUnbound(homeId: string, name?: string, fields?: AssistantFieldsValue): Promise<void>
   bindAssistant(id: string, channel: string, botId: string): Promise<void>
   updateHome(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
   updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
@@ -122,56 +123,6 @@ export function newHomePop(anchor: AnchorRef, deps: FormDeps): void {
   }
 
   open()
-}
-
-/** 新建助理（原型 newAsstPop + T6a 验收② + T6b #114 未绑定占位）：选家 + 选空闲机器人（或以后再绑）+ 可选名字。
- *  `lockHome` 为真且家还在时，「属于哪个家」退化成归属告知（无候选可点）——家内点的「新建助理」一定归当前家。 */
-export function newAsstPop(anchor: AnchorRef, deps: FormDeps): void {
-  const homes: Home[] = deps.view.homes.filter((x) => !x.tombstone)
-  const bots: BotSnap[] = freeBots(deps.view.bots.map((b) => ({ channel: b.channel, botId: b.botId, workspace: b.workspace, botName: b.botName })), deps.view.assistants)
-    .map((r) => deps.view.bots.find((b) => b.botId === r.botId && b.channel === r.channel))
-    .filter((b): b is BotSnap => !!b)
-  let homeId = deps.selHome && homes.some((x) => x.id === deps.selHome) ? deps.selHome : (homes[0]?.id ?? '')
-  const locked = deps.lockHome ? homes.find((x) => x.id === homeId) ?? null : null
-  const lockedName = locked ? homeName(deps.view, locked) : ''
-  let botId = bots.length ? bots[0].botId : ''
-  /* #138 渠道诚实性：这里原本会替用户编一个渠道（有空闲机器人就抄第一个，没有就写死 feishu）——
-   * 未绑定的助理**没有渠道**，不许在磁盘上留一个猜测值。 */
-  const nameInput = h('input', { type: 'text', placeholder: '留空用默认名', 'aria-label': '助理名字' }) as HTMLInputElement
-  const body = [
-    locked
-      ? field('属于哪个家', h('div', { className: 'hu-locked' },
-        avatarEl(locked.id, lockedName, locked.avatar),
-        h('span', { className: 'hu-ot' }, h('b', {}, lockedName), h('small', {}, locked.path || '未关联工作区'))), 'div')
-      : field('属于哪个家', homes.length
-        ? optList(homes.map((x) => ({ value: x.id, title: homeName(deps.view, x), sub: x.path || '未关联工作区' })), homeId, (v) => { homeId = v })
-        : h('p', { className: 'hu-fhint' }, '还没有家：先回上一层建一个家。')),
-    field('绑定机器人', bots.length
-      ? optList([
-        { value: '', title: '以后再绑', sub: '先不选，之后在助理里再绑' },
-        ...bots.map((b) => ({ value: b.botId, title: b.botName || b.botId, subNode: botSubNode(b.channel, b.connected) })),
-      ], botId, (v) => { botId = v })
-      : optList([{ value: '', title: '以后再绑', sub: '先不选，之后在助理里再绑' }], '', (v) => { botId = v })),
-    field('名字', nameInput),
-    h('p', { className: 'hu-fhint' }, '名字可以留空：绑了机器人就用机器人名，没绑就用家名。'),
-  ]
-  const ok = (): void => {
-    if (!homeId) { fLog('create-assistant', false, '没有家可选'); return }
-    const userName = (nameInput as HTMLInputElement).value.trim()
-    closeHomePop(true)
-    if (!botId) {
-      void deps.ops.createUnbound(homeId, userName).then(() => deps.onDone('L3', homeId))
-      return
-    }
-    const bot = bots.find((b) => b.botId === botId)
-    if (!bot) { fLog('create-assistant', false, '没选到机器人：' + botId); return }
-    void deps.ops.createAssistant(homeId, bot.channel, bot.botId, userName || undefined).then(() => deps.onDone('L3', homeId))
-  }
-  openHomePop(anchor, {
-    width: 340, label: '新建助理', above: true,
-    title: h('div', { className: 'hu-ptitle' }, huIcon('plus', 15), '新建助理'),
-    body, foot: footBtns(ok, homeId ? undefined : '还没有家：先回上一层建一个家'),
-  })
 }
 
 export type { Assistant }
