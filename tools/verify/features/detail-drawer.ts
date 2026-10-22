@@ -33,6 +33,7 @@ const ENTRIES = [
   join(FEAT, 'actions.ts'),
   join(FEAT, 'drawer.ts'),
   join(FEAT, 'view.ts'),
+  join(FEAT, 'profile-section.ts'),
   join(FEAT, 'manifest.ts'),
   join(REPO, 'src', 'features', 'index.ts'),
 ];
@@ -672,4 +673,89 @@ test('manifest：#173 特性名改「详情面板」，挂载点不变', () => {
   const found = registry.FEATURES.find((f: any) => f.id === 'detail-drawer');
   assert.equal(found.name, '详情面板');
   assert.ok(found.slots.some((s: any) => s.target === 'settings.section'), '挂载点不变（不改装配）');
+});
+
+// ---- #173 助理人设只读块（US #39 看简介/人设 · US #40 一键跳编辑） ----
+const profMod: any = req('./features/detail-drawer/profile-section.js');
+const briefA = { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' };
+const mini = (assistant: any) => ({ assistant, workspace: W1 });
+
+test('profile：三行 名字/简介/人物设定齐全；缺助理只提示且隐藏编辑/复制', () => {
+  const el = profMod.renderProfileSection(mini(briefA), { onEditAssistant: () => undefined });
+  const all = texts(el).join('|');
+  for (const needle of ['助理人设', '名字', '小帅', '简介', '客服小帅', '人物设定', '说话简短', '复制', '编辑']) {
+    assert.ok(all.includes(needle), '缺文案: ' + needle);
+  }
+  assert.equal(findByClass(el, 'detail-drawer-profile-actions').length, 1, '有助理才出动作行');
+  const none = profMod.renderProfileSection(mini(null), { onEditAssistant: () => undefined });
+  const nall = texts(none).join('|');
+  assert.ok(nall.includes('该工作区暂无助理资料'));
+  assert.equal(findByClass(none, 'detail-drawer-profile-actions').length, 0, '缺助理隐藏编辑/复制');
+  const empty = profMod.renderProfileSection(mini({ id: 'a1', name: '小帅', description: '', persona: '' }), { onEditAssistant: () => undefined });
+  assert.ok(texts(empty).join('|').includes('还没有填写简介与人物设定。'), '空栏有引导文案');
+});
+
+test('profile：persona 默认折 3 行，展开/收起切类名与 aria-expanded', () => {
+  const long = Array.from({ length: 6 }, (_, i) => '人设第' + (i + 1) + '行').join('\n');
+  const el = profMod.renderProfileSection(mini({ ...briefA, persona: long }), { onEditAssistant: () => undefined });
+  const persona = findByClass(el, 'detail-drawer-profile-persona')[0];
+  assert.ok(persona.classList.contains('is-clamped'), '默认折叠');
+  const toggle = findByClass(el, 'af-btn').find((b: any) => texts(b).join('').includes('展开'));
+  assert.ok(toggle, '长人设才有展开按钮');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  toggle.dispatchEvent({ type: 'click' });
+  assert.ok(!persona.classList.contains('is-clamped'), '展开后不裁');
+  assert.ok(texts(toggle).join('').includes('收起'));
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  toggle.dispatchEvent({ type: 'click' });
+  assert.ok(persona.classList.contains('is-clamped'), '再点收回');
+});
+
+test('profile：编辑按钮回调；复制走剪贴板并 notify「已复制助理资料」', async () => {
+  let edited = 0;
+  const notes: string[] = [];
+  const el = profMod.renderProfileSection(mini(briefA), {
+    onEditAssistant: () => { edited += 1; },
+    onNotify: (m: string) => { notes.push(m); },
+  });
+  const btns = findByClass(el, 'af-btn');
+  btns.find((b: any) => texts(b).join('').includes('编辑')).dispatchEvent({ type: 'click' });
+  assert.equal(edited, 1, '编辑按钮派发 onEditAssistant');
+  const prevNav = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  let copied = '';
+  Object.defineProperty(globalThis, 'navigator', { value: { clipboard: { writeText: async (s: string) => { copied = s; } } }, configurable: true });
+  try {
+    btns.find((b: any) => texts(b).join('').includes('复制')).dispatchEvent({ type: 'click' });
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(copied, profMod.profileText(mini(briefA)), '复制内容是名字+两栏原文');
+    assert.deepEqual(notes, ['已复制助理资料']);
+  } finally {
+    if (prevNav) Object.defineProperty(globalThis, 'navigator', prevNav);
+    else delete (globalThis as any).navigator;
+  }
+});
+
+test('profile：超长历史值完整显示 + 低调提示（200 字边界不提示，码点计数）', () => {
+  const longDesc = '简'.repeat(201);
+  const el = profMod.renderProfileSection(mini({ ...briefA, description: longDesc, persona: '' }), { onEditAssistant: () => undefined });
+  const all = texts(el).join('|');
+  assert.ok(all.includes(longDesc), '201 字完整显示不截断');
+  assert.ok(all.includes('已超出上限，请到编辑里修正'), '低调提示就地修正');
+  const okLen = profMod.renderProfileSection(mini({ ...briefA, description: '简'.repeat(200), persona: '' }), { onEditAssistant: () => undefined });
+  assert.ok(!texts(okLen).join('|').includes('已超出上限'), '正好 200 不算超');
+  assert.equal(profMod.isOverLimit('description', '😀'.repeat(200)), false, '码点计数：200 个表情未超');
+  assert.equal(profMod.isOverLimit('persona', '😀'.repeat(8001)), true, '码点计数：8001 超人物设定上限');
+});
+
+test('view：详情面板正文出现「助理人设」块（#173 接入）', () => {
+  const model = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], briefA);
+  const noop = () => {};
+  const root = view.renderDrawerContent(model, {
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
+    onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
+    onRemoveBot: noop, onTestSend: noop, onClose: noop,
+  });
+  const all = texts(root).join('|');
+  assert.ok(all.includes('助理人设'), '详情面板有助理人设块');
+  assert.ok(all.includes('客服小帅'), '显示简介原文');
 });
