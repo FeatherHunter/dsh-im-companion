@@ -222,6 +222,10 @@ export const HOME_ROW_CSS = `
 .home-ui .hu-count{font-style:normal;color:var(--hu-ink-3);font-variant-numeric:tabular-nums}
 .home-ui .hu-flderr{font-style:normal;color:var(--hu-bad);text-align:right}
 .home-ui .hu-flderr:empty{display:none}
+/* T8-4 #172：家页助理行第三行＝简介（单行省略，悬停看全文靠 title）；空白简介不渲染 ⇒ 行高不长。 */
+.home-ui .hu-row .hu-desc{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* 编辑资料弹层：失败红字行空着时不占位（否则弹层里常驻一条空警示框）。 */
+.home-ui .hu-ppo .hu-err:empty{display:none}
 `
 
 let installed = false
