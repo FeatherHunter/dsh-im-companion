@@ -232,13 +232,16 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
   pencil.addEventListener('click', (e) => { e.stopPropagation(); rf.edit() })
   acts.appendChild(pencil)
   acts.appendChild(iconBtn('avatar-a', '更换头像', 'image'))
+  acts.appendChild(iconBtn('profile-a', '编辑简介与人物设定', 'person')) /* #172：第 4 个图标＝编辑资料入口 */
+  const brief = a.description?.trim() ?? '' /* 第三行只在有简介时占位（空白即视作没有） */
   const el = h('div', {
     className: `hu-row${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}${a.status !== 'bound' ? ' off' : ''}`,
     role: 'button', tabindex: 0, 'data-open': 'L3', 'data-id': a.id, 'aria-label': `助理 ${d.text}`,
   },
     avatarButton(avatarEl(a.id, d.text, a.avatar, { round: true }), 'avatar-a'),
     h('span', { className: 'hu-txt' }, rf.el,
-      h('span', { className: 'hu-sub' }, asstSubMeta(ch, path))),
+      h('span', { className: 'hu-sub' }, asstSubMeta(ch, path)),
+      brief ? h('span', { className: 'hu-desc', title: brief }, brief) : null),
     acts)
   wireRow(el, opts, a.id)
   return el

@@ -156,13 +156,13 @@ export async function updateHome(rpc: RpcCall, input: { id: string; name?: strin
   }
 }
 
-export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: string | null; avatar?: string | null } & AssistantFieldsValue, quiet = false): Promise<Assistant | null> {
+export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: string | null; avatar?: string | null } & AssistantFieldsValue, quiet = false, onError?: (message: string) => void): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.update', input as Record<string, unknown>)
-    if (v.assistant) { if (!quiet) toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check', input.name === undefined ? undefined : 'home-ui hu-toast-top'); aLog('update', v.assistant.id, true, '') } else aLog('update', input.id, false, '宿主未返回助理行')
+    if (v.assistant) { if (!quiet) toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check', input.name === undefined ? undefined : 'home-ui hu-toast-top'); aLog('update', v.assistant.id, true, '') } else { aLog('update', input.id, false, '宿主未返回助理行'); if (onError) onError('宿主未返回助理行') }
     return v.assistant ?? null
   } catch (e) {
-    aLog('update', input.id, false, msgOf(e)); toast('助理更新失败：' + msgOf(e))
+    aLog('update', input.id, false, msgOf(e)); if (onError) onError(msgOf(e)); else toast('助理更新失败：' + msgOf(e))
     return null
   }
 }
@@ -207,7 +207,7 @@ export interface DrillOpsBundle {
   createHome(workspaceId: string): Promise<void>
   createAssistant(homeId: string, channel: string, botId: string, userName?: string, fields?: AssistantFieldsValue): Promise<void>
   updateHome(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
-  updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null } & AssistantFieldsValue, quiet?: boolean): Promise<boolean>
+  updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null } & AssistantFieldsValue, quiet?: boolean, onError?: (message: string) => void): Promise<boolean>
   createUnbound(homeId: string, name?: string, fields?: AssistantFieldsValue): Promise<void> /* #138：不再要 channel（未绑定＝没有渠道） */
   bindAssistant(id: string, channel: string, botId: string): Promise<void>
   removeAssistant(id: string): Promise<void>
@@ -250,10 +250,10 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
       if (!rpc) { toast('连接服务不可用'); hLog('update', id, false, '连接服务不可用'); return false }
       const row = await updateHome(rpc, { id, ...patch }, quiet); if (row) await deps.reloadHomes(); return row !== null
     },
-    updateAssistant: async (id, patch, quiet) => {
+    updateAssistant: async (id, patch, quiet, onError) => {
       const rpc = deps.getRpc()
-      if (!rpc) { toast('连接服务不可用'); aLog('update', id, false, '连接服务不可用'); return false }
-      const row = await updateAssistant(rpc, { id, ...patch }, quiet); if (row) await deps.reloadHomes(); return row !== null
+      if (!rpc) { const m = '连接服务不可用'; toast(m); aLog('update', id, false, m); if (onError) onError(m); return false }
+      const row = await updateAssistant(rpc, { id, ...patch }, quiet, onError); if (row) await deps.reloadHomes(); return row !== null
     },
     createUnbound: async (homeId, name, fields) => {
       const rpc = deps.getRpc()

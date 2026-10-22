@@ -17,7 +17,7 @@ export interface FormOps {
   createUnbound(homeId: string, name?: string, fields?: AssistantFieldsValue): Promise<void>
   bindAssistant(id: string, channel: string, botId: string): Promise<void>
   updateHome(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
-  updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
+  updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null } & AssistantFieldsValue, quiet?: boolean, onError?: (message: string) => void): Promise<boolean>
   removeAssistant(id: string): Promise<void>
   pickDirectory(): Promise<string | null>
   adoptDirectory(dir: string): Promise<WorkspaceRef | null>
