@@ -76,6 +76,12 @@ test('A3 边界：200/8000 通过，201/8001 拒绝；错误文案带字段定�
   const over8000 = fields.checkFieldValue('persona', '字'.repeat(8001))
   assert.equal(over8000.ok, false)
   assert.equal(over8000.message, '人物设定（persona）最多 8000 字，当前 8001 字')
+
+  /* 边界按码点算的**行为证据**（不只是 countCodePoints 单测）：200 个 emoji 过、201 个 emoji 拒。 */
+  assert.equal(fields.checkFieldValue('description', '😀'.repeat(200)).ok, true, '200 个 emoji（UTF-16 长 400）必须过')
+  const emoji201 = fields.checkFieldValue('description', '😀'.repeat(201))
+  assert.equal(emoji201.ok, false, '201 个 emoji 必须拒（按 .length 会误判成 402 字）')
+  assert.equal(emoji201.message, '简介（description）最多 200 字，当前 201 字', '报的是码点数，不是 UTF-16 长度')
 })
 
 test('A4 CRLF 归一 + trim；空 / 缺失 / 清空三态等价', () => {
@@ -135,6 +141,13 @@ test('B1 assistant.create：两栏随行落账并归一；home.list 只在非空
   const bareGot = listed.find((x: any) => x.id === bare.id)
   assert.equal('description' in bareGot, false, 'home.list 不给空键')
   assert.equal('persona' in bareGot, false)
+
+  /* 超长经 RPC 进来同样诚实拒绝（错误文案原样透传，且不多一行）。 */
+  const rejected = await call('assistant.create', { homeId: h1.id, channel: 'ch', botId: 'bot-over', description: '字'.repeat(201) })
+  assert.equal(rejected.ok, false)
+  assert.equal(rejected.error.code, 'bad-request')
+  assert.equal(rejected.error.message, '简介（description）最多 200 字，当前 201 字')
+  assert.equal(val(await call('home.list', {})).assistants.length, 2, '被拒的创建不留行')
 
   const text = readFileSync(file, 'utf8')
   assert.ok(/^version: 2$/m.test(text), '零迁移：version 仍是 2')
