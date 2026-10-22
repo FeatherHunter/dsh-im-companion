@@ -20,7 +20,7 @@ import { orphanHomeAct } from './home-orphan-forms'
 import { newAsstAct } from './home-create-act'
 import type { MoveOps } from './home-move-ops'
 import { closeHomePop } from './home-pop'
-import { skeletonRows, viewOf, type RowView } from './home-rows'
+import { asstName, skeletonRows, viewOf, type RowView } from './home-rows'
 import { hideAsstTip } from './home-row-tip'
 import { stageCrumbOpts, stageHead, stageList, type StageCtx } from './home-stage'
 import type { PanelState } from './panel-data'
@@ -133,7 +133,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     } else if (kind === 'detail-a') {
       const a = v.assistants.find((x) => x.id === id)
       const home = a ? v.homes.find((x) => x.id === a.homeId) : undefined
-      emitDrawer(home ? home.path : '')
+      emitDrawer(home ? home.path : '', a ? { id: a.id, name: asstName(v, a), description: a.description ?? '', persona: a.persona ?? '' } : null)
     } else if (kind === 'bind-a' || kind === 'change-a') {
       const a = v.assistants.find((x) => x.id === id)
       /* owner 2026-10-17：行上不再有「接入」——未绑定走「绑定机器人」（红档），已绑定走「更换机器人」（琥珀档）。

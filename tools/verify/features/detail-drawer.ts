@@ -1,6 +1,6 @@
 // DetailDrawer 详情抽屉自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
 // 做法：tsc 转译相关链到临时目录再断言（照抄 left-badges.ts 模式）。B 变体 verdict（#9）：摘要直改 + 折叠详情 + 即时写（无保存按钮）。
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -28,6 +28,7 @@ const ENTRIES = [
   join(UI, 'modal.ts'),
   join(UI, 'dir-picker.ts'),
   join(REPO, 'src', 'client', 'icons.ts'),
+  join(REPO, 'src', 'client', 'components', 'home-events.ts'),
   join(FEAT, 'data.ts'),
   join(FEAT, 'actions.ts'),
   join(FEAT, 'drawer.ts'),
@@ -612,4 +613,63 @@ test('routes.list：端点只读聚合，缺席不炸', async () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ---- #173 助理人设：派发侧（home-events / panel-body）与编辑跳转 ----
+test('home-events：emitDrawer 第二参可选，brief 原样进 detail（#173）', () => {
+  const prev = (globalThis as any).window;
+  const seen: any[] = [];
+  (globalThis as any).window = {
+    CustomEvent: class { type: string; detail: unknown; constructor(t: string, o: any) { this.type = t; this.detail = o?.detail; } },
+    dispatchEvent: (e: any) => { seen.push(e); return true; },
+  };
+  try {
+    const ev: any = req('./client/components/home-events.js');
+    ev.emitDrawer('D:\\agents\\xiaoshuai');
+    ev.emitDrawer('D:\\agents\\xiaoshuai', { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' });
+    assert.equal(seen.length, 2, '两次派发都发出去了');
+    assert.equal(seen[0].type, config.OPEN_DRAWER_EVENT);
+    assert.deepEqual(seen[0].detail, { key: 'D:\\agents\\xiaoshuai', assistant: null }, '不带 brief 时 assistant=null（向后兼容）');
+    assert.deepEqual(seen[1].detail.assistant, { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' }, 'brief 原样透传');
+  } finally { (globalThis as any).window = prev; }
+});
+
+test('panel-body：#173 detail-a 派发带 brief（缺省空串兜底）', () => {
+  const body = readFileSync(join(REPO, 'src', 'client', 'components', 'panel-body.ts'), 'utf8');
+  assert.ok(body.includes("emitDrawer(home ? home.path : '', a ? { id: a.id, name: asstName(v, a), description: a.description ?? '', persona: a.persona ?? '' } : null)"), 'detail-a 派发四键 brief');
+  assert.ok(body.includes('asstName'), '名字取共享行层的 asstName（不另拼显示名）');
+});
+
+test('drawer：jumpToAssistEdit 派发 OPEN_ASSIST_EDIT_EVENT 后关面板（#173 编辑跳转）', () => {
+  const prev = (globalThis as any).window;
+  const seen: any[] = [];
+  (globalThis as any).window = {
+    CustomEvent: class { type: string; detail: unknown; constructor(t: string, o: any) { this.type = t; this.detail = o?.detail; } },
+    dispatchEvent: (e: any) => { seen.push(e); return true; },
+  };
+  try {
+    let closed = 0;
+    drawerMod.jumpToAssistEdit({ assistant: { id: 'a1' }, workspace: W1 }, () => { closed += 1 });
+    assert.equal(closed, 1, '派发后关面板');
+    assert.equal(seen[0].type, config.OPEN_ASSIST_EDIT_EVENT);
+    assert.deepEqual(seen[0].detail, { assistantId: 'a1', homePath: W1 });
+    drawerMod.jumpToAssistEdit({ assistant: null, workspace: '' }, () => undefined);
+    assert.deepEqual(seen[1].detail, { assistantId: '', homePath: '' }, '缺助理时 assistantId 空串（接收侧 fail-soft 忽略）');
+  } finally { (globalThis as any).window = prev; }
+});
+
+test('drawer：派发失败不阻断关闭（try/catch 兜底）', () => {
+  const prev = (globalThis as any).window;
+  (globalThis as any).window = { CustomEvent: class { constructor() { throw new Error('boom'); } }, dispatchEvent: () => true };
+  try {
+    let closed = 0;
+    drawerMod.jumpToAssistEdit({ assistant: { id: 'a1' }, workspace: W1 }, () => { closed += 1 });
+    assert.equal(closed, 1);
+  } finally { (globalThis as any).window = prev; }
+});
+
+test('manifest：#173 特性名改「详情面板」，挂载点不变', () => {
+  const found = registry.FEATURES.find((f: any) => f.id === 'detail-drawer');
+  assert.equal(found.name, '详情面板');
+  assert.ok(found.slots.some((s: any) => s.target === 'settings.section'), '挂载点不变（不改装配）');
 });

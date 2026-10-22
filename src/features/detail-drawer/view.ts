@@ -17,6 +17,7 @@ export function quietCallbacks(onClose: () => void): DrawerCallbacks {
     onDraftWorkspace: () => undefined,
     onApplyPersonality: () => undefined,
     onDraftPersonality: () => undefined,
+    onEditAssistant: () => undefined,
     onRemoveBot: () => undefined,
     onTestSend: () => undefined,
     onClose,
@@ -34,6 +35,10 @@ export interface DrawerCallbacks {
   onDraftPersonality(draft: string): void
   onRemoveBot(channel: string, botId: string): void
   onTestSend(channel: string, botId: string): void
+  /** #173 助理人设块的「编辑」：抽屉层派发 OPEN_ASSIST_EDIT_EVENT 并关面板。 */
+  onEditAssistant(): void
+  /** 只读块复制后的轻提示（可选：静默渲染没有 toast）。 */
+  onNotify?(message: string, icon?: 'check'): void
   onClose(): void
 }
 

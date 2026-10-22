@@ -7,7 +7,7 @@ import { toast } from '../../client/ui/toast'
 import { chooseBot, runTestSend } from '../../client/data/header-overlay'
 import type { AgentPresetCatalog } from '../../client/data/fleet-api'
 import type { FeatureCtx } from '../protocol'
-import { channelLabel, type OpenDrawerDetail } from '../../client/data/config'
+import { OPEN_ASSIST_EDIT_EVENT, channelLabel, type AssistBrief, type AssistEditDetail, type OpenDrawerDetail } from '../../client/data/config'
 import { applyPersonality, rpcOf, writeBots, type WriteDeps } from './actions'
 import {
   OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, fetchRoutes, loadingModel,
@@ -22,7 +22,7 @@ export function mountDrawer(fctx: FeatureCtx): () => void {
     try {
       const detail = (e as CustomEvent)?.detail as Partial<OpenDrawerDetail> | undefined
       const key = detail?.key
-      if (typeof key === 'string' && key) void openDrawer(fctx, key)
+      if (typeof key === 'string' && key) void openDrawer(fctx, key, detail?.assistant ?? null)
     } catch {
       /* ignore */
     }
@@ -38,8 +38,14 @@ export function mountDrawer(fctx: FeatureCtx): () => void {
 
 type MetaDoc = Awaited<ReturnType<FeatureCtx['meta']['loadMeta']>>
 type SnapBots = Parameters<typeof buildDrawerModel>[0]
+/** #173 编辑跳转：派发 OPEN_ASSIST_EDIT_EVENT（feature→A1，契约 §4）后关面板；派发失败不阻断关闭。 */
+export function jumpToAssistEdit(model: DrawerModel, close: () => void): void {
+  const detail: AssistEditDetail = { assistantId: model.assistant?.id ?? '', homePath: model.workspace }
+  try { window.dispatchEvent(new window.CustomEvent(OPEN_ASSIST_EDIT_EVENT, { detail })) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'open-assist-edit', ok: false, message: String((e as Error)?.message ?? e) }) }
+  close()
+}
 
-async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
+async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief | null = null): Promise<void> {
   logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'open', ok: true, message: '打开 Agent 详情：' + key })
   try {
     currentClose?.()
@@ -63,7 +69,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     sheet = showSheet({
       overlayClass: 'detail-drawer-overlay',
       panelClass: 'detail-drawer-sheet',
-      label: 'Agent 详情抽屉',
+      label: 'Agent 详情面板',
       onClose: () => {
         closed = true
         clearGiveUp()
@@ -110,7 +116,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   let lastSig: string | null = null
   const paint = (): void => {
     if (closed || !meta || !sheet) return
-    const model = buildDrawerModel(lastBots, meta, key, lastCatalogs, lastRoutes)
+    const model = buildDrawerModel(lastBots, meta, key, lastCatalogs, lastRoutes, assistant)
     if (!model) {
       if (settled) {
         settled = false
@@ -270,6 +276,8 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         }
       })()
     },
+    onEditAssistant: () => jumpToAssistEdit(model, closeAll),
+    onNotify: (message, icon) => toast(message, icon),
     onClose: () => closeAll(),
     }
   }
