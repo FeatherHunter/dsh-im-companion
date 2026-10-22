@@ -4,8 +4,8 @@
 //    段名/order/interpolate 正确、无 required/complete；卸载时 disposer 真被调用；
 //    宿主无 systemPrompt 服务时 apply 不炸（回调不执行）；同名残留（热重载）只记常驻失败、不打断 apply。；与上游段（order 115/125）共存：名字带插件前缀、order 不撞
 // ② 渲染契约：有归属+有人设 ⇒ 固定三段文本；无会话/无归属/无人设/超长/异常 ⇒ ''，永不抛。
-// ③ 归属索引（假 fs）：EACCES / 坏 JSON / 删除 / 缓存戳 / 1:N / 负结果 TTL；weixin 面只看 sessions。
-// ④ 人设目录：按 channel+botId join homes.yaml，取 name/persona；未绑定行不返回。
+// ③ 归属索引（假 fs）：EACCES / 坏 JSON（日志不许带原文）/ 删除 / 缓存戳 / 1:N / 同文件重复 sessionId / 负结果 TTL；weixin 面只看 sessions。
+// ④ 人设目录：按 channel+botId join homes.yaml，取 name/persona；未绑定行不返回；读失败不冻结（修好文件后懒刷新自愈）。
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -35,35 +35,37 @@ const { createPersonaSection, PERSONA_SECTION_NAME, PERSONA_SECTION_ORDER } =
   await import(pathToFileURL(join(tmp, 'host', 'prompt-section.js')).href);
 
 const homes: string[] = [];
+const HOMES_YAML = [
+  'version: 2',
+  'homes:',
+  '  - id: h1',
+  '    path: D:/ws/demo',
+  '    name: 演示家',
+  'assistants:',
+  '  - id: a1',
+  '    homeId: h1',
+  '    channel: wecom',
+  '    botId: bot1',
+  '    status: bound',
+  '    name: 小助手',
+  '    persona: "你是一个耐心的助理"',
+  '  - id: a2',
+  '    homeId: h1',
+  '    channel: wecom',
+  '    botId: bot2',
+  '    status: unbound',
+  '    name: 未绑定',
+  '    persona: "不该被读到"',
+  '',
+].join('\n');
+
 function freshHome(withHomes: boolean): string {
   const dir = mkdtempSync(join(tmpdir(), 'persona-home-'));
   homes.push(dir);
   if (withHomes) {
     const cfg = join(dir, 'integrations', 'dsh-im-companion');
     mkdirSync(cfg, { recursive: true });
-    writeFileSync(join(cfg, 'homes.yaml'), [
-      'version: 2',
-      'homes:',
-      '  - id: h1',
-      '    path: D:/ws/demo',
-      '    name: 演示家',
-      'assistants:',
-      '  - id: a1',
-      '    homeId: h1',
-      '    channel: wecom',
-      '    botId: bot1',
-      '    status: bound',
-      '    name: 小助手',
-      '    persona: "你是一个耐心的助理"',
-      '  - id: a2',
-      '    homeId: h1',
-      '    channel: wecom',
-      '    botId: bot2',
-      '    status: unbound',
-      '    name: 未绑定',
-      '    persona: "不该被读到"',
-      '',
-    ].join('\n'));
+    writeFileSync(join(cfg, 'homes.yaml'), HOMES_YAML);
   }
   return dir;
 }
@@ -289,6 +291,25 @@ test('归属 1:N：mtime 最新者胜，结果变化才 warn', async () => {
   console.log('#170-PROOF ownership-1N PASS');
 });
 
+test('同一 state.json 重复 sessionId 只算一个候选：不误报歧义', async () => {
+  const { home, root, tree, files, statePath } = ownershipHome();
+  tree.set(root, ['dsh-wecom']);
+  tree.set(join(root, 'dsh-wecom'), ['bots']);
+  tree.set(join(root, 'dsh-wecom', 'bots'), ['botA']);
+  const file = statePath('wecom', 'bots', 'botA');
+  files.set(file, { text: JSON.stringify({ sessions: { c1: 's1', c2: 's1' } }), mtimeMs: 100 });
+  const log = collector();
+  const { fs } = fakeFs(tree, files);
+  const own = createSessionOwnership({ dshHome: home, log, fs });
+  await own.refresh('test');
+  const hit = own.lookup('s1');
+  assert.equal(hit.hit, true);
+  assert.equal(hit.ambiguous, false, '同文件同 bot 的重复值不是歧义');
+  assert.equal(hit.candidates.length, 1);
+  assert.equal(log.rows.filter((r) => r.event === 'persona.ownership.ambiguity').length, 0);
+  console.log('#170-PROOF same-file-dedupe PASS');
+});
+
 test('缓存戳：mtime/size 没变不重读；变了才重读', async () => {
   const { home, root, tree, files, statePath } = ownershipHome();
   tree.set(root, ['dsh-wecom']);
@@ -344,10 +365,14 @@ test('坏 JSON 保留上次绑定并记 warn', async () => {
   const { fs } = fakeFs(tree, files);
   const own = createSessionOwnership({ dshHome: home, log, fs });
   await own.refresh('first');
-  files.set(file, { text: '{ not json', mtimeMs: 200 });
+  files.set(file, { text: '{"SECRET-CHAT-KEY": "SECRET-CONTENT", not-json', mtimeMs: 200 });
   await own.refresh('broken');
   assert.equal(own.lookup('s1').hit, true, '坏 JSON 不得抹掉上次绑定');
   assert.ok(log.rows.some((r) => r.event === 'persona.refresh.fail' && r.fields.code === 'parse-failed'));
+  /* 正文红线（#170 评审 P1-1）：JSON.parse 的 message 会嵌输入文件出错点附近的字符 ⇒ 日志只许固定文案。 */
+  const dump = JSON.stringify(log.rows);
+  assert.ok(!dump.includes('SECRET'), '解析失败日志不得含 state.json 原文片段：' + dump);
+  assert.ok(!dump.includes('not-json'), '解析失败日志不得含 state.json 原文片段');
   console.log('#170-PROOF bad-json PASS');
 });
 
@@ -411,4 +436,25 @@ test('目录按 channel+botId join homes.yaml：取 name/persona，未绑定不�
   assert.equal(directory.lookup('wecom', 'bot2'), null, 'unbound 行不得参与注入');
   assert.equal(directory.lookup('wecom', 'nope'), null);
   console.log('#170-PROOF directory-join PASS');
+});
+
+test('目录读失败后修好文件：下一次 lookup 能恢复注入（失败不冻结）', async () => {
+  const home = freshHome(false);
+  const cfg = join(home, 'integrations', 'dsh-im-companion');
+  const disk = join(cfg, 'homes.yaml');
+  mkdirSync(cfg, { recursive: true });
+  writeFileSync(disk, 'version: 2\nassistants: [unclosed\n');
+  const log = collector();
+  const directory = createAssistantDirectory({ dshHome: home, log });
+  await directory.refresh('broken');
+  assert.equal(directory.lookup('wecom', 'bot1'), null, '坏家表读不出人设');
+  const fails = (): number => log.rows.filter((r) => r.event === 'persona.refresh.fail' && r.fields.phase === 'refresh').length;
+  assert.equal(fails(), 1, '读失败必须记一条常驻 warn');
+  await directory.refresh('broken-again');
+  assert.equal(fails(), 1, '同一失败不重复刷盘（日志去重）');
+  writeFileSync(disk, HOMES_YAML);
+  /* 不显式 refresh：靠 lookup 的懒刷新（250ms 节流）自愈——证明失败不会把 stamp 永久钉死（#170 评审 P2-4）。 */
+  await waitFor(() => directory.lookup('wecom', 'bot1') !== null, 3000);
+  assert.equal(directory.lookup('wecom', 'bot1')?.persona, '你是一个耐心的助理');
+  console.log('#170-PROOF directory-recover PASS');
 });

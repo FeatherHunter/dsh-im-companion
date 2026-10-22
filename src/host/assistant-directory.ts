@@ -66,6 +66,8 @@ export function createAssistantDirectory(options: AssistantDirectoryOptions): As
   let ready = false
   let loadedAt = 0
   let lastStamp = ''
+  /** 失败日志去重：同 (state,message) 只记一次（恢复成功时清空），避免失败期间每次重试都刷盘。 */
+  let lastFail = ''
   let inFlight: Promise<void> | null = null
 
   async function stampOf(): Promise<string> {
@@ -87,6 +89,9 @@ export function createAssistantDirectory(options: AssistantDirectoryOptions): As
   }
 
   function fail(state: string, message: string): void {
+    const key = state + '|' + message
+    if (lastFail === key) return
+    lastFail = key
     try {
       sink.log('warn', 'persona.refresh.fail', {
         phase: 'refresh', file, code: state, reason: 'homes-unreadable', message, sessionId: '',
@@ -98,7 +103,8 @@ export function createAssistantDirectory(options: AssistantDirectoryOptions): As
     const started = now()
     const stamp = await stampOf()
     const statMs = now() - started
-    if (ready && stamp === lastStamp) return
+    /* 早返回也必须推进 loadedAt：否则 250ms 后每次 lookup 都会再 stat 一次，节流形同虚设（#170 评审 P2-4）。 */
+    if (ready && stamp === lastStamp) { loadedAt = now(); return }
     lastStamp = stamp
     const loadStart = now()
     const loaded = await loadHomesDocState(file)
@@ -106,6 +112,9 @@ export function createAssistantDirectory(options: AssistantDirectoryOptions): As
     if (loaded.state === 'read-failed' || loaded.state === 'parse-failed') {
       fail(loaded.state, '家表读回不可信（' + loaded.state + '），保留上次人设快照')
       ready = true
+      /* 不推进 lastStamp：stamp 没变也要在下次 lookup 重试——瞬时 EACCES / 半写 YAML 不能让人设快照永久冻结。
+       * loadedAt 照常推进，重试频率仍受 250ms 节流约束。 */
+      lastStamp = ''
       loadedAt = now()
       noteRefresh(reason, statMs, parseMs, 1, true)
       return
@@ -118,6 +127,7 @@ export function createAssistantDirectory(options: AssistantDirectoryOptions): As
     byBot = next
     ready = true
     loadedAt = now()
+    lastFail = ''
     noteRefresh(reason, statMs, parseMs, 0, false)
   }
 

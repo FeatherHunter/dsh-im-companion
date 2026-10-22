@@ -77,8 +77,10 @@ function parseSessions(text: string): { ok: true; sessions: Map<string, string> 
       if (key && typeof value === 'string' && value) out.set(key, value)
     }
     return { ok: true, sessions: out }
-  } catch (error) {
-    return { ok: false, message: 'state.json 解析失败：' + messageOf(error) }
+  } catch {
+    /* 正文红线：JSON.parse 的 message 会嵌进输入文件出错点附近的字符（V8 实测），
+     * 而 state.json 含会话键乃至凭据 ⇒ 只记固定文案，绝不拼错误原文（#170 评审 P1-1）。 */
+    return { ok: false, message: 'state.json 解析失败' }
   }
 }
 
@@ -150,7 +152,12 @@ export function createSessionOwnership(options: SessionOwnershipOptions): Sessio
   function rebuild(): Map<string, Candidate[]> {
     const next = new Map<string, Candidate[]>()
     for (const [file, binding] of files) {
+      /* 同一 state.json 里多个会话键映射到同一 sessionId（迁移/共享会话）只算一个候选：
+       * 歧义语义是「多个渠道/机器人指向同一会话」，同文件同 bot 的重复不是歧义（#170 评审 P2-6）。 */
+      const seen = new Set<string>()
       for (const sessionId of binding.sessions.values()) {
+        if (seen.has(sessionId)) continue
+        seen.add(sessionId)
         const list = next.get(sessionId) ?? []
         list.push({ channel: binding.channel, botId: binding.botId, path: file, mtimeMs: binding.mtimeMs })
         next.set(sessionId, list)
