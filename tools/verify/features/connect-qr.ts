@@ -730,7 +730,9 @@ test('#62 commitBinding：空工作区提示须指向真能补绑的卡', async 
 test('#62 创建接线：面板创建表单必带选家（T6a 起改钉「建家选已有区」同款硬约束）', () => {
   const panel = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
   const compose = readFileSync(join(REPO, 'src', 'client', 'components', 'compose-bar.ts'), 'utf8');
-  const forms = readFileSync(join(REPO, 'src', 'client', 'components', 'home-forms.ts'), 'utf8');
+  const forms = readFileSync(join(REPO, 'src', 'client', 'components', 'home-forms.ts'), 'utf8')
+  /* T8-3 #171：新建助理弹层从 home-forms 纯搬到 home-asst-create（299 行顶格放不下两栏）——选家/选机器人两条钉改读新家。 */
+  const asstCreate = readFileSync(join(REPO, 'src', 'client', 'components', 'home-asst-create.ts'), 'utf8');
   const body = readFileSync(join(REPO, 'src', 'client', 'components', 'panel-body.ts'), 'utf8');
   const rows = readFileSync(join(REPO, 'src', 'client', 'components', 'home-rows.ts'), 'utf8');
   const ops = readFileSync(join(REPO, 'src', 'client', 'components', 'home-ops.ts'), 'utf8');
@@ -742,7 +744,7 @@ test('#62 创建接线：面板创建表单必带选家（T6a 起改钉「建家
   assert.ok(panel.includes('createDrillOps'), '面板须接线绿框写管道');
   assert.ok(ops.includes('createHome'), '写管道须含建家落盘（工作区必选）');
   assert.ok(forms.includes('选中的目录会建成 DSH 工作区') && forms.includes('dirField'), '建家表单＝选目录 → DSH 建工作区（T10 #124 唯一支路）');
-  assert.ok(forms.includes('属于哪个家') && forms.includes('绑定机器人'), '建助理表单须选家 + 选机器人');
+  assert.ok(asstCreate.includes('属于哪个家') && asstCreate.includes('绑定机器人'), '建助理表单须选家 + 选机器人');
   assert.ok(body.includes('openCreate'), '面板须接线建单入口（＋ / 底部主操作）');
   assert.ok(rows.includes('data-open'), '三级钻取行须带钻取锚点（点行进下一级）');
   assert.ok(!panel.includes('openDirPicker'), '选目录组件住在 home-dir（T10 #124 起建家唯一支路），面板不直连');
