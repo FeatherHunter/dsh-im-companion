@@ -360,3 +360,22 @@ test('#172 事件入口：派发打开对应助理、未知 id 不开、dispose 
   await flush();
   assert.equal(popMod.homePopOpen(), false, 'dispose 后退订必须生效');
 });
+
+
+/* ⑫ 清空（规格 #168「空串与缺失等价」＋ #176 D1）：清空两栏必须显式发空串（宿主删键），成功后第三行消失。 */
+test('#172 清空两栏：载荷显式发空串、宿主删键、第三行消失', async (t) => {
+  const { bodyEl, handle, calls } = makeBox();
+  t.after(() => handle.dispose());
+  gotoL2(bodyEl);
+  clickEl(actBtn(bodyEl, 'a1', 'profile-a'));
+  const pop = popMod.homePopNode();
+  setVal(byAttr(pop, 'aria-label', '助理简介')[0], '');
+  setVal(byAttr(pop, 'aria-label', '助理人物设定')[0], '');
+  clickEl(popBtn(pop, '保存'));
+  await flush();
+  assert.equal(calls.length, 1, '清空也是一次真写请求');
+  assert.deepEqual(calls[0].patch, { description: '', persona: '' }, '清空必须显式发空串（不能按没改吞掉）');
+  assert.equal(popMod.homePopOpen(), false, '成功后关窗');
+  const row = cls(bodyEl, 'hu-row').find((r: any) => r.getAttribute('data-id') === 'a1');
+  assert.equal(one(row, 'hu-desc'), null, '清空简介后家页第三行消失');
+});

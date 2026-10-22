@@ -25,8 +25,11 @@ const MULTILINE: Record<AssistantField, boolean> = { description: false, persona
 export interface AsstFieldsUi {
   /** 两栏节点（`ASSISTANT_FIELDS` 顺序），调用方按序摊进 body。 */
   nodes: HTMLElement[]
-  /** 当前值：归一后非空的栏才带键——空栏**整键缺失**（不是 `''`，也不是 `undefined` 值）。 */
+  /** 当前值：归一后非空的栏才带键——空栏**整键缺失**（不是 `''`，也不是 `undefined` 值）。创建用。 */
   values(): AssistantFieldsValue
+  /** 两栏当前文本（归一后，**允许空串**）：编辑弹窗要判断「用户清空了一栏」——
+   *  values() 省掉空键，清空会被误判成「没改」而写不出去（#172 修补：清空是需要落盘的显式动作）。 */
+  texts(): Record<AssistantField, string>
   /** 第一个被拒栏的原文（`fieldErrorMessage` 的输出，带字段定位），全合法时 `undefined`：主按钮的禁用理由用它。 */
   reason(): string | undefined
   /** 有栏被拒（超限）。提交口要再判一次——`disabled` 挡不住程序化点击／回车。 */
@@ -77,6 +80,11 @@ export function asstFieldsUi(initial?: AssistantFieldsValue, onChange?: () => vo
         const r = checkFieldValue(f, slots[f].el.value)
         if (r.ok && r.value !== undefined && r.value !== '') out[f] = r.value
       }
+      return out
+    },
+    texts() {
+      const out = {} as Record<AssistantField, string>
+      for (const f of ASSISTANT_FIELDS) out[f] = normalizeFieldText(slots[f].el.value)
       return out
     },
     reason: reasonOf,

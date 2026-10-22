@@ -7,8 +7,8 @@
  * 保存四分支照规格 #168：校验不过 ⇒ 弹窗不动；归一后没改 ⇒ 关窗且**零写请求**；成功 ⇒ **先关窗**
  * 再 toast「已保存助理资料」再 onDone；失败／8s 超时 ⇒ 留窗、保留输入、宿主错误原文落 role=alert 行。
  * 写请求一律 quiet=true 且自带 onError：home-ops 的兜底 toast 会让失败弹两条互相矛盾的提示（补丁 A6）。
- * 清空语义：载荷**绝不发空串** ⇒ 把某字段清空按「没改」处理（删不掉简介，但也不会静默写坏数据）；
- * 规格没有定义清空，这是本票的已知边界。 */
+ * 清空语义：某字段被清空 ⇒ 载荷**显式发 `''`**（宿主把它当「删掉这个键」，与缺失同形；规格 #168
+ * 「空串与缺失等价」＋ #176 负向验收 D「清空人设后不再注入」都靠这条）；只有「归一后完全没变」才 noop。 */
 import { h } from '../dom'
 import { ASSISTANT_FIELDS, normalizeFieldText, type AssistantFieldsValue } from '../../assistant-fields'
 import { logLine, logOn } from '../log'
@@ -77,14 +77,11 @@ export function profileAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: str
     cancelBtn.disabled = busy
   }
 
-  /** 只带「变了且非空」的键：归一后与打开时相同＝没改；清空按没改处理（绝不发空串）。 */
+  /** 只带「变了的键」：归一后与打开时相同＝没改；**清空也要发**（`''`＝宿主删键，别省掉）。 */
   function diff(): AssistantFieldsValue {
-    const next = ui.values()
+    const next = ui.texts()
     const out: AssistantFieldsValue = {}
-    for (const f of ASSISTANT_FIELDS) {
-      const now = next[f] ?? ''
-      if (now !== normalizeFieldText(init[f]) && now !== '') out[f] = now
-    }
+    for (const f of ASSISTANT_FIELDS) if (next[f] !== normalizeFieldText(init[f])) out[f] = next[f]
     return out
   }
 
@@ -98,7 +95,6 @@ export function profileAsstPop(anchor: AnchorRef, deps: EditDeps & { asstId: str
     if (ui.invalid()) { pLog('profile-invalid', false, ui.reason() ?? ''); return }
     const patch = diff()
     if (Object.keys(patch).length === 0) {
-      if (ASSISTANT_FIELDS.some((f) => (ui.values()[f] ?? '') === '' && normalizeFieldText(init[f]) !== '')) pLog('profile-clear-ignored', false, '字段被清空按无改动处理（载荷不发空串）')
       closeHomePop(true)
       pLog('profile-noop', true, '资料没变，编辑资料弹层直接关（零写请求）')
       return
