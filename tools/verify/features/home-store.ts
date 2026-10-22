@@ -31,6 +31,9 @@ try {
 writeFileSync(join(BUILD, 'package.json'), '{"type": "module"}\n');
 try { symlinkSync(join(REPO, 'node_modules'), join(BUILD, 'node_modules'), 'junction'); } catch { /* 已存在 */ }
 const store: any = await import(pathToFileURL(join(BUILD, 'host', 'home-store.js')).href);
+const yamlIo: any = await import(pathToFileURL(join(BUILD, 'host', 'config-yaml.js')).href);
+const io: any = await import(pathToFileURL(join(BUILD, 'host', 'home-store-io.js')).href);
+const edit: any = await import(pathToFileURL(join(BUILD, 'host', 'home-edit.js')).href);
 
 const DIRS: string[] = [];
 const fresh = (): { dir: string; file: string } => {
@@ -127,6 +130,169 @@ test('#122 事故复盘：清单声明与调用点对齐（config.io / config.wr
   assert.match(storeSrc, /assertWritable\(file, state\)/, '三条写路径共用同一道闸（不许各写一份判断）');
   const idx = readFileSync(join(REPO, 'src', 'index.ts'), 'utf8');
   assert.match(idx, /setHomeStoreLog\(/, '出口由装配层单点注入（home-store 不自己建库：单写者纪律）');
+});
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * T8-1 #169：助理两栏（description 简介 / persona 人物设定）的**账本存取与零迁移**。
+ * 判据（规格 #168）：不 bump version、不写迁移；老账本读→写回逐字节不变（唯一允许的差异＝trim 后为空的
+ * 新键被略过）；盘上已超长的值**原样读回、不截断**（读容忍，只有写才校验）；空串与缺失等价。
+ * 变异自证：cleanAssistant 删掉两栏透传（C1/C2 红）、writeGuarded 去掉 stripEmptyFields（C2 红）、
+ *   createAssistantRow 不校验（C4/C5 红）、updateAssistantRow 闸门退回 name/avatar（C6 红）。
+ * ───────────────────────────────────────────────────────────────────────────── */
+const OLD_DOC = {
+  version: 2,
+  homes: [{
+    id: 'h1', workspaceId: 'ws-1', path: 'D:\\agents\\keting', name: '客厅', nameSource: 'system',
+    avatar: null, avatarSource: 'default', createdAt: 1, updatedAt: 1,
+  }],
+  assistants: [{
+    id: 'a1', homeId: 'h1', channel: 'feishu', botId: 'bot1', status: 'bound', name: '小帅', nameSource: 'bot',
+    avatar: null, avatarSource: 'default', createdAt: 1, boundAt: 1,
+  }],
+};
+const ROW = OLD_DOC.assistants[0];
+
+test('#169 零迁移：老账本（无两栏键）读→原样写回逐字节不变，version 仍是 2', async () => {
+  const { file } = fresh();
+  const text = yamlIo.renderConfigText(OLD_DOC, yamlIo.titleForFile(file));
+  writeFileSync(file, text, 'utf8');
+  const st: any = await store.loadHomesDocState(file);
+  assert.equal(st.state, 'ok');
+  assert.equal(st.doc.version, 2, '不 bump version（规格 #168：不做版本迁移）');
+  assert.deepEqual(Object.keys(st.doc.assistants[0]).filter((k: string) => k === 'description' || k === 'persona'), [], '老行读回不带新键');
+  await io.writeGuarded(file, st.doc, st.state, st.original);
+  assert.equal(readFileSync(file, 'utf8'), text, '无改动写回＝逐字节不变（dirty 守卫之外也不许 materialize 空键）');
+});
+
+test('#169 零迁移：盘上有空串/纯空白的新键 ⇒ 读回视作未设置，写回只删这两行、别的一字不改', async () => {
+  const { file } = fresh();
+  const dirty = {
+    ...OLD_DOC,
+    assistants: [{ ...ROW, description: '', persona: '   ' }],
+  };
+  const text = yamlIo.renderConfigText(dirty, yamlIo.titleForFile(file));
+  writeFileSync(file, text, 'utf8');
+  const st: any = await store.loadHomesDocState(file);
+  assert.equal('description' in st.doc.assistants[0], false, '空串读回＝没有这个键（空与缺失等价）');
+  assert.equal('persona' in st.doc.assistants[0], false, '纯空白同理');
+
+  await io.writeGuarded(file, st.doc, st.state, st.original);
+  const after = readFileSync(file, 'utf8');
+  const dropEmpty = (s: string) => s.split('\n').filter((l) => !/^\s+(description|persona):/.test(l)).join('\n');
+  assert.equal(after, dropEmpty(text), '唯一允许的差异＝两行空键被略过（其余逐字节相同）');
+  /* 语义等价而非字面等价：解析后把「值为空的那两栏」也摘掉，再比结构（空键读回即视为没有）。 */
+  const noEmpty = (doc: any) => JSON.parse(JSON.stringify(doc, (k, v) => ((k === 'description' || k === 'persona') && typeof v === 'string' && !v.trim() ? undefined : v)));
+  assert.deepEqual(noEmpty(yamlIo.parseConfigText(after)), noEmpty(yamlIo.parseConfigText(text)), '空键与缺失语义同形（只差这两行）');
+
+  /* 真改动一次：改名落盘后仍不许把空键带回来。 */
+  await store.modifyHomesDoc(file, (doc: any) => { doc.assistants[0].name = '小帅2' });
+  const modified = readFileSync(file, 'utf8');
+  assert.ok(!/^\s+(description|persona):/m.test(modified), '任何一次写都不 materialize 空键');
+  const parsed: any = yamlIo.parseConfigText(modified);
+  assert.equal(parsed.assistants[0].name, '小帅2');
+  assert.equal(parsed.homes[0].name, '客厅', '无关行原样');
+});
+
+test('#169 读容忍：盘上已超长的 persona（8001）原样读回、不截断；写回也不截断', async () => {
+  const { file } = fresh();
+  const long = '字'.repeat(8001);
+  writeFileSync(file, yamlIo.renderConfigText({ ...OLD_DOC, assistants: [{ ...ROW, persona: long }] }, yamlIo.titleForFile(file)), 'utf8');
+  const st: any = await store.loadHomesDocState(file);
+  assert.equal([...st.doc.assistants[0].persona].length, 8001, '超长值必须原样进来（读侧不许截断，否则用户手写的人设被静默毁掉）');
+  assert.equal(st.doc.assistants[0].persona, long);
+  await store.modifyHomesDoc(file, (doc: any) => { doc.homes[0].name = '改名' });
+  const back: any = await store.loadHomesDoc(file);
+  assert.equal(back.assistants[0].persona, long, '写回同样不截断（只有写入口的**新值**才校验）');
+});
+
+test('#169 行清洗：两栏进白名单、坏类型与未知键不入账（读容忍但不污染）', () => {
+  const ids = new Set(['h1']);
+  const ok: any = store.cleanAssistant({ ...ROW, description: ' 简介 ', persona: '人设', evil: 'x', personaTypo: 'y' }, ids);
+  assert.equal(ok.description, ' 简介 ', '读回原样（归一留给访问器，避免把盘上文本悄悄改写）');
+  assert.equal(ok.persona, '人设');
+  assert.equal(ok.evil, undefined, '未知键照旧丢弃（白名单）');
+  assert.equal(ok.personaTypo, undefined);
+  const bad: any = store.cleanAssistant({ ...ROW, description: 42, persona: '  ' }, ids);
+  assert.equal('description' in bad, false, '非字符串按未设置读（读容忍，不 coerce）');
+  assert.equal('persona' in bad, false, '空白按未设置读');
+});
+
+test('#169 建助理：两栏归一后落账；空值不落键；超长/坏类型诚实拒绝且不落盘', async () => {
+  const { file } = fresh();
+  await store.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\a', title: 'A' });
+  const homeId = (await store.loadHomesDoc(file)).homes[0].id;
+  const r: any = await store.createAssistantRow(file, {
+    homeId, channel: 'feishu', botId: 'bot1', botName: '小空', homeText: '',
+    description: '  第一行\r\n第二行  ', persona: '人设',
+  });
+  assert.equal(r.ok, true);
+  assert.equal(r.assistant.description, '第一行\n第二行', 'CRLF 归一 + trim 后再落账');
+  assert.equal((await store.loadHomesDoc(file)).assistants[0].persona, '人设');
+
+  const r2: any = await store.createAssistantRow(file, { homeId, channel: 'feishu', botId: 'bot2', botName: 'x', homeText: '', description: '   ', persona: '' });
+  assert.equal(r2.ok, true);
+  assert.equal('description' in r2.assistant, false, 'trim 后为空＝不设键');
+  const row2 = (await store.loadHomesDoc(file)).assistants[1];
+  assert.equal('description' in row2, false, '空串/纯空白不落键');
+  assert.equal('persona' in row2, false);
+
+  const before = readFileSync(file, 'utf8');
+  const over: any = await store.createAssistantRow(file, { homeId, channel: 'feishu', botId: 'bot3', botName: 'x', homeText: '', description: '字'.repeat(201) });
+  assert.equal(over.ok, false);
+  assert.equal(over.code, 'bad-request');
+  assert.equal(over.message, '简介（description）最多 200 字，当前 201 字', '错误文案来自共享单点，带字段定位与字数');
+  const typed: any = await store.createAssistantRow(file, { homeId, channel: 'feishu', botId: 'bot4', botName: 'x', homeText: '', persona: 42 });
+  assert.equal(typed.ok, false);
+  assert.equal(typed.message, '人物设定（persona）必须是字符串');
+  assert.equal(readFileSync(file, 'utf8'), before, '被拒两次，盘一字未动');
+});
+
+test('#169 改助理：闸门放宽到 name/avatar/description/persona；单改一栏不动另一栏；空串＝清空', async () => {
+  const { file } = fresh();
+  await store.createHomeRow(file, { workspaceId: 'ws-1', path: 'D:\\agents\\a', title: 'A' });
+  const homeId = (await store.loadHomesDoc(file)).homes[0].id;
+  const made: any = await store.createAssistantRow(file, { homeId, channel: 'feishu', botId: 'bot1', botName: '小空', homeText: '', description: '旧简介', persona: '旧人设' });
+  const id = made.assistant.id;
+
+  const gate: any = await edit.updateAssistantRow(file, { id });
+  assert.equal(gate.ok, false, '什么都没有＝拒');
+  assert.equal(gate.message, 'name/avatar/description/persona 至少其一', '闸门文案点明四栏');
+
+  const onlyDesc: any = await edit.updateAssistantRow(file, { id, description: '新简介' });
+  assert.equal(onlyDesc.ok, true, '只带 description 也放行（#168 放宽闸门）');
+  assert.equal(onlyDesc.row.description, '新简介');
+  assert.equal(onlyDesc.row.persona, '旧人设', '没提供的栏不许被清掉');
+  assert.equal(onlyDesc.row.name, '小空', '名字不动');
+
+  const onlyPersona: any = await edit.updateAssistantRow(file, { id, persona: '人设2' });
+  assert.equal(onlyPersona.ok, true, '只带 persona 也放行');
+  assert.equal(onlyPersona.row.description, '新简介');
+
+  const clear: any = await edit.updateAssistantRow(file, { id, persona: '   ' });
+  assert.equal(clear.ok, true, '清空只要带键（空串算「提供了」）');
+  assert.equal('persona' in clear.row, false, '空串＝删键');
+  assert.ok(!/^\s+persona:/m.test(readFileSync(file, 'utf8')), '盘上也不留空键');
+
+  const over: any = await edit.updateAssistantRow(file, { id, persona: '字'.repeat(8001) });
+  assert.equal(over.ok, false);
+  assert.equal(over.message, '人物设定（persona）最多 8000 字，当前 8001 字');
+  const max: any = await edit.updateAssistantRow(file, { id, persona: '字'.repeat(8000) });
+  assert.equal(max.ok, true, '8000 字整放行（边界闭区间）');
+  assert.equal([...max.row.persona].length, 8000);
+});
+
+test('#169 种子路径：两栏随行落账（归一后非空才写；坏值只丢那一栏，不拖垮整批）', async () => {
+  const { file } = fresh();
+  const out: any = await store.seedDocs(file, {
+    homes: [{ id: 'tmp-h1', workspaceId: 'ws-1', path: 'D:\\agents\\a', title: 'A' }] as never[],
+    assistants: [{
+      homeId: 'tmp-h1', channel: 'feishu', botId: 'bot1', status: 'bound', name: '小帅',
+      description: ' 简介\r\n二行 ', persona: '字'.repeat(8001),
+    }] as never[],
+  });
+  assert.equal(out.assistants.length, 1, '超长的人设只丢那一栏，行照建');
+  assert.equal(out.assistants[0].description, '简介\n二行');
+  assert.equal('persona' in out.assistants[0], false, '超长那一栏不入账');
 });
 
 console.log('features/home-store: ALL PASS');

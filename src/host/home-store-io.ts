@@ -11,6 +11,7 @@
  * ③ **dirty 守卫**：文本没变就不写（真机空表每 4–6 分钟被同样内容重写一次，就是这条缺位）。 */
 import { promises as fs } from 'node:fs'
 import { parseConfigText, readConfigText, renderConfigText, titleForFile, writeConfigTextAtomic } from './config-yaml.js'
+import { stripEmptyFields } from '../assistant-fields.js'
 
 /** 读回结果的诚实态：「文件本来就没有」与「文件在但读不回」必须在磁盘上分得开。 */
 export type HomesLoadState = 'ok' | 'missing' | 'read-failed' | 'parse-failed'
@@ -40,6 +41,10 @@ export interface AssistantRow {
   avatarSource: 'user' | 'bot' | 'home' | 'default'
   createdAt: number
   boundAt: number | null
+  /* #169 两栏（简介/人物设定）：**可选**——只在非空时存在于行上（空与缺失同形，老账本零迁移）。
+   * 读回原样不截断（读容忍）；写入口校验/归一，唯一落盘口摘空键。 */
+  description?: string
+  persona?: string
 }
 
 export interface HomesDoc {
@@ -151,6 +156,10 @@ export function cleanAssistant(r: unknown, homeIds: Set<string>): AssistantRow |
   const aav = o.avatar
   const aavatar = isAvatarCode(aav) ? aav : null
   const aavSrc = o.avatarSource === 'user' && aavatar ? 'user' : aavatar === null && o.avatarSource === 'bot' ? 'bot' : o.avatarSource === 'home' ? 'home' : 'default'
+  /* #169：两栏读回**原样**（不 trim / 不截断——读路径不许悄悄改写盘上文本，超长值也照原样带出），
+   * 只把「非字符串 / trim 后为空」的键整键摘掉（空与缺失等价）。CRLF 归一留给 assistantFieldText。 */
+  const description = typeof o.description === 'string' && o.description.trim() ? o.description : undefined
+  const persona = typeof o.persona === 'string' && o.persona.trim() ? o.persona : undefined
   return {
     id,
     homeId,
@@ -163,6 +172,8 @@ export function cleanAssistant(r: unknown, homeIds: Set<string>): AssistantRow |
     avatarSource: aavSrc as AssistantRow['avatarSource'],
     createdAt: typeof o.createdAt === 'number' ? o.createdAt : Date.now(),
     boundAt: typeof o.boundAt === 'number' ? o.boundAt : status === 'bound' ? Date.now() : null,
+    ...(description !== undefined ? { description } : {}),
+    ...(persona !== undefined ? { persona } : {}),
   }
 }
 
@@ -208,7 +219,10 @@ export async function loadHomesDoc(file: string): Promise<HomesDoc> {
 /** 唯一落盘口：先判态（fail-closed），再判脏（文本一致就不写）。 */
 export async function writeGuarded(file: string, doc: HomesDoc, state: HomesLoadState, original: string | null): Promise<void> {
   assertWritable(file, state)
-  const text = renderConfigText(doc, titleForFile(file))
+  /* #169 唯一落盘口的最后一道：两栏 trim 后为空的键**整键摘掉**（空串与缺失在盘上同形 ⇒ 老账本读→写
+   * 不 materialize 空键）。只清洗**送渲染器的这份拷贝**：调用方手里的 doc/row 不动（RPC 回包照旧带值）。 */
+  const disk: HomesDoc = { version: doc.version, homes: doc.homes, assistants: doc.assistants.map((a) => stripEmptyFields(a)) }
+  const text = renderConfigText(disk, titleForFile(file))
   if (original !== null && original === text) return
   await writeConfigTextAtomic(file, text)
 }

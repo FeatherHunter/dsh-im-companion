@@ -447,8 +447,10 @@ test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连�
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.ok(!hostEditSrc.includes('deleteBot') && !hostEditSrc.includes('disconnect') && !hostEditSrc.includes('bot.delete'),
     '宿主 home-edit 无机器人断连调用');
-  assert.ok(hostEditSrc.match(/^import .*$/gm)?.every((l) => l.includes('home-store')),
-    '宿主 home-edit 只引 home-store（同队列落盘，无旁路）');
+  /* #169：另允许仓库根的 `assistant-fields.js`——无 IO 的纯校验/归一共享层（同 src/log-events.ts 先例），
+   * 落盘仍只经 home-store；除此之外任何 import 都算旁路。 */
+  assert.ok(hostEditSrc.match(/^import .*$/gm)?.every((l) => l.includes('home-store') || l.includes('assistant-fields')),
+    '宿主 home-edit 只引 home-store 与纯共享层（同队列落盘，无旁路）');
 });
 
 test('T6b 绿框呈现：纯头像弹层＋行内改名（owner 2026-10-17 口径）', () => {

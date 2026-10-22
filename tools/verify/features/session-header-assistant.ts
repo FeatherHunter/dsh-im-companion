@@ -27,10 +27,13 @@ const LOG_STUB = [
   '',
 ].join('\n');
 writeFileSync(join(stage, 'log.ts'), LOG_STUB);
+/* #169：home-model 的两栏类型来自仓库根的共享模块（src/assistant-fields.ts）；平铺舞台里同样平铺一份。 */
+writeFileSync(join(stage, 'assistant-fields.ts'), readFileSync(join(REPO, 'src', 'assistant-fields.ts'), 'utf8'));
 for (const f of FILES) {
   const raw = readFileSync(join(SRC, f), 'utf8');
   const fixed = raw
     .replace(/from '\.\.\/log'/g, "from './log'")
+    .replace(/from '\.\.\/\.\.\/assistant-fields'/g, "from './assistant-fields'")
     .replace(/\.\/([A-Za-z0-9_-]+)(['"])/g, (m, name, q) =>
       String(name).endsWith('.js') ? m : './' + name + '.js' + q);
   writeFileSync(join(stage, f), fixed);
@@ -47,7 +50,7 @@ const tmp = mkdtempSync(join(tmpdir(), 'session-header-asst-'));
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
-    ...[...FILES, 'assistants.ts'].map((f) => join(stage, f)),
+    ...[...FILES, 'assistant-fields.ts', 'assistants.ts'].map((f) => join(stage, f)),
     '--ignoreConfig',
     '--outDir', tmp, '--module', 'nodenext', '--target', 'es2023',
     '--moduleResolution', 'nodenext', '--skipLibCheck',

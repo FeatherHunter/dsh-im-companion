@@ -3,7 +3,7 @@
  * T8 #121：新建家的「新建工作区」支路（选目录→DSH 建区→等投影）下沉 home-dir，本文件只接线。 */
 import { toast } from '../ui/toast'
 import type { RpcCall } from '../data/fleet-api'
-import { basenameOf, normPath, type Assistant, type Home, type WorkspaceRef } from '../data/home-model'
+import { basenameOf, normPath, type Assistant, type AssistantFieldsValue, type Home, type WorkspaceRef } from '../data/home-model'
 import { openConnectFlow } from './connect-flow'
 import { adoptDirectory, pickDirectory } from './home-dir'
 import { logLine, logOn } from '../log'
@@ -132,7 +132,7 @@ export async function bindBot(rpc: RpcCall, channel: string, botId: string, work
 
 export async function createAssistant(
   rpc: RpcCall,
-  input: { homeId: string; channel: string; botId: string; botName: string; homeText: string },
+  input: { homeId: string; channel: string; botId: string; botName: string; homeText: string } & AssistantFieldsValue,
 ): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.create', input)
@@ -156,7 +156,7 @@ export async function updateHome(rpc: RpcCall, input: { id: string; name?: strin
   }
 }
 
-export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: string | null; avatar?: string | null }, quiet = false): Promise<Assistant | null> {
+export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: string | null; avatar?: string | null } & AssistantFieldsValue, quiet = false): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.update', input as Record<string, unknown>)
     if (v.assistant) { if (!quiet) toast(input.name === '' ? '已恢复默认名' : input.name !== undefined ? '改名成功' : '头像已更新', 'check', input.name === undefined ? undefined : 'home-ui hu-toast-top'); aLog('update', v.assistant.id, true, '') } else aLog('update', input.id, false, '宿主未返回助理行')
@@ -167,7 +167,7 @@ export async function updateAssistant(rpc: RpcCall, input: { id: string; name?: 
   }
 }
 
-export async function createUnbound(rpc: RpcCall, input: { homeId: string; name?: string }): Promise<Assistant | null> {
+export async function createUnbound(rpc: RpcCall, input: { homeId: string; name?: string } & AssistantFieldsValue): Promise<Assistant | null> {
   try {
     const v = await bridge<{ assistant?: Assistant }>(rpc, 'assistant.createUnbound', input as Record<string, unknown>)
     if (v.assistant) { toast('已建好助理，还没有绑机器人', 'check'); aLog('create-unbound', v.assistant.id, true, '') } else aLog('create-unbound', '', false, '宿主未返回助理行')
@@ -205,10 +205,10 @@ export interface DrillOpsDeps {
 
 export interface DrillOpsBundle {
   createHome(workspaceId: string): Promise<void>
-  createAssistant(homeId: string, channel: string, botId: string, userName?: string): Promise<void>
+  createAssistant(homeId: string, channel: string, botId: string, userName?: string, fields?: AssistantFieldsValue): Promise<void>
   updateHome(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
-  updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null }, quiet?: boolean): Promise<boolean>
-  createUnbound(homeId: string, name?: string): Promise<void> /* #138：不再要 channel（未绑定＝没有渠道） */
+  updateAssistant(id: string, patch: { name?: string | null; avatar?: string | null } & AssistantFieldsValue, quiet?: boolean): Promise<boolean>
+  createUnbound(homeId: string, name?: string, fields?: AssistantFieldsValue): Promise<void> /* #138：不再要 channel（未绑定＝没有渠道） */
   bindAssistant(id: string, channel: string, botId: string): Promise<void>
   removeAssistant(id: string): Promise<void>
   connect(homeId: string, anchor: HTMLElement, assistantId?: string, after?: (ok: boolean) => void): void
@@ -227,7 +227,7 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
       if (!home) throw new Error('家的记录没写成功：宿主未返回家行')
       await deps.reloadHomes()
     },
-    createAssistant: async (homeId: string, channel: string, botId: string, userName?: string) => {
+    createAssistant: async (homeId: string, channel: string, botId: string, userName?: string, fields?: AssistantFieldsValue) => {
       const rpc = deps.getRpc()
       if (!rpc) { toast('连接服务不可用'); aLog('create', '', false, '连接服务不可用'); return }
       const home = deps.getHome(homeId)
@@ -235,7 +235,7 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
       if (!home || !bot) { toast('找不到这个家或机器人'); aLog('create', '', false, '找不到这个家或机器人：' + [homeId, channel, botId].join('/')); return }
       if (!await bindBot(rpc, channel, botId, home.path)) return
       const row = await createAssistant(rpc, {
-        homeId: home.id, channel, botId, botName: bot.botName ?? '', homeText: '',
+        homeId: home.id, channel, botId, botName: bot.botName ?? '', homeText: '', ...fields,
       })
       if (row) {
         /* 先读表再刷新：反过来快照会拿旧名单误判缺口（home-create-flow 已钉）。 */
@@ -255,10 +255,10 @@ export function createDrillOps(deps: DrillOpsDeps): DrillOpsBundle {
       if (!rpc) { toast('连接服务不可用'); aLog('update', id, false, '连接服务不可用'); return false }
       const row = await updateAssistant(rpc, { id, ...patch }, quiet); if (row) await deps.reloadHomes(); return row !== null
     },
-    createUnbound: async (homeId, name) => {
+    createUnbound: async (homeId, name, fields) => {
       const rpc = deps.getRpc()
       if (!rpc) { toast('连接服务不可用'); aLog('create-unbound', '', false, '连接服务不可用'); return }
-      if (await createUnbound(rpc, { homeId, name })) await deps.reloadHomes()
+      if (await createUnbound(rpc, { homeId, name, ...fields })) await deps.reloadHomes()
     },
     bindAssistant: async (id, channel, botId) => {
       const rpc = deps.getRpc()
