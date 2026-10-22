@@ -2,7 +2,7 @@
 //
 // ① 注册面：模块级 inject 仍只有 connection；apply 末尾后置 ctx.inject(['systemPrompt'])；
 //    段名/order/interpolate 正确、无 required/complete；卸载时 disposer 真被调用；
-//    宿主无 systemPrompt 服务时 apply 不炸（回调不执行）；同名残留（热重载）只记常驻失败、不打断 apply。
+//    宿主无 systemPrompt 服务时 apply 不炸（回调不执行）；同名残留（热重载）只记常驻失败、不打断 apply。；与上游段（order 115/125）共存：名字带插件前缀、order 不撞
 // ② 渲染契约：有归属+有人设 ⇒ 固定三段文本；无会话/无归属/无人设/超长/异常 ⇒ ''，永不抛。
 // ③ 归属索引（假 fs）：EACCES / 坏 JSON / 删除 / 缓存戳 / 1:N / 负结果 TTL；weixin 面只看 sessions。
 // ④ 人设目录：按 channel+botId join homes.yaml，取 name/persona；未绑定行不返回。
@@ -102,6 +102,19 @@ test('apply 后置 inject systemPrompt：段名/order/interpolate 正确，且�
   assert.ok(!('required' in spec!), '不得设 required');
   assert.ok(!('complete' in spec!), '不得设 complete（排他段会吞掉别人的提示词）');
   console.log('#170-PROOF register name=' + spec!.name + ' order=' + spec!.order + ' PASS');
+});
+
+test('与上游共存：段名带插件前缀、order 650 不撞 dsh-im 的 115/125（升级回归钉子）', () => {
+  assert.ok(PERSONA_SECTION_NAME.startsWith('dsh-im-companion:'), '段名必须带插件前缀（不得占用上游裸名）');
+  for (const upstream of [115, 125]) assert.notEqual(PERSONA_SECTION_ORDER, upstream, 'order 不得与上游 dsh-im 的 ' + upstream + ' 相撞');
+  assert.ok(PERSONA_SECTION_ORDER > 600 && PERSONA_SECTION_ORDER < 800, 'order 落在 TEAM_POLICY(600) 与 PTC_ONLY(800) 之间');
+  const home = freshHome(false);
+  const fake = makeCtx(host.inject);
+  fake.prompt.section({ name: 'upstream-dsh-im:sample', order: 115, interpolate: false, text: () => 'upstream' });
+  assert.doesNotThrow(() => host.apply(fake.ctx, { dshHome: home }), '上游段已存在不得让 apply 抛错');
+  assert.ok(fake.sections.some((s: { name: string }) => s.name === PERSONA_SECTION_NAME), '本段仍能注册（不因上游段已存在而失败）');
+  assert.equal(fake.sections.length, 2, '上游段与本段共存（互不顶替）');
+  console.log('#170-PROOF coexist upstream=115/125 PASS');
 });
 
 test('有归属+有人设 ⇒ 注入固定三段文本', async () => {
