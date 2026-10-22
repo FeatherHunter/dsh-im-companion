@@ -140,12 +140,17 @@ test("#175 悬停文案写真实基线（中英同源，5.1.0 + 6.0 前重跑取
 
 test("#175 CHANGELOG 记下 6.0 升级回归钉子（T1/T2 取证重跑 + T8-2 的 persona 注入 verify 引用）", () => {
   const log = readFileSync(join(REPO, "CHANGELOG.md"), "utf8");
-  const start = log.indexOf("## [Unreleased]");
-  assert.ok(start >= 0, "CHANGELOG 顶部须有 [Unreleased] 节（本票不 bump 版本号）");
+  // 发版前钉子写在 [Unreleased]；发版时整节改名为 [<当前版本>]（0.2.20 起），门禁两种形态都要认，
+  // 否则「发布一次版本」就会把兼容门禁判红——那会把发版流程和钉子对立起来。
+  const start = log.search(/^## \[[^\]]+\]/m);
+  assert.ok(start >= 0, "CHANGELOG 顶部须有版本节（[Unreleased] 或 [<version>]）");
+  const heading = /^## \[([^\]]+)\]/.exec(log.slice(start))![1];
+  assert.ok(heading === "Unreleased" || heading === pkg.version,
+    "CHANGELOG 顶部节须是 [Unreleased] 或当前包版本 [" + pkg.version + "]，实际 [" + heading + "]");
   const next = log.indexOf("\n## [", start + 5);
   const section = log.slice(start, next < 0 ? undefined : next);
   for (const needle of ["#175", "5.1.0", ">=5.1.0 <6", "6.0", "T1/T2", "bots/", "accounts/", "#170"]) {
-    assert.ok(section.includes(needle), "[Unreleased] 升级回归钉子区缺：" + needle);
+    assert.ok(section.includes(needle), "[" + heading + "] 升级回归钉子区缺：" + needle);
   }
 });
 
