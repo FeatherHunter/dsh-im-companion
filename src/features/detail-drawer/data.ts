@@ -3,7 +3,7 @@
  * 读：connection.status 经 BotSnap.agentPreset/contextEnhancement + catalogs 回流（fleet-api 提取）。
  * 写：bot.preset.set {botId, agentPreset}；bot.context-enhancement.set {botId, config 全量4键，读-改-写}。
  * 守卫：读不到（undefined）就不写——盲写覆盖用户引导语是正确性红线。 */
-import { OPEN_DRAWER_EVENT, type HealthKind } from '../../client/data/config'
+import { OPEN_DRAWER_EVENT, type AssistBrief, type HealthKind } from '../../client/data/config'
 import { buildModel } from '../../client/data/model'
 import { logLine, logOn } from '../../client/log'
 import type { AgentPresetCatalog, BotSnap, RpcCall, UpstreamCtx } from '../../client/data/fleet-api'
@@ -51,6 +51,8 @@ export interface DrawerModel {
   channels: DrawerChannel[]
   bots: DrawerBot[]
   routes: RouteEntry[]
+  /** 助理资料快照（#173 只读块）：null＝该 Agent 未绑定助理或调用方未带 brief。 */
+  assistant: AssistBrief | null
 }
 
 export interface PanelRect { top: number; right: number; bottom: number; left: number }
@@ -143,7 +145,7 @@ export function loadingModel(key: string): DrawerModel {
     key, name: '加载中', workspace: '', statusLabel: '等待数据', status: 'warn',
     bound: false, preset: PRESET_FOLLOW, presetCatalog: { defaultId: '', items: [] }, presetReady: false,
     ctxReady: false,
-    channels: [], bots: [], routes: [],
+    channels: [], bots: [], routes: [], assistant: null,
   }
 }
 
@@ -195,7 +197,7 @@ function mergeCatalogs(channels: string[], catalogs: Record<string, AgentPresetC
 
 export function buildDrawerModel(
   bots: BotSnap[], meta: AgentMetaDoc, key: string, catalogs: Record<string, AgentPresetCatalog> = {},
-  routes: RouteEntry[] = [],
+  routes: RouteEntry[] = [], assistant: AssistBrief | null = null,
 ): DrawerModel | null {
   const fleet = buildModel(bots, meta, 'agent', '')
   const view = fleet.agents.find((a) => a.key === key)
@@ -227,5 +229,6 @@ export function buildDrawerModel(
     }),
     bots: dbots,
     routes,
+    assistant,
   }
 }

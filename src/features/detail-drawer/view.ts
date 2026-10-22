@@ -5,6 +5,7 @@ import { makeButton } from '../../client/ui/button'
 import { HEALTH_LABELS, channelLabel } from '../../client/data/config'
 import { channelGlyphSvg } from '../../client/icons'
 import { PRESET_FOLLOW, PRESET_MIXED, personalityPrefill, type DrawerChannel, type DrawerModel } from './data'
+import { renderProfileSection } from './profile-section'
 
 /** 加载态静默回调：除关闭外全是空操作（数据到之前误点不写坏任何东西）。 */
 export function quietCallbacks(onClose: () => void): DrawerCallbacks {
@@ -17,6 +18,7 @@ export function quietCallbacks(onClose: () => void): DrawerCallbacks {
     onDraftWorkspace: () => undefined,
     onApplyPersonality: () => undefined,
     onDraftPersonality: () => undefined,
+    onEditAssistant: () => undefined,
     onRemoveBot: () => undefined,
     onTestSend: () => undefined,
     onClose,
@@ -34,6 +36,10 @@ export interface DrawerCallbacks {
   onDraftPersonality(draft: string): void
   onRemoveBot(channel: string, botId: string): void
   onTestSend(channel: string, botId: string): void
+  /** #173 助理人设块的「编辑」：抽屉层派发 OPEN_ASSIST_EDIT_EVENT 并关面板。 */
+  onEditAssistant(): void
+  /** 只读块复制后的轻提示（可选：静默渲染没有 toast）。 */
+  onNotify?(message: string, icon?: 'check'): void
   onClose(): void
 }
 
@@ -268,7 +274,8 @@ export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, dr
   sum.appendChild(listRow('状态', stateVal))
   const sumNote = h('div', { className: 'detail-drawer-meta' }, '沟通模式：DSH 用哪种方式回话（如 PTC、标准、创造等），不是角色性格。写入真系统，新会话生效。')
   sumNote.setAttribute('style', 'padding:6px 4px 0')
-  const body = h('div', { className: 'detail-drawer-dbody' }, sum, sumNote, ctxSection(model, cbs),
+  const body = h('div', { className: 'detail-drawer-dbody' }, sum, sumNote, renderProfileSection(model, cbs),
+  ctxSection(model, cbs),
     personalitySection(personalityPrefill(model.bots), draftPers, cbs),
     workspaceSection(model, draftWs, cbs), routesSection(model), channelsSection(model, cbs))
   return h('div', { className: 'detail-drawer' }, head, body)

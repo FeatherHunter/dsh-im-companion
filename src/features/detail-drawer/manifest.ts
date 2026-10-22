@@ -7,7 +7,7 @@ import { CSS } from './styles'
 
 export const feature: FeatureManifest = {
   id: 'detail-drawer',
-  name: '详情抽屉',
+  name: '详情面板',
   order: 20,
   slots: [{ target: 'settings.section', mount: (ctx) => mountDrawer(ctx) }],
   installStyles: () => installFeatureStyles('detail-drawer', CSS),
