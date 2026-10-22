@@ -23,6 +23,16 @@ export const OPEN_DRAWER_EVENT = 'dsh-im-companion:open-drawer'
 
 export interface OpenDrawerDetail {
   key: string
+  /** 助理资料快照（#173 详情面板只读块）：null / 缺省＝该 Agent 未绑定助理，或调用方（A1 行）没带。 */
+  assistant?: AssistBrief | null
+}
+
+/** 助理资料快照（#173）：形状对齐共享模块 assistant-fields 的 description/persona（未填写用空串，不给 undefined）。 */
+export interface AssistBrief {
+  id: string
+  name: string
+  description: string
+  persona: string
 }
 
 /** 编辑助理资料事件名（T8-4 #172 定契约，Added-only 供 #173 详情面板使用）：detail = AssistEditDetail。

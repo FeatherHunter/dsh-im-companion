@@ -176,6 +176,15 @@ test('data：抽屉模型派生自上游真值（一致/混合/未读/未知键/
   assert.equal(config.OPEN_DRAWER_EVENT, 'dsh-im-companion:open-drawer');
 });
 
+// ---- #173 助理人设：模型携带 brief（详情面板只读块） ----
+test('data：DrawerModel 携带助理 brief（#173 只读块，缺省 null）', () => {
+  const brief = { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' };
+  const m = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], brief);
+  assert.deepEqual(m.assistant, brief, '第 6 参原样进模型（名字/简介/人物设定）');
+  assert.equal(data.buildDrawerModel([bot()], metaDoc(), W1).assistant, null, '未带 brief 时为 null（不是 undefined）');
+  assert.equal(data.loadingModel('k').assistant, null, '加载态模型也有 assistant 键');
+});
+
 // ---- client meta 双实现 ----
 test('client meta：Rpc/Local 双实现走通 preset/ctx', async () => {
   const calls: { ep: string; p: unknown }[] = [];
