@@ -5,6 +5,23 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
+## [0.2.24] - 2026-10-24
+
+主题：**头像图标化 + 机器人行真头像**（owner 2026-10-23 原型认可）——家/助理换头像弹层不再是首字九宫格：家＝房子图标＋沉稳 9 档，助理＝小机器人图标＋暖亮 9 档；助理详情机器人行删旧副标、第二行加渠道 LOGO、有渠道真头像直接用真的。
+
+### Added
+- **两套头像图标＋双色板**：新增 `AvatarKind`（`'home' | 'assistant'`）/ `ASST_PRESETS`（助理暖亮 9 档，与家 `PRESETS` 沉稳系岔开）/ `presetFor` / `avatarStyleFor` / `avatarIconFor`（`src/client/components/home-identity.ts`，既有导出一字不动）；渲染与样式收拢进新模块 `src/client/components/home-avatar-view.ts`（`avatarEl` 从 home-rows 原样搬入签名不变、`avatarOptButton`、`AVATAR_CSS` 独立样式表 `home-avatar`）——home-rows（311→287）/ home-ui-styles（304→299）双双退回 300 行红线内。
+- **机器人行真头像优先**：`botBlock` 先读 `BotSnap.avatarUrl`（有就铺满圆显示），没有回落小机器人图标，永不空着；`avatarUrl` 缺键（老宿主／旧固件不下发）用 `?? ''` 兜底再 trim。
+
+### Changed
+- **机器人行第二行**：删旧副标废话句，只剩「渠道 LOGO＋渠道名」（LOGO 走 `icons.ts` 的 `channelGlyphSvg` 唯一源，13px 就地渲染）。
+- **助理色板终版调优**：对抗式审查发现初版 7 对底色距离 <60（本仓家色板同标准：字底对比 ≥4.3、两两底色 RGB 距离 ≥60），迭代 5 版后全项达标；原型 `prototype-avatar-refresh.html` 已同步终版色值。
+- **T11 #128 接线钉子跟随搬家**：单点（`avatarSrc` 调用）现住 `home-avatar-view.ts`，行／弹层／详情仍只调 `avatarEl`／`avatarOptButton`、仍禁自建取图（`home-avatar.ts` 钉子已同步）。
+- `package.json` / `package-lock.json` 版本号 0.2.23 → 0.2.24；`README.md` / `docs/README.en.md` 安装示例同步到 0.2.24。
+
+### Fixed
+- **机器人行空指针**：`bot.avatarUrl.trim()` 在无该键数据（旧宿主／测试固件）上崩溃，改为缺键兜底（T6b／绿框／面包屑／T6c 四处回归已复绿）。
+
 ## [0.2.23] - 2026-10-23
 
 主题：**master 分支收敛 + #154 修复首发**——0.2.22 发版线（T8 #168 全量 + 0.2.20/0.2.21/0.2.22 热修）已整体合入 `master`；本版把此前只在开发态生效、从未进入 npm 包的两条修复首次交付：#154（左栏「有助理」漏掉默认工作区行）与 #158（绑定前挡下非绝对工作区路径）。
