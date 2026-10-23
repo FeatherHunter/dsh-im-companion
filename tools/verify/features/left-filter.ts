@@ -18,10 +18,14 @@ const ENTRIES = [
   join(FEAT, 'header-btn.ts'),
   join(FEAT, 'collapse-all.ts'),
   join(FEAT, 'dom-scope.ts'),
+  /* #154：归属解析依据留痕（磁盘日志自证用）。 */
+  join(FEAT, 'resolve-log.ts'),
   join(REPO, 'src', 'features', 'index.ts'),
   join(REPO, 'src', 'client', 'ui', 'segmented.ts'),
   join(REPO, 'src', 'client', 'dom.ts'),
   join(REPO, 'src', 'client', 'theme.ts'),
+  /* #154：共享层工作区索引（行身份 → 路径）单点真相。 */
+  join(REPO, 'src', 'client', 'data', 'workspace-index.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'b2-left-filter-'));
@@ -52,6 +56,7 @@ const collapseAll: any = req('./features/left-filter/collapse-all.js');
 const dom: any = req('./client/dom.js');
 const styles: any = req('./features/left-filter/styles.js');
 const registry: any = req('./features/index.js');
+const wsIndex: any = req('./client/data/workspace-index.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const W2 = 'D:\\agents\\xinghuo';
@@ -78,14 +83,46 @@ test('model：助理名牌（去重/渠道/无助理）', () => {
   assert.equal(model.rowTip('D:\\agents\\dsh-im', bots), '暂无助理认领');
 });
 
-test('model：名称映射（basename/Bot名/大小写/搜索归属包含）', () => {
+test('model：名称映射（basename/Bot名/大小写/搜索归属包含）+ 未解析哨兵', () => {
   assert.equal(model.resolveWorkspaceKey('xiaoshuai', bots), W1);
   assert.equal(model.resolveWorkspaceKey('XiaoShuai', bots), W1);
   assert.equal(model.resolveWorkspaceKey('小帅', bots), W1);
   assert.equal(model.resolveWorkspaceKey(W1, bots), W1);
-  assert.equal(model.resolveWorkspaceKey('某个空组', bots), '某个空组');
+  /* #154：解析不出 ⇒ 空串哨兵；绝不把「无法解析的显示名」当工作区标识传下去。 */
+  assert.equal(model.resolveWorkspaceKey('某个空组', bots), '');
   assert.equal(model.resolveResultKey('星火周报 星火 会议纪要', bots), W2);
-  assert.equal(model.resolveResultKey('毫不相关的标题', bots), '毫不相关的标题');
+  assert.equal(model.resolveResultKey('毫不相关的标题', bots), '');
+});
+
+test('#154：默认工作区按行身份解析（显示名本地化 ≠ 绑定路径）', () => {
+  const D = 'D:\\deepseek-harness\\default-workspace';
+  const index = wsIndex.buildWorkspaceIndex([
+    { workspaceId: 'w-default', path: D, title: 'default-workspace' },
+    { workspaceId: 'w-renamed', path: 'D:\\agents\\xiaowan', title: 'tttttt' },
+    { workspaceId: 'w-plain', path: 'D:\\agents\\plain', title: 'plain' },
+  ]);
+  const dBots = [{ channel: 'feishu', botId: 'f9', workspace: D, botName: '小助手', connected: true }];
+  /* ① 默认工作区：行文本＝本地化显示名，行身份＝data-row-key ⇒ 解析回绑定路径。 */
+  const def = model.resolveWorkspaceKey('默认工作区', dBots, 'w-default', index);
+  assert.equal(def, D);
+  assert.equal(model.isBoundWorkspace(def, dBots), true, '绑定判定成立（不再落进「无助理」）');
+  assert.deepEqual(model.countsOf([def], dBots), { all: 1, bound: 1, unbound: 0 });
+  /* ② 改名工作区（显示名 ≠ basename）：身份优先。 */
+  assert.equal(model.resolveWorkspaceKey('tttttt', dBots, 'w-renamed', index), 'D:\\agents\\xiaowan');
+  /* ③ 普通工作区（无行身份）：标题回退。 */
+  assert.equal(model.resolveWorkspaceKey('plain', dBots, '', index), 'D:\\agents\\plain');
+  /* ④ 全不匹配 ⇒ 未解析哨兵（不是显示名）。 */
+  assert.equal(model.resolveWorkspaceKey('毫不相干', dBots, '', index), '');
+  /* 行身份取键：data-row-key="workspace:<id>" ⇒ id；别的键 ⇒ 空。 */
+  assert.equal(wsIndex.workspaceIdFromRowKey('workspace:w-default'), 'w-default');
+  assert.equal(wsIndex.workspaceIdFromRowKey('session:s1'), '');
+  /* 解析依据（落盘留痕用）：身份 / 标题 / 老口径字面 / 未解析。 */
+  assert.equal(model.resolveWorkspaceRow('默认工作区', dBots, 'w-default', index).source, 'id');
+  assert.equal(model.resolveWorkspaceRow('plain', dBots, '', index).source, 'title');
+  assert.equal(model.resolveWorkspaceRow('xiaoshuai', bots, '', wsIndex.EMPTY_WORKSPACE_INDEX).source, 'bot');
+  assert.equal(model.resolveWorkspaceRow('毫不相干', dBots, '', index).source, 'none');
+  /* 注册表读不到 ⇒ 老口径字面匹配仍在。 */
+  assert.equal(model.resolveWorkspaceKey('xiaoshuai', bots, '', wsIndex.EMPTY_WORKSPACE_INDEX), W1);
 });
 
 test('registry：left-filter 在列，order 11，带样式与槽位', () => {
@@ -202,6 +239,16 @@ const groupRow = (text: string) => {
   groupRows.push(row);
   return row;
 };
+/* #154：带行身份的组行（DSH 真身：data-row-key="workspace:<workspaceId>"）。 */
+const groupRowWithKey = (text: string, wsId: string) => {
+  const row = stubNode('div');
+  row.setAttribute('role', 'treeitem');
+  row.setAttribute('aria-expanded', 'true');
+  row.setAttribute('data-row-key', 'workspace:' + wsId);
+  row._text = text;
+  groupRows.push(row);
+  return row;
+};
 const sessionRow = (text: string) => {
   const s = stubNode('div');
   s.setAttribute('role', 'treeitem');
@@ -243,6 +290,28 @@ const segLabels = (strip: any) => {
   walk(strip);
   return out.sort().join('|');
 };
+
+test('#154 view：默认工作区组行（本地化显示名 + 行身份）在「有助理」下留得住', () => {
+  groupRows = []; resultRows = [];
+  const container = stubNode('div');
+  const sec = stubNode('div');
+  sec.appendChild(groupRowWithKey('默认工作区', 'w-default'));
+  container.appendChild(sec);
+  let snapFn: any = null;
+  const dispose = view.mountLeftFilter({
+    subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; },
+    get: (name: string) => (name === 'workspaces'
+      ? { list: { getSnapshot: () => ({ items: [{ workspaceId: 'w-default', path: 'D:\\deepseek-harness\\default-workspace', title: 'default-workspace' }] }) } }
+      : undefined),
+  });
+  snapFn({ bots: [{ channel: 'feishu', botId: 'f9', workspace: 'D:\\deepseek-harness\\default-workspace', botName: '小助手', connected: true }], failed: [], updatedAt: 31, catalogs: {} });
+  const strip = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-strip'));
+  assert.ok(strip, '条带挂出');
+  assert.ok(segLabels(strip).includes('bound=有助理 1'), '默认工作区计入有助理：' + segLabels(strip));
+  segButton(strip, 'bound').fire('click');
+  assert.notEqual((sec as any).style.display, 'none', '有助理的默认工作区不被藏');
+  dispose();
+});
 
 test('view：条带挂载 + 三段计数 + 整组藏显 + 卸载还原', () => {
   groupRows = []; resultRows = [];

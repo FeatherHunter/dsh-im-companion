@@ -5,12 +5,14 @@ import { logLine, logOn } from '../../client/log'
 import { isPlausibleListContainer } from '../../client/dom'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
+import { EMPTY_WORKSPACE_INDEX, workspaceIdOfRow, workspaceIndexOf } from '../../client/data/workspace-index'
 import type { FeatureCtx } from '../protocol'
-import { FILTERS, FILTER_LABEL, countsOf, passFilter, resolveResultKey, resolveWorkspaceKey, segLabel, type FilterId } from './model'
+import { FILTERS, FILTER_LABEL, countsOf, passFilter, resolveResultKey, resolveWorkspaceKey, resolveWorkspaceRow, segLabel, type FilterId } from './model'
 import { ensureCollapseBtn } from './collapse-all'
+import { logResolveStats } from './resolve-log'
 import { ensureHeaderBtn, nextFilter, removeHeaderBtns, resolveHeader } from './header-btn'
 
-import { GROUP_SEL, RESULT_SEL, clearTips, hideRootsFor, isListContainer, restoreAll, setHidden, textOf } from './dom-scope'
+import { GROUP_SEL, RESULT_SEL, clearTips, hideRootsFor, isListContainer, restoreAll, setHidden, textOf, tuneLabels } from './dom-scope'
 const STRIP_CLASS = 'left-filter-strip'
 const EMPTY_CLASS = 'left-filter-empty'
 let lastReasonSig = ''
@@ -26,6 +28,8 @@ let stripSeg: SegHandle | null = null
 let stripOwner = 0
 let lastSig = ''
 let lastContainer: Element | null = null
+/* #154：工作区注册表索引的取数口（组行按身份解析 ⇒ 读注册表快照；无自有轮询）。 */
+let ctxGet: ((name: string) => unknown) | null = null
 
 /* 关键节点人话（挂载/首次命中）：低频，走 ui.action（area=left-filter），不套开关守卫。 */
 function info(msg: string): void {
@@ -39,26 +43,6 @@ function collect(sel: string): Element[] {
     document.querySelectorAll(sel).forEach((n) => out.push(n))
   } catch { /* 选择器不支持就空 */ }
   return out
-}
-
-/** 数字降级：把“有助理 2”拆成标签 + span.left-filter-n（setLabel 会重置文本，每次重调，幂等）。 */
-function tuneLabels(host: Element | null): void {
-  try {
-    if (!host || typeof host.querySelectorAll !== 'function') return
-    host.querySelectorAll('.af-seg-item').forEach((btn) => {
-      try {
-        if (btn.querySelector('.left-filter-n')) return
-        const m = /^(.*)\s+(\d+)$/.exec(textOf(btn))
-        if (!m) return
-        btn.textContent = m[1] + ' '
-        const doc = btn.ownerDocument ?? document
-        const span = doc.createElement('span')
-        span.setAttribute('class', 'left-filter-n')
-        span.textContent = m[2]
-        btn.appendChild(span)
-      } catch { /* 单钮失败忽略 */ }
-    })
-  } catch { /* 调整失败忽略 */ }
 }
 
 /* 判定依据留痕（谁可见/谁被藏 + 名字清单）：每次重绘都会走到，高频 ⇒ 只许 debug 且套开关守卫。 */
@@ -134,7 +118,11 @@ function paint(bots: BotSnap[], gen: number): void {
   if (typeof document === 'undefined') return
   const groups = collect(GROUP_SEL)
   const results = collect(RESULT_SEL)
-  const resolved = groups.map((g) => resolveWorkspaceKey(textOf(g), bots))
+  /* #154：按行身份（data-row-key）解析归属；显示名只作兜底。 */
+  const index = ctxGet ? workspaceIndexOf(ctxGet) : EMPTY_WORKSPACE_INDEX
+  const rowRes = groups.map((g) => resolveWorkspaceRow(textOf(g), bots, workspaceIdOfRow(g), index))
+  const resolved = rowRes.map((r) => r.path)
+  logResolveStats(rowRes.map((r) => r.source))
   const counts = countsOf(resolved, bots)
   const visKeys: string[] = []
   const hiddenSections: Element[] = []
@@ -149,7 +137,7 @@ function paint(bots: BotSnap[], gen: number): void {
   }
   const hiddenResults: Element[] = []
   for (const r of results) {
-    const ws = resolveResultKey(textOf(r), bots)
+    const ws = resolveResultKey(textOf(r), bots, index)
     if (passFilter(ws, currentFilter, bots)) visKeys.push('r:' + ws + ':' + textOf(r).slice(0, 24))
     else hiddenResults.push(r)
   }
@@ -249,6 +237,8 @@ export function mountLeftFilter(ctx: FeatureCtx): () => void {
   const myGen = claimGen()
   activeGen = myGen
   void activeGen
+  /* #154：注册表取数口（惰性读；读不到就退回老口径字面匹配）。 */
+  ctxGet = typeof ctx.get === 'function' ? (name: string) => ctx.get(name) : null
   let bots: BotSnap[] = []
   let hasSnap = false
   let loggedHit = false

@@ -9,6 +9,8 @@
  * 拆的直接原因：行数红线 300 与数据保护闸撞在一起（见 home-store-io.ts 顶部的事故复盘口径）。 */
 import path from 'node:path'
 import { configDirFor } from './config-yaml.js'
+/* #154：默认区显示名单点真相搬到共享层（client + host 共用一张表；见 src/workspace-default.ts）。 */
+import { defaultWorkspaceTitle } from '../workspace-default.js'
 import {
   assertWritable, cleanAssistant, cleanHome, isAvatarCode, loadHomesDocState, writeGuarded,
   type AssistantRow, type HomeRow, type HomesDoc, type HomesLoadState,
@@ -83,7 +85,7 @@ export async function createHomeRow(
   const dup = doc.homes.find((h) => !h.tombstone && (normPath(h.path) === np || (h.workspaceId && h.workspaceId === wsId)))
   if (dup) return { ok: false, code: 'already-exists', message: '该工作区已有家' }
   const base = p.split(/[\\/]+/).filter(Boolean).pop() ?? p
-  const name = title === 'default-workspace' ? '默认工作区' : title || base
+  const name = defaultWorkspaceTitle(title) || base
   const now = Date.now()
   const home: HomeRow = {
     id: genId(now), workspaceId: wsId, path: p, name, nameSource: 'system',

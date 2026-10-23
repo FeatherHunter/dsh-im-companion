@@ -14,6 +14,8 @@ const REPO = process.cwd();
 const SRC = join(REPO, 'src', 'client', 'data');
 const FEAT = join(REPO, 'src', 'features', 'session-header', 'assistants.ts');
 const FILES = ['config.ts', 'fleet-api.ts', 'home-model.ts', 'home-channel.ts'];
+/* #154：默认区显示名单点真相搬到共享层 src/workspace-default.ts（client + host 共用）⇒ 这条夹具多铺一份。 */
+const SHARED_DEFAULT = 'workspace-default.ts';
 
 const stage = mkdtempSync(join(tmpdir(), 'session-header-asst-src-'));
 const LOG_STUB = [
@@ -27,10 +29,13 @@ const LOG_STUB = [
   '',
 ].join('\n');
 writeFileSync(join(stage, 'log.ts'), LOG_STUB);
+writeFileSync(join(stage, SHARED_DEFAULT), readFileSync(join(REPO, 'src', SHARED_DEFAULT), 'utf8'));
 for (const f of FILES) {
   const raw = readFileSync(join(SRC, f), 'utf8');
   const fixed = raw
     .replace(/from '\.\.\/log'/g, "from './log'")
+    /* #154：共享层文件在 src/ 根 ⇒ 平铺夹具里改写成同目录引用。 */
+    .replace(/from '\.\.\/\.\.\/workspace-default'/g, "from './workspace-default.js'")
     .replace(/\.\/([A-Za-z0-9_-]+)(['"])/g, (m, name, q) =>
       String(name).endsWith('.js') ? m : './' + name + '.js' + q);
   writeFileSync(join(stage, f), fixed);
@@ -47,7 +52,7 @@ const tmp = mkdtempSync(join(tmpdir(), 'session-header-asst-'));
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
-    ...[...FILES, 'assistants.ts'].map((f) => join(stage, f)),
+    ...[...FILES, SHARED_DEFAULT, 'assistants.ts'].map((f) => join(stage, f)),
     '--ignoreConfig',
     '--outDir', tmp, '--module', 'nodenext', '--target', 'es2023',
     '--moduleResolution', 'nodenext', '--skipLibCheck',

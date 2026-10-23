@@ -9,7 +9,8 @@
  * 零 import、零对家改动；对家换类名或换条带 ⇒ 绿点静默消失（fail-closed），不报错、不影响其他功能。
  * 偏好持久化：读走既有 meta.get 全量快照、写走 meta.motion.set（见 prefs.ts），刷新/重启后仍记得「已关」。
  * 无自有轮询；计数只读共享 bindings。 */
-import { badgeForWorkspace, basenameOfPath } from '../../client/data/bindings'
+import { badgeForWorkspace } from '../../client/data/bindings'
+import { EMPTY_WORKSPACE_INDEX, resolveRowWorkspace, workspaceIdOfRow, workspaceIndexOf, type WorkspaceIndex } from '../../client/data/workspace-index'
 import type { BotSnap } from '../../client/data/fleet-api'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
@@ -45,19 +46,16 @@ function textOf(el: Element): string {
   try { return typeof el.textContent === 'string' ? el.textContent.trim() : '' } catch { return '' }
 }
 
-function normPath(s: string): string {
-  return String(s ?? '').replace(/\\/g, '/').toLowerCase()
-}
-
-/** 行文本 → 规范 workspace（B1 同款映射口径的独立实现：只读共享 basename，不引他人 feature）。 */
-export function resolveWorkspace(key: string, bots: BotSnap[]): string {
-  const k = normPath(key).trim()
-  if (!k) return key
-  for (const b of bots) {
-    if (b.workspace && (normPath(b.workspace) === k || normPath(basenameOfPath(b.workspace)) === k)) return b.workspace
-    if (b.botName && normPath(b.botName).trim() === k) return b.workspace
-  }
-  return key
+/** 行文本 + 行身份（data-row-key 的 workspaceId）→ 规范 workspace 路径（#154：共享层单点）。
+ * 口径与 left-filter / left-badges 一致：身份 → 注册表标题 → 老口径字面匹配；
+ * 解析不出 ⇒ ''（未解析哨兵），绝不把显示名当工作区标识。 */
+export function resolveWorkspace(
+  key: string,
+  bots: BotSnap[],
+  workspaceId = '',
+  index: WorkspaceIndex = EMPTY_WORKSPACE_INDEX,
+): string {
+  return resolveRowWorkspace(key, workspaceId, index, bots).path
 }
 
 function collectRows(): Element[] {
@@ -76,14 +74,19 @@ function paintBody(level: MotionLevel): void {
 }
 
 /** 计数 bound 行（去重 workspace；未绑定不计；行上零写入）。 */
-export function countBound(bots: BotSnap[], rows: Element[] = collectRows(), nowMs = Date.now()): number {
+export function countBound(
+  bots: BotSnap[],
+  rows: Element[] = collectRows(),
+  nowMs = Date.now(),
+  index: WorkspaceIndex = EMPTY_WORKSPACE_INDEX,
+): number {
   let bound = 0
   const seen = new Set<string>()
   for (const row of rows) {
     try {
       const key = textOf(row)
       if (!key) continue
-      const ws = resolveWorkspace(key, bots)
+      const ws = resolveWorkspace(key, bots, workspaceIdOfRow(row), index)
       if (seen.has(ws)) continue
       seen.add(ws)
       if (badgeForWorkspace(ws, bots, nowMs).kind !== 'unbound') bound++
@@ -171,7 +174,8 @@ export function mountPresence(ctx: FeatureCtx): () => void {
   const repaint = (): void => {
     if (!hasSnap || !genAlive(myGen)) return
     try {
-      const bound = countBound(bots)
+      /* #154：按行身份解析归属 ⇒ 有助理行数才算得对（默认工作区不再漏计）。 */
+      const bound = countBound(bots, collectRows(), Date.now(), typeof ctx?.get === 'function' ? workspaceIndexOf(ctx.get) : EMPTY_WORKSPACE_INDEX)
       const m = resolveMotion({ count: bound, manualReduced: manual, sysReduced: sys })
       paintBody(m.level)
       if (!loggedHit && collectRows().length > 0) { loggedHit = true; info('动效总控已接管（档位 ' + m.level + '，' + m.reason + '）') }

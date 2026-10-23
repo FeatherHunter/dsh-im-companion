@@ -18,6 +18,8 @@ const ENTRIES = [
   join(FEAT, 'index.ts'),
   join(FEAT, 'left-badges', 'manifest.ts'),
   join(REPO, 'src', 'client', 'components', 'home-identity.ts'),
+  /* #154：共享层工作区索引（行身份 → 路径）单点真相。 */
+  join(DATA, 'workspace-index.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'b1-left-badges-'));
@@ -50,6 +52,7 @@ const hover: any = req('./features/left-badges/hover-card.js');
 const fleetApi: any = req('./client/data/fleet-api.js');
 const face: any = req('./features/left-badges/assistant-face.js');
 const identity: any = req('./client/components/home-identity.js');
+const wsIndex: any = req('./client/data/workspace-index.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const snap = (over = {}) => ({
@@ -176,13 +179,28 @@ test('bindings：四态 + tooltip 最后检测 + 暂无占位', () => {
   assert.equal(bindings.lastCheckedText([]), '最后检测 暂无');
 });
 
-test('view：resolveWorkspace 名称匹配（basename/Bot名/大小写）', () => {
+test('view：resolveWorkspace 名称匹配（basename/Bot名/大小写）+ 未解析哨兵', () => {
   const bots = [snap({ workspace: W1, botName: '小帅' })];
   assert.equal(view.resolveWorkspace('xiaoshuai', bots), W1);
   assert.equal(view.resolveWorkspace('XiaoShuai', bots), W1);
   assert.equal(view.resolveWorkspace('小帅', bots), W1);
   assert.equal(view.resolveWorkspace(W1, bots), W1);
-  assert.equal(view.resolveWorkspace('dsh-im', bots), 'dsh-im');
+  /* #154：解析不出 ⇒ 空串哨兵（绝不把显示名当工作区标识）。 */
+  assert.equal(view.resolveWorkspace('dsh-im', bots), '');
+});
+
+test('#154 view：默认工作区按行身份解析（本地化显示名 ⇒ 绑定路径）', () => {
+  const D = 'D:\\deepseek-harness\\default-workspace';
+  const index = wsIndex.buildWorkspaceIndex([{ workspaceId: 'w-default', path: D, title: 'default-workspace' }]);
+  const bots = [snap({ workspace: D, botName: '小助手' })];
+  const ws = view.resolveWorkspace('默认工作区', bots, 'w-default', index);
+  assert.equal(ws, D, '默认工作区解析回绑定路径');
+  assert.equal(bindings.badgeForWorkspace(ws, bots).kind, 'online', '徽标不再判未绑定');
+  /* 改名工作区（显示名 ≠ basename）同样按身份解析。 */
+  const index2 = wsIndex.buildWorkspaceIndex([{ workspaceId: 'w-renamed', path: 'D:\\agents\\xiaowan', title: 'tttttt' }]);
+  assert.equal(view.resolveWorkspace('tttttt', bots, 'w-renamed', index2), 'D:\\agents\\xiaowan');
+  /* 全不匹配 ⇒ 哨兵。 */
+  assert.equal(view.resolveWorkspace('毫不相干', bots, '', index), '');
 });
 
 test('registry：left-badges 在列，带样式与槽位', () => {

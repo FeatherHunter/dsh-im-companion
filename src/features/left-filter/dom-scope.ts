@@ -100,6 +100,27 @@ export function restoreAll(): void {
   } catch { /* 清理失败忽略 */ }
 }
 
+/** 数字降级：把「有助理 2」拆成标签 + span.left-filter-n（setLabel 会重置文本，每次重调，幂等）。
+ * 纯 DOM 活儿：只拆自家条带里的分段按钮，不读业务状态。 */
+export function tuneLabels(host: Element | null): void {
+  try {
+    if (!host || typeof host.querySelectorAll !== 'function') return
+    host.querySelectorAll('.af-seg-item').forEach((btn) => {
+      try {
+        if (btn.querySelector('.left-filter-n')) return
+        const m = /^(.*)\s+(\d+)$/.exec(textOf(btn))
+        if (!m) return
+        btn.textContent = m[1] + ' '
+        const doc = btn.ownerDocument ?? document
+        const span = doc.createElement('span')
+        span.setAttribute('class', 'left-filter-n')
+        span.textContent = m[2]
+        btn.appendChild(span)
+      } catch { /* 单钮失败忽略 */ }
+    })
+  } catch { /* 调整失败忽略 */ }
+}
+
 /** 行悬停名牌（只读 title 属性；打标以便卸载还原；行原生无 title，经核实）。 */
 export function setRowTip(row: Element, tip: string): void {
   try {

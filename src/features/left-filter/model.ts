@@ -2,6 +2,7 @@
  * 无 DOM；视图只做“按结论藏/显节点”。绑定真相唯一来源 stream 快照。 */
 import type { BotSnap } from '../../client/data/fleet-api'
 import { channelLabel } from '../../client/data/config'
+import { EMPTY_WORKSPACE_INDEX, resolveResultWorkspace, resolveRowWorkspace, type WorkspaceIndex, type WorkspaceResolution } from '../../client/data/workspace-index'
 
 export type FilterId = 'all' | 'bound' | 'unbound'
 
@@ -19,29 +20,38 @@ function basenameOf(ws: string): string {
   return parts[parts.length - 1] ?? ''
 }
 
-/** 行可见文本（工作区展示名/搜索结果的归属名）→ bots 中的规范 workspace 路径。
- * 复刻口径（评审声明：与 left-badges/view.resolveWorkspace 同语义，重复优于跨 feature 引用）。 */
-export function resolveWorkspaceKey(rowText: string, bots: BotSnap[]): string {
-  const k = normKey(rowText)
-  if (!k) return rowText
-  for (const b of bots) {
-    if (b.workspace && (normKey(b.workspace) === k || basenameOf(b.workspace) === k)) return b.workspace
-    if (b.botName && normKey(b.botName) === k) return b.workspace
-  }
-  return rowText
+/** 行可见文本 + 行身份（data-row-key 的 workspaceId）→ bots 中的规范 workspace 路径（#154）。
+ * 真相顺序（共享层单点：left-filter / left-badges / presence 共用同一口径）：
+ * ① 行身份 → 注册表路径 ② 注册表标题 ③ 老口径字面匹配（路径全等/basename/机器人名）。
+ * 解析不出 ⇒ ''（未解析哨兵）：绝不把「无法解析的显示名」当工作区标识传下去。 */
+export function resolveWorkspaceKey(
+  rowText: string,
+  bots: BotSnap[],
+  workspaceId = '',
+  index: WorkspaceIndex = EMPTY_WORKSPACE_INDEX,
+): string {
+  return resolveWorkspaceRow(rowText, bots, workspaceId, index).path
+}
+
+/** 同上，但把**解析依据**一并给出（身份/标题/字面/未解析）：视图据此留痕，
+ *  事后只看磁盘日志就能判定「这行为什么没绑上」（#154 诊断取证纪律）。 */
+export function resolveWorkspaceRow(
+  rowText: string,
+  bots: BotSnap[],
+  workspaceId = '',
+  index: WorkspaceIndex = EMPTY_WORKSPACE_INDEX,
+): WorkspaceResolution {
+  return resolveRowWorkspace(rowText, workspaceId, index, bots)
 }
 
 /** 搜索结果行全文 → 归属 workspace：结果行含标题+归属名+摘要，只能做包含匹配。
  * 误伤上界 = 行文本偶然含另一工作区名（摘要极少见，可接受，见 A4）。 */
-export function resolveResultKey(fullText: string, bots: BotSnap[]): string {
-  const hay = normKey(fullText)
-  if (!hay) return fullText
-  for (const b of bots) {
-    if (!b.workspace) continue
-    if (hay.includes(normKey(b.workspace)) || hay.includes(basenameOf(b.workspace))) return b.workspace
-    if (b.botName && hay.includes(normKey(b.botName))) return b.workspace
-  }
-  return fullText
+export function resolveResultKey(
+  fullText: string,
+  bots: BotSnap[],
+  index: WorkspaceIndex = EMPTY_WORKSPACE_INDEX,
+): string {
+  return resolveResultWorkspace(fullText, index, bots).path
 }
 
 export function isBoundWorkspace(wsPath: string, bots: BotSnap[]): boolean {

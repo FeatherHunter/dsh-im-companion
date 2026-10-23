@@ -25,6 +25,8 @@ const ENTRIES = [
   join(FEAT, 'presence', 'view.ts'),
   join(FEAT, 'presence', 'prefs.ts'),
   join(FEAT, 'presence', 'styles.ts'),
+  /* #154：共享层工作区索引（行身份 → 路径）单点真相。 */
+  join(DATA, 'workspace-index.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'e1-presence-'));
@@ -51,6 +53,7 @@ const styles: any = req('./features/presence/styles.js');
 const manifest: any = req('./features/presence/manifest.js');
 const bindings: any = req('./client/data/bindings.js');
 const metaMod: any = req('./client/data/meta.js');
+const wsIndex: any = req('./client/data/workspace-index.js');
 import { readFileSync } from 'node:fs';
 const indexSrc = readFileSync(join(REPO, 'src', 'features', 'index.ts'), 'utf8');
 const viewSrc = readFileSync(join(FEAT, 'presence', 'view.ts'), 'utf8');
@@ -296,7 +299,20 @@ test('view：resolveWorkspace 名称匹配（basename/Bot名/大小写）', () =
   assert.equal(view.resolveWorkspace('XiaoShuai', bots), W1);
   assert.equal(view.resolveWorkspace('小帅', bots), W1);
   assert.equal(view.resolveWorkspace(W1, bots), W1);
-  assert.equal(view.resolveWorkspace('dsh-im', bots), 'dsh-im');
+  /* #154：解析不出 ⇒ 空串哨兵（绝不把显示名当工作区标识）。 */
+  assert.equal(view.resolveWorkspace('dsh-im', bots), '');
+});
+
+test('#154 view：默认工作区按行身份解析（有助理行数不再漏计）', () => {
+  const D = 'D:\\deepseek-harness\\default-workspace';
+  const index = wsIndex.buildWorkspaceIndex([{ workspaceId: 'w-default', path: D, title: 'default-workspace' }]);
+  const dBots = [snap({ workspace: D, botName: '小助手' })];
+  const row = stubEl('div');
+  row.textContent = '默认工作区';
+  row.setAttribute('data-row-key', 'workspace:w-default');
+  assert.equal(view.resolveWorkspace('默认工作区', dBots, 'w-default', index), D);
+  assert.equal(view.countBound(dBots, [row], Date.now(), index), 1, '默认工作区计入有助理行数');
+  assert.equal(view.countBound(dBots, [row], Date.now(), wsIndex.EMPTY_WORKSPACE_INDEX), 0, '无注册表时退回老口径（默认工作区仍漏计，属已知边界）');
 });
 
 test('#98 view：绿点挂筛选条内、收起钮左侧；body 不挂开关、行零写入', () => {
