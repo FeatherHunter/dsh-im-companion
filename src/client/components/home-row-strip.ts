@@ -14,7 +14,7 @@
  */
 import { h } from '../dom'
 import { avatarSrc } from './home-avatar'
-import { avatarStyle, imageCover, initialsOf } from './home-identity'
+import { paintAvatarFace } from './home-avatar-view'
 import { ensureHomeRowStyles } from './home-row-styles'
 import { hideAsstTip, showAsstTip } from './home-row-tip'
 
@@ -84,8 +84,9 @@ const statusText = (on: boolean | null): string => (on === true ? '在线' : on 
 
 function asstChip(a: StripAsst, compact: boolean): HTMLElement {
   const url = a.avatar ? avatarSrc(a.id, a.avatar) : null
-  const av = h('span', { className: 'hu-cav', style: url ? imageCover(url) : avatarStyle(a.id, a.avatar) },
-    url ? '' : initialsOf(a.name))
+  const av = h('span', { className: 'hu-cav' })
+  /* 条带助理＝助理归属（暖亮色板＋小机器人图标），与行/详情同一规则（paintAvatarFace）。 */
+  paintAvatarFace(av, 'assistant', a.id, a.name, a.avatar, 13)
   if (compact) av.appendChild(h('i', { className: dotClass(a.on) }))
   const chip = h('span', {
     className: `hu-chip${a.on === null ? ' unbound' : ''}${compact ? ' cmp' : ''}`,

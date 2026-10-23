@@ -19,7 +19,7 @@
 import { h } from '../dom'
 import { channelGlyphSvg } from '../icons'
 import { logLine } from '../log'
-import { avatarStyle, imageCover, initialsOf } from './home-identity'
+import { paintAvatarFace } from './home-avatar-view'
 import { ensureHomeRowStyles, homeRowStylesAlive } from './home-row-styles'
 /* 进层三件套复用绿框 popover 系统（`home-pop.ts`，#112 实证：设置页可能落在 dialog 下，
  * 纯 z-index 会被整层盖住 ⇒ 有 Popover API 就进 top layer，没有就退回 z-index）。 */
@@ -109,10 +109,10 @@ function paint(a: HTMLElement, data: TipData): void {
   if (!homeRowStylesAlive()) return
   const el = ensureBox()
   el.textContent = ''
-  el.appendChild(h('span', {
-    className: 'hu-tav',
-    style: data.url ? imageCover(data.url) : avatarStyle(data.id, data.avatar),
-  }, data.url ? '' : initialsOf(data.name)))
+  const tav = h('span', { className: 'hu-tav' })
+  /* 气泡头像与芯片同规则（助理归属图标＋归属色板，有照片铺图——paintAvatarFace 内判定）。 */
+  paintAvatarFace(tav, 'assistant', data.id, data.name, data.avatar)
+  el.appendChild(tav)
   el.appendChild(h('span', { className: 'hu-tt' },
     h('b', {}, data.name),
     /* 状态行三个独立节点（点＋渠道＋状态，flex gap 撑开）：分隔靠结构不靠符号，不许拼 · 也不许紧贴成一片。

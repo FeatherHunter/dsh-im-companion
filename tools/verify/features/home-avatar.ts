@@ -260,10 +260,18 @@ test('T11 #128 客户端接线钉子：面板装配 transport、行/弹层共用
   const detail = readFileSync(join(REPO, 'src', 'client', 'components', 'home-detail.ts'), 'utf8');
   assert.match(panel, /bindAvatarTransport\(\{/, '面板装配一次 transport（否则 avatar.get 一次都不发）');
   /* owner 2026-10-23：avatarEl 搬进 home-avatar-view.ts（home-rows/home-ui-styles 双双顶 300 行红线），
-   * 单点仍唯一——行/弹层/详情只调 avatarEl/avatarOptButton，不许行内另实现取图。 */
+   * 单点仍唯一——行/弹层/详情只调 avatarEl/avatarOptButton，不许行内另实现取图。
+   * owner 2026-10-24：条带/气泡自有格子位（.hu-cav/.hu-tav）调同文件的 paintAvatarFace（三者同规则），
+   * 同样不许行内另实现（首字＋avatarStyle 只留给无 kind 的渠道组）。 */
   const view = readFileSync(join(REPO, 'src', 'client', 'components', 'home-avatar-view.ts'), 'utf8');
   assert.match(view, /avatarSrc\(/, '列表/详情头像走 avatarSrc（有图用图、无图预设色）——单点住 home-avatar-view');
   assert.match(rows, /from '\.\/home-avatar-view'/, '行头像经共用 avatarEl（定义搬家，调用不断）');
+  const strip = readFileSync(join(REPO, 'src', 'client', 'components', 'home-row-strip.ts'), 'utf8');
+  const tip = readFileSync(join(REPO, 'src', 'client', 'components', 'home-row-tip.ts'), 'utf8');
+  assert.match(strip, /paintAvatarFace\(av, 'assistant'/, '条带芯片走共用 paintAvatarFace（助理归属）');
+  assert.match(tip, /paintAvatarFace\(tav, 'assistant'/, '气泡头像走共用 paintAvatarFace（助理归属）');
+  assert.doesNotMatch(strip, /initialsOf\(/, '条带不许自画首字头像');
+  assert.doesNotMatch(tip, /initialsOf\(|avatarStyle\(/, '气泡不许自画首字头像');
   assert.doesNotMatch(view, /'avatar\.(get|set|clear)'/, '共用头像视图不许自己发请求（取图唯一口仍在 home-avatar transport）');
   assert.match(forms, /avatarImageCell\(/, '弹层色板行收编图片格（第 8 格）');
   assert.match(transport, /'avatar\.get'/, '取图只走 avatar.get');

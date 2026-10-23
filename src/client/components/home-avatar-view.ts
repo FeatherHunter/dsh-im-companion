@@ -1,7 +1,8 @@
 /** 头像视图（家/助理共用）：`avatarEl` 列表与详情同一枚元素（home-avatar.ts 验收①钉死调用点），
- * 预置钮 `avatarOptButton` 与弹层共用同一套字形/色板规则；样式自带独立 id 装配（home-row-styles 同款机制，
- * 防 home-ui-styles.ts 300 行破线——契约 §6 只加类、不占 .af-*）。
- * 删掉本文件即整块退场：调用方只剩 import 行需回退（home-rows / home-forms / home-detail / home-asst-create）。 */
+ * 预置钮 `avatarOptButton` 与弹层共用同一套字形/色板规则；自有格子位（条带/气泡）调 `paintAvatarFace`，
+ * 三者同规则（有图铺图、有 kind 归属图标＋归属色板、无 kind 首字），规则只活这一处；
+ * 样式自带独立 id 装配（home-row-styles 同款机制，防 home-ui-styles.ts 300 行破线——契约 §6 只加类、不占 .af-*）。
+ * 删掉本文件即整块退场：调用方只剩 import 行需回退（home-rows / home-forms / home-detail / home-asst-create / home-row-strip / home-row-tip）。 */
 import { h } from '../dom'
 import { installFeatureStyles } from '../theme'
 import { huIcon, type HuIconName } from './home-icons'
@@ -32,22 +33,32 @@ export function ensureAvatarStyles(): void {
 export function avatarEl(id: string, name: string, avatar: string | null, opts: { round?: boolean; small?: boolean; iconName?: HuIconName; kind?: AvatarKind } = {}): HTMLElement {
   ensureAvatarStyles()
   const cls = `hu-av${opts.round ? ' round' : ''}${opts.small ? ' sm' : ''}`
-  /* T11 #128：判定单点＝avatarSrc（列表/详情共用 ⇒ 一致是结构保证）；图未到先画回落款。 */
-  const img = opts.iconName ? null : avatarSrc(id, avatar)
-  const el = h('span', { className: cls, style: img ? imageCover(img) : undefined })
-  if (!img) {
-    if (opts.iconName) {
-      el.setAttribute('style', 'background:var(--hu-accent-soft);color:var(--hu-accent-deep)')
-      el.appendChild(huIcon(opts.iconName, 15))
-    } else if (opts.kind) {
-      el.setAttribute('style', avatarStyleFor(opts.kind, id, avatar))
-      el.appendChild(huIcon(avatarIconFor(opts.kind), 15))
-    } else {
-      el.setAttribute('style', avatarStyle(id, avatar))
-      el.textContent = initialsOf(name)
-    }
+  if (opts.iconName) {
+    const el = h('span', { className: cls, style: 'background:var(--hu-accent-soft);color:var(--hu-accent-deep)' })
+    el.appendChild(huIcon(opts.iconName, 15))
+    return el
   }
+  const el = h('span', { className: cls })
+  /* T11 #128：判定单点＝avatarSrc（列表/详情共用 ⇒ 一致是结构保证）；图未到先画回落款。 */
+  paintAvatarFace(el, opts.kind, id, name, avatar)
   return el
+}
+
+/** 自有格子位（条带 `.hu-cav` / 气泡 `.hu-tav`）：样式与字形与 avatarEl 同一规则，
+ *  格子类名与图标尺寸调用方自定（iconPx 默认 15）。
+ *  有照片铺图；有 kind 走归属图标＋归属色板；无 kind 照旧首字（渠道组等，不动）。 */
+export function paintAvatarFace(el: HTMLElement, kind: AvatarKind | undefined, id: string, name: string, avatar: string | null, iconPx = 15): void {
+  /* 不装 AVATAR_CSS：它的规则只覆盖详情 `.hu-big` 位，条带/气泡位不需要；
+   * 行/详情走 avatarEl，那边装——T13 #135 只许家行装一次表，这里多装一次就红。 */
+  const img = avatarSrc(id, avatar)
+  if (img) { el.setAttribute('style', imageCover(img)); return }
+  if (kind) {
+    el.setAttribute('style', avatarStyleFor(kind, id, avatar))
+    el.appendChild(huIcon(avatarIconFor(kind), iconPx))
+    return
+  }
+  el.setAttribute('style', avatarStyle(id, avatar))
+  el.textContent = initialsOf(name)
 }
 
 /** 预置头像钮（弹层 9 格共用）：字形＝归属图标（avatarIconFor），底色＝归属色板（avatarStyleFor），
