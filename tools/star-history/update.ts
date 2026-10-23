@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { aggregateByDay } from './aggregate.ts'
+import { aggregateByDay, withZeroStart } from './aggregate.ts'
 
 /** 仓库根 = tools/star-history/ 的上上级。 */
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -20,6 +20,6 @@ const input = process.argv[2] ? resolve(process.argv[2]) : join(REPO_ROOT, 'star
 const outPath = process.argv[3] ? resolve(process.argv[3]) : join(REPO_ROOT, 'docs', 'star-history.json')
 
 const list = readFileSync(input, 'utf8').trim().split(/\r?\n/).filter(Boolean)
-const agg = aggregateByDay(list)
+const agg = withZeroStart(aggregateByDay(list))
 writeFileSync(outPath, JSON.stringify(agg, null, 2) + '\n')
 console.log(`Wrote ${agg.length} days, total ${agg[agg.length - 1]?.total} → ${outPath}`)

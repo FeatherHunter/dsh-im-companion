@@ -12,7 +12,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { aggregateByDay, mergeHistory } from '../../star-history/aggregate.ts'
+import { aggregateByDay, mergeHistory, withZeroStart } from '../../star-history/aggregate.ts'
 import { buildSvg, monotonePath } from '../../star-history/generate-svg.ts'
 
 const REPO = process.cwd()
@@ -165,7 +165,7 @@ test('产物：docs/star-history.json 必须是合法且自洽的日聚合', () 
     assert.match(row.date, /^\d{4}-\d{2}-\d{2}$/, `日期格式必须是 YYYY-MM-DD：${row.date}`)
     assert.ok(row.date > prevDate, `日期必须严格升序且不重复：${row.date} 紧跟在 ${prevDate} 后面`)
     prevDate = row.date
-    assert.ok(Number.isInteger(row.daily) && row.daily >= 1, `每日新增必须是正整数：${JSON.stringify(row)}`)
+    assert.ok(Number.isInteger(row.daily) && row.daily >= 0, `每日新增必须是非负整数（零星首行为 0）：${JSON.stringify(row)}`)
     running += row.daily
     assert.equal(row.total, running, `total 必须等于 daily 的累计和：${JSON.stringify(row)}`)
   }
@@ -197,4 +197,14 @@ test('接线：README 与英文 README 都要内嵌这张图（且带缓存戳�
       `${file} 必须内嵌浅色星标图（带 ?v=YYYYMMDD 缓存戳）`,
     )
   }
+})
+
+test('聚合：withZeroStart 给首日补零星前一天，两条曲线从原点起画', () => {
+  assert.deepEqual(withZeroStart([]), [], '空数组保持空')
+  const got = withZeroStart([{ date: '2026-09-03', total: 2, daily: 2 }])
+  assert.deepEqual(got, [
+    { date: '2026-09-02', total: 0, daily: 0 },
+    { date: '2026-09-03', total: 2, daily: 2 },
+  ])
+  assert.deepEqual(withZeroStart(got), got, '已有零星行必须幂等返回')
 })
