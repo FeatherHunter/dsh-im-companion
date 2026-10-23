@@ -238,17 +238,21 @@ Also thanks to upstream [dsh-im](https://github.com/xmanrui/dsh-im): no core, no
 
 </div>
 
-<h2 align="center"><sub>CONNECT</sub><br>Join us</h2>
+<h2 align="center"><sub>CONNECT</sub><br>Feedback and Contact</h2>
 
 <div align="center">
 
-Bugs and ideas go straight to ISSUEs — faster and traceable.
+👏Welcome PRs and issues. A single spark can start a prairie fire 🔥. Any suggestion, opinion, idea or rant — come join the group and talk.
 
-[File an ISSUE](https://github.com/FeatherHunter/dsh-im-companion/issues) · [Upstream dsh-im](https://github.com/xmanrui/dsh-im)
+Bugs and feature requests go straight to ISSUEs for better traceability; casual chat and quick Q&A live in the groups.
 
-**👇 DSH plugin chat group (Feishu), scan to join:**
+QQ group is permanent, WeChat group is time-limited, Feishu group is permanent — all three are the DSH plugin community group.
 
-<img src="../assets/DSH插件交流群-飞书二维码.png" width="330" alt="DSH plugin chat group Feishu QR code">
+<img src="../assets/contact-qq-permanent.jpg" width="260" alt="DSH plugin community group QQ QR code" /> <img src="../assets/contact-wechat-weekly.png" width="260" alt="DSH plugin community group WeChat QR code" /> <img src="../assets/contact-feishu-permanent.png" width="260" alt="DSH plugin community group Feishu QR code" />
+
+QQ group number 1020866453 — search the number to join if scanning fails.
+
+WeChat QR code is valid for 7 days and refreshed weekly; if expired, use QQ or Feishu instead.
 
 </div>
 
