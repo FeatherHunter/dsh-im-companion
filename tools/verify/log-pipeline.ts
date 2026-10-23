@@ -99,6 +99,8 @@ test('调用点与清单双向不漂移：没有「埋了点没进清单」，�
 const domainCases: Array<[string, Record<string, unknown>, any]> = [
   ['home.create', { workspaceId: 'ws-1' }, { ok: true, value: { home: { id: 'h-1', name: '工作区甲' } } }],
   ['home.update', { id: 'h-1', name: '新名', avatar: 'a' }, { ok: true, value: { home: { id: 'h-1' } } }],
+  ['home.rebind', { id: 'h-1', workspaceId: 'ws-2', path: 'D:\\x' }, { ok: true, value: { home: { id: 'h-1' } } }],
+  ['home.remove', { id: 'h-1' }, { ok: true, value: { home: { id: 'h-1' } } }],
   ['home.seed', {}, { ok: true, value: { summary: { created: 1, adopted: 2, skipped: 3 } } }],
   ['assistant.create', { homeId: 'h-1', botId: 'b-1' }, { ok: true, value: { assistant: { id: 'a-1' } } }],
   ['assistant.createUnbound', { homeId: 'h-1' }, { ok: true, value: { assistant: { id: 'a-2' } } }],

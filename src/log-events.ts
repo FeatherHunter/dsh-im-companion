@@ -54,6 +54,8 @@ export const LOG_EVENTS: Record<string, LogEventSpec> = {
    * 成功动作在默认档位下只有语义行落盘，链 id 只留在 rpc 明细行等于成功路径断链。 */
   'home.create': { level: 'info', kind: 'resident', fields: ['homeId', 'workspaceId', 'name', 'ok', 'message', 'traceId'] },
   'home.update': { level: 'info', kind: 'resident', fields: ['homeId', 'changed', 'ok', 'message', 'traceId'] },
+  'home.rebind': { level: 'info', kind: 'resident', fields: ['homeId', 'changed', 'ok', 'message', 'traceId'] },
+  'home.remove': { level: 'info', kind: 'resident', fields: ['homeId', 'ok', 'message', 'traceId'] },
   'home.seed': { level: 'info', kind: 'resident', fields: ['created', 'adopted', 'skipped', 'ok', 'message', 'traceId'] },
   'assistant.create': { level: 'info', kind: 'resident', fields: ['assistantId', 'homeId', 'botId', 'mode', 'ok', 'message', 'traceId'] },
   'assistant.bind': { level: 'info', kind: 'resident', fields: ['assistantId', 'homeId', 'botId', 'ok', 'message', 'traceId'] },

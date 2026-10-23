@@ -1743,6 +1743,7 @@ test('解耦：新文件不引特性、不自开轮询、不直写 localStorage'
     join(CLIENT, 'data', 'home-edit.ts'),
     join(CLIENT, 'data', 'home-move.ts'),
     join(COMP, 'home-ops.ts'),
+    join(COMP, 'home-workspace.ts'),
     join(COMP, 'home-move-ops.ts'),
     join(COMP, 'home-move-forms.ts'),
     join(COMP, 'home-ui-styles.ts'),
@@ -2177,6 +2178,52 @@ test('#156 移除渠道/删除助理：不写远端工作区（解绑链没有�
   await mkOps().removeAssistant('a1');
   assert.deepEqual(calls.map((c) => c.ep), ['assistant.remove', 'reloadHomes'], '删除助理：只删本地行');
   assert.equal(calls.filter((c) => c.ep === 'bot.workspace.set').length, 0, '不写远端工作区（机器人连接保留）');
+});
+
+/* #158 Q2(a)/Q5(a)：绑定前在客户端挡下非绝对路径——上游只收非空绝对路径，坏路径走到 RPC 只会换回难懂的上游报错。
+ * 契约：拒绝发生在任何远端请求之前（零 RPC），且如实报原因（toast + 客户端 assistant.action 行带原文）；
+ * 合法路径行为不变（照旧一次 bot.workspace.set，且不改写调用方给的路径）。 */
+test('#158 bindBot 前置守卫：非绝对路径零 RPC 且如实报原因，合法路径照旧一次下发', async () => {
+  const ops: any = boxReq('./client/components/home-ops.js');
+  const logMod: any = boxReq('./client/log.js');
+  const logBatches: any[] = [];
+  const logRpc: any = async (_path: string, _phone: string, args: any) => {
+    logBatches.push(args);
+    const n = Array.isArray(args?.entries) ? args.entries.length : 0;
+    return { ok: true, accepted: n, skipped: 0, rejected: 0 };
+  };
+  logMod.initLog(logRpc);
+  const calls: Array<{ path: string; ep: string; p: any }> = [];
+  const rpc: any = async (path: string, ep: string, p: any) => { calls.push({ path, ep, p }); return { ok: true, value: {} } };
+  try {
+    /* ① 非法：空串 / 纯空白 / 相对路径 / 裸盘符 / 家目录缩写 => 一个远端请求都不发 */
+    for (const bad of ['', '   ', 'agents/x', 'C:', '~/.dsh']) {
+      calls.length = 0;
+      const ok = await ops.bindBot(rpc, 'feishu', 'b1', bad);
+      assert.equal(ok, false, '非法工作区必须直接拒绝：' + JSON.stringify(bad));
+      assert.deepEqual(calls, [], '拒绝发生在 RPC 之前（零请求）：' + JSON.stringify(bad));
+    }
+    logMod.flushLogs();
+    await new Promise((r) => setTimeout(r, 30));
+    const reasonRows = logBatches.flatMap((a) => Array.isArray(a?.entries) ? a.entries : [])
+      .filter((e: any) => e?.event === 'assistant.action' && e?.fields?.action === 'bind-bot');
+    assert.equal(reasonRows.length, 5, '五次拒绝各留一条客户端动作行（如实报原因，不只弹 toast）');
+    for (const row of reasonRows) {
+      assert.equal(row.fields.ok, false);
+      assert.match(String(row.fields.message), /工作区路径(为空|不是绝对路径)/, '日志带可读原因：' + row.fields.message);
+    }
+    assert.match(JSON.stringify(reasonRows), /~\/\.dsh/, 'offending 原文进日志（排障要看到收到的到底是什么）');
+    /* ② 合法：盘符正/反斜杠、UNC、根路径都放行，且恰好一次 bot.workspace.set（守卫不改写路径） */
+    for (const good of ['D:\\agents\\x', 'D:/agents/x', '\\\\server\\share', '/home/x']) {
+      calls.length = 0;
+      const ok = await ops.bindBot(rpc, 'feishu', 'b1', good);
+      assert.equal(ok, true, '合法绝对路径必须放行：' + good);
+      assert.deepEqual(calls.map((c) => c.ep), ['bot.workspace.set'], '合法路径照旧一次下发：' + good);
+      assert.equal(calls[0].p.workspace, good, '下发的就是调用方给的路径（守卫不改写）');
+    }
+  } finally {
+    logMod.initLog(null);
+  }
 });
 
 test('T14 #136 孤儿置顶：工作区不存在的家排在 L1 最顶部（红卡＋警示行跟着一起上去）', () => {

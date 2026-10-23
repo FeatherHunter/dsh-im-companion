@@ -1,15 +1,13 @@
-/** 绿框家/助理写管道（owner：components 系本票领地；panel-actions.ts 旧流程冻结保留，connect-qr 钉住）。
- * 家经自有桥 home.*；绑定先走 dsh-im bot.workspace.set（5 次×2s 竞态重试，T1 §2.3）再落表；写后刷新。
- * T8 #121：新建家的「新建工作区」支路（选目录→DSH 建区→等投影）下沉 home-dir，本文件只接线。 */
+/** 绿框家/助理写管道（owner：components 系本票领地；panel-actions 旧流程冻结保留，connect-qr 钉住）。家经自有桥 home.*；绑定先发 dsh-im bot.workspace.set（5 次×2s 重试）再落表；T8 #121 新建家支路下沉 home-dir，本文件只接线。 */
 import { toast } from '../ui/toast'
 import type { RpcCall } from '../data/fleet-api'
 import { basenameOf, normPath, type Assistant, type Home, type WorkspaceRef } from '../data/home-model'
 import { openConnectFlow } from './connect-flow'
 import { adoptDirectory, pickDirectory } from './home-dir'
+import { workspaceRejectReason } from './home-workspace'
 import { logLine, logOn } from '../log'
 
 const BRIDGE = '/im-companion'
-
 /* 家/助理动作的统一出口（成功失败同事件名；失败必带原文）——两条只认字面事件名与字段名，别改成变量。 */
 export const hLog = (action: string, homeId: string, ok: boolean, message: string): void =>
   logLine('info', 'home.action', { action, homeId, ok, message })
@@ -104,6 +102,8 @@ export async function createHome(
 /** dsh-im 渠道绑定（connect-flow/binding-commit 同口径重试；本函数不落助理表，由调用方接 assistant.create）。 */
 export async function bindBot(rpc: RpcCall, channel: string, botId: string, workspace: string): Promise<boolean> {
   const target = channel + '/' + botId
+  const reject = workspaceRejectReason(workspace) /* #158：上游只收非空绝对路径——坏路径别走到 RPC（那里只剩难懂的上游报错）。 */
+  if (reject) { toast('绑定失败：' + reject); aLog('bind-bot', '', false, target + ': ' + reject + '；收到 ' + String(JSON.stringify(workspace))); return false }
   for (let i = 0; i < 5; i++) {
     try {
       const raw = await rpc('/' + channel, 'bot.workspace.set', { botId, workspace }, AbortSignal.timeout(8000)) as
