@@ -9,10 +9,14 @@
  * 渲染契约（探索包 §2）：`text(assembly)` 是**同步纯内存**——只读归属索引与人设目录，零 fs、零 await、
  * 绝不抛（宿主 assemble 不包 try/catch）。sessionId 缺失/非字符串、无归属、无人设、超长、任何异常 ⇒ ''。
  * 正文红线：人设原文**绝不进日志**，只记长度 / sha8 / 渠道 / 机器人 / 会话 id。
+ *
+ * 装配期补救（#178）：section.text 永远同步、拿不到 await；唯一能 await 的位置是 `system-prompt/assemble`
+ * waterfall（sections 求值之后）。实现放 `persona-assemble.ts`（prepend 监听、只补本段空文本、失败退回原
+ * assembly）；本文件只把 guard 的 render/onFail 接到 text()/fail() 上，并在 install/release 里后置挂/摘。
  */
 import { createHash } from 'node:crypto'
 import { ASSISTANT_FIELD_SPECS, assistantFieldText, countCodePoints } from '../assistant-fields.js'
-import type { AssistantRef } from './assistant-directory.js'
+import { createPersonaAssembleGuard, sessionIdOf, type PersonaIndexes } from './persona-assemble.js'
 import type { OwnershipLookup, PersonaLogSink } from './session-ownership.js'
 
 export const PERSONA_SECTION_NAME = 'dsh-im-companion:persona'
@@ -20,9 +24,7 @@ export const PERSONA_SECTION_ORDER = 650
 
 const MAX_PERSONA = ASSISTANT_FIELD_SPECS.persona.max
 
-export interface PersonaPromptOptions {
-  ownership: { lookup(sessionId: string): OwnershipLookup }
-  directory: { lookup(channel: string, botId: string): AssistantRef | null }
+export interface PersonaPromptOptions extends PersonaIndexes {
   log?: PersonaLogSink | null
   now?: () => number
 }
@@ -36,14 +38,18 @@ export interface PersonaSection {
   dispose(): void
 }
 
-function messageOf(error: unknown): string {
-  return String((error as { message?: unknown } | null)?.message ?? error)
+/** 插件 ctx 的最小面：后置 inject / effect 清理。 */
+interface PersonaHost {
+  inject?: (list: string[], cb: (serviceCtx: unknown) => void) => unknown
+  effect?: (fn: () => unknown, label?: string) => unknown
 }
 
-/** sessionId 只认 `assembly.agent.session.id` 的非空字符串；数字/对象/缺失一律 ''（不 String() 猜）。 */
-function sessionIdOf(assembly: unknown): string {
-  const id = (assembly as { agent?: { session?: { id?: unknown } } } | null)?.agent?.session?.id
-  return typeof id === 'string' && id.length > 0 ? id : ''
+function hostOf(ctx: unknown): PersonaHost | null {
+  return ctx && typeof ctx === 'object' ? ctx as PersonaHost : null
+}
+
+function messageOf(error: unknown): string {
+  return String((error as { message?: unknown } | null)?.message ?? error)
 }
 
 /** 名字清洗：String → CRLF 压成单空格 → trim → 最多 64 码点（不切坏代理对）→ 空则「未命名助理」。 */
@@ -128,7 +134,18 @@ export function createPersonaSection(options: PersonaPromptOptions): PersonaSect
     }
   }
 
+  /** 装配期补救（#178）：只补本段空文本；失败只记常驻日志、不改功能面。 */
+  const guard = createPersonaAssembleGuard({
+    ownership: options.ownership,
+    directory: options.directory,
+    sectionName: PERSONA_SECTION_NAME,
+    render: (context) => text(context),
+    onFail: (phase, message, sessionId) => fail({ phase, reason: phase, message, sessionId }),
+    now: options.now,
+  })
+
   function release(): void {
+    guard.dispose()
     const dispose = disposeSection
     disposeSection = null
     installed = false
@@ -141,16 +158,11 @@ export function createPersonaSection(options: PersonaPromptOptions): PersonaSect
   }
 
   function failRegister(error: unknown): void {
-    const message = messageOf(error)
-    fail({
-      phase: 'section-register',
-      reason: 'section-register',
-      message,
-    })
+    fail({ phase: 'section-register', reason: 'section-register', message: messageOf(error) })
   }
 
   function install(ctx: unknown): void {
-    const host = ctx as { inject?: (list: string[], cb: (serviceCtx: unknown) => void) => unknown; effect?: (fn: () => unknown, label?: string) => unknown } | null
+    const host = hostOf(ctx)
     if (disposed || !host || typeof host.inject !== 'function') return
     try {
       host.inject(['systemPrompt'], (serviceCtx: unknown) => {
@@ -174,6 +186,7 @@ export function createPersonaSection(options: PersonaPromptOptions): PersonaSect
               throw error
             }
           }
+          guard.install(ctx)
         } catch (error) {
           failRegister(error)
         }

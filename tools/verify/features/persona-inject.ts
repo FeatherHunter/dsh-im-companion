@@ -6,6 +6,7 @@
 // ② 渲染契约：有归属+有人设 ⇒ 固定三段文本；无会话/无归属/无人设/超长/异常 ⇒ ''，永不抛。
 // ③ 归属索引（假 fs）：EACCES / 坏 JSON（日志不许带原文）/ 删除 / 缓存戳 / 1:N / 同文件重复 sessionId / 负结果 TTL；weixin 面只看 sessions。
 // ④ 人设目录：按 channel+botId join homes.yaml，取 name/persona；未绑定行不返回；读失败不冻结（修好文件后懒刷新自愈）。
+// ⑤ 装配期补救（#178）：装配前一刻才落盘也能首条命中；只改自己那段；失败软退留常驻日志；TTL 节流与 dispose 摘监听。
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -457,4 +458,82 @@ test('目录读失败后修好文件：下一次 lookup 能恢复注入（失败
   await waitFor(() => directory.lookup('wecom', 'bot1') !== null, 3000);
   assert.equal(directory.lookup('wecom', 'bot1')?.persona, '你是一个耐心的助理');
   console.log('#170-PROOF directory-recover PASS');
+});
+
+// ── ⑤ 装配期补救（#178）：首条消息装配竞态 ─────────────────────────────
+test('装配期补救：装配前一刻才落盘的归属+家表，首条消息也命中（且不碰别人的段）', async () => {
+  const home = freshHome(false);
+  const fake = makeCtx(host.inject);
+  fake.prompt.section({ name: 'upstream:keep', order: 115, interpolate: false, text: () => 'KEEP-ME' });
+  host.apply(fake.ctx, { dshHome: home });
+  await tick(60); // warm 已落地：此刻两索引都是空快照，且 250ms 节流窗内不会再自动刷
+  writeState(home, 'wecom', 'bots', 'bot1', { 'conv-1': 's1' });
+  const cfg = join(home, 'integrations', 'dsh-im-companion');
+  mkdirSync(cfg, { recursive: true });
+  writeFileSync(join(cfg, 'homes.yaml'), HOMES_YAML);
+  const assembly = await fake.assemble({ agent: { session: { id: 's1' } } });
+  const mine = assembly.sections.find((s: any) => s.name === PERSONA_SECTION_NAME);
+  assert.equal(mine?.text, '## 助理身份：小助手\n\n你是一个耐心的助理\n\n始终以该身份回应',
+    '首条消息的装配必须当场补刷两索引并注入人设');
+  const keep = assembly.sections.find((s: any) => s.name === 'upstream:keep');
+  assert.equal(keep?.text, 'KEEP-ME', '装配期补救不得改写别人的段');
+  console.log('#178-PROOF first-assemble-recovery PASS');
+});
+
+test('装配期补救失败：原样退回 assembly，只留一条常驻失败日志（不打断装配）', async () => {
+  const fake = makeCtx([]);
+  const log = collector();
+  const section = createPersonaSection({
+    ownership: {
+      lookup: () => ({ hit: false, reason: 'miss', channel: '', botId: '', ambiguous: false, candidates: [], cacheAgeMs: 0 }),
+      refresh: async () => { throw new Error('boom-refresh') },
+    },
+    directory: { lookup: () => null, refresh: async () => {} },
+    log,
+  });
+  section.install(fake.ctx);
+  const assembly = {
+    sections: [{ name: 'upstream', text: 'KEEP' }, { name: PERSONA_SECTION_NAME, text: '' }],
+    contexts: [], tools: [], variables: {},
+  };
+  const out = await fake.waterfall('system-prompt/assemble', assembly, { agent: { session: { id: 's1' } } });
+  assert.deepEqual(out, assembly, '补刷失败必须原样返回（不得吞掉别人的段/改文本）');
+  assert.ok(log.rows.some((r) => r.event === 'persona.refresh.fail' && r.fields.phase === 'assemble-refresh'),
+    '补刷失败必须留常驻日志（否则线上无法判定补救没生效）');
+  section.dispose();
+  console.log('#178-PROOF recovery-fail-soft PASS');
+});
+
+test('装配期补救节流：TTL 内不重复扫盘、段非空不扫、dispose 摘掉监听', async () => {
+  const fake = makeCtx([]);
+  let refreshes = 0;
+  let clock = 1000;
+  const log = collector();
+  const section = createPersonaSection({
+    ownership: {
+      lookup: () => ({ hit: true, reason: 'hit', channel: 'wecom', botId: 'bot1', ambiguous: false, candidates: ['wecom/bot1'], cacheAgeMs: 0 }),
+      refresh: async () => { refreshes++ },
+    },
+    directory: { lookup: () => ({ assistantId: 'a1', name: '小助手', persona: '', description: '' }), refresh: async () => { refreshes++ } },
+    log,
+    now: () => clock,
+  });
+  section.install(fake.ctx);
+  const empty = () => ({ sections: [{ name: PERSONA_SECTION_NAME, text: '' }], contexts: [], tools: [], variables: {} });
+  const ctx = { agent: { session: { id: 's1' } } };
+  await fake.waterfall('system-prompt/assemble', empty(), ctx);
+  assert.equal(refreshes, 2, '第一次空段：两索引各补刷一次');
+  await fake.waterfall('system-prompt/assemble', empty(), ctx);
+  assert.equal(refreshes, 2, 'TTL 内同一会话不得重复扫盘');
+  clock += 2500;
+  await fake.waterfall('system-prompt/assemble', empty(), ctx);
+  assert.equal(refreshes, 4, 'TTL 过了才允许再补刷');
+  const hit = { sections: [{ name: PERSONA_SECTION_NAME, text: 'X' }], contexts: [], tools: [], variables: {} };
+  await fake.waterfall('system-prompt/assemble', hit, ctx);
+  assert.equal(refreshes, 4, '段非空时不得扫盘（不浪费 IO）');
+  section.dispose();
+  await fake.waterfall('system-prompt/assemble', empty(), ctx);
+  assert.equal(refreshes, 4, 'dispose 后不得再有监听');
+  assert.equal(fake.listeners.length, 0, 'dispose 必须摘掉 waterfall 监听（热重载不叠监听）');
+  console.log('#178-PROOF recovery-throttle-dispose PASS');
 });

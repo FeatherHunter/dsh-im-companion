@@ -69,7 +69,18 @@ export function apply(ctx: any, config: any = {}) {
    * 电话注册表先建好（handler 按名字查表），实现等让位分支过了再填。 */
   let hostLog: HostLogHandle | null = null
   const logPhones: LogPhoneRegistry = new Map()
-  const handler = createAgentFleetHandler(store, { update: () => update, log: () => hostLog, logPhones })
+  /* T8 #178：人设相关写操作成功后主动刷新人设目录——否则「保存资料后 250ms 内到达的消息」会读到旧人设。
+   * 用前缀判定（home.* / assistant.*）而非穷举端点：Added-only 加新写端点时自动覆盖；读端点只多一次 stat（未变即早返回）。
+   * 刷新失败不改 RPC 结果：装配期还有补救通道（prompt-section 监听 system-prompt/assemble）。 */
+  let touchPersonaDirectory: (() => Promise<void>) | null = null
+  const dispatch = createAgentFleetHandler(store, { update: () => update, log: () => hostLog, logPhones })
+  const handler = async (method: string, payload: any, signal: AbortSignal | null | undefined, traceId: string | null | undefined) => {
+    const result = await dispatch(method, payload, signal, traceId)
+    if (result.ok && touchPersonaDirectory && (method.startsWith('home.') || method.startsWith('assistant.'))) {
+      try { await touchPersonaDirectory() } catch { /* 刷新失败 ≠ 写失败：结果原样返回 */ }
+    }
+    return result
+  }
   const reply = (rpcId: string, result: unknown): Response =>
     Response.json({ type: 'server-response', rpcId, result })
   try {
@@ -194,6 +205,8 @@ export function apply(ctx: any, config: any = {}) {
   const directory = createAssistantDirectory({ dshHome, log: personaLog })
   void ownership.warm()
   void directory.warm()
+  /* 写侧刷新出口（#178）：上面 250ms 节流的懒刷新之外，显式写成功后再补一次，关掉旧人设残影窗口。 */
+  touchPersonaDirectory = () => directory.refresh('write')
   const persona = createPersonaSection({ ownership, directory, log: personaLog })
   persona.install(ctx)
   logger.info?.('[agent-fleet] host ready, fetch route ' + ROUTE_PATH)

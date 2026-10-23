@@ -18,6 +18,13 @@ export type PromptSectionSpec = {
   [key: string]: unknown;
 };
 
+/** ctx.on(...) 注册的监听（prepend 的排在**同名**监听最前，与 cordis register() 一致）。 */
+export type FakeListener = {
+  name: string;
+  listener: (...args: any[]) => unknown;
+  options?: { prepend?: boolean };
+};
+
 export type FakeCtx = {
   ctx: any;
   routes: FetchRoute[];
@@ -33,6 +40,12 @@ export type FakeCtx = {
   effects: Array<() => void>;
   /** 同一个 systemPrompt 服务面（预置同名段 / 断言注册状态用）。 */
   prompt: { section(spec: PromptSectionSpec): () => void };
+  /** ctx.on(...) 注册的事件监听。 */
+  listeners: FakeListener[];
+  /** 复刻宿主 waterfall 语义：监听器收到 (...args, next)，可 await next() 后改写返回值。 */
+  waterfall(name: string, ...args: any[]): Promise<any>;
+  /** 复刻宿主 assemble：同步求值 sections，再跑 system-prompt/assemble waterfall。 */
+  assemble(context?: any): Promise<any>;
 };
 
 /** 建一个声明感知的假 ctx。withPrompt=false 模拟宿主没有 systemPrompt 服务（inject 回调不执行）。 */
@@ -47,6 +60,7 @@ export function makeCtx(
   const injected: string[][] = [];
   const sections: PromptSectionSpec[] = [];
   const effects: Array<() => void> = [];
+  const listeners: FakeListener[] = [];
   let promptDisposals = 0;
 
   const systemPrompt = {
@@ -84,6 +98,13 @@ export function makeCtx(
       return disposer;
     },
     provide: () => {},
+    on: (name: string, listener: (...args: any[]) => unknown, options?: { prepend?: boolean }) => {
+      const entry: FakeListener = { name, listener, options };
+      const first = options?.prepend ? listeners.findIndex((item) => item.name === name) : -1;
+      if (first >= 0) listeners.splice(first, 0, entry);
+      else listeners.push(entry);
+      return () => { const at = listeners.indexOf(entry); if (at >= 0) listeners.splice(at, 1); };
+    },
     inject: (list: string[], cb: (serviceCtx: unknown) => void) => {
       injected.push([...list]);
       // 真宿主在服务可用时回调；withPrompt=false ⇒ 服务缺席，回调永不执行（apply 也不许炸）。
@@ -124,7 +145,33 @@ export function makeCtx(
       return Reflect.get(target, prop, receiver);
     },
   });
-  const result = { ctx, routes, warns, timers, injected, sections, effects, prompt: systemPrompt } as FakeCtx;
+  /* waterfall 复刻（cordis EventsService.waterfall）：dispatch 取同名监听，末位注入内置 next；监听器可
+   * await next() 再改写返回值（prepend ⇒ 最外层、最后改写）。 */
+  async function waterfall(name: string, ...args: any[]): Promise<any> {
+    const hooks = listeners.filter((item) => item.name === name);
+    const inner = (): any => args[0];
+    const dispatch = (index: number): any => {
+      if (index >= hooks.length) return inner();
+      const next = (): any => dispatch(index + 1);
+      return hooks[index].listener(...args, next);
+    };
+    return await dispatch(0);
+  }
+  /* assemble 复刻（dsh-system-prompt lib/index.js:384-398）：先同步求值全部 section.text，再走 waterfall。 */
+  async function assemble(context: any = {}): Promise<any> {
+    const assembly = {
+      sections: sections.map((spec) => ({
+        name: spec.name,
+        text: typeof spec.text === 'function' ? spec.text(context) : spec.text,
+        ...(spec.interpolate !== undefined ? { interpolate: spec.interpolate } : {}),
+      })),
+      contexts: [],
+      tools: [],
+      variables: {},
+    };
+    return await waterfall('system-prompt/assemble', assembly, context);
+  }
+  const result = { ctx, routes, warns, timers, injected, sections, effects, prompt: systemPrompt, listeners, waterfall, assemble } as FakeCtx;
   // 计数用 getter：disposer 调用发生在 makeCtx 返回之后，快照数字读不到。
   Object.defineProperty(result, 'promptDisposals', { get: () => promptDisposals, enumerable: true });
   return result;
