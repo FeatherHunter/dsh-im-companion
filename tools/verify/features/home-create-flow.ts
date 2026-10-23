@@ -48,7 +48,7 @@ function transpile(entries: string[], extra: string[] = []): string {
   try { symlinkSync(join(REPO, 'node_modules'), join(out, 'node_modules'), 'junction') } catch { /* 已存在 */ }
   return out
 }
-const tmpClient = transpile([join(CLIENT, 'components', 'panel.ts')])
+const tmpClient = transpile([join(CLIENT, 'components', 'panel.ts'), join(CLIENT, 'data', 'home-edit.ts'), join(CLIENT, 'components', 'home-ops.ts')])
 const tmpHost = transpile([join(HOST, 'rpc.ts')], ['--types', 'node'])
 
 /* 被测模块在渲染路径里裸用 document/window（dom.ts / ui/*）与 requestAnimationFrame（toast）：
@@ -84,6 +84,8 @@ const reqHost = createRequire(join(tmpHost, 'run.cjs'))
 const panelMod: any = reqClient('./client/components/panel.js')
 const popMod: any = reqClient('./client/components/home-pop.js')
 const streamMod: any = reqClient('./client/data/connection-stream.js')
+const homeEditMod: any = reqClient('./client/data/home-edit.js')
+const homeOpsMod: any = reqClient('./client/components/home-ops.js')
 const hostMod: any = reqHost('./host/rpc.js')
 const storeMod: any = reqHost('./host/home-store.js')
 
@@ -455,6 +457,9 @@ test('②建助理点击级：点家钻进 L2→「新建助理」→弹层点�
       'assistant.create 必须带宿主真 homeId（种子临时 id 会 not-found）',
     )
     assert.equal((ac.reply as any).ok, true)
+    /* #169：老 UI 调用点不传两栏 ⇒ 载荷里连键都没有（老宿主零感知），账本行也不多空键。 */
+    assert.equal('description' in ac.payload, false, '未填简介 ⇒ 载荷无 description 键')
+    assert.equal('persona' in ac.payload, false, '未填人物设定 ⇒ 载荷无 persona 键')
     assert.ok(!popNode(), '创建后弹层必须收掉')
 
     /* 建完即落到新助理的 L3 详情（原型钻取：建助理 → 进详情），再返回 L2 看行。 */
@@ -464,6 +469,10 @@ test('②建助理点击级：点家钻进 L2→「新建助理」→弹层点�
 
     const disk = readDoc(b.homesFile)
     assert.equal(disk.assistants.length, 4, '宿主助理表多出 1 行（3→4）')
+    const newRow = disk.assistants.find((a: any) => a.botId === 'bot_dddd')
+    assert.ok(newRow, '新行落盘')
+    assert.equal('description' in newRow, false, '向后兼容：没填就不写键（老账本形态不变）')
+    assert.equal('persona' in newRow, false)
     /* 顺序契约（Lead 修 home-ops）：createAssistantFlow 必须**先 reloadHomes 再 refresh**。
      * 倒过来时快照回调拿着旧 state.assistants 判缺口 ⇒ 把刚绑上的这枚误判成「有 workspace 有家却没 bound 行」
      * ⇒ 触发一次 home.seed 全集 sweep（探针实测序列 …assistant.create, meta.get, home.list, home.seed），
@@ -697,6 +706,165 @@ test('⑨投影超时点击级：DSH 建区成功但 8s 等不到投影 ⇒ 灰�
     assert.match(String(err.textContent), /再点一次「创建」/, '超时同样提示可重试')
     assert.equal(readDoc(b.homesFile).homes.length, before, '等不到不落家（一行没写）')
   } finally { await b.dispose() }
+})
+
+/* ---------- ⑩ 客户端写管道（#169 两栏）：模型类型/纯逻辑/ops 入参都把两栏带到 RPC 载荷 ---------- */
+test('⑩两栏客户端管道：预览归一/清空、建行带两栏、create/update/createUnbound 的 RPC 载荷都带两栏键', async () => {
+  /* 纯逻辑：归一 + 空串＝删键（与宿主同一套规则，UI 只剩接线）。 */
+  const base0 = { id: 'a1', homeId: 'h1', channel: 'ch', botId: 'b1', status: 'bound', name: '甲', nameSource: 'user', avatar: null, avatarSource: 'default', createdAt: 1, boundAt: 1 }
+  const next = homeEditMod.applyAssistantUpdate(base0, { description: '  第一行\r\n第二行  ', persona: '' })
+  assert.equal(next.description, '第一行\n第二行', '预览侧同样 CRLF→LF、trim')
+  assert.equal('persona' in next, false, '空串＝清空（键不留在预览行上）')
+  assert.equal(base0.description, undefined, '纯函数不改入参')
+
+  const unbound = homeEditMod.makeUnboundAssistant({ homeId: 'h1', channel: 'ch', name: '', description: ' 简介 ', persona: '   ' })
+  assert.equal(unbound.description, '简介')
+  assert.equal('persona' in unbound, false, '纯空白＝没设置（不 materialize 空键）')
+
+  /* ops：内部 bridge 的 rpc 形状是 (channel, endpoint, payload, signal)。 */
+  const mkRpc = () => {
+    const calls: any[] = []
+    const rpc: any = async (channel: string, endpoint: string, payload: any) => {
+      calls.push({ channel, endpoint, payload })
+      return { ok: true, value: { assistant: { id: 'a9', homeId: 'h1', ...payload } } }
+    }
+    return { rpc, calls }
+  }
+  const a = mkRpc()
+  await homeOpsMod.updateAssistant(a.rpc, { id: 'a9', persona: '人设' })
+  assert.equal(a.calls[0].endpoint, 'assistant.update', '走既有三通电话，不新开端点')
+  assert.equal(a.calls[0].payload.persona, '人设')
+  assert.equal('description' in a.calls[0].payload, false, '没给的栏不上载荷（＝不动）')
+
+  const c = mkRpc()
+  await homeOpsMod.createAssistant(c.rpc, { homeId: 'h1', channel: 'ch', botId: 'b1', botName: '机器人', homeText: '', description: '简介', persona: '人设' })
+  assert.equal(c.calls[0].endpoint, 'assistant.create')
+  assert.equal(c.calls[0].payload.description, '简介')
+  assert.equal(c.calls[0].payload.persona, '人设')
+
+  const u = mkRpc()
+  await homeOpsMod.createUnbound(u.rpc, { homeId: 'h1', description: '简介' })
+  assert.equal(u.calls[0].endpoint, 'assistant.createUnbound')
+  assert.equal(u.calls[0].payload.description, '简介', '未绑定行也带两栏')
+  assert.equal('persona' in u.calls[0].payload, false)
+
+  /* 反证：不传两栏时载荷里没有这两个键（老调用点零变化、老宿主零感知）。 */
+  const d = mkRpc()
+  await homeOpsMod.createAssistant(d.rpc, { homeId: 'h1', channel: 'ch', botId: 'b1', botName: '机器人', homeText: '' })
+  assert.equal('description' in d.calls[0].payload, false)
+  assert.equal('persona' in d.calls[0].payload, false)
+})
+
+/* ---------- ⑪ 创建弹窗内嵌两栏（#171）：简介单行 / 人物设定多行＋实时计数 / 超限闸门 / 随创建写两栏 ---------- */
+/* 取件只靠 aria-label 与可见文案（外部行为），不认私有函数名与内部结构。 */
+function fldOf(label: string): any { const p = popNode(); return p ? all(p).find((e: any) => attr(e, 'aria-label') === label) ?? null : null }
+function typeInto(el: any, v: string): void { el.value = v; el.dispatchEvent({ type: 'input' }) }
+function okOf(): any { const p = popNode(); return p ? all(p).find((x: any) => x.tagName === 'BUTTON' && String(x.textContent).trim() === '创建') ?? null : null }
+const countsOf = (): string[] => { const p = popNode(); return p ? all(p).filter((e: any) => hasCls(e, 'hu-count')).map((e: any) => String(e.textContent)) : [] }
+const fldErrsOf = (): string[] => { const p = popNode(); return p ? all(p).filter((e: any) => hasCls(e, 'hu-flderr')).map((e: any) => String(e.textContent)) : [] }
+const tipOf = (btn: any): string => attr(btn, 'data-tip')
+
+test('⑪创建弹窗内嵌两栏：简介单行/人物设定多行带计数，超限禁用主按钮＋可定位原文，边界 200/8000 通过后随创建写入', async () => {
+  const b = await boot()
+  try {
+    clickRow(b.panel(), '客厅')
+    await waitFor('钻进客厅 L2', () => asstsOf(b.panel()).length === 1)
+    clickPrimary(b.panel(), '新建助理')
+    await waitFor('建助理弹层出现', () => popTitle() === '新建助理')
+
+    /* 控件形状（规格 #168：简介单行、人物设定多行带计数）。 */
+    const desc = fldOf('助理简介')
+    const persona = fldOf('助理人物设定')
+    assert.ok(desc && persona, '名字之后内嵌两栏（aria-label「助理简介」「助理人物设定」可定位）\n弹层文本：' + popText().slice(0, 400))
+    assert.equal(desc.tagName, 'INPUT', '简介＝单行 input（规格写「简介单行」，不是 textarea）')
+    assert.equal(persona.tagName, 'TEXTAREA', '人物设定＝多行 textarea')
+    /* 计数口径是 Unicode 码点：浏览器 maxlength 按 UTF-16 码元截停（4000 个 emoji 就吃满 8000），
+     * 会静默挡住合法输入 ⇒ 不用 maxlength，超限交给计数 + 红字 + 主按钮禁用（#171 评审 P2-3）。 */
+    assert.equal(attr(desc, 'maxlength'), '', '简介不用 maxlength（码点口径）')
+    assert.equal(attr(persona, 'maxlength'), '', '人物设定不用 maxlength（码点口径）')
+    assert.equal(attr(persona, 'rows'), '5', '人物设定 rows=5')
+    assert.equal(attr(desc, 'placeholder'), '一句话介绍这个助理（最多 200 字）', '简介 placeholder 照规格')
+    assert.equal(attr(persona, 'placeholder'), '这个助理是谁、怎么说话（最多 8000 字）', '人物设定 placeholder 照规格')
+    const nameInput = fldOf('助理名字')
+    assert.ok(nameInput, '名字字段还在（原表单不动）')
+    const idxOf = (el: any): number => all(popNode()).indexOf(el)
+    assert.ok(idxOf(nameInput) < idxOf(desc) && idxOf(desc) < idxOf(persona), '顺序：名字 → 简介 → 人物设定')
+
+    /* 实时计数：空表 0/200 与 0/8000（按 Unicode 码点数，不按 UTF-16 长度）。 */
+    assert.deepEqual(countsOf(), ['0/200', '0/8000'], '两栏都带实时计数')
+    assert.deepEqual(fldErrsOf(), ['', ''], '未超限时没有红字')
+    assert.ok(!okOf().hasAttribute('disabled'), '留空可正常创建：主按钮可用')
+
+    /* 超限：201 字简介 ⇒ 主按钮禁用 ＋ data-tip/红字都是 fieldErrorMessage 原文（可定位字段）。 */
+    typeInto(desc, 'a'.repeat(201))
+    assert.ok(okOf().hasAttribute('disabled'), '201 字简介 ⇒ 主按钮禁用')
+    assert.equal(tipOf(okOf()), '简介（description）最多 200 字，当前 201 字', 'data-tip＝超限原文（带字段定位）')
+    assert.equal(fldErrsOf()[0], '简介（description）最多 200 字，当前 201 字', '栏下红字与 data-tip 同源')
+    assert.equal(countsOf()[0], '201/200', '计数照实报（不静默截断）')
+    /* 禁用不是装饰：禁用态点下去一个写请求都不许发。 */
+    click(okOf())
+    await sleep(60)
+    assert.equal(b.calls.filter((c) => c.endpoint === 'assistant.create').length, 0, '禁用态点击不落助理')
+    assert.ok(popNode(), '超限时弹层不关（就地可改）')
+
+    /* 边界 200 通过：主按钮恢复、提示撤回。 */
+    typeInto(desc, 'b'.repeat(200))
+    assert.ok(!okOf().hasAttribute('disabled'), '200 字（边界）⇒ 主按钮恢复可用')
+    assert.equal(tipOf(okOf()), '', '合法时不留禁用说明')
+    assert.equal(countsOf()[0], '200/200')
+    assert.equal(fldErrsOf()[0], '', '合法时红字清空')
+
+    /* 人物设定同理：8001 拒、8000 收。 */
+    typeInto(persona, '人'.repeat(8001))
+    assert.ok(okOf().hasAttribute('disabled'), '8001 字人物设定 ⇒ 主按钮禁用')
+    assert.equal(tipOf(okOf()), '人物设定（persona）最多 8000 字，当前 8001 字', '人物设定的超限原文')
+    assert.equal(fldErrsOf()[1], '人物设定（persona）最多 8000 字，当前 8001 字')
+    typeInto(persona, '人'.repeat(8000))
+    assert.ok(!okOf().hasAttribute('disabled'), '8000 字（边界）⇒ 主按钮恢复可用')
+
+    /* 码点口径反证（评审 P2-3）：4001 个 emoji＝4001 码点、8002 码元，仍在 8000 上限内 ⇒ 合法。 */
+    typeInto(persona, '😀'.repeat(4001))
+    assert.ok(!okOf().hasAttribute('disabled'), '4001 个 emoji（4001 码点）在 8000 上限内 ⇒ 主按钮可用')
+    assert.equal(countsOf()[1], '4001/8000', '计数按码点，不按 UTF-16 长度')
+    typeInto(persona, '人'.repeat(7999) + '😀')
+    assert.ok(!okOf().hasAttribute('disabled'), '7999 字 + 1 emoji＝8000 码点（8001 码元）⇒ 合法')
+    assert.equal(countsOf()[1], '8000/8000')
+
+    /* 填真值（带 CRLF 与两端空白，顺带钉归一）再创建：两栏随创建一次性进 RPC 与账本。 */
+    typeInto(desc, '  我的简介\r\n第二行  ')
+    typeInto(persona, '说话简短\n只答要点')
+    assert.ok(!okOf().hasAttribute('disabled'), '归一后合法（trim 掉的空白不算字数）')
+    clickPop('创建')
+    await waitFor('assistant.create 到达宿主', () => b.calls.some((c) => c.endpoint === 'assistant.create'))
+    const ac = b.calls.find((c) => c.endpoint === 'assistant.create')
+    assert.equal(ac.payload.description, '我的简介\n第二行', 'RPC 载荷带归一后的简介（CRLF→LF、trim）')
+    assert.equal(ac.payload.persona, '说话简短\n只答要点', 'RPC 载荷带归一后的人物设定')
+    await waitFor('落到新助理 L3', () => headTitle(b.panel()).includes('小空'))
+    const row = readDoc(b.homesFile).assistants.find((a: any) => a.botId === 'bot_dddd')
+    assert.ok(row, '新行落盘')
+    assert.equal(row.description, '我的简介\n第二行', '账本行带简介')
+    assert.equal(row.persona, '说话简短\n只答要点', '账本行带人物设定')
+  } finally { await b.dispose() }
+
+  /* 阶段 B：未绑定占位只填简介 ⇒ createUnbound 带 description、**没有** persona 键。 */
+  const u = await boot()
+  try {
+    clickRow(u.panel(), '客厅')
+    await waitFor('钻进客厅 L2', () => asstsOf(u.panel()).length === 1)
+    clickPrimary(u.panel(), '新建助理')
+    await waitFor('建助理弹层出现', () => popTitle() === '新建助理')
+    clickOpt(popBoxes()[0], '') /* 「以后再绑」＝未绑定占位 */
+    typeInto(fldOf('助理简介'), '  简介草稿  ')
+    assert.ok(!okOf().hasAttribute('disabled'), '只填简介：主按钮可用（人物设定可留空）')
+    clickPop('创建')
+    await waitFor('assistant.createUnbound 到达宿主', () => u.calls.some((c) => c.endpoint === 'assistant.createUnbound'))
+    const cu = u.calls.find((c) => c.endpoint === 'assistant.createUnbound')
+    assert.equal(cu.payload.description, '简介草稿', '未绑定也带简介（归一后）')
+    assert.equal('persona' in cu.payload, false, '没填的栏连键都不带（不是 undefined 值）')
+    const row2 = readDoc(u.homesFile).assistants.find((a: any) => a.description === '简介草稿')
+    assert.ok(row2, '未绑定行落盘带简介：' + JSON.stringify(readDoc(u.homesFile).assistants.map((a: any) => a.description)))
+    assert.equal('persona' in row2, false, '未填不 materialize 空键')
+  } finally { await u.dispose() }
 })
 
 console.log('features/home-create-flow: ALL PASS')

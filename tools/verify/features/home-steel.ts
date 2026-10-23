@@ -447,8 +447,10 @@ test('T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连�
     .replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.ok(!hostEditSrc.includes('deleteBot') && !hostEditSrc.includes('disconnect') && !hostEditSrc.includes('bot.delete'),
     '宿主 home-edit 无机器人断连调用');
-  assert.ok(hostEditSrc.match(/^import .*$/gm)?.every((l) => l.includes('home-store')),
-    '宿主 home-edit 只引 home-store（同队列落盘，无旁路）');
+  /* #169：另允许仓库根的 `assistant-fields.js`——无 IO 的纯校验/归一共享层（同 src/log-events.ts 先例），
+   * 落盘仍只经 home-store；除此之外任何 import 都算旁路。 */
+  assert.ok(hostEditSrc.match(/^import .*$/gm)?.every((l) => l.includes('home-store') || l.includes('assistant-fields')),
+    '宿主 home-edit 只引 home-store 与纯共享层（同队列落盘，无旁路）');
 });
 
 test('T6b 绿框呈现：纯头像弹层＋行内改名（owner 2026-10-17 口径）', () => {
@@ -1174,7 +1176,8 @@ test('绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，�
   assert.equal(txt(one(pop, 'hu-ptitle')), '新建助理', '弹层标题＝新建助理');
   const head = one(pop, 'hu-phead');
   assert.ok(head && one(head, 'hu-ptitle') && cls(head, 'hu-pbtn-s').length === 2, '标题栏＝标题 + 取消/创建同一行（按钮在弹层右上角，owner 2026-10-15）');
-  assert.deepEqual(cls(pop, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['属于哪个家', '绑定机器人', '名字'], '建单字段');
+  /* T8-3 #171：名字之后内嵌两栏（简介 / 人物设定）——建单字段从三项变五项，顺序即视觉顺序。 */
+  assert.deepEqual(cls(pop, 'hu-fld').map((f) => txt(tag(f, 'span'))), ['属于哪个家', '绑定机器人', '名字', '简介', '人物设定'], '建单字段');
   /* 家内建助理（L2 开的这一单）：归属锁死——无家候选可点，直接告知当前家（h2 书房基地） */
   assert.equal(byAttr(pop, 'data-value', 'h1').length + byAttr(pop, 'data-value', 'h2').length, 0, '锁家：无家候选可点');
   assert.ok(txt(pop).includes('书房基地'), '归属告知当前家');
@@ -1448,7 +1451,7 @@ test('T8 #121 新建家「新建工作区」支路：选目录 → 建区 → �
   /* owner 2026-10-17：未绑定＝红档（文字与胶囊同色），已绑定＝琥珀档「更换机器人」（颜色本身示意「会换掉」）。 */
   assert.match(rowCss, /\.hu-mi\.bad\{[^}]*color:var\(--hu-bad\)/, '未绑定/待接入文字走红档 .hu-mi.bad');
   assert.match(rowCss, /\.hu-ract\.swap\{[^}]*var\(--hu-warn\)/, '行上「更换机器人」＝琥珀档 .hu-ract.swap');
-  assert.match(rowCss, /\.hu-abtn\.swap\{[^}]*var\(--hu-warn\)/, '详情页「更换机器人」同一琥珀档 .hu-abtn.swap');
+  assert.match(rowCss, /\.hu-abtn\.swap\{[^}]*var\(--hu-warn\)/, '详情面板「更换机器人」同一琥珀档 .hu-abtn.swap');
   assert.equal(String(one(pop1, 'hu-dirpath').className).includes('picked'), false, '未选目录时框是虚线态');
   assert.ok(off(popBtn(pop1, '创建')), '未选目录时「创建」禁用');
   clickEl(byAttr(pop1, 'data-act', 'pick-dir')[0]);
@@ -1503,6 +1506,11 @@ test('T8 #121 新建家「新建工作区」支路：选目录 → 建区 → �
 });
 
 test('首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰条行），顶部不出报错横条', () => {
+  /* 0.2.20 真机回归（「骨架非常窄」）：首帧骨架出现在任何真行之前，两段式家行样式原本只由 homeStrip
+   * 在真行渲染时装配 ⇒ 骨架的 .hu-btop/.hu-sstrip 落进基表 .hu-row 的三列 grid，被挤成左侧一窄条。
+   * 先摘掉样式标签（前面用例可能已装），骨架渲染必须自己把它装回来。 */
+  const styleId = 'af-feature-home-row-l1';
+  try { domDoc.getElementById(styleId)?.remove() } catch { /* 桩里摘不掉就照常判 */ }
   const bodyEl = new El('div', domDoc);
   const handle = bodyMod.createPanelBody({
     state: { homes: [], assistants: [], bots: [], query: '', mode: 'agent', loading: true, failed: ['feishu'], homesReady: false, volatile: false },
@@ -1517,6 +1525,9 @@ test('首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰�
   assert.deepEqual(cls(bodyEl, 'hu-crumb').length, 3, '骨架也要有三级面包屑');
   assert.equal(cls(bodyEl, 'hu-srow').length, 4, '骨架固定 4 行');
   assert.ok(cls(bodyEl, 'hu-srow')[0].classList.contains('hu-row'), '骨架行复用 .hu-row 几何（加载完零跳动）');
+  const styleTag = domDoc.getElementById(styleId);
+  assert.ok(styleTag, '骨架渲染即装配两段式家行样式（0.2.20 骨架过窄回归）');
+  assert.ok(String(styleTag?.textContent ?? '').includes('.hu-row.hrow{display:block'), '装配的是两段式家行样式表');
   assert.equal(txt(footOf(bodyEl)), '新建家', '骨架也要有底部主操作');
   /* 真机事故（2026-10-13）：state.failed 是失败端点数组（空数组也 truthy），
    * 只要家表没读完就命中错误分支 ⇒ 进面板瞬间闪出「家表读取失败」横条。这里连非空 failed 也不许出横条。 */

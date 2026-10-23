@@ -1,6 +1,6 @@
-// DetailDrawer 详情抽屉自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
+// DetailDrawer 详情面板自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
 // 做法：tsc 转译相关链到临时目录再断言（照抄 left-badges.ts 模式）。B 变体 verdict（#9）：摘要直改 + 折叠详情 + 即时写（无保存按钮）。
-import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -28,10 +28,12 @@ const ENTRIES = [
   join(UI, 'modal.ts'),
   join(UI, 'dir-picker.ts'),
   join(REPO, 'src', 'client', 'icons.ts'),
+  join(REPO, 'src', 'client', 'components', 'home-events.ts'),
   join(FEAT, 'data.ts'),
   join(FEAT, 'actions.ts'),
   join(FEAT, 'drawer.ts'),
   join(FEAT, 'view.ts'),
+  join(FEAT, 'profile-section.ts'),
   join(FEAT, 'manifest.ts'),
   join(REPO, 'src', 'features', 'index.ts'),
 ];
@@ -176,6 +178,15 @@ test('data：抽屉模型派生自上游真值（一致/混合/未读/未知键/
   assert.equal(config.OPEN_DRAWER_EVENT, 'dsh-im-companion:open-drawer');
 });
 
+// ---- #173 助理人设：模型携带 brief（详情面板只读块） ----
+test('data：DrawerModel 携带助理 brief（#173 只读块，缺省 null）', () => {
+  const brief = { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' };
+  const m = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], brief);
+  assert.deepEqual(m.assistant, brief, '第 6 参原样进模型（名字/简介/人物设定）');
+  assert.equal(data.buildDrawerModel([bot()], metaDoc(), W1).assistant, null, '未带 brief 时为 null（不是 undefined）');
+  assert.equal(data.loadingModel('k').assistant, null, '加载态模型也有 assistant 键');
+});
+
 // ---- client meta 双实现 ----
 test('client meta：Rpc/Local 双实现走通 preset/ctx', async () => {
   const calls: { ep: string; p: unknown }[] = [];
@@ -245,7 +256,7 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
   });
   const all = texts(root).join('|');
-  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '性格', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
+  for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
   assert.ok(findByClass(root, 'detail-drawer-summary').length >= 1);
@@ -438,33 +449,6 @@ test('dir-picker：原生优先（成功/取消类抛错静默，真故障回退
   assert.equal(await p4.promise, null);
 });
 
-test('data：性格预填一致回填、分歧置空', () => {
-  const same = [{ ctx: { ...CTX0, guidance: 'warm' } }, { ctx: { ...CTX0, guidance: ' warm ' } }];
-  assert.equal(data.personalityPrefill(same), 'warm');
-  const diff = [{ ctx: { ...CTX0, guidance: 'a' } }, { ctx: { ...CTX0, guidance: 'b' } }];
-  assert.equal(data.personalityPrefill(diff), '');
-  assert.equal(data.personalityPrefill([]), '');
-});
-
-test('actions：性格应用覆盖各渠道引导语且保留字段开关', async () => {
-  const sent: any[] = [];
-  const deps = {
-    rpc: async (_ch: string, _ep: string, p: any) => { sent.push(p); return { ok: true, value: {} }; },
-    refresh: async () => undefined,
-    reloadMeta: async () => undefined,
-    paint: () => undefined,
-    notify: (_m: string) => undefined,
-  };
-  const m = { bots: [{ channel: 'feishu', botId: 'b1', ctx: { ...CTX0 } }] };
-  await actions.applyPersonality(m, deps, '幽默一点');
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].config.guidance, '幽默一点');
-  assert.deepEqual(sent[0].config.fields, ['senderId']);
-  assert.equal(sent[0].config.directEnabled, true);
-  await actions.applyPersonality(m, deps, '   ');
-  assert.equal(sent.length, 1);
-});
-
 test('data：路由取数经自有通道，失败静默空数组', async () => {
   const calls: any[] = [];
   const fakeRpc = async (ch: string, ep: string, p: any) => {
@@ -603,4 +587,211 @@ test('routes.list：端点只读聚合，缺席不炸', async () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ---- #173 助理人设：派发侧（home-events / panel-body）与编辑跳转 ----
+test('home-events：emitDrawer 第二参可选，brief 原样进 detail（#173）', () => {
+  const prev = (globalThis as any).window;
+  const seen: any[] = [];
+  (globalThis as any).window = {
+    CustomEvent: class { type: string; detail: unknown; constructor(t: string, o: any) { this.type = t; this.detail = o?.detail; } },
+    dispatchEvent: (e: any) => { seen.push(e); return true; },
+  };
+  try {
+    const ev: any = req('./client/components/home-events.js');
+    ev.emitDrawer('D:\\agents\\xiaoshuai');
+    ev.emitDrawer('D:\\agents\\xiaoshuai', { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' });
+    assert.equal(seen.length, 2, '两次派发都发出去了');
+    assert.equal(seen[0].type, config.OPEN_DRAWER_EVENT);
+    assert.deepEqual(seen[0].detail, { key: 'D:\\agents\\xiaoshuai', assistant: null }, '不带 brief 时 assistant=null（向后兼容）');
+    assert.deepEqual(seen[1].detail.assistant, { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' }, 'brief 原样透传');
+  } finally { (globalThis as any).window = prev; }
+});
+
+test('panel-body：#173 detail-a 派发带 brief（缺省空串兜底）', () => {
+  const body = readFileSync(join(REPO, 'src', 'client', 'components', 'panel-body.ts'), 'utf8');
+  assert.ok(body.includes("emitDrawer(home ? home.path : '', a ? { id: a.id, name: asstName(v, a), description: a.description ?? '', persona: a.persona ?? '' } : null)"), 'detail-a 派发四键 brief');
+  assert.ok(body.includes('asstName'), '名字取共享行层的 asstName（不另拼显示名）');
+});
+
+test('drawer：jumpToAssistEdit 派发 OPEN_ASSIST_EDIT_EVENT 后关面板（#173 编辑跳转）', () => {
+  const prev = (globalThis as any).window;
+  const seen: any[] = [];
+  (globalThis as any).window = {
+    CustomEvent: class { type: string; detail: unknown; constructor(t: string, o: any) { this.type = t; this.detail = o?.detail; } },
+    dispatchEvent: (e: any) => { seen.push(e); return true; },
+  };
+  try {
+    let closed = 0;
+    drawerMod.jumpToAssistEdit({ assistant: { id: 'a1' }, workspace: W1 }, () => { closed += 1 });
+    assert.equal(closed, 1, '派发后关面板');
+    assert.equal(seen[0].type, config.OPEN_ASSIST_EDIT_EVENT);
+    assert.deepEqual(seen[0].detail, { assistantId: 'a1', homePath: W1 });
+    drawerMod.jumpToAssistEdit({ assistant: null, workspace: '' }, () => undefined);
+    assert.deepEqual(seen[1].detail, { assistantId: '', homePath: '' }, '缺助理时 assistantId 空串（接收侧 fail-soft 忽略）');
+  } finally { (globalThis as any).window = prev; }
+});
+
+test('drawer：派发失败不阻断关闭（try/catch 兜底）', () => {
+  const prev = (globalThis as any).window;
+  (globalThis as any).window = { CustomEvent: class { constructor() { throw new Error('boom'); } }, dispatchEvent: () => true };
+  try {
+    let closed = 0;
+    drawerMod.jumpToAssistEdit({ assistant: { id: 'a1' }, workspace: W1 }, () => { closed += 1 });
+    assert.equal(closed, 1);
+  } finally { (globalThis as any).window = prev; }
+});
+
+test('manifest：#173 特性名改「详情面板」，挂载点不变', () => {
+  const found = registry.FEATURES.find((f: any) => f.id === 'detail-drawer');
+  assert.equal(found.name, '详情面板');
+  assert.ok(found.slots.some((s: any) => s.target === 'settings.section'), '挂载点不变（不改装配）');
+});
+
+// ---- #173 助理人设只读块（US #39 看简介/人设 · US #40 一键跳编辑） ----
+const profMod: any = req('./features/detail-drawer/profile-section.js');
+const briefA = { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' };
+const mini = (assistant: any) => ({ assistant, workspace: W1 });
+
+test('profile：三行 名字/简介/人物设定齐全；缺助理只提示且隐藏编辑/复制', () => {
+  const el = profMod.renderProfileSection(mini(briefA), { onEditAssistant: () => undefined });
+  const all = texts(el).join('|');
+  for (const needle of ['助理人设', '名字', '小帅', '简介', '客服小帅', '人物设定', '说话简短', '复制', '编辑']) {
+    assert.ok(all.includes(needle), '缺文案: ' + needle);
+  }
+  assert.equal(findByClass(el, 'detail-drawer-profile-actions').length, 1, '有助理才出动作行');
+  const none = profMod.renderProfileSection(mini(null), { onEditAssistant: () => undefined });
+  const nall = texts(none).join('|');
+  assert.ok(nall.includes('该工作区暂无助理资料'));
+  assert.equal(findByClass(none, 'detail-drawer-profile-actions').length, 0, '缺助理隐藏编辑/复制');
+  const empty = profMod.renderProfileSection(mini({ id: 'a1', name: '小帅', description: '', persona: '' }), { onEditAssistant: () => undefined });
+  assert.ok(texts(empty).join('|').includes('还没有填写简介与人物设定。'), '空栏有引导文案');
+});
+
+test('profile：persona 默认折 3 行，展开/收起切类名与 aria-expanded', () => {
+  const long = Array.from({ length: 6 }, (_, i) => '人设第' + (i + 1) + '行').join('\n');
+  const el = profMod.renderProfileSection(mini({ ...briefA, persona: long }), { onEditAssistant: () => undefined });
+  const persona = findByClass(el, 'detail-drawer-profile-persona')[0];
+  assert.ok(persona.classList.contains('is-clamped'), '默认折叠');
+  const toggle = findByClass(el, 'af-btn').find((b: any) => texts(b).join('').includes('展开'));
+  assert.ok(toggle, '长人设才有展开按钮');
+  assert.equal(toggle.getAttribute('aria-expanded'), 'false');
+  toggle.dispatchEvent({ type: 'click' });
+  assert.ok(!persona.classList.contains('is-clamped'), '展开后不裁');
+  assert.ok(texts(toggle).join('').includes('收起'));
+  assert.equal(toggle.getAttribute('aria-expanded'), 'true');
+  toggle.dispatchEvent({ type: 'click' });
+  assert.ok(persona.classList.contains('is-clamped'), '再点收回');
+});
+
+test('profile：编辑按钮回调；复制走剪贴板并 notify「已复制助理资料」', async () => {
+  let edited = 0;
+  const notes: string[] = [];
+  const el = profMod.renderProfileSection(mini(briefA), {
+    onEditAssistant: () => { edited += 1; },
+    onNotify: (m: string) => { notes.push(m); },
+  });
+  const btns = findByClass(el, 'af-btn');
+  btns.find((b: any) => texts(b).join('').includes('编辑')).dispatchEvent({ type: 'click' });
+  assert.equal(edited, 1, '编辑按钮派发 onEditAssistant');
+  const prevNav = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  let copied = '';
+  Object.defineProperty(globalThis, 'navigator', { value: { clipboard: { writeText: async (s: string) => { copied = s; } } }, configurable: true });
+  try {
+    btns.find((b: any) => texts(b).join('').includes('复制')).dispatchEvent({ type: 'click' });
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(copied, profMod.profileText(mini(briefA)), '复制内容是名字+两栏原文');
+    assert.deepEqual(notes, ['已复制助理资料']);
+  } finally {
+    if (prevNav) Object.defineProperty(globalThis, 'navigator', prevNav);
+    else delete (globalThis as any).navigator;
+  }
+});
+
+test('profile：超长历史值完整显示 + 低调提示（200 字边界不提示，码点计数）', () => {
+  const longDesc = '简'.repeat(201);
+  const el = profMod.renderProfileSection(mini({ ...briefA, description: longDesc, persona: '' }), { onEditAssistant: () => undefined });
+  const all = texts(el).join('|');
+  assert.ok(all.includes(longDesc), '201 字完整显示不截断');
+  assert.ok(all.includes('已超出上限，请到编辑里修正'), '低调提示就地修正');
+  const okLen = profMod.renderProfileSection(mini({ ...briefA, description: '简'.repeat(200), persona: '' }), { onEditAssistant: () => undefined });
+  assert.ok(!texts(okLen).join('|').includes('已超出上限'), '正好 200 不算超');
+  assert.equal(profMod.isOverLimit('description', '😀'.repeat(200)), false, '码点计数：200 个表情未超');
+  assert.equal(profMod.isOverLimit('persona', '😀'.repeat(8001)), true, '码点计数：8001 超人物设定上限');
+});
+
+test('view：详情面板正文出现「助理人设」块（#173 接入）', () => {
+  const model = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], briefA);
+  const noop = () => {};
+  const root = view.renderDrawerContent(model, {
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
+    onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
+    onRemoveBot: noop, onTestSend: noop, onClose: noop,
+  });
+  const all = texts(root).join('|');
+  assert.ok(all.includes('助理人设'), '详情面板有助理人设块');
+  assert.ok(all.includes('客服小帅'), '显示简介原文');
+});
+
+// ---- #174 旧写入口退役 + 词面硬门 ----
+test('view：旧引导语写入口已退役（无 textarea 与旧文案，正向块仍在）', () => {
+  const model = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], briefA);
+  const noop = () => {};
+  const root = view.renderDrawerContent(model, {
+    onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
+    onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
+    onRemoveBot: noop, onTestSend: noop, onClose: noop,
+  });
+  const all = texts(root).join('|');
+  assert.ok(!all.includes(['性', '格'].join('')), '退役块文案仍在');
+  assert.ok(!all.includes('语气'), '退役块文案仍在（语气）');
+  const areas: any[] = [];
+  const walk = (n: any) => {
+    if (n?.nodeType === 1 && n?.tagName === 'TEXTAREA') areas.push(n);
+    for (const c of n?.childNodes ?? []) walk(c);
+  };
+  walk(root);
+  assert.equal(areas.length, 0, '详情面板里还有 ' + areas.length + ' 个 textarea（旧写入口）');
+  for (const needle of ['上下文', '群聊增强', '绑定工作区', '助理人设', '详情']) {
+    assert.ok(all.includes(needle), '缺正向文案: ' + needle);
+  }
+});
+
+test('源码词面硬门：退役词与旧称在 src 与 tools/verify 零残留', async () => {
+  const { readdirSync } = await import('node:fs');
+  const { relative } = await import('node:path');
+  const banned = [['性', '格'].join(''), '详情' + '抽屉', '详情' + '页'];
+  const files: string[] = [];
+  const walkDir = (dir: string): void => {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, ent.name);
+      if (ent.isDirectory()) { if (ent.name !== 'node_modules') walkDir(p); }
+      else if (ent.isFile() && p.endsWith('.ts')) files.push(p);
+    }
+  };
+  walkDir(join(REPO, 'src'));
+  walkDir(join(REPO, 'tools', 'verify'));
+  assert.ok(files.length > 100, '扫描面异常：只读到 ' + files.length + ' 个 .ts');
+  const hits: string[] = [];
+  for (const f of files) {
+    const body = readFileSync(f, 'utf8');
+    for (const w of banned) if (body.includes(w)) hits.push(relative(REPO, f).replace(/\\/g, '/') + ' ← ' + w);
+  }
+  assert.deepEqual(hits, [], '硬门残留：' + hits.join('；'));
+});
+
+test('first-view-copy：详情面板中英词面统一（中文叫面板，英文无 drawer）', () => {
+  const body = readFileSync(join(REPO, 'src', 'client', 'components', 'first-view-copy.ts'), 'utf8');
+  const enAt = body.indexOf('const EN');
+  assert.ok(enAt > 0, '找不到英文段');
+  const pick = (src: string): string => {
+    const m = /detailTitle:\s*'([^']+)'/.exec(src);
+    assert.ok(m, '缺 detailTitle');
+    return m![1];
+  };
+  const zh = pick(body.slice(0, enAt));
+  const en = pick(body.slice(enAt));
+  assert.ok(zh.includes('详情面板'), '中文 detailTitle 应叫「详情面板」：' + zh);
+  assert.ok(!zh.includes('抽屉'), '中文 detailTitle 仍有旧称：' + zh);
+  assert.ok(!/drawer/i.test(en), '英文 detailTitle 含 drawer：' + en);
 });

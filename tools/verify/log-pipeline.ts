@@ -256,3 +256,59 @@ test('日志纪律：取径只记一次、resident 行立刻冲刷（2026-10-15 
   /* 客户端批量默认约 1s：宿主侧同一操作的行会插到前面去（home.create 出现在 dir.adopt 之前）⇒ resident 立刻冲刷。 */
   assert.ok(logMod.includes("LOG_EVENTS[event]?.kind === 'resident'"), 'resident 行必须立刻 flush（否则跨端时间线错序）');
 });
+// ── 10. 人设注入（T8 #170）：恰五条事件、分级/常驻正确、字段锁定、正文红线 ──────
+test('事件清单第 10 组（人设注入）：恰五条，分级与常驻正确、字段锁定', () => {
+  const expected: Record<string, { level: string; kind: string; fields: string[] }> = {
+    'persona.resolve': {
+      level: 'debug', kind: 'ondemand',
+      fields: ['sessionId', 'hit', 'reason', 'channel', 'botId', 'ambiguous', 'textChars', 'personaChars', 'sha8', 'cacheAgeMs'],
+    },
+    'persona.refresh': {
+      level: 'debug', kind: 'ondemand',
+      fields: ['reason', 'files', 'changedFiles', 'sessions', 'assistants', 'statMs', 'parseMs', 'errors', 'cached'],
+    },
+    'persona.refresh.fail': {
+      level: 'warn', kind: 'resident',
+      fields: ['phase', 'file', 'code', 'reason', 'message', 'sessionId'],
+    },
+    'persona.ownership.ambiguity': {
+      level: 'warn', kind: 'resident',
+      fields: ['sessionId', 'channel', 'bots', 'winner', 'rule'],
+    },
+    'persona.binding.sync': {
+      level: 'info', kind: 'resident',
+      fields: ['added', 'removed', 'unchanged', 'total'],
+    },
+  };
+  const actual = Object.keys(LOG_EVENTS).filter((n) => n.startsWith('persona.')).sort();
+  assert.deepEqual(actual, Object.keys(expected).sort(),
+    '人设事件必须恰好五条（section 注册失败复用 persona.refresh.fail + phase，不新增第六条）');
+  for (const [name, want] of Object.entries(expected)) {
+    const spec = LOG_EVENTS[name];
+    assert.equal(spec.level, want.level, name + ' 级别');
+    assert.equal(spec.kind, want.kind, name + ' kind');
+    assert.deepEqual(spec.fields, want.fields, name + ' 字段锁定');
+    for (const banned of ['persona', 'text', 'body', 'content', 'prompt']) {
+      assert.ok(!spec.fields.includes(banned), name + ' 不得声明人设正文字段 ' + banned);
+    }
+  }
+  console.log('#170-PROOF log-events persona=5 PASS');
+});
+
+test('助理语义（#170）：人设资料变更走 assistant.update，changed 只列字段名、正文不进日志', () => {
+  const SENTINEL = 'SECRET-PERSONA-BODY-170';
+  const line = sites.describeCall('assistant.update',
+    { id: 'a-1', description: '简介', persona: SENTINEL },
+    { ok: true, value: { assistant: { id: 'a-1' } } });
+  assert.equal(line.event, 'assistant.update');
+  assert.equal(line.fields.changed, 'description,persona', '人设资料变更必须出现在 changed 字段名里');
+  assert.ok(!JSON.stringify(line).includes(SENTINEL), '人设正文绝不进日志（assistant.update）');
+  const onlyPersona = sites.describeCall('assistant.update', { id: 'a-1', persona: SENTINEL }, { ok: true, value: {} });
+  assert.equal(onlyPersona.fields.changed, 'persona');
+  const bad = sites.describeCall('assistant.update', { id: 'a-1', persona: SENTINEL },
+    { ok: false, error: { code: 'bad-request', message: '人物设定超过 8000 字' } });
+  assert.equal(bad.level, 'error');
+  assert.equal(bad.fields.message, '人物设定超过 8000 字', '失败必须带原文');
+  assert.ok(!JSON.stringify(bad).includes(SENTINEL), '失败路径也不得带正文');
+  console.log('#170-PROOF assistant-update-redline PASS');
+});

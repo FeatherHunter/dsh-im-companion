@@ -4,7 +4,9 @@
  * T6a 钢线：建家选已有区、建助理同时绑机器人、三级钻取显示；不做图片/未绑定行/搬家/恢复默认。 */
 /* #154：默认区显示名单点真相搬到共享层（client + host 共用一张表；见 src/workspace-default.ts）。 */
 import { defaultWorkspaceTitle } from '../../workspace-default'
+import { type AssistantFieldsValue } from '../../assistant-fields'
 
+export type { AssistantFieldsValue } /* #169 两栏类型来自共享单点（src/assistant-fields.ts），客户端与宿主同一个定义。 */
 export interface Home {
   id: string
   workspaceId: string | null
@@ -18,7 +20,7 @@ export interface Home {
   tombstone?: { at: number; reason: string }
 }
 
-export interface Assistant {
+export interface Assistant extends AssistantFieldsValue {
   id: string
   homeId: string
   channel: string

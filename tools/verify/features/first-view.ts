@@ -87,14 +87,14 @@ test("#82 三色胶囊文案：颜色即身份，胶囊只留轴名 + 版本号�
   const zh = copy.firstViewCopy("zh");
   assert.equal(zh.versionTitle("v0.1.5").indexOf("dsh-im-companion v0.1.5"), 0,
     "自家版本胶囊文案去品牌名，品牌名必须落在悬停/aria-label 里");
-  assert.equal(zh.compatChip("4.17.1"), "dsh-im 4.17.1", "上游胶囊去「兼容」前缀（紫/蓝白/黑白即身份）");
-  assert.ok(zh.compatTitle("4.17.1", ">=4.17.1 || <=4.17.0").indexOf("已在 dsh-im 4.17.1") >= 0, "悬停说明须含已验证口径");
-  assert.ok(zh.compatTitle("4.17.1", ">=4.17.1 || <=4.17.0").indexOf(">=") >= 0, "悬停说明须含兼容范围");
+  assert.equal(zh.compatChip("5.1.0"), "dsh-im 5.1.0", "上游胶囊去「兼容」前缀（紫/蓝白/黑白即身份）");
+  assert.ok(zh.compatTitle("5.1.0", ">=5.1.0 <6").indexOf("已在 dsh-im 5.1.0") >= 0, "悬停说明须含已验证口径");
+  assert.ok(zh.compatTitle("5.1.0", ">=5.1.0 <6").indexOf(">=") >= 0, "悬停说明须含兼容范围");
   assert.ok(zh.compatHref.indexOf("dsh-im-companion") >= 0 && zh.compatHref.indexOf("#compat") >= 0, "兼容标记须跳兼容性说明锚点");
   const en = copy.firstViewCopy("en");
   assert.equal(en.versionTitle("v0.1.5").indexOf("dsh-im-companion v0.1.5"), 0);
-  assert.equal(en.compatChip("4.17.1"), "dsh-im 4.17.1");
-  assert.ok(en.compatTitle("4.17.1", ">=4.17.1 || <=4.17.0").indexOf("Verified against dsh-im 4.17.1") >= 0);
+  assert.equal(en.compatChip("5.1.0"), "dsh-im 5.1.0");
+  assert.ok(en.compatTitle("5.1.0", ">=5.1.0 <6").indexOf("Verified against dsh-im 5.1.0") >= 0);
   assert.ok(en.compatHref.indexOf("#compat") >= 0);
 });
 
@@ -102,7 +102,7 @@ test("#82 顶部宽度预算：胶囊文案纯 ASCII + 10px 字号（省略号�
   const zh = copy.firstViewCopy("zh");
   const en = copy.firstViewCopy("en");
   for (const c of [zh, en]) {
-    for (const text of [c.compatChip("4.17.1"), "v0.1.7"]) {
+    for (const text of [c.compatChip("5.1.0"), "v0.1.7"]) {
       assert.ok(/^[\x20-\x7e]+$/.test(text), "胶囊文案必须纯 ASCII（宽度可预测）：" + text);
       assert.ok(text.length <= 16, "胶囊文案必须短（≤16 字符）：" + text);
     }

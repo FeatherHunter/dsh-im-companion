@@ -9,6 +9,9 @@ import { hostBuildId } from './host/build-id.js'
 import { configDirFor } from './host/config-yaml.js'
 import { migrateConfigToYaml } from './host/config-migrate.js'
 import { setHomeStoreLog } from './host/home-store.js'
+import { createSessionOwnership, type PersonaLogSink } from './host/session-ownership.js'
+import { createAssistantDirectory } from './host/assistant-directory.js'
+import { createPersonaSection } from './host/prompt-section.js'
 import type { InstallVerdict } from './host/update-precheck.js'
 
 export const name = 'dsh-im-companion'
@@ -66,7 +69,18 @@ export function apply(ctx: any, config: any = {}) {
    * 电话注册表先建好（handler 按名字查表），实现等让位分支过了再填。 */
   let hostLog: HostLogHandle | null = null
   const logPhones: LogPhoneRegistry = new Map()
-  const handler = createAgentFleetHandler(store, { update: () => update, log: () => hostLog, logPhones })
+  /* T8 #178：人设相关写操作成功后主动刷新人设目录——否则「保存资料后 250ms 内到达的消息」会读到旧人设。
+   * 用前缀判定（home.* / assistant.*）而非穷举端点：Added-only 加新写端点时自动覆盖；读端点只多一次 stat（未变即早返回）。
+   * 刷新失败不改 RPC 结果：装配期还有补救通道（prompt-section 监听 system-prompt/assemble）。 */
+  let touchPersonaDirectory: (() => Promise<void>) | null = null
+  const dispatch = createAgentFleetHandler(store, { update: () => update, log: () => hostLog, logPhones })
+  const handler = async (method: string, payload: any, signal: AbortSignal | null | undefined, traceId: string | null | undefined) => {
+    const result = await dispatch(method, payload, signal, traceId)
+    if (result.ok && touchPersonaDirectory && (method.startsWith('home.') || method.startsWith('assistant.'))) {
+      try { await touchPersonaDirectory() } catch { /* 刷新失败 ≠ 写失败：结果原样返回 */ }
+    }
+    return result
+  }
   const reply = (rpcId: string, result: unknown): Response =>
     Response.json({ type: 'server-response', rpcId, result })
   try {
@@ -112,6 +126,8 @@ export function apply(ctx: any, config: any = {}) {
 
   /* #126：预检判定可能早于建库落地（createHostLogFor 是异步的）⇒ 先缓存，库就绪后补记。 */
   let pendingPrecheck: InstallVerdict | null = null
+  /* T8 #170：人设日志同理——段注册/首次扫盘与建库赛跑；resident 失败先缓存，库就绪后补记（debug 明细不缓存）。 */
+  const personaPending: Array<{ level: 'error' | 'warn' | 'info'; event: string; fields: Record<string, unknown> }> = []
 
   // 让位分支之后才建日志：落点 <DSH_HOME>/logs/dsh-im-companion/（生态惯例），失败降级为 no-op。
   // 装配本身保持**同步**（宿主不提供 fetch.register 时必须当场抛——回归钉见 tools/verify/host-entry.ts），
@@ -124,6 +140,7 @@ export function apply(ctx: any, config: any = {}) {
       /* 家表存储的读回失败/拒写要能事后从磁盘日志判定（2026-10-15 事故复盘）：
        * 库就绪后把出口注进去，home-store 不再需要自己建库（单写者纪律）。 */
       setHomeStoreLog((level, event, fields) => handle.log(level, event, fields))
+      for (const row of personaPending.splice(0)) handle.log(row.level, row.event, row.fields)
       /* #130：构建身份进启动行——`import.meta.url` ＝运行中的本产物（lib/index.js）⇒ 读回它的 mtime 与包版本。
        * 一份日志据此自证「出自哪一版」，不再依赖事后 stat 库内文件（产物会被并发会话覆写）。 */
       handle.log('info', 'host.start', { route: ROUTE_PATH, dshHome, build: hostBuildId(import.meta.url) })
@@ -169,5 +186,28 @@ export function apply(ctx: any, config: any = {}) {
   } catch {
     /* 服务已被占用时跳过 */
   }
+  /* T8 #170 人设注入：模块级 inject 仍只声明 connection（缺 systemPrompt 的宿主不许整插件装配失败），
+   * 故在 apply 末尾**后置** ctx.inject(['systemPrompt'])：服务在则注册段，缺席则静默跳过。
+   * 段注册在服务 fiber 上、消费者 fiber 销毁不会带走它 ⇒ prompt-section 接住 disposer 并挂 ctx.effect，
+   * 热重载/卸载时主动清旧段；注册失败只记常驻日志（phase:'section-register'），绝不打断 apply。 */
+  const personaLog: PersonaLogSink = {
+    log(level, event, fields) {
+      if (hostLog) { hostLog.log(level, event, fields); return }
+      if (level === 'debug') return // 高频明细：库未就绪即丢（不缓存，避免内存增长）
+      personaPending.push({ level, event, fields })
+      if (personaPending.length > 32) personaPending.shift()
+      if (event === 'persona.refresh.fail' && fields.phase === 'section-register') {
+        logger.warn?.('[agent-fleet] persona section register failed: ' + String(fields.message ?? ''))
+      }
+    },
+  }
+  const ownership = createSessionOwnership({ dshHome, log: personaLog })
+  const directory = createAssistantDirectory({ dshHome, log: personaLog })
+  void ownership.warm()
+  void directory.warm()
+  /* 写侧刷新出口（#178）：上面 250ms 节流的懒刷新之外，显式写成功后再补一次，关掉旧人设残影窗口。 */
+  touchPersonaDirectory = () => directory.refresh('write')
+  const persona = createPersonaSection({ ownership, directory, log: personaLog })
+  persona.install(ctx)
   logger.info?.('[agent-fleet] host ready, fetch route ' + ROUTE_PATH)
 }
