@@ -1506,6 +1506,11 @@ test('T8 #121 新建家「新建工作区」支路：选目录 → 建区 → �
 });
 
 test('首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰条行），顶部不出报错横条', () => {
+  /* 0.2.20 真机回归（「骨架非常窄」）：首帧骨架出现在任何真行之前，两段式家行样式原本只由 homeStrip
+   * 在真行渲染时装配 ⇒ 骨架的 .hu-btop/.hu-sstrip 落进基表 .hu-row 的三列 grid，被挤成左侧一窄条。
+   * 先摘掉样式标签（前面用例可能已装），骨架渲染必须自己把它装回来。 */
+  const styleId = 'af-feature-home-row-l1';
+  try { domDoc.getElementById(styleId)?.remove() } catch { /* 桩里摘不掉就照常判 */ }
   const bodyEl = new El('div', domDoc);
   const handle = bodyMod.createPanelBody({
     state: { homes: [], assistants: [], bots: [], query: '', mode: 'agent', loading: true, failed: ['feishu'], homesReady: false, volatile: false },
@@ -1520,6 +1525,9 @@ test('首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰�
   assert.deepEqual(cls(bodyEl, 'hu-crumb').length, 3, '骨架也要有三级面包屑');
   assert.equal(cls(bodyEl, 'hu-srow').length, 4, '骨架固定 4 行');
   assert.ok(cls(bodyEl, 'hu-srow')[0].classList.contains('hu-row'), '骨架行复用 .hu-row 几何（加载完零跳动）');
+  const styleTag = domDoc.getElementById(styleId);
+  assert.ok(styleTag, '骨架渲染即装配两段式家行样式（0.2.20 骨架过窄回归）');
+  assert.ok(String(styleTag?.textContent ?? '').includes('.hu-row.hrow{display:block'), '装配的是两段式家行样式表');
   assert.equal(txt(footOf(bodyEl)), '新建家', '骨架也要有底部主操作');
   /* 真机事故（2026-10-13）：state.failed 是失败端点数组（空数组也 truthy），
    * 只要家表没读完就命中错误分支 ⇒ 进面板瞬间闪出「家表读取失败」横条。这里连非空 failed 也不许出横条。 */

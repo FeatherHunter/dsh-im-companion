@@ -13,11 +13,11 @@ import {
 import { isOrphanHome } from '../data/home-orphan'
 import { orphanRowActs } from './home-orphan-row'
 import { homeStrip } from './home-row-strip'
+import { ensureHomeRowStyles } from './home-row-styles'
 import { asstSubMeta, metaRow } from './home-meta'
 import { iconBtn, textBtn } from './home-btns'
 import { avatarButton, renameField } from './home-row-edit'
 import type { BotSnap } from '../data/fleet-api'
-
 /** 原型回落文案（proto-studio 的 homeFrom/asstFrom）。 */
 const FROM_TEXT: Record<string, string> = {
   user: '你改过的名字', workspace: '跟随工作区名', basename: '跟随目录名', fallback: '默认名',
@@ -282,6 +282,7 @@ export function emptyEl(title: string, sub: string, iconName: HuIconName = 'home
 /** 骨架列表：两段式家行同几何（上段头像/名条/动作 ＋ 下段条带灰条）⇒「骨架 → 真行」只换内容
  * 不换几何，布局零跳动（真机要求 2026-10-13；T13 #135 起家行是两段，骨架必须跟着变）。 */
 export function skeletonRows(n = 4): HTMLElement {
+  ensureHomeRowStyles() /* 骨架先于真行（家表未就绪首帧）：两段式样式原本只由 homeStrip 在真行时装配，不先装就会落进基表 .hu-row 三列 grid 被挤成左窄条（0.2.20 真机「骨架非常窄」，0.2.21 热修） */
   const one = (): HTMLElement => h('div', { className: 'hu-row hrow hu-srow', 'aria-hidden': 'true' },
     h('div', { className: 'hu-btop' },
       h('span', { className: 'hu-sk hu-sk-av' }),

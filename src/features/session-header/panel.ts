@@ -23,6 +23,14 @@ export interface SessionHeaderDeps {
   loadCustomNames: () => Promise<Record<string, string>>
 }
 
+/** 自定义名表浅相等：loadMeta 每次返回新对象，不比较就直接 setState ⇒ 每次订阅回放都白渲染一轮。 */
+function sameNames(a: Record<string, string>, b: Record<string, string>): boolean {
+  const ka = Object.keys(a)
+  if (ka.length !== Object.keys(b).length) return false
+  for (const k of ka) if (a[k] !== b[k]) return false
+  return true
+}
+
 function emit(name: string, detail: Record<string, unknown>): void {
   try {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
@@ -60,7 +68,7 @@ export const SessionHeaderAction: React.FC<SessionHeaderDeps> = ({ sessionId, ge
         try {
           const p = loadCustomNames()
           if (p && typeof (p as Promise<Record<string, string>>).then === 'function') {
-            void (p as Promise<Record<string, string>>).then((n) => { if (!disposed) setNames(n ?? {}) }).catch(() => {})
+            void (p as Promise<Record<string, string>>).then((n) => { if (!disposed) setNames((prev) => sameNames(prev, n ?? {}) ? prev : (n ?? {})) }).catch(() => {})
           }
         } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'session-header', action: 'names-fail', ok: false, message: '自定义名表读取失败（回退目录名）：' + String((e as Error)?.message ?? e) }) }
       })
