@@ -2,6 +2,7 @@
  * 行上只读写三个无害属性（data-lb-kind/data-lb-label/title），不增删节点——重渲染无东西可吃。
  * 无自有轮询；徽标纯展示不可点（用户裁定，点击事件已退役）。 */
 import { badgeForWorkspace } from '../../client/data/bindings'
+import { EMPTY_WORKSPACE_INDEX, resolveRowWorkspace, workspaceIdOfRow, workspaceIndexOf, type WorkspaceIndex } from '../../client/data/workspace-index'
 import { logLine, logOn } from '../../client/log'
 import type { BotSnap } from '../../client/data/fleet-api'
 import { buildCardData, mountHoverCard } from './hover-card'
@@ -18,6 +19,8 @@ const ROW_SELECTORS = ['div[role="treeitem"][aria-expanded]']
  * 收窄即锁死在脱离文档的死子树上空画。列表仅数十行，全文档直查零成本。 */
 let loggedFirstHit = false
 let lastRowTotal = -1
+/* #154：工作区注册表索引的取数口（组行按身份解析 ⇒ 读注册表快照；无自有轮询）。 */
+let ctxGet: ((name: string) => unknown) | null = null
 // paint-key retired ''
 /* 代际哨兵：热更新/双挂载堆叠时只有最新一代画画（老代永久静默，防新旧打架闪烁）。 */
 let activeGen = 0
@@ -65,16 +68,16 @@ function normPath(s: string): string {
   return String(s ?? '').replace(/\\/g, '/').toLowerCase()
 }
 
-/** key（行可见文本 = 工作区展示名）→ bots 中的规范 workspace 路径；找不到就原样返回（判未绑定）。
- * 匹配面（大小写不敏感）：展示名 = 路径全等 / 路径 basename / Bot 名（覆盖重命名行）。 */
-export function resolveWorkspace(key: string, bots: BotSnap[]): string {
-  const k = normPath(key).trim()
-  if (!k) return key
-  for (const b of bots) {
-    if (b.workspace && (normPath(b.workspace) === k || basenameOf(b.workspace) === k)) return b.workspace
-    if (b.botName && normPath(b.botName).trim() === k) return b.workspace
-  }
-  return key
+/** 行可见文本 + 行身份（data-row-key 的 workspaceId）→ 规范 workspace 路径（#154：共享层单点）。
+ * 口径与 left-filter / presence 一致：身份 → 注册表标题 → 老口径字面匹配；
+ * 解析不出 ⇒ ''（未解析哨兵），绝不把显示名当工作区标识。 */
+export function resolveWorkspace(
+  key: string,
+  bots: BotSnap[],
+  workspaceId = '',
+  index: WorkspaceIndex = EMPTY_WORKSPACE_INDEX,
+): string {
+  return resolveRowWorkspace(key, workspaceId, index, bots).path
 }
 
 function basenameOf(ws: string): string {
@@ -87,13 +90,15 @@ function basenameOf(ws: string): string {
 function paint(bots: BotSnap[], nowMs: number): void {
   if (!genAlive(activeGen)) return
   const rows = collectRows()
+  /* #154：按行身份（data-row-key）解析归属；显示名只作兜底。 */
+  const index = ctxGet ? workspaceIndexOf(ctxGet) : EMPTY_WORKSPACE_INDEX
   let decorated = 0
   const seenWs = new Set<string>()
   for (const row of rows) {
     try {
       const key = rowKey(row)
       if (!key) continue
-      const ws = resolveWorkspace(key, bots)
+      const ws = resolveWorkspace(key, bots, workspaceIdOfRow(row), index)
       if (seenWs.has(ws)) continue
       seenWs.add(ws)
       const badge = badgeForWorkspace(ws, bots, nowMs)
@@ -152,6 +157,8 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
   if (typeof document === 'undefined') return noop
   let current: BotSnap[] = []
   let hasSnap = false
+  /* #154：注册表取数口（惰性读；读不到就退回老口径字面匹配）。 */
+  ctxGet = typeof ctx.get === 'function' ? (name: string) => ctx.get(name) : null
   let customNames: Record<string, string> = {}
   let observer: MutationObserver | undefined
   const faces = mountAssistantFaces(ctx.rpc)
@@ -225,7 +232,8 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
         try {
           const key = rowKey(row)
           if (!key) return null
-          const ws = resolveWorkspace(key, current)
+          const index = ctxGet ? workspaceIndexOf(ctxGet) : EMPTY_WORKSPACE_INDEX
+          const ws = resolveWorkspace(key, current, workspaceIdOfRow(row), index)
           const custom = customNames[ws] || customNames[basenameOf(ws)] || ''
           const agent = custom || badgeForWorkspace(ws, current).agent
           return buildCardData(ws, current, custom || undefined, (x) => faces.faceOf(x, ws), faces.homeFaceOf(ws, agent))

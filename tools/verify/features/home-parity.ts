@@ -19,7 +19,9 @@ const OUT = process.env.HP_OUT || join(REPO, '.scratch', 'parity')
 const CLIENT = join(REPO, 'src', 'client')
 const HOST = join(REPO, 'src', 'host')
 const TSC = join(REPO, 'node_modules', 'typescript', 'bin', 'tsc')
-const FLAGS = ['--ignoreConfig', '--module', 'commonjs', '--target', 'es2023', '--moduleResolution', 'bundler', '--skipLibCheck', '--declaration', 'false', '--sourceMap', 'false']
+/* rootDir 钉死 src：#154 起 home-model/home-store 链牵到共享层 src/workspace-default.ts，
+ * 不钉时推断根随 import 图漂移，产物层级会变（同 home-steel 的处理）。 */
+const FLAGS = ['--ignoreConfig', '--rootDir', join(REPO, 'src'), '--module', 'commonjs', '--target', 'es2023', '--moduleResolution', 'bundler', '--skipLibCheck', '--declaration', 'false', '--sourceMap', 'false']
 /** 面板内容宽：proto-studio 的 `.app{max-width:540px}` ⇒ 两侧都按 540 比。 */
 const W = 540
 
@@ -57,11 +59,11 @@ const tmpHost = transpile([join(HOST, 'rpc.ts')], ['--types', 'node'])
 const reqRepo = createRequire(join(REPO, 'package.json'))
 const React: any = reqRepo('react')
 const ReactDOMClient: any = reqRepo('react-dom/client')
-const panelMod: any = createRequire(join(tmpClient, 'run.cjs'))('./components/panel.js')
-const iconsMod: any = createRequire(join(tmpClient, 'run.cjs'))('./components/home-icons.js')
-const streamMod: any = createRequire(join(tmpClient, 'run.cjs'))('./data/connection-stream.js')
-const hostMod: any = createRequire(join(tmpHost, 'run.cjs'))('./rpc.js')
-const storeMod: any = createRequire(join(tmpHost, 'run.cjs'))('./home-store.js')
+const panelMod: any = createRequire(join(tmpClient, 'run.cjs'))('./client/components/panel.js')
+const iconsMod: any = createRequire(join(tmpClient, 'run.cjs'))('./client/components/home-icons.js')
+const streamMod: any = createRequire(join(tmpClient, 'run.cjs'))('./client/data/connection-stream.js')
+const hostMod: any = createRequire(join(tmpHost, 'run.cjs'))('./host/rpc.js')
+const storeMod: any = createRequire(join(tmpHost, 'run.cjs'))('./host/home-store.js')
 
 /* ---------- 夹具：与 proto-studio seed() 同形（同 id、同名、同状态、同归属、同在线） ----------
  * 家表直接写宿主 homes.json（真宿主 loadHomesDoc 读它 ⇒ 渲染走的是产品同一套装载口径）。
