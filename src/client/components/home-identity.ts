@@ -62,6 +62,43 @@ export function avatarStyle(id: string, avatar: string | null = null): string {
   return p ? `background:${p[0]};color:${p[1]}` : `background:hsl(${hueOf(id, null)} 62% 30%);color:#fff`
 }
 
+/** 头像归属：家用房子图标＋沉稳 9 档（＝ PRESETS），助理用人形/小机器人图标＋另一套暖亮 9 档。
+ *  owner 2026-10-23（原型认可）：两套图标岔开、色板岔开，列表里一眼分出谁是家谁是助理。
+ *  新增导出——既有 PRESETS / avatarStyle / initialsOf 一字不动（home-steel 钉死 9 档实色，features 镜像照旧）。 */
+export type AvatarKind = 'home' | 'assistant'
+
+/** 助理 9 档（暖亮系：1 墨黑 / 2 青 / 3 琥珀 / 4 橄榄 / 5 品红紫 / 6 浅蜜桃深字 / 7 绯红 / 8 靛蓝 / 9 翠绿）。
+ *  与 PRESETS 同标准：字底对比逐档 ≥4.3、两两底色 RGB 距离 ≥60（初版 7 对撞色已调开，标准由 home-steel 钉死防回退）。 */
+export const ASST_PRESETS: ReadonlyArray<readonly [string, string]> = [
+  ['#101418', '#FFD9A0'],
+  ['#0B5A6E', '#C8F4FF'],
+  ['#8A3D00', '#FFD9B0'],
+  ['#4A5A10', '#EFFFC0'],
+  ['#5E1060', '#E3B0FF'],
+  ['#F0C8A0', '#3A2410'],
+  ['#B01E4E', '#FFC2D4'],
+  ['#2E1B8A', '#C9B0FF'],
+  ['#0E6E35', '#C2FFD6'],
+]
+
+/** 按归属取实色档：家走 PRESETS、助理走 ASST_PRESETS；序号非法回 null（调用方再按 id 派生）。 */
+export function presetFor(kind: AvatarKind, avatar: string | null): readonly [string, string] | null {
+  const i = avatar == null ? -1 : Number.parseInt(avatar, 10) - 1
+  const table = kind === 'home' ? PRESETS : ASST_PRESETS
+  return Number.isInteger(i) && i >= 0 && i < table.length ? table[i] : null
+}
+
+/** 按归属取头像底色/字色：显式预置优先（实色表），未选色＝按 id 派生色相（改名不换色，与 avatarStyle 同口径）。 */
+export function avatarStyleFor(kind: AvatarKind, id: string, avatar: string | null = null): string {
+  const p = presetFor(kind, avatar)
+  return p ? `background:${p[0]};color:${p[1]}` : `background:hsl(${hueOf(id, null)} 62% 30%);color:#fff`
+}
+
+/** 无上传图时的字形图标：家＝房子、助理＝小机器人（与 huIcon 的 'home' / 'bot' 同名，直接挂）。 */
+export function avatarIconFor(kind: AvatarKind): 'home' | 'bot' {
+  return kind === 'home' ? 'home' : 'bot'
+}
+
 /** 用户上传图片的铺满画法（T11 #128）：列表行与弹层预览共用，免两处各写一份 CSS 串。 */
 export function imageCover(url: string): string {
   return `background-image:url("${url}");background-size:cover;background-position:center`

@@ -4,6 +4,7 @@ import { channelLabel } from '../data/config'
 import { dirField, runDirCreate } from './home-dir-form'
 import { huIcon } from './home-icons'
 import { avatarStyle, initialsOf } from './home-identity'
+import { avatarOptButton } from './home-avatar-view'
 import { avatarImageCell } from './home-avatar-form'
 import { closeHomePop, homePopOpen, openHomePop, updateHomePop, type AnchorRef } from './home-pop'
 import { type Assistant, type WorkspaceRef } from '../data/home-model'
@@ -144,18 +145,15 @@ export function avatarRow(
   const img = avatarImageCell({ id, kind, current, onCommitted })
   wrap.appendChild(img.cell)
   const opts: Array<string> = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
+  /* owner 2026-10-23（原型认可）：预置格不再写首字——家＝房子图标、助理＝小机器人图标，
+   * 底色两套分开（家沉稳 / 助理暖亮）。name 只进无障碍名，不再进字形（字形/色板规则见 home-avatar-view）。 */
   opts.forEach((v) => {
-    const b = h('button', {
-      type: 'button', className: 'hu-avopt', 'aria-selected': v === (current ?? '') ? 'true' : 'false',
-      style: avatarStyle(id + v, v), 'aria-label': '头像' + v, 'data-avatar': v,
-    }, initialsOf(name))
-    b.addEventListener('click', () => {
+    wrap.appendChild(avatarOptButton(kind, id, name, v, v === (current ?? ''), (b) => {
       const all = wrap.querySelectorAll('.hu-avopt')
       for (let i = 0; i < all.length; i += 1) all[i].setAttribute('aria-selected', 'false')
       b.setAttribute('aria-selected', 'true')
       onPick(v)
-    })
-    wrap.appendChild(b)
+    }))
   })
   return { row: wrap, clear: img.clear }
 }

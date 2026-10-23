@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>头像刷新原型 · 家 / 助理 / 机器人行</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#101216;color:#e8eaf0;font:14px/1.5 system-ui,"PingFang SC","Microsoft YaHei",sans-serif;padding:28px}
+h1{font-size:17px}
+.sub{color:#8b93a5;font-size:12.5px;margin:6px 0 22px;max-width:960px}
+.sec{background:#171a20;border:1px solid #2b313d;border-radius:14px;padding:20px;margin-bottom:20px;max-width:960px}
+.sec h2{font-size:14px;margin-bottom:4px}
+.sec p.why{font-size:12px;color:#8b93a5;margin-bottom:14px}
+.sheet{background:#0c0e11;border:1px solid #262b35;border-radius:12px;padding:16px;max-width:560px}
+.sheet .bar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.sheet .bar b{font-size:14px;display:flex;align-items:center;gap:8px}
+.sheet .bar .sp{flex:1}
+.btn{border:1px solid #343b49;background:#1d2129;color:#c9cfdb;border-radius:9px;padding:7px 16px;font-size:13px}
+.btn.go{background:#f0b27a;border-color:#f0b27a;color:#3a2410;font-weight:700}
+.lbl{font-size:12px;color:#c9cfdb;margin:10px 0 8px}
+.grid{display:grid;grid-template-columns:repeat(5,52px);gap:10px}
+.cell{width:52px;height:52px;border-radius:13px;display:grid;place-items:center;border:2px solid transparent;cursor:default}
+.cell.pick{border-color:#f0b27a}
+.cell.cam{border:1.5px dashed #4a5263;background:transparent;color:#8b93a5}
+.cell svg{width:22px;height:22px;display:block}
+.tag{font-size:11px;color:#8b93a5;margin-top:10px}
+.tag b{color:#e8eaf0}
+/* robot row */
+.detail{background:#0c0e11;border:1px solid #262b35;border-radius:12px;padding:16px;max-width:640px;margin-top:10px}
+.brow{display:flex;align-items:center;gap:12px}
+.bic{width:38px;height:38px;border-radius:50%;background:#f2f3f5;color:#111;display:grid;place-items:center;flex:none;overflow:hidden}
+.bic img{width:100%;height:100%;object-fit:cover;display:block}
+.bic svg{width:20px;height:20px}
+.btxt{min-width:0;flex:1}
+.btxt b{display:block;font-size:14px}
+.btxt small{display:flex;align-items:center;gap:6px;font-size:12px;color:#9aa3b5;margin-top:2px}
+.btxt small svg{width:14px;height:14px}
+.bid{font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#c9cfdb;background:#22262f;border-radius:8px;padding:5px 10px;white-space:nowrap}
+.del{color:#ff9a9a;text-decoration:line-through}
+.ok{color:#7dffb0}
+.flow{display:flex;align-items:center;gap:8px;color:#8b93a5;font-size:12px;margin-top:10px}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:760px){.compare{grid-template-columns:1fr}}
+.cap{font-size:12px;font-weight:700;margin-bottom:6px}
+.cap.bad{color:#ff9a9a}.cap.good{color:#7dffb0}
+</style>
+</head>
+<body>
+<h1>头像刷新原型（只看样子，不写代码）</h1>
+<div class="sub">对应你的三句话：家要有家的图标 / 助理要有助理的图标且颜色分开 / 机器人有真头像用真的没真的用小机器人 + 删废话 + 补渠道 LOGO。下面三种样子你直接说行不行。</div>
+
+<div class="sec">
+<h2>一 · 给“家”换头像</h2>
+<p class="why">9 个格子不再是 <b>FP</b> 几个字母，统一换成 <b>小房子图标</b>，底色照旧 9 档（黑 / 品牌蓝 / 墨绿 / 深雾蓝 / 梅子 / 燕麦 / 砖红 / 紫罗兰 / 翠绿），字色深浅已配好。第一格相机（传照片）不动。</p>
+<div class="sheet">
+<div class="bar"><b><span style="color:#f0b27a">⌂</span> 更换头像 · 家</b><span class="sp"></span><span class="btn">取消</span><span class="btn go">保存</span></div>
+<div class="lbl">头像</div>
+<div class="grid" id="homeGrid"></div>
+<div class="tag">场景：你给 <b>“度假小屋 / workshop”</b> 这种家挑头像，一眼就是房子不会和助理搞混。</div>
+</div>
+</div>
+
+<div class="sec">
+<h2>二 · 给“助理”换头像</h2>
+<p class="why">同样 9 格但统一换成 <b>小人 / 小助理图标</b>（和家的房子岔开），底色是另一套观感：同样 9 个位置但整体更亮更暖，和家那套放一起能分开。第一格相机不动。</p>
+<div class="sheet">
+<div class="bar"><b><span style="color:#7dffb0">☺</span> 更换头像 · 助理</b><span class="sp"></span><span class="btn">取消</span><span class="btn go">保存</span></div>
+<div class="lbl">头像</div>
+<div class="grid" id="asstGrid"></div>
+<div class="tag">场景：你给 <b>“小插 / 小帮手”</b> 挑头像一眼就是人形不会点成家的房子。</div>
+</div>
+</div>
+
+<div class="sec">
+<h2>三 · 助理详情里的机器人那一行</h2>
+<p class="why">删掉 <span class="del">只接一个渠道</span>，第二行只剩渠道名 + 渠道小 LOGO。左边的圆头像分两种：<span class="ok">渠道给了头像就用渠道的</span>，没给就继续用小机器人。</p>
+<div class="compare">
+<div>
+<div class="cap bad">改之前（现在线上）</div>
+<div class="detail"><div class="brow">
+<span class="bic"><svg viewBox="0 0 16 16"><rect x="3" y="5.2" width="10" height="7" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6.3" cy="8.6" r="1" fill="currentColor"/><circle cx="9.7" cy="8.6" r="1" fill="currentColor"/><path d="M8 5.2V2.8M5.8 2.8h4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+<span class="btxt"><b>QQ机器人</b><small>QQ（<span class="del">只接一个渠道</span>）</small></span>
+<span class="bid">qq_bdc4…8128</span>
+</div><div class="flow">问题：第二行废话 + 左边没有企鹅分不清 QQ 还是微信</div></div>
+</div>
+<div>
+<div class="cap good">改之后 · 有渠道头像（比如 QQ 带了头像）</div>
+<div class="detail"><div class="brow">
+<span class="bic"><img alt="" src="data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='76' height='76'%3E%3Crect width='76' height='76' rx='38' fill='%2312B7F5'/%3E%3Ctext x='38' y='48' font-size='28' text-anchor='middle' fill='white' font-family='sans-serif'%3E%E5%B0%8F%3C/text%3E%3C/svg%3E"></span>
+<span class="btxt"><b>QQ机器人</b><small><span data-logo="qq"></span><span>QQ</span></small></span>
+<span class="bid">qq_bdc4…8128</span>
+</div><div class="flow">渠道头像优先 + 企鹅 LOGO + QQ，无废话</div></div>
+<div style="height:10px"></div>
+<div class="cap good">改之后 · 没渠道头像（回落小机器人，但有 LOGO）</div>
+<div class="detail"><div class="brow">
+<span class="bic"><svg viewBox="0 0 16 16"><rect x="3" y="5.2" width="10" height="7" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6.3" cy="8.6" r="1" fill="currentColor"/><circle cx="9.7" cy="8.6" r="1" fill="currentColor"/><path d="M8 5.2V2.8M5.8 2.8h4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+<span class="btxt"><b>QQ机器人</b><small><span data-logo="qq"></span><span>QQ</span></small></span>
+<span class="bid">qq_bdc4…8128</span>
+</div><div class="flow">没头像也不空着小机器人顶上但 QQ 身份还在</div></div>
+</div>
+</div>
+<div class="tag" style="margin-top:14px">飞书 / 微信同理：第二行换成对应的燕子 / 绿色气泡 LOGO + 名字头像逻辑一样有真的用真的没真的用小机器人。</div>
+</div>
+
+<script>
+var HOME_COLORS=[["#17181C","#FFFFFF"],["#4D6BFE","#FFFFFF"],["#2F4A44","#FFFFFF"],["#4E6E8E","#FFFFFF"],["#7A3E5A","#FFFFFF"],["#C4B49A","#1B1B1F"],["#B5473A","#FFFFFF"],["#7C3AED","#FFFFFF"],["#0E8A43","#FFFFFF"]];
+var ASST_COLORS=[["#101418","#FFD9A0"],["#0B5A6E","#C8F4FF"],["#8A3D00","#FFD9B0"],["#4A5A10","#EFFFC0"],["#5E1060","#E3B0FF"],["#F0C8A0","#3A2410"],["#B01E4E","#FFC2D4"],["#2E1B8A","#C9B0FF"],["#0E6E35","#C2FFD6"]];
+var HOME_SVG='<svg viewBox="0 0 16 16"><path d="M2 7.6l6-4.8 6 4.8V14H9.6v-4H6.4v4H2V7.6z" fill="none" stroke="COLOR" stroke-width="1.5" stroke-linejoin="round"/></svg>';
+var ASST_SVG='<svg viewBox="0 0 16 16"><rect x="3" y="5.2" width="10" height="7" rx="2.2" fill="none" stroke="COLOR" stroke-width="1.5"/><circle cx="6.3" cy="8.6" r="1" fill="COLOR"/><circle cx="9.7" cy="8.6" r="1" fill="COLOR"/><path d="M8 5.2V2.8M5.8 2.8h4.4" stroke="COLOR" stroke-width="1.4" stroke-linecap="round"/></svg>';
+function paint(id,colors,svg,sel){
+  var g=document.getElementById(id);
+  var cam=document.createElement("span");cam.className="cell cam";cam.innerHTML='<svg viewBox="0 0 16 16" width="20" height="20"><rect x="2" y="5.2" width="12" height="8" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="9.2" r="2.5" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="9.2" r="1" fill="currentColor"/></svg>';
+  g.appendChild(cam);
+  colors.forEach(function(c,i){
+    var s=document.createElement("span");s.className="cell"+(i===sel?" pick":"");
+    s.style.background=c[0];s.style.color=c[1];
+    s.innerHTML=svg.split("COLOR").join(c[1]);
+    g.appendChild(s);
+  });
+}
+paint("homeGrid",HOME_COLORS,HOME_SVG,1);
+paint("asstGrid",ASST_COLORS,ASST_SVG,4);
+var QQ='<svg width="14" height="14" viewBox="0 0 24 24"><path fill="#12B7F5" d="M21.395 15.035a40 40 0 0 0-.803-2.264l-1.079-2.695c.001-.032.014-.562.014-.836C19.526 4.632 17.351 0 12 0S4.474 4.632 4.474 9.241c0 .274.013.804.014.836l-1.08 2.695a39 39 0 0 0-.802 2.264c-1.021 3.283-.69 4.643-.438 4.673.54.065 2.103-2.472 2.103-2.472 0 1.469.756 3.387 2.394 4.771-.612.188-1.363.479-1.845.835-.434.32-.379.646-.301.778.343.578 5.883.369 7.482.189 1.6.18 7.14.389 7.483-.189.078-.132.132-.458-.301-.778-.483-.356-1.233-.646-1.846-.836 1.637-1.384 2.393-3.302 2.393-4.771 0 0 1.563 2.537 2.103 2.472.251-.03.581-1.39-.438-4.673"/></svg>';
+document.querySelectorAll('[data-logo="qq"]').forEach(function(el){el.innerHTML=QQ;el.style.display="inline-flex";});
+</script>
+</body>
+</html>

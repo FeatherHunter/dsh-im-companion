@@ -3,8 +3,7 @@
 import { h } from '../dom'
 import { channelLabel } from '../data/config'
 import { huIcon, type HuIconName } from './home-icons'
-import { avatarStyle, imageCover, initialsOf } from './home-identity'
-import { avatarSrc } from './home-avatar'
+import { avatarEl } from './home-avatar-view'
 import { botKey, buildIndex, type FleetIndex } from './home-index'
 import {
   basenameOf, channelOf, resolveAssistantDisplay, resolveHomeDisplay,
@@ -77,19 +76,6 @@ export function homeName(view: RowView, home: Home): string {
 
 export function asstName(view: RowView, a: Assistant): string {
   return asstDisplay(view, a).text
-}
-
-/** 头像：色相与字形都由**不可变 id** 派生（改名不换色），字形见 initialsOf。
- *  `id` 与 `name` 分开传：身份来自 id，显示来自 name——两者不许混用。 */
-export function avatarEl(id: string, name: string, avatar: string | null, opts: { round?: boolean; small?: boolean; iconName?: HuIconName } = {}): HTMLElement {
-  const cls = `hu-av${opts.round ? ' round' : ''}${opts.small ? ' sm' : ''}`
-  /* T11 #128：判定单点＝avatarSrc（列表/详情共用 ⇒ 一致是结构保证）；图未到先画回落款。 */
-  const img = opts.iconName ? null : avatarSrc(id, avatar)
-  const tint = opts.iconName ? 'background:var(--hu-accent-soft);color:var(--hu-accent-deep)' : avatarStyle(id, avatar)
-  const el = h('span', { className: cls, style: img ? imageCover(img) : tint })
-  if (opts.iconName) el.appendChild(huIcon(opts.iconName, 15))
-  else if (!img) el.textContent = initialsOf(name)
-  return el
 }
 
 export function pillEl(kind: 'ok' | 'warn' | 'bad' | 'dim', text: string): HTMLElement {
@@ -184,7 +170,7 @@ export function homeRow(view: RowView, home: Home, opts: RowOpts = {}): HTMLElem
     role: 'button', tabindex: 0, 'data-open': 'L2', 'data-id': home.id, 'aria-label': `家 ${d.text}`,
   },
     h('div', { className: 'hu-btop' },
-      avatarButton(avatarEl(home.id, d.text, home.avatar)),
+      avatarButton(avatarEl(home.id, d.text, home.avatar, { kind: 'home' })),
       h('span', { className: 'hu-txt' }, rf.el),
       acts),
     homeStrip({
@@ -238,7 +224,7 @@ export function asstRow(view: RowView, a: Assistant, opts: RowOpts = {}): HTMLEl
     className: `hu-row${opts.selected ? ' on' : ''}${opts.flash ? ' hu-flash' : ''}${a.status !== 'bound' ? ' off' : ''}`,
     role: 'button', tabindex: 0, 'data-open': 'L3', 'data-id': a.id, 'aria-label': `助理 ${d.text}`,
   },
-    avatarButton(avatarEl(a.id, d.text, a.avatar, { round: true }), 'avatar-a'),
+    avatarButton(avatarEl(a.id, d.text, a.avatar, { round: true, kind: 'assistant' }), 'avatar-a'),
     h('span', { className: 'hu-txt' }, rf.el,
       h('span', { className: 'hu-sub' }, asstSubMeta(ch, path)),
       brief ? h('span', { className: 'hu-desc', title: brief }, brief) : null),

@@ -577,6 +577,43 @@ test('头像预置色：DeepSeek 蓝白/黑白＋实色高对比＋色块放大�
   assert.ok(avCss.includes('.home-ui .hu-avopt{width:46px;height:46px'), '色块 46×46（旧 34×34 显小）');
 });
 
+/* owner 2026-10-23（原型认可）：家/助理头像图标化＋色板分开；机器人行删废话＋渠道 LOGO＋真头像优先。
+ * 既有 PRESETS 不动（上条已钉死 9 档），新增只走 ASST_PRESETS / avatarStyleFor / avatarIconFor——加法见加法。 */
+test('头像图标化＋机器人行：助理暖亮 9 档／废话删／LOGO＋真头像接线（owner 2026-10-23）', () => {
+  const idMod: any = (() => {
+    try { return boxReq('./client/components/home-identity.js'); } catch { return boxReq('./components/home-identity.js'); }
+  })();
+  assert.equal(idMod.ASST_PRESETS.length, 9, '助理 9 档（与家 9 档对齐，照片首格不计）');
+  assert.notEqual(idMod.ASST_PRESETS[0][0].toUpperCase(), idMod.PRESETS[0][0].toUpperCase(), '首档底色就岔开（两套一眼可分）');
+  assert.equal(idMod.avatarIconFor('home'), 'home', '家＝房子图标');
+  assert.equal(idMod.avatarIconFor('assistant'), 'bot', '助理＝小机器人图标');
+  assert.notEqual(idMod.avatarStyleFor('assistant', 'x1', '1'), idMod.avatarStyleFor('home', 'x1', '1'), '同 1 档两套色板不同');
+  assert.ok(idMod.avatarStyleFor('home', 'h1', null).includes('hsl('), '未选色仍按 id 派生（改名不换色）');
+  /* 助理 9 档与家 9 档同标准：字底对比 ≥4.3、两两底色 RGB 距离 ≥60（初版 7 对撞色已调开，这里钉死防回退）。 */
+  const aRgb = (hex: string): number[] => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+  const aLum = (hex: string): number => {
+    const [r, g, b] = aRgb(hex).map((v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const aRatio = (a: string, b: string): number => {
+    const [hi, lo] = [aLum(a), aLum(b)].sort((m, n) => n - m);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  (idMod.ASST_PRESETS as Array<[string, string]>).forEach(([bg, fg]: [string, string], i: number) => {
+    assert.ok(aRatio(bg, fg) >= 4.3, '助理第 ' + (i + 1) + ' 档字底对比 ≥4.3：' + bg + '/' + fg + ' ≈ ' + aRatio(bg, fg).toFixed(2));
+  });
+  for (let i = 0; i < (idMod.ASST_PRESETS as Array<[string, string]>).length; i += 1) {
+    for (let j = i + 1; j < (idMod.ASST_PRESETS as Array<[string, string]>).length; j += 1) {
+      const d = Math.hypot(...aRgb(idMod.ASST_PRESETS[i][0]).map((v: number, k: number) => v - aRgb(idMod.ASST_PRESETS[j][0])[k]));
+      assert.ok(d >= 60, '助理第 ' + (i + 1) + ' 与第 ' + (j + 1) + ' 档底色可辨（RGB 距离 ' + d.toFixed(0) + ' ≥ 60）');
+    }
+  }
+  const detailSrc = readFileSync(join(COMP, 'home-detail.ts'), 'utf8');
+  assert.ok(!detailSrc.includes('只接一个渠道'), '废话删除（源码级）');
+  assert.ok(detailSrc.includes('channelGlyphSvg'), '渠道 LOGO 接线在（icons.ts 唯一源）');
+  assert.ok(detailSrc.includes('avatarUrl'), '真头像优先接线在（BotSnap.avatarUrl 有就用）');
+});
+
 /* owner 2026-10-17：L2 助理行与 L1 家行在这件事上**功能一致**——铅笔就地改名、头像（图标钮与头像本身）
  * 开同一张纯换头像弹层，「更多」退场。两行共用 home-row-edit / home-avatar-act，不许各写一份。 */
 test('L2 助理行＝L1 家行（owner 2026-10-17）：「更多」退场＋铅笔就地改名＋头像开纯换头像弹层', () => {

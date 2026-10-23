@@ -388,6 +388,7 @@ await tick();
 const l3Text = String((container as any).textContent ?? '');
 const detail = q1('.hu-detail');
 const detailCls = detail ? String(detail.className ?? '') : '';
+const detailHtml = detail ? ser(detail) : '';
 const acts = all('.hu-abtn');
 const enabledActs = acts.filter((b) => !b.hasAttribute('disabled')).map((b) => String(b.textContent).trim());
 const disabledActs = acts.filter((b) => b.hasAttribute('disabled')).map((b) => String(b.textContent).trim());
@@ -492,7 +493,7 @@ const checks: [string, boolean][] = [
   ['L1 家名（空标题回落目录基名）', l1Text.includes('wechat')],
   ['L1 空家直接成行（无折叠行）', l1HomeCount === 4 && !moreRow && l1Text.includes('空房间')],
   ['L1 空家行可见（零态＝「＋ 建助理」，不再写「0 位助理」）', l1Text.includes('空房间') && !l1Text.includes('0 位助理') && addBtns.length === 1 && String(emptyRowAdd?.getAttribute?.('data-item-act')) === 'new-asst'],
-  ['头像字形：CJK 单字 / 拉丁两词首字母（dsh-* 不再全是 d）', avatar0 === '小' && avatarWe === 'WE'],
+  ['头像图标化（owner 2026-10-23）：家行头像是房子图标不再是首字（.hu-av 无字＋data-hu-icon=home）', avatar0 === '' && avatarWe === '' && l1Dump.includes('data-hu-icon="home"')],
   ['L1 行动作已启用（T6b #114：重命名/更多不再 planned）', plannedL1 === 0],
   ['L1 助理计数（末端 N 助理徽章）', badges.length === 3 && badges.some((b: any) => String(b.textContent).trim() === '2 助理')],
   ['L1 默认命名规则不再提示（跟随工作区名/跟随目录名退役）', !l1Text.includes('跟随工作区名') && !l1Text.includes('跟随目录名')],
@@ -512,7 +513,7 @@ const checks: [string, boolean][] = [
   ['L2 底部主操作＝新建助理（随层）', l2Foot.includes('新建助理')],
   ['L3 详情卡存在（原型 .detail）', !!detail],
   ['L3 详情卡不继承列表行 hover 隐藏', !detailCls.includes('hu-row') && !detailCls.includes('af-row')],
-  ['L3 机器人 id 与只接一个渠道', l3Text.includes('bot_aaaa') && l3Text.includes('只接一个渠道')],
+  ['L3 机器人行：id 在＋废话删＋回落小机器人（owner 2026-10-23，夹具无真头像走回落）', l3Text.includes('bot_aaaa') && !l3Text.includes('只接一个渠道') && detailHtml.includes('data-hu-icon="bot"')],
   ['L3 命名链三段（你取的名/机器人名/家名）', l3Text.includes('你取的名') && l3Text.includes('机器人名') && l3Text.includes('家名')],
   ['L3 页头标题＝助理名 + 副标回落来源', l3Head.includes('跟随机器人名')],
   ['L3 行动作启用集＝更换机器人,详情,改名与头像,删除助理,换工作区,移除渠道（T6c 实做）', enabledActs.join(',') === '更换机器人,详情,改名与头像,删除助理,换工作区,移除渠道'],

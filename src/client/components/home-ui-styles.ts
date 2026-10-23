@@ -146,8 +146,7 @@ export const HOME_UI_CSS = `
 .home-ui .hu-chain i{width:10px;height:1px;background:var(--hu-line);display:block;flex:none}
 .home-ui .hu-botblock{border-top:1px solid var(--hu-line-soft);padding-top:11px;margin-top:2px;display:flex;flex-direction:column;gap:8px}
 .home-ui .hu-big{display:flex;align-items:center;gap:9px;min-width:0}
-.home-ui .hu-big .hu-bic{width:34px;height:34px;border-radius:50%;background:var(--hu-ink);color:var(--hu-panel);display:grid;place-items:center;flex:none}
-.home-ui .hu-big .hu-bic.off{background:var(--hu-panel-3);color:var(--hu-ink-2)}
+.home-ui .hu-big .hu-bic{width:34px;height:34px;border-radius:50%;background:var(--hu-ink);color:var(--hu-panel);display:grid;place-items:center;flex:none;overflow:hidden}
 .home-ui .hu-big .hu-txt{min-width:0;flex:1}
 .home-ui .hu-big b{display:block;font-size:13px;font-weight:620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .home-ui .hu-big small{display:block;font-size:11px;color:var(--hu-ink-3)}

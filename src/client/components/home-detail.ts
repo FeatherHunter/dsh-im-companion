@@ -3,8 +3,10 @@
  * T6b #114：绑定/改名/配图/删除已启用；T6c #115：换工作区·移除渠道已启用。 */
 import { h } from '../dom'
 import { channelLabel } from '../data/config'
+import { channelGlyphSvg } from '../icons'
 import { huIcon } from './home-icons'
-import { asstDisplay, avatarEl, botOf, homeDisplay, onlineTagEl, pillEl, statusPillEl, type RowView } from './home-rows'
+import { asstDisplay, botOf, homeDisplay, onlineTagEl, pillEl, statusPillEl, type RowView } from './home-rows'
+import { avatarEl, ensureAvatarStyles } from './home-avatar-view'
 import { channelOf, type Assistant } from '../data/home-model'
 import { metaRow } from './home-meta'
 
@@ -42,16 +44,30 @@ function chainEl(a: Assistant): HTMLElement {
   return wrap
 }
 
+/** 机器人头像：渠道带了真头像就用真的（BotSnap.avatarUrl），没带回落小机器人图标——永不空着。
+ *  owner 2026-10-23（原型认可）：第二行只剩「渠道 LOGO＋渠道名」，旧副标那句废话已删（此处不写原文，免源码断言自咬）。 */
+function channelLogoNode(channel: string): HTMLElement | null {
+  const svg = channelGlyphSvg(channel, 13)
+  return svg ? h('span', { className: 'hu-logo', html: svg }) : null
+}
+
 function botBlock(o: DetailOpts): HTMLElement {
+  ensureAvatarStyles() /* 未绑分支的 .hu-bic.off 也住头像样式表：首帧可能零 avatarEl，本函数是唯一必经点。 */
   const { a } = o
   const bot = botOf(o.view, a)
   const block = h('div', { className: 'hu-botblock' })
   if (bot) {
+    /* avatarUrl 是 RPC 边界字段：老宿主／旧固件不下发该键时为 undefined，?? 兜底再 trim（类型上必填，运行时不信）。 */
+    const faceUrl = (bot.avatarUrl ?? '').trim()
+    const face = faceUrl
+      ? h('span', { className: 'hu-bic' }, h('img', { src: faceUrl, alt: '' }))
+      : h('span', { className: 'hu-bic' }, huIcon('bot', 18))
+    const logo = channelLogoNode(bot.channel)
     block.appendChild(h('div', { className: 'hu-big' },
-      h('span', { className: 'hu-bic' }, huIcon('bot', 18)),
+      face,
       h('div', { className: 'hu-txt' },
         h('b', {}, bot.botName || '未命名机器人'),
-        h('small', {}, metaRow([{ text: channelLabel(bot.channel), tone: 'strong' }, { text: '只接一个渠道', note: true }]))),
+        h('small', {}, metaRow([{ text: channelLabel(bot.channel), tone: 'strong', icon: logo }]))),
       h('span', { className: 'hu-pill dim hu-mono' }, bot.botId)))
     block.appendChild(h('div', { className: 'hu-steps3' },
       h('span', {}, '先建助理'), h('i', {}),
@@ -81,7 +97,7 @@ export function detailEl(o: DetailOpts): HTMLElement {
 
   const card = h('div', { className: 'hu-detail' },
     h('div', { className: 'hu-dhead' },
-      avatarEl(a.id, d.text, a.avatar, { round: true }),
+      avatarEl(a.id, d.text, a.avatar, { round: true, kind: 'assistant' }),
       h('div', { className: 'hu-txt' },
         h('b', {}, d.text),
         h('small', {}, metaRow([{ text: d.from, tone: 'weak' }, { text: a.id, tone: 'mono' }]))),

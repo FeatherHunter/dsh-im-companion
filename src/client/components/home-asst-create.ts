@@ -8,7 +8,8 @@ import { freeBots, type Home } from '../data/home-model'
 import type { BotSnap } from '../data/fleet-api'
 import { huIcon } from './home-icons'
 import { closeHomePop, openHomePop, type AnchorRef } from './home-pop'
-import { avatarEl, homeName } from './home-rows'
+import { homeName } from './home-rows'
+import { avatarEl } from './home-avatar-view'
 import { botSubNode, field, footBtns, optList, type FormDeps } from './home-forms'
 import { asstFieldsUi } from './home-asst-fields'
 import { logLine, logOn } from '../log'
@@ -35,7 +36,7 @@ export function newAsstPop(anchor: AnchorRef, deps: FormDeps): void {
   const body = [
     locked
       ? field('属于哪个家', h('div', { className: 'hu-locked' },
-        avatarEl(locked.id, lockedName, locked.avatar),
+        avatarEl(locked.id, lockedName, locked.avatar, { kind: 'home' }),
         h('span', { className: 'hu-ot' }, h('b', {}, lockedName), h('small', {}, locked.path || '未关联工作区'))), 'div')
       : field('属于哪个家', homes.length
         ? optList(homes.map((x) => ({ value: x.id, title: homeName(deps.view, x), sub: x.path || '未关联工作区' })), homeId, (v) => { homeId = v })
