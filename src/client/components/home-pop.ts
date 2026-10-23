@@ -20,6 +20,8 @@ export interface PopOpts {
   body: HTMLElement[]
   foot?: HTMLElement[]
   onClose?: () => void
+  /** 用户发起的关闭（遮罩/ Esc）先问它：返回 false 否决。程序化 closeHomePop 不受影响。 */
+  onBeforeClose?: () => boolean
 }
 
 /** 锚点：元素（静态场景）或解析器（会被面板重建的场景一律用解析器）。null ⇒ 无锚点。 */
@@ -29,6 +31,7 @@ let hostEl: HTMLElement | null = null
 let popEl: HTMLElement | null = null
 let anchorRef: AnchorRef = null
 let onCloseCb: (() => void) | null = null
+let beforeCloseCb: (() => boolean) | null = null
 let keyHandler: ((e: KeyboardEvent) => void) | null = null
 let resizeBound = false
 /** 本次弹层是否强制开在锚点上方（openHomePop / updateHomePop 从 opts.above 写入，place 现取）。 */
@@ -197,6 +200,12 @@ function bindResize(): void {
   window.addEventListener('resize', () => { if (popEl) place(popEl, anchorRef) })
 }
 
+/** 用户路径关闭：保存中等状态可由 onBeforeClose 否决（规格 #168「不能中途关闭」）。 */
+function requestClose(): void {
+  if (beforeCloseCb && beforeCloseCb() === false) return
+  closeHomePop()
+}
+
 /** 打开锚定弹层；返回 pop 元素（宿主缺失或锚点不可用返回 null）。 */
 export function openHomePop(anchor: AnchorRef, opts: PopOpts): HTMLElement | null {
   closeHomePop(true)
@@ -204,7 +213,7 @@ export function openHomePop(anchor: AnchorRef, opts: PopOpts): HTMLElement | nul
   if (!host) return null
   const pop = buildPop(opts)
   const scrim = h('div', { className: 'hu-scrim' })
-  scrim.addEventListener('click', () => closeHomePop())
+  scrim.addEventListener('click', () => requestClose())
   clear(host)
   host.appendChild(scrim)
   host.appendChild(pop)
@@ -212,12 +221,13 @@ export function openHomePop(anchor: AnchorRef, opts: PopOpts): HTMLElement | nul
   anchorRef = anchor
   popAbove = !!opts.above
   onCloseCb = opts.onClose ?? null
+  beforeCloseCb = opts.onBeforeClose ?? null
   markAnchor(resolveAnchor(anchor))
   /* 先提层再量位：宿主带 `popover` 时未 show 前是 UA `display:none`，此刻量 pop 只会得到 0×0。 */
   showLayer(host)
   if (!place(pop, anchor)) return null
   focusTo((pop.querySelector('button, input, [tabindex]') as HTMLElement | null) ?? null)
-  keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') closeHomePop() }
+  keyHandler = (e: KeyboardEvent) => { if (e.key === 'Escape') requestClose() }
   if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
     document.addEventListener('keydown', keyHandler as unknown as EventListener)
   }
@@ -230,6 +240,7 @@ export function openHomePop(anchor: AnchorRef, opts: PopOpts): HTMLElement | nul
 export function updateHomePop(opts: PopOpts): HTMLElement | null {
   if (!popEl) return openHomePop(anchorRef, opts)
   popAbove = !!opts.above
+  beforeCloseCb = opts.onBeforeClose ?? beforeCloseCb
   /* 就地换内容会把「刚点的那个按钮」换成新节点 ⇒ 焦点会掉到 body；先记下它的身份，重建后补回去。 */
   const prev = (typeof document !== 'undefined' ? document.activeElement : null) as HTMLElement | null
   let key: string | null = null
@@ -262,6 +273,7 @@ export function closeHomePop(immediate = false): void {
   popEl = null
   anchorRef = null
   onCloseCb = null
+  beforeCloseCb = null
   if (host) {
     if (immediate) {
       hideLayer(host)

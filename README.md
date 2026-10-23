@@ -52,8 +52,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     或者
 dsh plugin --profile web add dsh-im-companion
 
-# 锁定版本更稳（当前 0.2.19）
-dsh plugin --profile desktop add dsh-im-companion@0.2.19 --registry https://registry.npmjs.org
+# 锁定版本更稳（当前 0.2.23）
+dsh plugin --profile desktop add dsh-im-companion@0.2.23 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -82,7 +82,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.2.19 --registry https://regi
 下面以 desktop 为例，web 用户请把 --profile desktop 换成 --profile web：
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.2.19 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.2.23 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
@@ -247,3 +247,16 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 <img src="assets/contact-qq-permanent.jpg" width="260" alt="DSH 插件交流群 QQ 群二维码" /> <img src="assets/contact-wechat-weekly.png" width="260" alt="DSH 插件交流群微信群二维码" /> <img src="assets/contact-feishu-permanent.png" width="260" alt="DSH 插件交流群飞书群二维码" />
 
 </div>
+---
+
+<div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=20261023" />
+  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261023" />
+  <img alt="Star History Chart" width="720" src="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261023" />
+</picture>
+
+<sub>左轴读总星标（Total Stars），右轴读每日新增（Daily New），每天自动更新。</sub>
+
+</div>>>>>>>> origin/master

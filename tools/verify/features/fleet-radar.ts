@@ -323,7 +323,7 @@ test('格悬浮：助理明细 popover 接线（home-row-tip 纪律：fixed 盒/
   assert.match(stylesSrc, /\.fleet-radar-pop\.on/);
 });
 
-test('空格不可点：渠道无机器人 ⇒ 纯展示 span，不进详情抽屉；悬浮头像与名字同高', () => {
+test('空格不可点：渠道无机器人 ⇒ 纯展示 span，不进详情面板；悬浮头像与名字同高', () => {
   const viewSrc = readFileSync(join(FEAT, 'view.ts'), 'utf8');
   /* 空格分支：span、无 onClick（全文件 span 一律无点击，button 才有） */
   assert.match(viewSrc, /if \(cell\.health === 'empty'\) \{\n    return h\('span'/);

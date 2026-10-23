@@ -60,6 +60,7 @@ export function describeCall(endpoint: string, payload: Record<string, unknown>,
     case 'assistant.bind':
       return { level, event: 'assistant.bind', fields: { assistantId: id, homeId: str(p.homeId ?? row.homeId), botId: str(p.botId ?? row.botId), ok: okFlag, message } }
     case 'assistant.update':
+      // #170：人设资料（persona/description）变更也走这里；changed 只列字段名，正文绝不进日志。
       return { level, event: 'assistant.update', fields: { assistantId: id, changed: changedKeys(p, ['id']), ok: okFlag, message } }
     case 'assistant.remove':
       return { level, event: 'assistant.remove', fields: { assistantId: id, ok: okFlag, message } }

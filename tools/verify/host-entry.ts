@@ -28,6 +28,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
+import { makeCtx } from './fixtures/fake-ctx.ts';
 
 const REPO = process.cwd();
 const tmp = mkdtempSync(join(tmpdir(), 'host-entry-'));
@@ -51,67 +52,6 @@ after(() => {
   rmSync(tmpHome, { recursive: true, force: true });
 });
 
-type FetchRoute = { path: string; methods?: string[]; requestBody?: string; fetch: (req: any) => Promise<any> };
-type ScheduledTimer = { kind: 'interval' | 'timeout'; ms: number };
-
-/** 复刻宿主的 cordis 声明守卫 + connection 服务面（新载体 = fetch.register）。
- *  `interval` / `timeout` 按 cordis-plugin-timer 的真身复刻：它们是 `ctx.mixin('timer', [...])` 注册的
- *  **accessor**，读属性 = 去解析 `timer` 服务；本 fiber 没注入 ⇒ 抛错文案里是【服务名 timer】，
- *  与属性名无关（cordis 4.0.2 lib/index.js:883 getTarget → ctx[source]）。 */
-function makeCtx(
-  declared: readonly string[],
-  opts: { withFetch?: boolean; registerError?: string } = {},
-): { ctx: any; routes: FetchRoute[]; warns: string[]; timers: ScheduledTimer[] } {
-  const { withFetch = true, registerError } = opts;
-  const routes: FetchRoute[] = [];
-  const warns: string[] = [];
-  const timers: ScheduledTimer[] = [];
-  const raw: Record<string, unknown> = {
-    logger: { info: () => {}, warn: (m?: unknown) => { warns.push(String(m)); } },
-    effect: (fn: () => unknown) => { const d = fn(); return () => { if (typeof d === 'function') d(); }; },
-    provide: () => {},
-  };
-  const ctx: any = new Proxy(raw, {
-    get(target, prop, receiver) {
-      if (prop === 'interval' || prop === 'timeout') {
-        // 生产文案逐字同款：属性读在即抛，可选链 ctx?.interval 拦不住。
-        if (!declared.includes('timer')) {
-          throw new Error('cannot get property "timer" without inject');
-        }
-        return (_cb: () => void, ms: number) => {
-          timers.push({ kind: prop as ScheduledTimer['kind'], ms });
-          return () => {};
-        };
-      }
-      if (prop === 'webServer' || prop === 'connection') {
-        if (!declared.includes(prop)) {
-          // 与宿主装配失败逐字同款文案（cordis 声明检查）
-          throw new Error(`cannot get property "${prop}" without inject`);
-        }
-        if (prop === 'webServer') {
-          return { register: () => () => {} };
-        }
-        const connection: Record<string, unknown> = {
-          // 旧入口保留只为证明「不再被调用」：一旦被调用即抛，测试立刻失败。
-          rpc: { handle: () => { throw new Error('rpc.handle must not be used anymore (#79)'); } },
-        };
-        if (withFetch) {
-          connection.fetch = {
-            register: (options: FetchRoute) => {
-              // 宿主重复注册时的原话（registerFetchRoute）
-              if (registerError !== undefined) throw new Error(registerError);
-              routes.push(options);
-              return () => { const i = routes.indexOf(options); if (i >= 0) routes.splice(i, 1); };
-            },
-          };
-        }
-        return connection;
-      }
-      return Reflect.get(target, prop, receiver);
-    },
-  });
-  return { ctx, routes, warns, timers };
-}
 
 test('inject 只声明 connection（不再需要 webServer）', () => {
   assert.ok(Array.isArray(host.inject), 'inject 必须是数组');
