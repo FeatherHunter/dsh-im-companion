@@ -242,30 +242,8 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 <div align="center">
 
-👏欢迎提交PR、ISSUE。星星之火可以燎原🔥。有任何建议、意见、想法、吐槽、idea都可以进群交流。
-
-Bug 与需求请直接提 ISSUE，更高效可追溯；日常闲聊与快速答疑走群里。
-
-QQ 群常驻、微信群限时、飞书群常驻，三群同为 DSH 插件交流群。
+👏欢迎提交PR、ISSUE。星星之火可以燎原🔥有任何建议、意见、想法、吐槽、idea都可以进群交流。
 
 <img src="assets/contact-qq-permanent.jpg" width="260" alt="DSH 插件交流群 QQ 群二维码" /> <img src="assets/contact-wechat-weekly.png" width="260" alt="DSH 插件交流群微信群二维码" /> <img src="assets/contact-feishu-permanent.png" width="260" alt="DSH 插件交流群飞书群二维码" />
-
-QQ 群号 1020866453，加群失败可搜群号加入。
-
-微信群二维码 7 天有效、每周更新，过期请走 QQ 或飞书群。
-
-</div>
-
----
-
-<div align="center">
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=20261023" />
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261023" />
-  <img alt="Star History Chart" width="720" src="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261023" />
-</picture>
-
-<sub>左轴读总星标（Total Stars），右轴读每日新增（Daily New），每天自动更新。</sub>
 
 </div>
