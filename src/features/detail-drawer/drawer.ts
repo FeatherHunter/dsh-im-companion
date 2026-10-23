@@ -7,8 +7,8 @@ import { toast } from '../../client/ui/toast'
 import { chooseBot, runTestSend } from '../../client/data/header-overlay'
 import type { AgentPresetCatalog } from '../../client/data/fleet-api'
 import type { FeatureCtx } from '../protocol'
-import { channelLabel, type OpenDrawerDetail } from '../../client/data/config'
-import { applyPersonality, rpcOf, writeBots, type WriteDeps } from './actions'
+import { OPEN_ASSIST_EDIT_EVENT, channelLabel, type AssistBrief, type AssistEditDetail, type OpenDrawerDetail } from '../../client/data/config'
+import { rpcOf, writeBots, type WriteDeps } from './actions'
 import {
   OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, fetchRoutes, loadingModel,
   modelSig, presetPayloadFor, type DrawerModel, type RouteEntry,
@@ -22,7 +22,7 @@ export function mountDrawer(fctx: FeatureCtx): () => void {
     try {
       const detail = (e as CustomEvent)?.detail as Partial<OpenDrawerDetail> | undefined
       const key = detail?.key
-      if (typeof key === 'string' && key) void openDrawer(fctx, key)
+      if (typeof key === 'string' && key) void openDrawer(fctx, key, detail?.assistant ?? null)
     } catch {
       /* ignore */
     }
@@ -38,8 +38,14 @@ export function mountDrawer(fctx: FeatureCtx): () => void {
 
 type MetaDoc = Awaited<ReturnType<FeatureCtx['meta']['loadMeta']>>
 type SnapBots = Parameters<typeof buildDrawerModel>[0]
+/** #173 编辑跳转：派发 OPEN_ASSIST_EDIT_EVENT（feature→A1，契约 §4）后关面板；派发失败不阻断关闭。 */
+export function jumpToAssistEdit(model: DrawerModel, close: () => void): void {
+  const detail: AssistEditDetail = { assistantId: model.assistant?.id ?? '', homePath: model.workspace }
+  try { window.dispatchEvent(new window.CustomEvent(OPEN_ASSIST_EDIT_EVENT, { detail })) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'open-assist-edit', ok: false, message: String((e as Error)?.message ?? e) }) }
+  close()
+}
 
-async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
+async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief | null = null): Promise<void> {
   logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'open', ok: true, message: '打开 Agent 详情：' + key })
   try {
     currentClose?.()
@@ -63,7 +69,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     sheet = showSheet({
       overlayClass: 'detail-drawer-overlay',
       panelClass: 'detail-drawer-sheet',
-      label: 'Agent 详情抽屉',
+      label: 'Agent 详情面板',
       onClose: () => {
         closed = true
         clearGiveUp()
@@ -79,7 +85,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     sheet = null
     logLine('error', 'ui.render.fail', { area: 'detail-drawer', message: 'showSheet 抛错：' + String((e as Error)?.message ?? e) })
   }
-  if (!sheet) { logLine('error', 'ui.render.fail', { area: 'detail-drawer', message: '抽屉面板未建出（showSheet 返回空）' }); toast('抽屉打开失败'); return }
+  if (!sheet) { logLine('error', 'ui.render.fail', { area: 'detail-drawer', message: '抽屉面板未建出（showSheet 返回空）' }); toast('详情面板打开失败'); return }
   currentClose = closeAll
   let settled = false
   let giveUp: ReturnType<typeof setTimeout> | null = null
@@ -99,7 +105,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     giveUp = setTimeout(() => {
       giveUp = null
       if (!settled && !closed) {
-        logLine('warn', 'stream.fail', { message: '抽屉等 8s 未等到该 Agent 数据（端点空或 key 未命中）：' + key })
+        logLine('warn', 'stream.fail', { message: '详情面板等 8s 未等到该 Agent 数据（端点空或 key 未命中）：' + key })
         toast('未找到该 Agent 的数据，可点列表右上刷新后重试')
         closeAll()
       }
@@ -110,11 +116,11 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
   let lastSig: string | null = null
   const paint = (): void => {
     if (closed || !meta || !sheet) return
-    const model = buildDrawerModel(lastBots, meta, key, lastCatalogs, lastRoutes)
+    const model = buildDrawerModel(lastBots, meta, key, lastCatalogs, lastRoutes, assistant)
     if (!model) {
       if (settled) {
         settled = false
-        toast('该 Agent 已不在列表，关闭抽屉')
+        toast('该 Agent 已不在列表，关闭详情面板')
         closeAll()
       } else if (lastSig !== 'loading') {
         lastSig = 'loading'
@@ -131,7 +137,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     const st = bd ? bd.scrollTop : 0
     const sl = bd ? bd.scrollLeft : 0
     try {
-      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs, draftPers))
+      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs))
     } catch (e) {
       if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'paint-fail', ok: false, message: '保留旧帧：' + String((e as Error)?.message ?? e) })
     }
@@ -147,7 +153,6 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     }
   }
   let draftWs: string | null = null
-  let draftPers: string | null = null
   const deps = (): WriteDeps => ({ rpc: fctx.rpc, refresh: () => fctx.refresh(), reloadMeta, paint, notify: toast })
   const cbs = (model: DrawerModel): DrawerCallbacks => {
     const flipOne = (channel: string, botId: string, which: 'group' | 'direct'): void => {
@@ -218,24 +223,6 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
     onDraftWorkspace: (v) => {
       draftWs = v
     },
-    onApplyPersonality: (text) => {
-      if (model.bots.some((b) => b.ctx === undefined)) {
-        toast('有渠道真值尚未读到，稍后再应用（防覆盖）')
-        return
-      }
-      if (!text.trim()) {
-        toast('先写点性格描述再应用')
-        return
-      }
-      void (async () => {
-        await applyPersonality(model, deps(), text)
-        draftPers = null
-        paint()
-      })()
-    },
-    onDraftPersonality: (v) => {
-      draftPers = v
-    },
     onRemoveBot: (channel, botId) => {
       if (!fctx.rpc) {
         toast('连接服务不可用')
@@ -270,6 +257,8 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
         }
       })()
     },
+    onEditAssistant: () => jumpToAssistEdit(model, closeAll),
+    onNotify: (message, icon) => toast(message, icon),
     onClose: () => closeAll(),
     }
   }
@@ -285,7 +274,7 @@ async function openDrawer(fctx: FeatureCtx, key: string): Promise<void> {
       }).catch(() => undefined)
     })
   } catch (e) {
-    logLine('warn', 'bridge.call.fail', { method: 'stream.subscribe', message: '抽屉订阅失败即关：' + String((e as Error)?.message ?? e) })
+    logLine('warn', 'bridge.call.fail', { method: 'stream.subscribe', message: '详情面板订阅失败即关：' + String((e as Error)?.message ?? e) })
     closeAll()
   }
 }

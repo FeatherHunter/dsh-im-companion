@@ -54,7 +54,10 @@ vm.runInContext(code, sandbox);
 
 const regs: { opts: any; Comp: any }[] = [];
 const disposers: (() => void)[] = [];
-const rpcCall = async (ch: string) => {
+/* 0.2.20 真机回归计数器：Header 每渲染重订阅会让 meta.get 打爆桥（见文件末尾断言）。 */
+let metaGets = 0;
+const rpcCall = async (ch: string, endpoint?: string) => {
+  if (endpoint === 'meta.get') metaGets += 1;
   if (ch === '/feishu') {
     return { ok: true, value: { bots: [
       { botId: 'bot_aaaa', workspace: W1, connected: true,
@@ -130,6 +133,13 @@ checks.push(['unbound 态标题未绑定', String(unbound.btn?.getAttribute?.('t
 
 const hidden = await renderSession('sess-???');
 checks.push(['hidden 态零渲染', !hidden.btn && hidden.text === '']);
+
+/* 0.2.20 真机回归：旧实现把 SessionHeaderAction 当普通函数在槽包装里直接调用，hooks 挂在包装组件上，
+ * 它自己 setState 就重渲染包装 ⇒ subscribe/loadCustomNames 回调身份每次新建 ⇒ useEffect([sessionId, subscribe])
+ * 每渲染重订阅一次；connection-stream 订阅时同步回放快照 → loadCustomNames → meta.get → setNames(新对象)
+ * → 再渲染的紧循环（真机每秒数百条 host.rpc.call，面板一直「正在加载」）。
+ * 正常量级：每次挂载 1~2 次（presence 一次 + 每个 Header 一次），三次渲染 ≤ 12 足够宽。 */
+checks.push(['meta.get 有界（订阅身份稳定、无渲染紧循环）', metaGets <= 12]);
 
 for (const [name, ok] of checks) console.log((ok ? 'PASS' : 'FAIL') + '  ' + name);
 for (const d of disposers) { try { d(); } catch { /* ignore */ } }

@@ -94,7 +94,7 @@ export function detailEl(o: DetailOpts): HTMLElement {
     botBlock(o))
 
   const primary = h('div', { className: 'hu-acts' })
-  /* owner 2026-10-17：详情页与行按钮同口径——没有「接入」，只有未绑定时的红档「绑定机器人」与已绑后的「更换机器人」。 */
+  /* owner 2026-10-17：详情面板与行按钮同口径——没有「接入」，只有未绑定时的红档「绑定机器人」与已绑后的「更换机器人」。 */
   if (a.status === 'bound') primary.appendChild(abtn('change-a', '更换机器人', o, { cls: 'swap', icon: 'refresh' }))
   else primary.appendChild(abtn('bind-a', '绑定机器人', o, { cls: 'danger', icon: 'link' }))
   primary.appendChild(abtn('detail-a', '详情', o, { icon: 'info' }))

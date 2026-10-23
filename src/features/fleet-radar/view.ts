@@ -87,7 +87,7 @@ function cellTextNodes(cell: MatrixCell, lang: Lang): (string | HTMLElement)[] {
 
 /** 格子只留圆点 + 文字：列身份由表头 LOGO 一次性建立，格内重复即噪音（第一性原理：零信息熵不配占像素）。
  * 有明细的格悬浮出助理清单（cell-pop）；无明细才走原生 title（免双层提示）。
- * 空格（渠道无机器人）是纯展示 span：不可点、不钻取（点进去的详情抽屉没有主体可讲）。 */
+ * 空格（渠道无机器人）是纯展示 span：不可点、不钻取（点进去的详情面板没有主体可讲）。 */
 function renderCell(row: MatrixRow, cell: MatrixCell, lang: Lang): HTMLElement {
   const cls = 'fleet-radar-cell' + (cell.health === 'empty' ? ' ghost' : (cell.health === 'orphan' || !cell.bound) ? ' unbound' : '')
   if (cell.health === 'empty') {

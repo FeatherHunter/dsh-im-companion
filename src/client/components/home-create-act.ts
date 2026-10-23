@@ -5,7 +5,8 @@
  * 与 L2 底部「新建助理」共用同一套 `onDone`（panel-body 的 `createDone`）⇒ 新建完同样落到该家 L3。
  * 只认 `new-asst`，其余 kind 回 false（调用方继续往下走）。 */
 import { logLine } from '../log'
-import { newAsstPop, type FormOps } from './home-forms'
+import { type FormOps } from './home-forms'
+import { newAsstPop } from './home-asst-create'
 import type { AnchorRef } from './home-pop'
 import type { RowView } from './home-rows'
 

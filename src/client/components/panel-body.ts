@@ -6,10 +6,12 @@
  * 旧 buildModel 列表退役（data/model.ts 保留：抽屉/徽标/会话头仍读它，verify 照旧）。
  * T6b #114／T6c #115：改名配图/占位绑定/删助理、换工作区/移除渠道已接线（删助理走 clean 版，防种子复活）。 */
 import { h, clear } from '../dom'
-import { OPEN_DRAWER_EVENT, type OpenDrawerDetail } from '../data/config'
+import { emitDrawer } from './home-events'
+import { bindAssistEdit } from './home-assist-edit-listen'
+import { profileAsstOpen } from './home-asst-profile-act'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, topEl, type Level } from './home-frame'
-import { newAsstPop, newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'
+import { newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'; import { newAsstPop } from './home-asst-create' /* T8-3 #171：本文件 300 行顶格，新文件的 import 并入本行以保持行数中性。 */
 import { finishRename } from './home-toast'
 import { avatarAsstPop } from './home-avatar-act'
 import { bindAsstPop } from './home-bind-forms'
@@ -18,7 +20,7 @@ import { orphanHomeAct } from './home-orphan-forms'
 import { newAsstAct } from './home-create-act'
 import type { MoveOps } from './home-move-ops'
 import { closeHomePop } from './home-pop'
-import { skeletonRows, viewOf, type RowView } from './home-rows'
+import { asstName, skeletonRows, viewOf, type RowView } from './home-rows'
 import { hideAsstTip } from './home-row-tip'
 import { stageCrumbOpts, stageHead, stageList, type StageCtx } from './home-stage'
 import type { PanelState } from './panel-data'
@@ -39,16 +41,6 @@ export interface PanelBodyHandle {
   render(): void
   openCreate(): void
   dispose(): void
-}
-
-function emitDrawer(key: string): void {
-  try {
-    if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
-    const detail: OpenDrawerDetail = { key }
-    window.dispatchEvent(new window.CustomEvent(OPEN_DRAWER_EVENT, { detail }))
-  } catch (e) {
-    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel.body', action: 'open-drawer', ok: false, message: '派发失败，抽屉打不开：' + String((e as Error)?.message ?? e) })
-  }
 }
 
 export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
@@ -141,7 +133,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     } else if (kind === 'detail-a') {
       const a = v.assistants.find((x) => x.id === id)
       const home = a ? v.homes.find((x) => x.id === a.homeId) : undefined
-      emitDrawer(home ? home.path : '')
+      emitDrawer(home ? home.path : '', a ? { id: a.id, name: asstName(v, a), description: a.description ?? '', persona: a.persona ?? '' } : null)
     } else if (kind === 'bind-a' || kind === 'change-a') {
       const a = v.assistants.find((x) => x.id === id)
       /* owner 2026-10-17：行上不再有「接入」——未绑定走「绑定机器人」（红档），已绑定走「更换机器人」（琥珀档）。
@@ -158,8 +150,11 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     } else if (kind === 'avatar-a') {
       if (!v.assistants.some((x) => x.id === id)) { logLine('info', 'assistant.action', { action: 'update', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），换头像弹层不开' }); return }
       avatarAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: id, onDone: () => render() })
+    } else if (kind === 'profile-a') {
+      /* T8-4 #172：第 4 图标「编辑简介与人物设定」——窗口本体在 home-asst-profile-act.ts，这里只留一行入口。 */
+      profileAsstOpen({ view: v, ops: deps.ops, onDone: () => render(), bodyEl: deps.bodyEl }, id, anchor)
     } else if (kind === 'settings-a') {
-      /* L3 详情页那颗「改名与头像」（home-detail）：仍开整套助理设置弹层，与 L2 行上的就地改名不冲突。 */
+      /* L3 详情面板那颗「改名与头像」（home-detail）：仍开整套助理设置弹层，与 L2 行上的就地改名不冲突。 */
       if (!v.assistants.some((x) => x.id === id)) { logLine('info', 'assistant.action', { action: 'update', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），设置弹层不开' }); return }
       renameAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: id, onDone: () => render() })
     } else if (kind === 'remove-a') {
@@ -292,9 +287,12 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     if (flashId && flashTimer) { /* 闪光由 class 表达，定时器只负责清除 */ }
   }
 
+  /* 补丁 B：#173 详情面板的「编辑」派发 OPEN_ASSIST_EDIT_EVENT ⇒ 开同一张弹层；dispose 必须退订。 */
+  const unbindAssistEdit = bindAssistEdit((d) => profileAsstOpen({ view: view(), ops: deps.ops, onDone: () => render(), bodyEl: deps.bodyEl }, d.assistantId, null))
+
   return {
     render,
     openCreate,
-    dispose: () => { closeHomePop(true); if (flashTimer) clearTimeout(flashTimer) },
+    dispose: () => { unbindAssistEdit(); closeHomePop(true); if (flashTimer) clearTimeout(flashTimer) },
   }
 }

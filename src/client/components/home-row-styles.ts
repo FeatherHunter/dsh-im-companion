@@ -211,6 +211,22 @@ export const HOME_ROW_CSS = `
   transition:opacity var(--hu-t-fast) var(--hu-ease),transform var(--hu-t-fast) var(--hu-ease)}
 .home-ui.hu-toast.show{opacity:1;transform:translateY(0)}
 .home-ui.hu-toast .hu-i{width:14px;height:14px}
+/* T8-3 #171：创建弹窗的两栏（简介单行 input / 人物设定 textarea ＋ 计数与红字）。
+ * 计数/红字压在字段下方一行：左计数、右错误；红字用 --hu-bad（超限＝拒绝写，不是警告胶囊）。
+ * textarea 给 5 行可视高度、可竖向拉伸；宽度吃满字段列（.hu-fld 是 flex 列，这里再钉一次防塌）。 */
+.home-ui .hu-fld textarea{font:inherit;font-size:13px;line-height:1.5;min-height:88px;padding:8px 10px;color:var(--hu-ink);
+  background:var(--hu-panel);border:1px solid var(--hu-line);border-radius:9px;resize:vertical;width:100%;box-sizing:border-box}
+.home-ui .hu-fld textarea:focus{outline:0;border-color:var(--hu-accent);box-shadow:var(--hu-ring)}
+.home-ui .hu-fld input::placeholder,.home-ui .hu-fld textarea::placeholder{color:var(--hu-ink-3)}
+.home-ui .hu-fldbar{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:11px;line-height:1.4}
+.home-ui .hu-count{font-style:normal;color:var(--hu-ink-3);font-variant-numeric:tabular-nums}
+.home-ui .hu-flderr{font-style:normal;color:var(--hu-bad);text-align:right}
+.home-ui .hu-flderr:empty{display:none}
+/* T8-4 #172：家页助理行第三行＝简介（单行省略，悬停看全文靠 title）；空白简介不渲染 ⇒ 行高不长。 */
+/* 行高 +21px = 5px 上边距 + 11.5px×1.4≈16.1px 行盒（规格 #168「有值时卡片行高增加 21px」）。 */
+.home-ui .hu-row .hu-desc{display:block;margin-top:5px;font-size:11.5px;line-height:1.4;color:var(--hu-ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* 编辑资料弹层：失败红字行空着时不占位（否则弹层里常驻一条空警示框）。 */
+.home-ui .hu-ppo .hu-err:empty{display:none}
 `
 
 let installed = false

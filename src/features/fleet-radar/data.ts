@@ -176,7 +176,7 @@ export function footSomeLine(names: string[], lang: Lang): string {
 
 /** LOGO 底色（纯数据，可测）：dsh-im 设置页同款——品牌色圆角底 + 白 glyph；
  * 飞书/企微 glyph 自带多色，只配白底衬；其余 7 单色 glyph 经 view/styles 洗白
- * （共享 icons 仍是品牌 fill 以保详情抽屉透明底可读，上游 currentColor 口径由本特性 CSS 落地）。 */
+ * （共享 icons 仍是品牌 fill 以保详情面板透明底可读，上游 currentColor 口径由本特性 CSS 落地）。 */
 export const LOGO_TILE_BG: Record<string, string> = {
   feishu: '#ffffff', weixin: '#07c160', qq: '#12b7f5', slack: '#4a154b', telegram: '#2aabee',
   discord: '#5865f2', whatsapp: '#25d366', dingtalk: '#0091ff', wecom: '#ffffff',
