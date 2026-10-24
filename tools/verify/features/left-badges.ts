@@ -20,6 +20,8 @@ const ENTRIES = [
   join(REPO, 'src', 'client', 'components', 'home-identity.ts'),
   /* #154：共享层工作区索引（行身份 → 路径）单点真相。 */
   join(DATA, 'workspace-index.ts'),
+  /* #190：字形 parity 目标（home-icons 的 home/bot 路径逐字镜像）。 */
+  join(REPO, 'src', 'client', 'components', 'home-icons.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'b1-left-badges-'));
@@ -51,6 +53,10 @@ const registry: any = req('./features/index.js');
 const hover: any = req('./features/left-badges/hover-card.js');
 const fleetApi: any = req('./client/data/fleet-api.js');
 const face: any = req('./features/left-badges/assistant-face.js');
+const panelIdentity: any = req('./features/left-badges/panel-identity.js');
+const cardModel: any = req('./features/left-badges/card-model.js');
+const cardRender: any = req('./features/left-badges/card-render.js');
+const homeIcons: any = req('./client/components/home-icons.js');
 const identity: any = req('./client/components/home-identity.js');
 const wsIndex: any = req('./client/data/workspace-index.js');
 
@@ -304,31 +310,100 @@ test('view：未绑定无属性且行内不写节点', () => {
   }
 });
 
-test('hover-card：卡片数据（未绑定null/渠道行/时间）', () => {
-  assert.equal(hover.buildCardData('dsh-im', []), null);
-  const d = hover.buildCardData(W1, [
-    snap({ lastCheckedAt: 5000 }),
-    snap({ channel: 'qq', botId: 'q', healthKind: 'offline', healthStatus: 'offline', connected: false }),
-  ]);
-  assert.equal(d.agent, 'xiaoshuai');
-  assert.equal(hover.buildCardData(W1, [snap({ lastCheckedAt: 5000 })], '小帅2').agent, '小帅2');
-  assert.equal(d.kind, 'online');
-  assert.equal(d.channels.length, 2);
-  assert.equal(d.channels[0].kind, 'online');
-  assert.ok(String(d.channels[0].glyph).includes('<svg'), '左侧留渠道 logo');
-  assert.equal(d.channels[0].face.desc.img, null, '无 faceOf 且无渠道图回落无图');
-  const withAv = hover.buildCardData(W1, [snap({ lastCheckedAt: 5000, avatarUrl: 'https://x/y.png', botName: 'AB' })]);
-  assert.equal(withAv.channels[0].face.desc.img, 'https://x/y.png', '无助理时渠道图兜底');
-  assert.equal(withAv.channels[0].label, 'AB', '助理名');
-  const named = hover.buildCardData(W1, [snap({ lastCheckedAt: 5000, botId: 'f9', botName: '机器人' })], undefined,
-    () => ({ desc: { img: 'data:image/png;base64,xx', tint: '', initial: '' }, name: '小婉' }));
-  assert.equal(named.channels[0].label, '小婉', '用户改名优先作助理名');
-  assert.equal(named.channels[0].face.desc.img, 'data:image/png;base64,xx', '助理上传图优先');
-  assert.match(d.time, /最后检测/);
-  const p1 = styles.breathPhase('feishu');
-  assert.equal(styles.breathPhase('feishu').delay, p1.delay, '同渠道节奏稳定');
-  assert.match(p1.delay, /^-\d+\.\d+s$/);
-  assert.match(p1.duration, /^\d+\.\d+s$/);
+
+/* ===== #190：实体驱动卡片（家行 / 助理行 / 游离机器人行） ===== */
+
+const HOME = (over = {}) => ({ id: 'h1', workspaceId: 'w1', path: W1, name: '小帅家', nameSource: 'system', avatar: null, avatarSource: 'default', createdAt: 1, updatedAt: 1, ...over });
+const ASST = (over = {}) => ({ id: 'a1', homeId: 'h1', channel: 'feishu', botId: 'f1', status: 'bound', name: '小洋', nameSource: 'user', avatar: null, avatarSource: 'user', createdAt: 1, boundAt: 1, ...over });
+const srcOf = (over = {}) => ({ workspacePath: W1, bots: [], homes: [HOME()], assistants: [], images: new Map(), ...over });
+
+test('card-model：实体三态（家行 + 已绑/未绑定助理；无绑定 bot 也出卡，#190 Q1/Q2/Q3）', () => {
+  const bots = [snap({ botId: 'f1', botName: '小洋bot', lastCheckedAt: 5000 })];
+  const assistants = [
+    ASST({ id: 'a1', botId: 'f1', name: '小洋' }),
+    ASST({ id: 'a2', botId: null, status: 'unbound', channel: 'weixin', name: '调色板🎨', nameSource: 'user', createdAt: 2 }),
+  ];
+  const d = cardModel.buildCardData(srcOf({ bots, assistants }));
+  assert.ok(d, '有家即出卡');
+  assert.equal(d.agent, 'xiaoshuai', '家行名=行显示口径');
+  assert.equal(d.rows.length, 2);
+  assert.equal(d.rows[0].kind, 'assistant');
+  assert.equal(d.rows[0].unbound, false);
+  assert.equal(d.rows[0].name, '小洋');
+  assert.equal(d.rows[0].state, 'online');
+  assert.equal(d.rows[0].tag, '');
+  assert.ok(String(d.rows[0].glyph).includes('data-channel-logo="feishu"'), '助理行首格渠道 logo');
+  assert.equal(d.rows[1].kind, 'assistant', '未绑定助理也是助理行');
+  assert.equal(d.rows[1].unbound, true);
+  assert.equal(d.rows[1].name, '调色板🎨');
+  assert.equal(d.rows[1].tag, '未绑定');
+  assert.equal(d.rows[1].state, null, '未绑定不出状态点');
+  assert.equal(d.rows[1].face.icon, 'bot', '未绑定走机器人字形');
+  assert.equal(d.rows[1].face.tint, '', '未绑定灰化不给色板');
+  assert.equal(d.rows[1].glyph, null, '未绑定没有渠道，不给渠道 logo（验收反馈一）');
+  // Q3=B：没有任何绑定 bot 的家，悬停也出卡（家 + 未绑定助理）
+  const solo = cardModel.buildCardData(srcOf({ assistants: [assistants[1]] }));
+  assert.ok(solo, '无绑定 bot 的家也出卡');
+  assert.equal(solo.rows.length, 1);
+  assert.equal(solo.rows[0].tag, '未绑定');
+  assert.equal(solo.time, '最后检测 暂无');
+  // 无家且无 bot ⇒ 无卡
+  assert.equal(cardModel.buildCardData(srcOf({ homes: [] })), null);
+});
+
+test('card-model：游离机器人两档（未归属/无助理；已绑本家不重复出机器人行，#190 Q4）', () => {
+  const bots = [
+    snap({ channel: 'weixin', botId: 'wx1', botName: '微信机器人', lastCheckedAt: 5000 }),
+    snap({ channel: 'qq', botId: 'qq1', botName: '', lastCheckedAt: 3000 }),
+  ];
+  const other = [ASST({ id: 'a9', homeId: 'h9', channel: 'weixin', botId: 'wx1', name: '微信机器人', nameSource: 'user', createdAt: 9 })];
+  const d = cardModel.buildCardData(srcOf({ bots, assistants: other }));
+  assert.equal(d.rows.length, 2);
+  assert.equal(d.rows[0].kind, 'robot');
+  assert.equal(d.rows[0].role, 'other-home', '匹配到助理但助理属于别家');
+  assert.equal(d.rows[0].tag, '未归属');
+  assert.equal(d.rows[0].name, '微信机器人', '机器人行用机器人名，不用助理名/脸');
+  assert.equal(d.rows[0].face, null);
+  assert.ok(String(d.rows[0].glyph).includes('data-channel-logo="weixin"'), '游离机器人行首格=渠道 logo（验收反馈三）');
+  assert.equal(d.rows[1].kind, 'robot');
+  assert.equal(d.rows[1].role, 'no-assistant', 'botId 无匹配即无助理');
+  assert.equal(d.rows[1].tag, '无助理');
+  assert.equal(d.rows[1].name, '…qq1', '无名 Bot 用后四位占位');
+  // 已绑本家的 bot 只出助理行
+  const own = cardModel.buildCardData(srcOf({ bots: [snap({ botId: 'f1' })], assistants: [ASST({ botId: 'f1' })] }));
+  assert.equal(own.rows.filter((r) => r.kind === 'robot').length, 0, '已绑 bot 不重复出机器人行');
+  assert.equal(own.rows.length, 1);
+});
+
+test('card-model：Q2 头像规则（有配置头像就展示头像；无图走归属身份）', () => {
+  const imgs = new Map([['h1', 'data:image/png;base64,HOME'], ['a1', 'data:image/png;base64,A']]);
+  const withImg = cardModel.buildCardData(srcOf({
+    images: imgs,
+    homes: [HOME({ avatar: 'img:home.png' })],
+    bots: [snap({ botId: 'f1' })],
+    assistants: [ASST({ botId: 'f1', avatar: 'img:a.png' })],
+  }));
+  assert.equal(withImg.face.img, 'data:image/png;base64,HOME', '家上传图');
+  assert.equal(withImg.rows[0].face.img, 'data:image/png;base64,A', '助理上传图优先');
+  const plain = cardModel.buildCardData(srcOf({ bots: [snap({ botId: 'f1' })], assistants: [ASST({ botId: 'f1', avatar: '3' })] }));
+  assert.equal(plain.face.img, null);
+  assert.equal(plain.face.icon, 'home', '无图家行=房子图标');
+  assert.equal(plain.face.tint, identity.avatarStyleFor('home', 'h1', null), '家色板与面板同口径');
+  assert.equal(plain.rows[0].face.img, null);
+  assert.equal(plain.rows[0].face.icon, 'bot', '无图助理行=机器人图标');
+  assert.equal(plain.rows[0].face.tint, identity.avatarStyleFor('assistant', 'a1', '3'), '助理色板与面板同口径');
+});
+
+test('card-model：家行名优先级 + 无家回退（行显示名>用户命名>目录基名）', () => {
+  assert.equal(cardModel.buildCardData(srcOf()).agent, 'xiaoshuai', '默认目录基名');
+  assert.equal(cardModel.buildCardData(srcOf({ displayName: '小帅2' })).agent, '小帅2', '行显示名优先');
+  assert.equal(cardModel.buildCardData(srcOf({ homes: [HOME({ name: '我的家', nameSource: 'user' })] })).agent, '我的家', '面板用户命名');
+  assert.equal(cardModel.buildCardData(srcOf({ homes: [HOME({ name: '小帅家', nameSource: 'system' })] })).agent, 'xiaoshuai', '系统名不参与（与面板同链）');
+  const orphan = cardModel.buildCardData(srcOf({ homes: [], bots: [snap({ botId: 'f1' })] }));
+  assert.ok(orphan, '无家但有 bot 仍出卡');
+  assert.equal(orphan.homeId, '');
+  assert.equal(orphan.face.icon, undefined, '无家不挂房子图标');
+  assert.equal(orphan.rows[0].kind, 'robot');
 });
 
 test('fleet-api：botDisplayLabel（有名优先/超长截断/占位不空）', () => {
@@ -338,36 +413,46 @@ test('fleet-api：botDisplayLabel（有名优先/超长截断/占位不空）', 
   assert.ok(fleetApi.botDisplayLabel({ botName: '0123456789abcdef', botId: 'x' }).endsWith('…'));
 });
 
-test('hover-card：每行带 Bot 标识（同渠道可辨别/占位）', () => {
-  const d = hover.buildCardData(W1, [
+test('card-model：助理行名可辨别（同渠道多 Bot / 占位不空）', () => {
+  const bots = [
     snap({ botId: 'f1', botName: '客服小美', lastCheckedAt: 5000 }),
     snap({ botId: 'f2', botName: '夜班小美', lastCheckedAt: 5000 }),
     snap({ channel: 'qq', botId: 'qq123456', botName: '', lastCheckedAt: 5000 }),
-  ]);
-  assert.equal(d.channels.length, 3);
-  assert.equal(d.channels[0].label, '客服小美');
-  assert.equal(d.channels[1].label, '夜班小美');
-  assert.notEqual(d.channels[0].label, d.channels[1].label, '同渠道多 Bot 必须可辨别');
-  assert.equal(d.channels[2].label, '…3456', '无名 Bot 用 botId 后四位占位');
-  const noname = hover.buildCardData(W1, [snap({ botId: '', botName: '', lastCheckedAt: 5000 })]);
-  assert.equal(noname.channels[0].label, '未命名');
-  assert.ok(noname.channels.every((c: any) => typeof c.label === 'string' && c.label.length > 0), '不留纯图标行');
+  ];
+  const assistants = [
+    ASST({ id: 'a1', botId: 'f1', nameSource: 'bot', name: '', createdAt: 1 }),
+    ASST({ id: 'a2', botId: 'f2', nameSource: 'bot', name: '', createdAt: 2 }),
+    ASST({ id: 'a3', channel: 'qq', botId: 'qq123456', nameSource: 'bot', name: '', createdAt: 3 }),
+  ];
+  const d = cardModel.buildCardData(srcOf({ bots, assistants }));
+  assert.equal(d.rows.length, 3);
+  assert.equal(d.rows[0].name, '客服小美');
+  assert.equal(d.rows[1].name, '夜班小美');
+  assert.notEqual(d.rows[0].name, d.rows[1].name, '同渠道多 Bot 必须可辨别');
+  assert.equal(d.rows[2].name, '…3456', '无名 Bot 用 botId 后四位占位');
+  assert.ok(d.rows.every((r) => typeof r.name === 'string' && r.name.length > 0), '不留纯图标行');
 });
 
-test('hover-card：同渠道组内槽位均分（#33v2，构造错开不靠运气）', () => {
-  const d = hover.buildCardData(W1, [
+test('card-model：同渠道组内槽位均分（#33v2，构造错开不靠运气）', () => {
+  const bots = [
     snap({ botId: 'f1', botName: '小帅', lastCheckedAt: 5000 }),
     snap({ botId: 'f2', botName: '小赡', lastCheckedAt: 5000 }),
     snap({ botId: 'f3', botName: '小匠', lastCheckedAt: 5000 }),
-  ]);
-  assert.equal(d.channels.map((c) => c.bot).join(','), 'f1,f2,f3', '行带 Bot 身份');
+  ];
+  const assistants = [
+    ASST({ id: 'a1', botId: 'f1', nameSource: 'bot', name: '', createdAt: 1 }),
+    ASST({ id: 'a2', botId: 'f2', nameSource: 'bot', name: '', createdAt: 2 }),
+    ASST({ id: 'a3', botId: 'f3', nameSource: 'bot', name: '', createdAt: 3 }),
+  ];
+  const d = cardModel.buildCardData(srcOf({ bots, assistants }));
+  assert.equal(d.rows.map((r) => r.bot).join(','), 'f1,f2,f3', '行带 Bot 身份');
   const seen = {};
-  const phases = d.channels.map((c) => {
-    const i = seen[c.channel] || 0;
-    seen[c.channel] = i + 1;
-    return styles.breathPhase(c.channel, c.label + '\0' + (c.bot || ''), (i * 997) % 1600);
+  const phases = d.rows.map((r) => {
+    const i = seen[r.channel] || 0;
+    seen[r.channel] = i + 1;
+    return styles.breathPhase(r.channel, r.name + '#' + (r.bot || ''), (i * 997) % 1600);
   });
-  const delays = phases.map((p) => p.delay);
+  const delays = phases.map((q) => q.delay);
   assert.equal(new Set(delays).size, 3, '组内三行 delay 必错开：' + delays.join(','));
   const ms = delays.map((s) => Math.round(parseFloat(s) * 1000));
   let gap = 1600;
@@ -375,7 +460,7 @@ test('hover-card：同渠道组内槽位均分（#33v2，构造错开不靠运�
     const g = Math.abs(ms[a] - ms[b]);
     gap = Math.min(gap, g, 1600 - g);
   }
-  assert.ok(gap >= 300, '两两最小间隔eat 0.3s，实测 ' + (gap / 1000) + 's');
+  assert.ok(gap >= 300, '两两最小间隔 0.3s，实测 ' + (gap / 1000) + 's');
   assert.equal(styles.breathPhase('feishu').delay, styles.breathPhase('feishu').delay, '无种子走旧口径且稳定');
   assert.equal(styles.breathPhase('feishu', 'x', 0).delay, styles.breathPhase('feishu').delay, '组内首个=旧口径');
   assert.equal(styles.breathPhase('feishu', 'x', 0).delay, styles.breathPhase('feishu', 'x', 0).delay, '重渲染不跳变');
@@ -386,6 +471,11 @@ test('hover-card：悬浮卡三飞书绿点 animationDelay 端到端错开（#33
     snap({ botId: 'f1', botName: '小帅', lastCheckedAt: 5000 }),
     snap({ botId: 'f2', botName: '小赡', lastCheckedAt: 5000 }),
     snap({ botId: 'f3', botName: '小匠', lastCheckedAt: 5000 }),
+  ];
+  const assistants = [
+    ASST({ id: 'a1', botId: 'f1', nameSource: 'bot', name: '', createdAt: 1 }),
+    ASST({ id: 'a2', botId: 'f2', nameSource: 'bot', name: '', createdAt: 2 }),
+    ASST({ id: 'a3', botId: 'f3', nameSource: 'bot', name: '', createdAt: 3 }),
   ];
   const row = stubEl('div');
   const body = stubEl('body');
@@ -401,7 +491,7 @@ test('hover-card：悬浮卡三飞书绿点 animationDelay 端到端错开（#33
   globalThis.document = docStub;
   globalThis.window = winStub;
   try {
-    const data = hover.buildCardData(W1, bots);
+    const data = cardModel.buildCardData(srcOf({ bots, assistants }));
     const dispose = hover.mountHoverCard({ matchRow: (n) => (n === row ? row : null), resolve: () => data }, 0);
     try {
       for (const fn of listeners.mouseover || []) fn({ target: row });
@@ -424,61 +514,80 @@ test('hover-card：悬浮卡三飞书绿点 animationDelay 端到端错开（#33
   }
 });
 
-
-test('hover-card：行四段（渠道logo/助理脸/助理名/右侧圆点）', async () => {
+test('card-render：结构（家行/分隔线/三种行/脚注；未绑定虚线无 logo；机器人行渠道 logo，#190 Q2/Q4 + 验收反馈）', () => {
   const bots = [
-    snap({ botId: 'f1', botName: '客服小美', avatarUrl: 'https://x/av1.png', lastCheckedAt: 5000 }),
-    snap({ botId: 'f2', botName: '夜班', avatarUrl: '', lastCheckedAt: 5000 }),
+    snap({ botId: 'f1', botName: '小洋', lastCheckedAt: 5000 }),
+    snap({ channel: 'weixin', botId: 'wx1', botName: '微信机器人', lastCheckedAt: 4000 }),
+    snap({ channel: 'qq', botId: 'qq1', botName: '', lastCheckedAt: 3000 }),
   ];
-  const faceOf = (b) => b.botId === 'f1'
-    ? { desc: { img: 'https://x/av1.png', tint: '', initial: '' }, name: '客服小美' }
-    : { desc: { img: null, tint: 'background:rgb(1,2,3);color:#fff', initial: '夜' }, name: '夜班' };
-  const row = stubEl('div');
+  const assistants = [
+    ASST({ id: 'a1', botId: 'f1', name: '小洋' }),
+    ASST({ id: 'a2', botId: null, status: 'unbound', channel: 'weixin', name: '调色板🎨', nameSource: 'user', createdAt: 2 }),
+    ASST({ id: 'a9', homeId: 'h9', channel: 'weixin', botId: 'wx1', name: '微信机器人', nameSource: 'user', createdAt: 9 }),
+  ];
+  const data = cardModel.buildCardData(srcOf({ bots, assistants }));
   const body = stubEl('body');
-  const listeners = {};
-  const docStub = {
-    createElement: (t) => stubEl(t),
-    body,
-    documentElement: stubEl('html'),
-    addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); },
-    removeEventListener: () => {},
-  };
-  const winStub = { innerWidth: 1024, innerHeight: 768, addEventListener: () => {}, removeEventListener: () => {} };
-  globalThis.document = docStub;
-  globalThis.window = winStub;
+  globalThis.document = { createElement: (t) => stubEl(t), body, documentElement: stubEl('html'), addEventListener: () => {}, removeEventListener: () => {} };
   try {
-    const data = hover.buildCardData(W1, bots, undefined, faceOf);
-    const dispose = hover.mountHoverCard({ matchRow: (n) => (n === row ? row : null), resolve: () => data }, 0);
-    try {
-      for (const fn of listeners.mouseover || []) fn({ target: row });
-      await new Promise((r) => setTimeout(r, 20));
-      const card = body.children.find((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card'));
-      assert.ok(card, '悬浮卡已挂载');
-      const rows = card.children.filter((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card-row'));
-      assert.equal(rows.length, 2);
-      const cls = (n) => String(n.attrs && n.attrs.class || '').split(' ');
-      // 行0：logo + 上传图脸 + 助理名 + 右侧圆点
-      assert.ok(String(rows[0].children[0].innerHTML || '').includes('data-channel-logo="feishu"'), '首格是渠道 logo');
-      const fc0 = rows[0].children[1];
-      assert.ok(cls(fc0).includes('left-badges-card-avatar'), '次格是助理脸');
-      const img = fc0.children.find((c) => c.tag === 'img');
-      assert.ok(img, '上传图挂 img');
-      assert.equal(img.attrs.src, 'https://x/av1.png');
-      assert.equal(rows[0].children[2].text, '客服小美', '助理名');
-      const dot0 = rows[0].children.find((c) => cls(c).includes('left-badges-card-dot'));
-      assert.ok(dot0, '状态点在');
-      assert.equal(rows[0].children[rows[0].children.length - 1], dot0, '圆点最右');
-      // 行1：色脸（style + 首字）
-      const fc1 = rows[1].children[1];
-      assert.equal(fc1.children.length, 0, '色脸不挂 img');
-      assert.equal(fc1.attrs.style, 'background:rgb(1,2,3);color:#fff', '色脸带底色');
-      assert.equal(fc1.text, '夜', '色脸首字');
-    } finally {
-      dispose();
-    }
+    const card = stubEl('div');
+    assert.equal(cardRender.renderCard(card, data), true);
+    const cls = (n) => String(n.attrs && n.attrs.class || '').split(' ');
+    const head = card.children[0];
+    assert.ok(cls(head).includes('left-badges-card-head'), '首块=家行');
+    assert.ok(cls(head.children[0]).includes('left-badges-card-avatar'), '家行头像在前');
+    assert.ok(String(head.children[0].innerHTML || '').includes('data-lb-glyph="home"'), '家行=房子图标');
+    assert.ok(cls(head.children[1]).includes('left-badges-card-name'), '家行名在后');
+    assert.equal(head.children[1].text, 'xiaoshuai');
+    assert.ok(cls(card.children[1]).includes('left-badges-card-sep'), '家行与助理行之间一条轻量分隔线');
+    const rows = card.children.filter((c) => cls(c).includes('left-badges-card-row'));
+    assert.equal(rows.length, 4, '已绑 + 未绑定 + 未归属机器人 + 无助理机器人');
+    // 行0：已绑助理＝logo + 脸 + 名 + 状态点
+    assert.ok(String(rows[0].children[0].innerHTML || '').includes('data-channel-logo="feishu"'), '首格渠道 logo');
+    assert.ok(cls(rows[0].children[1]).includes('left-badges-card-avatar'));
+    assert.equal(rows[0].children[2].text, '小洋');
+    assert.ok(cls(rows[0].children[rows[0].children.length - 1]).includes('left-badges-card-dot'), '已绑有状态点');
+    // 行1：未绑定＝虚线灰化 + 「未绑定」标签 + 无状态点 + 无渠道 logo
+    assert.ok(cls(rows[1]).includes('unbound'), '未绑定行标记');
+    assert.equal(rows[1].children.some((c) => String(c.innerHTML || '').includes('data-channel-logo')), false, '未绑定行不挂渠道 logo');
+    const dashed = rows[1].children.find((c) => cls(c).includes('left-badges-card-avatar'));
+    assert.ok(cls(dashed).includes('dashed'), '未绑定虚线');
+    const tag1 = rows[1].children.find((c) => cls(c).includes('left-badges-card-tag'));
+    assert.equal(tag1.text, '未绑定');
+    assert.equal(rows[1].children.find((c) => cls(c).includes('left-badges-card-dot')), undefined, '未绑定无状态点');
+    // 行2：未归属机器人＝渠道 logo + 机器人名 + 「未归属」+ 状态点
+    assert.ok(cls(rows[2]).includes('robot') && cls(rows[2]).includes('other-home'), '未归属机器人行');
+    assert.ok(String(rows[2].children[0].innerHTML || '').includes('data-channel-logo="weixin"'), '机器人行首格=渠道 logo（验收反馈三）');
+    assert.ok(cls(rows[2].children[0]).includes('logo'), '渠道 logo 首格不套机器人字形圆底');
+    assert.equal(rows[2].children.find((c) => cls(c).includes('left-badges-card-avatar')), undefined, '不用助理脸');
+    assert.equal(rows[2].children[1].text, '微信机器人', '用机器人名');
+    const tag2 = rows[2].children.find((c) => cls(c).includes('left-badges-card-tag'));
+    assert.equal(tag2.text, '未归属');
+    // 行3：无助理机器人
+    assert.ok(cls(rows[3]).includes('no-assistant'));
+    const tag3 = rows[3].children.find((c) => cls(c).includes('left-badges-card-tag'));
+    assert.equal(tag3.text, '无助理');
+    const foot = card.children[card.children.length - 1];
+    assert.ok(cls(foot).includes('left-badges-card-foot'));
+    assert.match(foot.text, /最后检测/);
   } finally {
     delete globalThis.document;
-    delete globalThis.window;
+  }
+});
+
+test('card-render：家上传头像铺图（有配置头像就展示头像，#190 Q2）', () => {
+  const data = cardModel.buildCardData(srcOf({ homes: [HOME({ avatar: 'img:home.png' })], images: new Map([['h1', 'data:image/png;base64,HOME']]) }));
+  const body = stubEl('body');
+  globalThis.document = { createElement: (t) => stubEl(t), body, documentElement: stubEl('html'), addEventListener: () => {}, removeEventListener: () => {} };
+  try {
+    const card = stubEl('div');
+    assert.equal(cardRender.renderCard(card, data), true);
+    const head = card.children[0];
+    const img = head.children[0].children.find((c) => c.tag === 'img');
+    assert.ok(img, '家上传图挂 img');
+    assert.equal(img.attrs.src, 'data:image/png;base64,HOME');
+    assert.equal(head.children[1].text, 'xiaoshuai');
+  } finally {
+    delete globalThis.document;
   }
 });
 
@@ -493,21 +602,19 @@ test('assistant-face：matchAssistant（精确/兜底/同路家/无）', () => {
   assert.equal(face.matchAssistant([A({ id: 'a-tomb', botId: null })], [H({ tombstone: { at: 1, reason: 'x' } })], { ...bot, botId: '' }, W1), null, '墓碑家不进');
 });
 
-test('assistant-face：faceFor 优先级（上传图>色脸>渠道图>首字）', () => {
+test('assistant-face：faceFor 优先级（上传图>归属色脸>渠道图>首字）', () => {
   const A = (over = {}) => ({ id: 'a-xw', homeId: 'h1', channel: 'feishu', botId: 'f1', status: 'bound', name: '', nameSource: 'bot', avatar: null, ...over });
   const H = [{ id: 'h1', path: W1 }];
   const bot = snap({ botId: 'f1', botName: '旧名', avatarUrl: 'https://c/b.png', lastCheckedAt: 1 });
-  // 上传图 + 用户改名
   const up = face.faceFor(bot, [A({ name: '小婉', nameSource: 'user', avatar: 'img:face.png' })], H, W1, new Map([['a-xw', 'data:image/png;base64,ZZZ']]));
   assert.equal(up.name, '小婉', '用户改名优先作助理名');
   assert.equal(up.desc.img, 'data:image/png;base64,ZZZ', '助理上传图优先');
-  // 图未到 → 色脸（预设 3 号色 + 名首字）
   const tint = face.faceFor(bot, [A({ name: '小婉', nameSource: 'user', avatar: '3' })], H, W1, new Map());
   assert.equal(tint.desc.img, null);
-  assert.equal(tint.desc.tint, face.faceStyle('a-xw', '3'), '预设色脸');
+  assert.equal(tint.desc.tint, identity.avatarStyleFor('assistant', 'a-xw', '3'), '助理暖亮色板（与面板同口径）');
+  assert.equal(tint.desc.icon, 'bot', '无图助理=机器人字形');
   assert.equal(tint.desc.initial, '小', 'CJK 取首字');
   assert.equal(tint.name, '小婉');
-  // 无助理 → 渠道图兜底；都无 → 首字
   const ch = face.faceFor(bot, [], [], W1, new Map());
   assert.equal(ch.desc.img, 'https://c/b.png', '无助理时渠道图兜底');
   const bare = face.faceFor(snap({ botId: '', botName: '', avatarUrl: '', lastCheckedAt: 1 }), [], [], W1, new Map());
@@ -515,19 +622,30 @@ test('assistant-face：faceFor 优先级（上传图>色脸>渠道图>首字）'
   assert.equal(bare.desc.initial, '未', '占位名首字');
 });
 
-test('assistant-face：视觉 parity（色相/字形与面板一致）', () => {
+test('assistant-face：视觉 parity（旧色板 + kind 归属色板/图标 + 字形逐字）', () => {
   for (const [id, av] of [['a1', null], ['a1', '3'], ['x', 'img:zzz'], ['n', '9'], ['k', '1']]) {
-    assert.equal(face.faceStyle(id, av), identity.avatarStyle(id, av), '底色一致：' + id + '/' + av);
+    assert.equal(face.faceStyle(id, av), identity.avatarStyle(id, av), '旧家色板一致：' + id + '/' + av);
   }
   for (const n of ['小婉', '客服小美', 'dsh-log', 'ab', 'x', '', '  ']) {
     assert.equal(face.initialsOf(n), identity.initialsOf(n), '字形一致：' + JSON.stringify(n));
   }
+  for (const kind of ['home', 'assistant']) {
+    for (const [id, av] of [['a1', null], ['a1', '3'], ['n', '9'], ['k', '1'], ['z', null]]) {
+      assert.equal(panelIdentity.avatarStyleFor(kind, id, av), identity.avatarStyleFor(kind, id, av), '归属色板一致：' + kind + '/' + id + '/' + av);
+      assert.deepEqual(panelIdentity.presetFor(kind, av), identity.presetFor(kind, av), '预置档一致：' + kind + '/' + av);
+    }
+    assert.equal(panelIdentity.avatarIconFor(kind), identity.avatarIconFor(kind), '归属图标一致：' + kind);
+  }
+  assert.equal(panelIdentity.GLYPH_PATHS.home, homeIcons.HU_ICON_PATHS.home, '房子字形逐字镜像');
+  assert.equal(panelIdentity.GLYPH_PATHS.bot, homeIcons.HU_ICON_PATHS.bot, '机器人字形逐字镜像');
+  assert.ok(panelIdentity.glyphSvg('home').includes('data-lb-glyph="home"'));
+  assert.ok(panelIdentity.glyphSvg('bot', 12).includes('width="12"'));
   assert.equal(face.hasFaceImage('img:face.png'), true);
   assert.equal(face.hasFaceImage('3'), false);
   assert.equal(face.hasFaceImage(null), false);
 });
 
-test('assistant-face：paintFace（img/色脸）', () => {
+test('assistant-face：paintFace（img/色脸/归属图标）', () => {
   const body = stubEl('body');
   globalThis.document = { createElement: (t) => stubEl(t), body, documentElement: stubEl('html'), addEventListener: () => {}, removeEventListener: () => {} };
   try {
@@ -540,6 +658,11 @@ test('assistant-face：paintFace（img/色脸）', () => {
     assert.equal(tinted.children.length, 0);
     assert.equal(tinted.attrs.style, 'background:X;color:Y');
     assert.equal(tinted.text, '小');
+    const icon = face.paintFace({ img: null, tint: 'background:X;color:Y', initial: '小', icon: 'bot' });
+    assert.ok(String(icon.innerHTML).includes('data-lb-glyph="bot"'), '归属图标挂 svg');
+    assert.equal(icon.text, '', '有图标不再写首字');
+    const home = face.paintFace({ img: null, tint: '', initial: 'X', icon: 'home' });
+    assert.ok(String(home.innerHTML).includes('data-lb-glyph="home"'));
     const bare = face.paintFace({ img: null, tint: '', initial: '' });
     assert.equal(bare.text, '?', '空首字回 ?');
   } finally {
@@ -547,7 +670,7 @@ test('assistant-face：paintFace（img/色脸）', () => {
   }
 });
 
-test('assistant-face：mountAssistantFaces（home.list + avatar.get，rpc 空回落）', async () => {
+test('assistant-face：mountAssistantFaces（home.list + avatar.get，snapshot 直通，rpc 空回落）', async () => {
   const homes = [{ id: 'h1', path: W1 }];
   const assistants = [{ id: 'a-xw', homeId: 'h1', channel: 'feishu', botId: 'f1', status: 'bound', name: '小婉', nameSource: 'user', avatar: 'img:face.png' }];
   const seen = [];
@@ -563,92 +686,72 @@ test('assistant-face：mountAssistantFaces（home.list + avatar.get，rpc 空回
   const hit = faces.faceOf(snap({ botId: 'f1', botName: '旧名', lastCheckedAt: 1 }), W1);
   assert.equal(hit.name, '小婉', '助理名');
   assert.equal(hit.desc.img, 'data:image/png;base64,ZZZ', '助理上传图');
+  const snap1 = faces.snapshot();
+  assert.equal(snap1.homes[0].id, 'h1', 'snapshot 带家表（卡片实体分类数据源）');
+  assert.equal(snap1.assistants[0].id, 'a-xw');
+  assert.equal(snap1.images.get('a-xw'), 'data:image/png;base64,ZZZ');
   const mute = face.mountAssistantFaces(null);
   await mute.refresh();
   const fb = mute.faceOf(snap({ botId: 'f1', botName: '旧名', avatarUrl: 'https://c/b.png', lastCheckedAt: 1 }), W1);
   assert.equal(fb.desc.img, 'https://c/b.png', '无 rpc 回落渠道图');
 });
 
+test('assistant-face：取图失败可重试（异常重试到账；宿主明确无图负缓存不再问，#190 验收问题二）', async () => {
+  const homes = [{ id: 'h1', path: W1 }];
+  const assistants = [{ id: 'a-xw', homeId: 'h1', channel: 'feishu', botId: 'f1', status: 'bound', name: '小婉', nameSource: 'user', avatar: 'img:face.png' }];
+  let avatarCalls = 0;
+  const rpc = async (ch, endpoint) => {
+    if (endpoint === 'home.list') return { ok: true, value: { homes, assistants } };
+    if (endpoint === 'avatar.get') {
+      avatarCalls += 1;
+      if (avatarCalls === 1) throw new Error('bridge timeout');
+      return { ok: true, value: { images: { 'a-xw': 'data:image/png;base64,ZZZ' } } };
+    }
+    throw new Error('bad ' + endpoint);
+  };
+  const faces = face.mountAssistantFaces(rpc);
+  await faces.refresh();
+  assert.equal(faces.snapshot().images.get('a-xw'), undefined, '首次取图异常不落图（旧实现从此不再问）');
+  await faces.refresh();
+  assert.equal(avatarCalls, 2, '失败后可再问一次');
+  assert.equal(faces.snapshot().images.get('a-xw'), 'data:image/png;base64,ZZZ', '重试后头像到账');
+  let asks = 0;
+  const gone = [{ id: 'a-gone', homeId: 'h1', channel: 'feishu', botId: 'f2', status: 'bound', name: '无图', nameSource: 'user', avatar: 'img:gone.png' }];
+  const rpc2 = async (ch, endpoint) => {
+    if (endpoint === 'home.list') return { ok: true, value: { homes, assistants: gone } };
+    if (endpoint === 'avatar.get') { asks += 1; return { ok: true, value: { images: {} } }; }
+    throw new Error('bad ' + endpoint);
+  };
+  const muted = face.mountAssistantFaces(rpc2);
+  await muted.refresh();
+  await muted.refresh();
+  assert.equal(asks, 1, '宿主明确答复无图：负缓存不再重复问');
+});
 
-test('assistant-face：homeFaceFor（顶栏工作区脸：上传图>色脸>无家首字）', () => {
+test('assistant-face：homeFaceFor（家上传图>归属色脸（房子图标）>无家首字）', () => {
   const H = (over = {}) => ({ id: 'h1', path: W1, avatar: null, ...over });
   const imgs = new Map([['h1', 'data:image/png;base64,HOME']]);
-  // 家上传图已到
   const up = face.homeFaceFor(W1, 'xiaowan', [H({ avatar: 'img:face.png' })], imgs);
   assert.equal(up.desc.img, 'data:image/png;base64,HOME', '家上传图');
   assert.equal(up.name, 'xiaowan', '名用顶栏名');
-  // 图未到 → 预设色脸 + 顶栏名派字
   const tint = face.homeFaceFor(W1, 'xiaowan', [H({ avatar: '3' })], new Map());
   assert.equal(tint.desc.img, null);
   assert.equal(tint.desc.tint, face.faceStyle('h1', '3'), '家预设色脸');
+  assert.equal(tint.desc.icon, 'home', '无图家=房子图标');
   assert.equal(tint.desc.initial, 'XI', '拉丁取前两字母');
-  // CJK 顶栏名取首字；默认按家 id 派生（改名不换色）
   const cjk = face.homeFaceFor(W1, '小婉的区', [H({ avatar: null })], new Map());
   assert.equal(cjk.desc.initial, '小');
   assert.equal(cjk.desc.tint, face.faceStyle('h1', null), '默认按家 id 派生');
-  // 无家/墓碑家 → 灰底首字
   const bare = face.homeFaceFor(W1, 'xiaowan', [], new Map());
   assert.equal(bare.desc.img, null);
   assert.equal(bare.desc.tint, '');
+  assert.equal(bare.desc.icon, undefined, '无家不挂房子图标');
   assert.equal(bare.desc.initial, 'XI');
   const tomb = face.homeFaceFor(W1, 'xiaowan', [H({ tombstone: { at: 1, reason: 'x' } })], new Map());
   assert.equal(tomb.desc.tint, '', '墓碑家视同无家');
 });
 
-test('hover-card：顶栏工作区头像（脸+名，数据直通）', () => {
-  const bots = [snap({ botId: 'f1', botName: '小婉', lastCheckedAt: 5000 })];
-  const homeFace = { desc: { img: null, tint: 'background:rgb(9,9,9);color:#fff', initial: 'X' }, name: 'xiaowan' };
-  const d = hover.buildCardData(W1, bots, 'xiaowan', undefined, homeFace);
-  assert.equal(d.agent, 'xiaowan');
-  assert.equal(d.face, homeFace.desc, '顶栏脸直通');
-  const fb = hover.buildCardData(W1, bots, 'xiaowan');
-  assert.equal(fb.face.img, null);
-  assert.equal(fb.face.initial, 'XI', '不传脸回名派字');
-});
-
-test('hover-card：顶栏两段（头像+工作区名，头像在前）', async () => {
-  const bots = [snap({ botId: 'f1', botName: '小婉', lastCheckedAt: 5000 })];
-  const data = hover.buildCardData(W1, bots, 'xiaowan', undefined,
-    { desc: { img: 'data:image/png;base64,HOME', tint: '', initial: '' }, name: 'xiaowan' });
-  const row = stubEl('div');
-  const body = stubEl('body');
-  const listeners = {};
-  const docStub = {
-    createElement: (t) => stubEl(t),
-    body,
-    documentElement: stubEl('html'),
-    addEventListener: (t, fn) => { (listeners[t] = listeners[t] || []).push(fn); },
-    removeEventListener: () => {},
-  };
-  const winStub = { innerWidth: 1024, innerHeight: 768, addEventListener: () => {}, removeEventListener: () => {} };
-  globalThis.document = docStub;
-  globalThis.window = winStub;
-  try {
-    const dispose = hover.mountHoverCard({ matchRow: (n) => (n === row ? row : null), resolve: () => data }, 0);
-    try {
-      for (const fn of listeners.mouseover || []) fn({ target: row });
-      await new Promise((r) => setTimeout(r, 20));
-      const card = body.children.find((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card'));
-      assert.ok(card, '悬浮卡已挂载');
-      const head = card.children.find((c) => String(c.attrs && c.attrs.class || '').split(' ').includes('left-badges-card-head'));
-      assert.ok(head, '顶栏在');
-      const cls = (n) => String(n.attrs && n.attrs.class || '').split(' ');
-      assert.ok(cls(head.children[0]).includes('left-badges-card-avatar'), '顶栏首格是工作区头像');
-      const img = head.children[0].children.find((c) => c.tag === 'img');
-      assert.ok(img, '家上传图挂 img');
-      assert.equal(img.attrs.src, 'data:image/png;base64,HOME');
-      assert.ok(cls(head.children[1]).includes('left-badges-card-name'), '次格是工作区名');
-      assert.equal(head.children[1].text, 'xiaowan');
-    } finally {
-      dispose();
-    }
-  } finally {
-    delete globalThis.document;
-    delete globalThis.window;
-  }
-});
-
-test('assistant-face：mountAssistantFaces 兼取家图 + homeFaceOf', async () => {
+test('assistant-face：mountAssistantFaces 兼取家图 + homeFaceOf + snapshot', async () => {
   const homes = [{ id: 'h1', path: W1, avatar: 'img:home.png' }];
   const assistants = [];
   let askedIds = [];
@@ -663,7 +766,7 @@ test('assistant-face：mountAssistantFaces 兼取家图 + homeFaceOf', async () 
   const hit = faces.homeFaceOf(W1, 'xiaowan');
   assert.equal(hit.desc.img, 'data:image/png;base64,HOME', '顶栏家图');
   assert.equal(hit.name, 'xiaowan');
+  assert.equal(faces.snapshot().images.get('h1'), 'data:image/png;base64,HOME');
 });
-
 rmSync(tmp, { recursive: true, force: true });
 console.log('features/left-badges: ALL PASS');

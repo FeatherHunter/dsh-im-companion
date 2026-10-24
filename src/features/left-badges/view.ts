@@ -5,7 +5,8 @@ import { badgeForWorkspace } from '../../client/data/bindings'
 import { EMPTY_WORKSPACE_INDEX, resolveRowWorkspace, workspaceIdOfRow, workspaceIndexOf, type WorkspaceIndex } from '../../client/data/workspace-index'
 import { logLine, logOn } from '../../client/log'
 import type { BotSnap } from '../../client/data/fleet-api'
-import { buildCardData, mountHoverCard } from './hover-card'
+import { mountHoverCard } from './hover-card'
+import { buildCardData } from './card-model'
 import { mountAssistantFaces } from './assistant-face'
 import type { StreamSnapshot } from '../../client/data/connection-stream'
 import type { FeatureCtx } from '../protocol'
@@ -162,14 +163,11 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
   let customNames: Record<string, string> = {}
   let observer: MutationObserver | undefined
   const faces = mountAssistantFaces(ctx.rpc)
-  let faceSig = ''
-  let faceTicks = 0
+  /* 每次 stream 快照都交给 faces 自己判定要不要真打 RPC（家表 TTL 60s + 仅待取图清单 ⇒ 空转不打桥）。
+     旧实现只在挂载时调一次：首次取图超时后头像永不出现（#190 验收问题二）。 */
   const faceTick = (): void => {
     try {
-      faceTicks++
-      const sep = '\0'
-      const sig = current.map((x) => x.channel + sep + (x.botId ?? '') + sep + (x.workspace ?? '')).join('|')
-      if (sig !== faceSig || faceTicks % 4 === 1) { faceSig = sig; void faces.refresh() }
+      void faces.refresh()
     } catch { /* 脸刷新失败不影响徽标 */ }
   }
   const repaint = (): void => {
@@ -203,6 +201,7 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
       }
       if (!genAlive(activeGen)) return
       repaint()
+      faceTick()
     })
   } catch (e) {
     logLine('error', 'feature.mount.fail', { feature: 'left-badges', message: String((e as Error)?.message ?? e) })
@@ -235,8 +234,15 @@ export function mountLeftBadges(ctx: FeatureCtx): () => void {
           const index = ctxGet ? workspaceIndexOf(ctxGet) : EMPTY_WORKSPACE_INDEX
           const ws = resolveWorkspace(key, current, workspaceIdOfRow(row), index)
           const custom = customNames[ws] || customNames[basenameOf(ws)] || ''
-          const agent = custom || badgeForWorkspace(ws, current).agent
-          return buildCardData(ws, current, custom || undefined, (x) => faces.faceOf(x, ws), faces.homeFaceOf(ws, agent))
+          const snap = faces.snapshot()
+          return buildCardData({
+            workspacePath: ws,
+            bots: current,
+            homes: snap.homes,
+            assistants: snap.assistants,
+            images: snap.images,
+            displayName: custom || undefined,
+          })
         } catch {
           return null
         }

@@ -22,10 +22,20 @@ div[role="treeitem"][aria-expanded][data-lb-kind="offline"]::after { background:
 
 .left-badges-card-dot.warn { background: var(--dsw-alias-state-warn-primary, #f59e0b); }
 .left-badges-card-dot.offline { background: color-mix(in srgb, currentColor 40%, transparent); }
-.left-badges-card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 0; }
+.left-badges-card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 0; }
 .left-badges-card-avatar { display: inline-flex; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary, #6e6e73); border-radius: 50%; overflow: hidden; background: color-mix(in srgb, currentColor 12%, transparent); font-size: 10px; font-weight: 700; }
 .left-badges-card-glyph { display: inline-flex; width: 16px; height: 16px; flex: none; align-items: center; justify-content: center; color: var(--dsw-alias-label-secondary, #6e6e73); }
 .left-badges-card-avatar img { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; display: block; }
+.left-badges-card-avatar svg { display: block; }
+/* #190 Q2=A：家行与助理行之间只有一条轻量分隔线（不加文字标签）。 */
+.left-badges-card-sep { height: 1px; margin: 2px 0 6px; background: color-mix(in srgb, var(--dsw-alias-label-primary, #1c1c1e) 14%, transparent); }
+/* 未绑定助理：灰化虚线身份（不出状态点）。 */
+.left-badges-card-avatar.dashed { box-sizing: border-box; background: transparent; border: 1.5px dashed color-mix(in srgb, currentColor 55%, transparent); color: color-mix(in srgb, currentColor 55%, transparent); }
+/* 游离机器人两档：首格用渠道 logo（品牌色保留）；未知渠道回落机器人字形＋灰化圆底。不用助理名/脸。 */
+.left-badges-card-glyph.robot { border-radius: 50%; background: color-mix(in srgb, currentColor 8%, transparent); color: var(--dsw-alias-label-tertiary, #98989d); }
+.left-badges-card-glyph.logo { background: transparent; }
+.left-badges-card-row.robot .left-badges-card-label { color: var(--dsw-alias-label-secondary, #6e6e73); }
+.left-badges-card-tag { flex: none; margin-left: auto; padding: 0 6px; border-radius: 999px; font-size: 10px; line-height: 14px; font-weight: 600; color: var(--dsw-alias-label-tertiary, #98989d); border: 1px solid color-mix(in srgb, currentColor 30%, transparent); white-space: nowrap; }
 .left-badges-card-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dsw-alias-label-primary, #1c1c1e); }
 .left-badges-card-foot { margin-top: 6px; font-size: 10px; line-height: 14px; color: var(--dsw-alias-label-tertiary, #98989d); font-variant-numeric: tabular-nums; }
 @media (prefers-reduced-motion: reduce) { .left-badges-card-dot.online, div[role="treeitem"][aria-expanded][data-lb-kind="online"]::after { animation: none; } }

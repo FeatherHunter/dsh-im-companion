@@ -1,88 +1,28 @@
-/** left-badges 自画悬浮卡：行悬停约 0.3s 出卡（渠道 logo + 助理脸 + 助理名 + 状态点 + 检测时间），纯视觉补充。\n * 委托监听不绑行（重渲染免疫）；滚轮/尺寸/Esc/点击/移出即藏；未绑定无卡。\n * 视觉第一：logo 认渠道、脸认助理、点认状态；每行追加 Bot 标识文本（#31：同渠道多 Bot 可辨别）。 */
-import { badgeForWorkspace, lastCheckedText } from '../../client/data/bindings'
-import { botDisplayLabel, type BotSnap } from '../../client/data/fleet-api'
-import { HEALTH_LABELS, channelLabel, healthOf, type HealthKind } from '../../client/data/config'
-import { channelGlyphSvg } from '../../client/icons'
-import { initialsOf, paintFace, type FaceDesc, type FaceHit, type FaceOf } from './assistant-face'
-import { BREATH_BASE_MS, BREATH_SLOT_MS, breathPhase } from './styles'
+/** left-badges 自画悬浮卡：行悬停约 0.3s 出卡（家行 + 分隔线 + 助理/机器人行 + 检测时间），纯视觉补充。
+ * 委托监听不绑行（重渲染免疫）；滚轮/尺寸/Esc/点击/移出即藏。
+ * 本文件只管悬停生命周期与定位；卡片内容结构在 card-render，数据在 card-model。
+ * 视觉第一：logo 认渠道、脸认助理、机器人字形认游离、点认状态。 */
 import { logLine, logOn } from '../../client/log'
+import { CARD_CLASS, renderCard } from './card-render'
+import type { CardData } from './card-model'
 
-export interface CardChannel {
-  channel: string
-  kind: HealthKind
-  glyph: string | null
-  face: FaceHit
-  label: string
-  bot: string
-}
-
-export interface CardData {
-  agent: string
-  face: FaceDesc
-  kind: HealthKind
-  channels: CardChannel[]
-  time: string
-}
-
-/** 卡片数据（纯函数可单测）：未绑定返回 null（无卡）。 */
-export function buildCardData(workspacePath: string, bots: BotSnap[], displayName?: string, faceOf?: FaceOf, homeFace?: FaceHit | null): CardData | null {
-  try {
-    const badge = badgeForWorkspace(workspacePath, bots)
-    if (badge.kind === 'unbound') return null
-    const bound = bots.filter((b) => b.workspace === workspacePath)
-    if (!bound.length) return null
-    const agent = displayName || badge.agent
-    return {
-      agent,
-      face: homeFace?.desc ?? { img: null, tint: '', initial: initialsOf(agent) },
-      kind: badge.kind,
-      channels: bound.map((b) => {
-        const hit = faceOf ? faceOf(b) : null
-        const url = (b.avatarUrl || '').trim()
-        return {
-          channel: b.channel,
-          kind: b.stale ? 'warn' : healthOf(b.healthStatus, b.connected),
-          glyph: channelGlyphSvg(b.channel, 16),
-          face: hit ?? { desc: { img: url || null, tint: '', initial: '' }, name: '' },
-          label: (hit && hit.name) || botDisplayLabel(b),
-          bot: b.botId ?? '',
-        }
-      }),
-      time: lastCheckedText(bound),
-    }
-  } catch {
-    return null
-  }
-}
-
-const CARD_CLASS = 'left-badges-card'
-const HEAD_CLASS = 'left-badges-card-head'
-const NAME_CLASS = 'left-badges-card-name'
-const DOT_CLASS = 'left-badges-card-dot'
-const ROW_CLASS = 'left-badges-card-row'
-const GLYPH_CLASS = 'left-badges-card-glyph'
-const LABEL_CLASS = 'left-badges-card-label'
-const FOOT_CLASS = 'left-badges-card-foot'
+export type { CardData } from './card-model'
 
 export interface HoverDeps {
   matchRow: (el: Element | null) => Element | null
   resolve: (row: Element) => CardData | null
 }
 
-function el(tag: string, cls: string, text?: string): HTMLElement | null {
+function el(tag: string, cls: string): HTMLElement | null {
   try {
     if (typeof document === 'undefined') return null
     const d = document.createElement(tag)
     d.setAttribute('class', cls)
-    if (typeof text === 'string') d.textContent = text
     return d as unknown as HTMLElement
   } catch {
     return null
   }
 }
-
-
-const dot = (kind: HealthKind): HTMLElement | null => el('span', DOT_CLASS + ' ' + kind)
 
 export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
   const noop = (): void => {}
@@ -148,44 +88,8 @@ export function mountHoverCard(deps: HoverDeps, dwellMs = 300): () => void {
         const host = document.body ?? document.documentElement
         host.appendChild(card)
       }
-      const c = card as unknown as { style?: { display?: string; visibility?: string }; replaceChildren: (...n: unknown[]) => void }
-      try { c.replaceChildren() } catch { /* 忽略 */ }
-      const head = el('div', HEAD_CLASS)
-      const face = paintFace(data.face)
-      const name = el('span', NAME_CLASS, data.agent)
-      if (!head || !face || !name) return false
-      head.appendChild(face)
-      head.appendChild(name)
-      const parts: unknown[] = [head]
-      const seen = new Map<string, number>()
-      for (const ch of data.channels) {
-        const row = el('div', ROW_CLASS)
-        if (!row) continue
-        try { row.setAttribute('aria-label', channelLabel(ch.channel) + ' ' + ch.label + ' ' + HEALTH_LABELS[ch.kind]) } catch { /* 忽略 */ }
-        const gl = el('span', GLYPH_CLASS)
-        const fc = paintFace(ch.face.desc)
-        const lab = el('span', LABEL_CLASS, ch.label)
-        const d = dot(ch.kind)
-        if (!gl || !fc || !lab || !d) continue
-        try { lab.setAttribute('title', ch.label) } catch { /* 忽略 */ }
-        try {
-          const i = seen.get(ch.channel) ?? 0
-          seen.set(ch.channel, i + 1)
-          const ph = breathPhase(ch.channel, ch.label + '\0' + (ch.bot || ''), (i * BREATH_SLOT_MS) % BREATH_BASE_MS)
-          const st = (d as unknown as { style?: { animationDelay?: string; animationDuration?: string } }).style
-          if (st) { st.animationDelay = ph.delay; st.animationDuration = ph.duration }
-        } catch { /* 忽略 */ }
-        try { if (ch.glyph) (gl as unknown as { innerHTML?: string }).innerHTML = ch.glyph; else gl.textContent = (ch.channel || '?').slice(0, 1).toUpperCase() } catch { /* 忽略 */ }
-        row.appendChild(gl)
-        row.appendChild(fc)
-        row.appendChild(lab)
-        row.appendChild(d)
-        parts.push(row)
-      }
-      const foot = el('div', FOOT_CLASS, data.time)
-      if (!foot) return false
-      parts.push(foot)
-      for (const p of parts) (card as unknown as { appendChild: (n: unknown) => void }).appendChild(p)
+      const c = card as unknown as { style?: { display?: string; visibility?: string } }
+      if (!renderCard(card, data)) return false
       if (c.style) {
         c.style.display = 'block'
         c.style.visibility = 'hidden'

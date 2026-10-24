@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>B2 左栏悬浮卡三态原型（抛弃式 · #190）</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Noto Sans SC","Segoe UI",Roboto,sans-serif;background:#0b0d12;color:#e8eaf0;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1240px;margin:0 auto;padding:26px 20px 60px}
+  .proto-tag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;color:#fff;background:#b42318;border-radius:6px;padding:3px 8px;margin-bottom:10px}
+  h1{font-size:23px;margin:0 0 6px;letter-spacing:-.02em}
+  .lede{font-size:13.5px;color:#9aa0ae;margin:0 0 6px;line-height:1.7}
+  .lede b{color:#e8eaf0}
+  .grid{display:grid;gap:18px;margin-top:22px}
+  @media(min-width:1080px){.grid{grid-template-columns:1fr 1fr 1fr}}
+  .case{background:#0f1420;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:14px 14px 18px}
+  .case h3{margin:0 0 3px;font-size:14px}
+  .case .sub{font-size:11.5px;color:#9aa0ae;line-height:1.6;margin:0 0 12px}
+  .rail{background:#151924;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:6px 8px}
+  .railrow{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:7px;font-size:12.5px;cursor:pointer}
+  .railrow:hover{background:rgba(255,255,255,.06)}
+  .chev{color:#7d8494;font-size:10px;width:10px;flex:none}
+  .wsname{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#dfe3ec}
+  .badge{display:inline-flex;align-items:center;gap:5px;padding:1px 8px 1px 6px;border-radius:999px;font-size:10px;line-height:16px;font-weight:600;background:rgba(255,255,255,.07);color:#cfd4df;flex:none}
+  .badge .bdot{width:7px;height:7px;border-radius:50%}
+  .badge.online .bdot{background:#30d158;box-shadow:0 0 0 0 rgba(48,209,88,.5);animation:br 1.6s infinite}
+  .badge.unbound{color:#9aa0ae}
+  .badge.unbound .bdot{background:transparent;border:1.5px solid #7d8494;width:4px;height:4px}
+  @keyframes br{0%{box-shadow:0 0 0 0 rgba(48,209,88,.5)}70%{box-shadow:0 0 0 6px rgba(48,209,88,0)}100%{box-shadow:0 0 0 0 rgba(48,209,88,0)}}
+  .hoverhint{display:flex;align-items:center;gap:6px;margin:12px 0 10px;font-size:11px;color:#7d8494}
+  .hoverhint::before{content:"";width:22px;height:1px;background:#39404f}
+  /* ---- 卡片本体：与 styles.ts 同骨架，新增 sep/unbound/robot 三处 ---- */
+  .lb-card{width:256px;padding:10px 12px 8px;border-radius:12px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 32px rgba(0,0,0,.28);color:#e8eaf0;font-size:12px;line-height:18px;--ink:#e8eaf0;--ink2:#9aa0ae}
+  .lb-card-head{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .lb-card-name{flex:1 1 auto;min-width:0;font-size:13px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lb-card-sep{height:1px;margin:0 0 5px;background:rgba(255,255,255,.13)}
+  .lb-row{display:flex;align-items:center;gap:8px;padding:2px 0}
+  .lb-av{width:16px;height:16px;flex:none;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;overflow:hidden;font-size:10px;font-weight:700;color:#fff}
+  .lb-av svg{display:block}
+  .lb-av img{width:16px;height:16px;object-fit:cover;border-radius:50%;display:block}
+  .lb-av.unbound{border:1.5px dashed rgba(232,234,240,.7);opacity:.8;background:transparent!important;color:#9aa0ae;box-shadow:none}
+  .lb-glyph{width:16px;height:16px;flex:none;display:inline-flex;align-items:center;justify-content:center;color:#9aa0ae}
+  .lb-glyph svg{display:block}
+  .lb-glyph.robot{color:#c6ccd8;background:rgba(255,255,255,.08);border-radius:50%}
+  .lb-glyph.robot.logo{color:inherit;background:transparent}
+  .lb-label{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e8eaf0}
+  .lb-row.unbound .lb-label{color:#9aa0ae}
+  .lb-row.robot .lb-label{color:#c6ccd8}
+  .lb-tag{flex:none;font-size:10px;line-height:14px;padding:1px 6px;border-radius:999px;color:#9aa0ae;background:rgba(255,255,255,.08);white-space:nowrap}
+  .lb-row.robot .lb-tag{background:rgba(255,255,255,.05);color:#8b92a1;border:1px solid rgba(255,255,255,.09)}
+  .lb-dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .lb-dot.online{background:#30d158;animation:br 1.6s infinite}
+  .lb-dot.warn{background:#ff9f0a}
+  .lb-dot.offline{background:rgba(232,234,240,.35)}
+  .lb-foot{margin-top:6px;font-size:10px;line-height:14px;color:#9aa0ae;font-variant-numeric:tabular-nums}
+  .lb-ch{color:#07C160}
+  /* 浅色主题对照 */
+  .lightband{margin-top:26px;background:#f2f3f5;border-radius:16px;padding:18px 18px 22px;color:#1c1c1e}
+  .lightband h2{margin:0 0 4px;font-size:16px}
+  .lightband .sub{font-size:11.5px;color:#6e6e73;margin:0 0 14px}
+  .lightband .lb-card{background:rgba(28,28,30,.045);border-color:rgba(28,28,30,.14);color:#1c1c1e;--ink:#1c1c1e;--ink2:#6e6e73;box-shadow:0 10px 26px rgba(0,0,0,.12)}
+  .lightband .lb-card-sep{background:rgba(28,28,30,.18)}
+  .lightband .lb-label{color:#1c1c1e}
+  .lightband .lb-row.unbound .lb-label{color:#6e6e73}
+  .lightband .lb-row.robot .lb-label{color:#5f636b}
+  .lightband .lb-tag{background:rgba(28,28,30,.07);color:#6e6e73}
+  .lightband .lb-row.robot .lb-tag{background:rgba(28,28,30,.04);color:#6e6e73;border-color:rgba(28,28,30,.1)}
+  .lightband .lb-glyph.robot{color:#5f636b;background:rgba(28,28,30,.08)}
+  .lightband .lb-av.unbound{border-color:rgba(28,28,30,.58)}
+  .lightband .lb-foot{color:#6e6e73}
+  .lightband .lb-ch{color:#0a9e4f}
+  .notes{margin-top:24px;background:#0f1420;border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:16px 18px}
+  .notes h2{margin:0 0 8px;font-size:15px}
+  .notes ol{margin:0;padding-left:20px;font-size:12.5px;line-height:1.85;color:#c3c8d4}
+  .notes b{color:#e8eaf0}
+  .notes .q{color:#ffd60a}
+  .legend{display:flex;gap:22px;flex-wrap:wrap;margin-top:14px;font-size:11.5px;color:#9aa0ae}
+  .legend .item{display:flex;align-items:center;gap:7px}
+  .legend .big{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+  .legend .big svg{display:block}
+  .foot{margin-top:18px;font-size:11px;color:#6e7483;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="proto-tag">PROTOTYPE · 抛弃式 · 不进生产 · #190 原型闸门</span>
+  <h1>左栏工作区悬浮卡 · 三态视觉原型</h1>
+  <p class="lede">按维护者拍板（Q1=A 单票 / Q2=A 轻量：面板家身份 + 轻量分隔线、不加文字标签 / Q3=B 无 bot 也出卡 / Q4=A 两档游离标识）画的<b>静态原型</b>，真机数据取自 #190 复现条。点头后才改 <code>src/features/left-badges/</code>。</p>
+  <p class="lede">身份规则与面板同源：<b>家＝房子图标 + 家色板（有上传图则用图）</b>；助理＝机器人字形 + 暖亮色板；游离机器人＝<b>渠道 logo</b>（未知渠道回落灰色机器人字形），不用助理名/脸。</p>
+
+  <div class="grid" id="cases"></div>
+
+  <div class="lightband">
+    <h2>浅色主题对照（同一套规则，颜色走主题变量）</h2>
+    <p class="sub">左栏悬浮卡在浅色主题下同样成立：分隔线、灰化未绑定、机器人行都不依赖固定底色。</p>
+    <div id="lightcases" style="display:flex;gap:20px;flex-wrap:wrap"></div>
+  </div>
+
+  <div class="notes">
+    <h2>这版原型要你确认的点</h2>
+    <ol>
+      <li><b>家行</b>：房子图标＋家色板（与面板家行同规则），有上传图则显示图；家行与下面行之间只有<b>一条轻量分隔线</b>，不加「HOME/家」文字标签。</li>
+      <li><b>未绑定助理</b>：淡色虚线头像＋灰化名＋右侧「未绑定」小标签，<b>不挂渠道 logo</b>、不挂状态点（二次验收反馈①）；已绑定助理行 = 渠道 logo＋助理身份头像（有配置头像显示头像）＋名＋状态点。</li>
+      <li><b>游离机器人</b>：<b>首格＝渠道 logo</b>（未知渠道回落灰色机器人字形）＋机器人显示名，两档标签「未归属」（匹配到助理但助理属于别家）/「无助理」（完全匹配不到助理）；保留真实状态点；都不使用助理名/助理脸（二次验收反馈③）。</li>
+      <li>助理行头像已统一为面板助理身份（机器人字形＋暖亮色板）；<b>有配置头像时显示头像</b>（二次验收反馈②已按此实现）。</li>
+    </ol>
+    <div class="legend" id="legend"></div>
+  </div>
+  <p class="foot">原型路径：prototypes/left-badges/prototype-b2-hover-card.html · 抛弃式，不进生产；截图仅用于原型闸门确认。</p>
+</div>
+
+<script>
+/* ---- 面板身份镜像（与 src/client/components/home-identity.ts 同规则；原型内联） ---- */
+var HUE=[174,205,262,32,340,150];
+var PRESETS=[["#17181C","#FFFFFF"],["#4D6BFE","#FFFFFF"],["#2F4A44","#FFFFFF"],["#4E6E8E","#FFFFFF"],["#7A3E5A","#FFFFFF"],["#C4B49A","#1B1B1F"],["#B5473A","#FFFFFF"],["#7C3AED","#FFFFFF"],["#0E8A43","#FFFFFF"]];
+var ASST_PRESETS=[["#101418","#FFD9A0"],["#0B5A6E","#C8F4FF"],["#8A3D00","#FFD9B0"],["#4A5A10","#EFFFC0"],["#5E1060","#E3B0FF"],["#F0C8A0","#3A2410"],["#B01E4E","#FFC2D4"],["#2E1B8A","#C9B0FF"],["#0E6E35","#C2FFD6"]];
+function hash32(s){var h=0x811c9dc5;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)}return h>>>0}
+function hueOf(id,avatar){var i=avatar==null?-1:parseInt(avatar,10)-1;if(i>=0&&i<HUE.length)return HUE[i];return HUE[hash32(String(id||''))%HUE.length]}
+function presetFor(kind,avatar){var i=avatar==null?-1:parseInt(avatar,10)-1;var t=kind==='home'?PRESETS:ASST_PRESETS;return (i>=0&&i<t.length)?t[i]:null}
+function avatarStyleFor(kind,id,avatar){var p=presetFor(kind,avatar);return p?{background:p[0],color:p[1]}:{background:'hsl('+hueOf(id,null)+' 62% 30%)',color:'#fff'}}
+var ICON={
+  home:'<path d="M2 7.6l6-4.8 6 4.8V14H9.6v-4H6.4v4H2V7.6z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>',
+  bot:'<rect x="3" y="5.2" width="10" height="7" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6.3" cy="8.6" r="1" fill="currentColor"/><circle cx="9.7" cy="8.6" r="1" fill="currentColor"/><path d="M8 5.2V2.8M5.8 2.8h4.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'
+};
+function huIcon(name,size,cls){return '<svg viewBox="0 0 16 16" width="'+size+'" height="'+size+'" class="'+(cls||'')+'" aria-hidden="true">'+ICON[name]+'</svg>'}
+/* 渠道 logo：微信 / 飞书（与 icons.ts channelGlyphSvg 同路径，仅原型用） */
+var CH={
+  weixin:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#07C160" d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1-.023-.156.49.49 0 0 1 .201-.398C23.024 18.48 24 16.82 24 14.98c0-3.21-2.931-5.837-6.656-6.088V8.89c-.135-.01-.27-.027-.407-.03zm-2.53 3.274c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.97-.982zm4.844 0c.535 0 .969.44.969.982a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.542.434-.982.969-.982z"/></svg>',
+  feishu:'<svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><path fill="#00D6B9" d="M7.2 4.5h7.6c1.2 0 2.1.55 2.7 1.58 1.05 1.8 1.55 3.45 1.58 4.95-2.04-.62-4.2-.15-6.22 1.45C11.3 9.7 9.42 7.04 7.2 4.5Z"/><path fill="#1456B8" d="M10.8 13.55c3.3-2.93 5.72-4.24 9.47-2.52-1.2 1.45-2.27 4.18-3.86 5.43-1.67 1.31-3.9.5-5.61-.64v-2.27Z"/><path fill="#3370FF" d="M4.4 8.35c3.47 3.61 7.25 6.1 10.33 5.7 1.06-.14 2.2-.72 3.4-1.72-1.04 2.65-2.6 4.8-5.06 6-2.46 1.2-5.56.52-7.42-.72A2.76 2.76 0 0 1 4.4 15.3V8.35Z"/></svg>'
+};
+/* ---- 真机数据（#190 复现条） ---- */
+var DATA={
+  home:{id:'9875fa9d-caa8-4e99-9395-a27a4e699789',name:'dsh-opencode-palette',avatar:null},
+  asstBound:{id:'ec2d1b0e-ed2e-406f-9358-c2e35ec9de37',name:'小洋',channel:'feishu',avatar:null},
+  asstUnbound:{id:'c2c0865a-97f0-471b-b57b-bfcc1c960ad1',name:'调色板🎨',channel:'weixin',avatar:null},
+  botOtherHome:{name:'微信机器人',channel:'weixin'},
+  botNoAsst:{name:'QQ机器人',channel:'qq'}
+};
+function avHome(){var s=avatarStyleFor('home',DATA.home.id,DATA.home.avatar);return '<span class="lb-av" style="background:'+s.background+';color:'+s.color+'">'+huIcon('home',11)+'</span>'}
+function avAsst(a,unbound){var s=avatarStyleFor('assistant',a.id,a.avatar);return '<span class="lb-av'+(unbound?' unbound':'')+'" style="'+(unbound?'':'background:'+s.background+';color:'+s.color)+'">'+huIcon('bot',11)+'</span>'}
+function chLogo(ch){return CH[ch]||'<span class="lb-glyph">'+(ch||'?').slice(0,1).toUpperCase()+'</span>'}
+function rowNormal(a){return '<div class="lb-row"><span class="lb-glyph">'+chLogo(a.channel)+'</span>'+avAsst(a)+'<span class="lb-label">'+a.name+'</span><span class="lb-dot online"></span></div>'}
+function rowUnbound(a){return '<div class="lb-row unbound">'+avAsst(a,true)+'<span class="lb-label">'+a.name+'</span><span class="lb-tag">未绑定</span></div>'}
+function rowRobot(b,tag){return '<div class="lb-row robot"><span class="lb-glyph robot logo">'+(b.channel?chLogo(b.channel):huIcon('bot',14))+'</span><span class="lb-label">'+b.name+'</span><span class="lb-tag">'+tag+'</span><span class="lb-dot online"></span></div>'}
+function card(rows,time){return '<div class="lb-card"><div class="lb-card-head">'+avHome()+'<span class="lb-card-name">'+DATA.home.name+'</span></div><div class="lb-card-sep"></div>'+rows+'<div class="lb-foot">最后检测 '+time+'</div></div>'}
+function railrow(badge){return '<div class="railrow"><span class="chev">▸</span><span class="wsname">'+DATA.home.name+'</span>'+badge+'</div>'}
+var onlineBadge='<span class="badge online"><span class="bdot"></span>在线</span>';
+var unboundBadge='<span class="badge unbound"><span class="bdot"></span>未绑定</span>';
+var CASES=[
+  {h:'状态一 · 家行 + 轻量分隔线',sub:'已绑定 1 + 未绑定 1（真机 dsh-opencode-palette）。家行＝房子图标＋家色板；与助理行间只一条分隔线。',badge:onlineBadge,rows:rowNormal(DATA.asstBound)+rowUnbound(DATA.asstUnbound),time:'19:47:20'},
+  {h:'状态二 · 无绑定 bot 也出卡',sub:'该家没有任何已绑定 bot：行徽标仍是「未绑定」，但悬停照样出卡，卡内＝家 + 未绑定助理行。',badge:unboundBadge,rows:rowUnbound(DATA.asstUnbound),time:'暂无'},
+  {h:'状态三 · 游离机器人两档',sub:'微信机器人：bot 绑在本工作区、助理 homeId 在默认工作区 ⇒「未归属」；QQ机器人：匹配不到任何助理 ⇒「无助理」。首格都用渠道 logo（未知渠道回落机器人字形）＋灰化名。',badge:onlineBadge,rows:rowNormal(DATA.asstBound)+rowRobot(DATA.botOtherHome,'未归属')+rowRobot(DATA.botNoAsst,'无助理'),time:'19:47:20'}
+];
+document.getElementById('cases').innerHTML=CASES.map(function(c){return '<div class="case"><h3>'+c.h+'</h3><p class="sub">'+c.sub+'</p><div class="rail">'+railrow(c.badge)+'</div><div class="hoverhint">悬停 0.3s</div>'+card(c.rows,c.time)+'</div>'}).join('');
+/* 浅色主题：状态一 */
+document.getElementById('lightcases').innerHTML=
+  '<div><div style="font-size:11.5px;color:#6e6e73;margin-bottom:8px">状态一（浅色）</div>'+card(rowNormal(DATA.asstBound)+rowUnbound(DATA.asstUnbound),'19:47:20')+'</div>'+
+  '<div><div style="font-size:11.5px;color:#6e6e73;margin-bottom:8px">状态三 · 两档机器人（浅色）</div>'+card(rowNormal(DATA.asstBound)+rowRobot(DATA.botOtherHome,'未归属')+rowRobot(DATA.botNoAsst,'无助理'),'19:47:20')+'</div>';
+document.getElementById('legend').innerHTML=
+  '<span class="item"><span class="big" style="background:'+avatarStyleFor('home',DATA.home.id,null).background+';color:#fff">'+huIcon('home',15)+'</span>家（房子＋家色板）</span>'+
+  '<span class="item"><span class="big" style="background:'+avatarStyleFor('assistant',DATA.asstBound.id,null).background+';color:'+avatarStyleFor('assistant',DATA.asstBound.id,null).color+'">'+huIcon('bot',15)+'</span>助理（机器人＋暖亮色板）</span>'+
+  '<span class="item"><span class="big" style="background:rgba(255,255,255,.1);color:#8b92a1">'+huIcon('bot',15)+'</span>游离机器人（灰化机器人字形）</span>';
+</script>
+</body>
+</html>
