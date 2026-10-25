@@ -14,7 +14,7 @@
 | **Session** | Harness 会话（`sessionId`），对话区中间的会话流单位。飞书会话（私聊/群聊）通过 `StateStore.sessionFor` 路由到 Session。 |
 | **Health** | Bot 的在线状态（`connection.status` / `health.status`），决定左侧徽标呼吸灯与 Header 浮层文案（在线 vs 草稿）。 |
 | **Binding** | “已绑定/未绑定”关系，指 Bot 是否已声明归属某 Workspace（原“已托管”歧义已废）。通过 `connection.rpc.call('/feishu','bot.workspace.set',{botId,workspace})` 落地。 |
-| **Fleet** | IM机器人增强中的总览视图：按 Agent/渠道/工作区聚合的卡片（详情抽屉）与矩阵（舰队雷达）。 |
+| **Fleet** | IM机器人增强中的总览视图：按 Agent/渠道/工作区聚合的卡片（详情面板）与矩阵（舰队雷达）。 |
 | **蓝（执行中）** | 会话有缺 closer 的 open turn；左栏行蓝色竖条＋闪烁（呼吸）。 |
 | **红（异常）** | 需人工的终态：402 配额／未知错误未恢复／aborted 中断；红色竖条＋闪烁，与蓝黄平级。 |
 | **黄（待看／待选）** | 等用户查看（官方绿点完成提醒／warning 等审批）或等用户弹窗选择（approval 未决）；橙色竖条，不闪。 |

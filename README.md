@@ -129,7 +129,7 @@ dsh-im 掌管接入，dsh-im-companion 以助理和家的概念增强能力。
 
 <strong>👇 点开助理卡：模式、状态、各渠道增强开关一目了然。</strong>
 
-<img src="assets/助理卡-详情抽屉-深色.png" width="640" alt="助理详情抽屉">
+<img src="assets/助理卡-详情面板-深色.png" width="640" alt="助理详情面板">
 
 <strong>👇 舰队雷达：Agent × 渠道矩阵，全舰队谁在线一眼看清。</strong>
 

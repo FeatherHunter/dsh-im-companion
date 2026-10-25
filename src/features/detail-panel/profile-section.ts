@@ -4,7 +4,7 @@
 import { h } from '../../client/dom'
 import { makeButton } from '../../client/ui/button'
 import { ASSISTANT_FIELD_SPECS, countCodePoints } from '../../assistant-fields'
-import type { DrawerModel } from './data'
+import type { DetailPanelModel } from './data'
 
 export interface ProfileCallbacks {
   onEditAssistant(): void
@@ -26,7 +26,7 @@ export function isOverLimit(field: 'description' | 'persona', text: string): boo
 }
 
 /** 复制内容：名字 + 两栏原文（未填写留空，方便粘到别处再改）。 */
-export function profileText(model: DrawerModel): string {
+export function profileText(model: DetailPanelModel): string {
   const a = model.assistant
   if (!a) return ''
   return ['名字：' + a.name, '简介：' + a.description, '人物设定：' + a.persona].join('\n')
@@ -54,14 +54,14 @@ export async function copyText(text: string): Promise<boolean> {
 }
 
 function row(label: string, value: HTMLElement | string): HTMLElement {
-  return h('div', { className: 'detail-drawer-profile-row' },
-    h('span', { className: 'detail-drawer-profile-lab' }, label),
-    typeof value === 'string' ? h('div', { className: 'detail-drawer-profile-val' }, value) : value)
+  return h('div', { className: 'detail-panel-profile-row' },
+    h('span', { className: 'detail-panel-profile-lab' }, label),
+    typeof value === 'string' ? h('div', { className: 'detail-panel-profile-val' }, value) : value)
 }
 
 /** persona：默认折到 3 行（CSS line-clamp），展开/收起只切类名——文本从头到尾都在 DOM 里，不丢字。 */
 function personaValue(text: string): HTMLElement {
-  const val = h('div', { className: 'detail-drawer-profile-val detail-drawer-profile-persona' }, text)
+  const val = h('div', { className: 'detail-panel-profile-val detail-panel-profile-persona' }, text)
   if (!needsClamp(text)) return val
   const toggle = makeButton({ kind: 'ghost', size: 'sm', label: '展开' })
   const setClamped = (on: boolean): void => {
@@ -73,29 +73,29 @@ function personaValue(text: string): HTMLElement {
   }
   setClamped(true)
   toggle.addEventListener('click', () => setClamped(!val.classList.contains('is-clamped')))
-  return h('div', { className: 'detail-drawer-profile-persona-wrap' }, val, toggle)
+  return h('div', { className: 'detail-panel-profile-persona-wrap' }, val, toggle)
 }
 
 /** 只读块：缺助理只提示一句（编辑/复制隐藏）；有助理才出三行与动作。 */
-export function renderProfileSection(model: DrawerModel, cbs: ProfileCallbacks): HTMLElement {
-  const sec = h('div', { className: 'detail-drawer-profile' })
-  sec.appendChild(h('div', { className: 'detail-drawer-cap' }, '助理人设'))
+export function renderProfileSection(model: DetailPanelModel, cbs: ProfileCallbacks): HTMLElement {
+  const sec = h('div', { className: 'detail-panel-profile' })
+  sec.appendChild(h('div', { className: 'detail-panel-cap' }, '助理人设'))
   const a = model.assistant
   if (!a) {
-    sec.appendChild(h('div', { className: 'detail-drawer-list detail-drawer-nobox' },
-      h('div', { className: 'detail-drawer-empty' }, '该工作区暂无助理资料')))
+    sec.appendChild(h('div', { className: 'detail-panel-list detail-panel-nobox' },
+      h('div', { className: 'detail-panel-empty' }, '该工作区暂无助理资料')))
     return sec
   }
-  const card = h('div', { className: 'detail-drawer-list detail-drawer-profile-card' })
+  const card = h('div', { className: 'detail-panel-list detail-panel-profile-card' })
   card.appendChild(row('名字', a.name || '未命名'))
   card.appendChild(row('简介', a.description || '未填写'))
   card.appendChild(row('人物设定', a.persona ? personaValue(a.persona) : '未填写'))
   sec.appendChild(card)
   if (!a.description && !a.persona) {
-    sec.appendChild(h('div', { className: 'detail-drawer-empty detail-drawer-profile-note' }, '还没有填写简介与人物设定。'))
+    sec.appendChild(h('div', { className: 'detail-panel-empty detail-panel-profile-note' }, '还没有填写简介与人物设定。'))
   }
   if (isOverLimit('description', a.description) || isOverLimit('persona', a.persona)) {
-    sec.appendChild(h('div', { className: 'detail-drawer-meta detail-drawer-profile-warn' }, '已超出上限，请到编辑里修正'))
+    sec.appendChild(h('div', { className: 'detail-panel-meta detail-panel-profile-warn' }, '已超出上限，请到编辑里修正'))
   }
   const copy = makeButton({
     kind: 'tinted', size: 'sm', label: '复制', title: '复制名字、简介与人物设定',
@@ -107,6 +107,6 @@ export function renderProfileSection(model: DrawerModel, cbs: ProfileCallbacks):
     kind: 'primary', size: 'sm', label: '编辑', title: '打开助理资料编辑弹窗（改简介/人物设定）',
     onClick: () => cbs.onEditAssistant(),
   })
-  sec.appendChild(h('div', { className: 'detail-drawer-profile-actions' }, copy, edit))
+  sec.appendChild(h('div', { className: 'detail-panel-profile-actions' }, copy, edit))
   return sec
 }

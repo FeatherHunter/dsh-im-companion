@@ -46,7 +46,7 @@ let wired = false
 
 const dotClass = (s: TipData['status']): string => 'hu-cdot' + (s === 'on' ? ' on' : s === 'off' ? ' off' : ' none')
 
-/** 渠道 logo 节点：品牌 glyph 原色（icons.ts 唯一源）；未知渠道回退首字徽标（detail-drawer 同款）。 */
+/** 渠道 logo 节点：品牌 glyph 原色（icons.ts 唯一源）；未知渠道回退首字徽标（detail-panel 同款）。 */
 function logoNode(data: TipData): HTMLElement {
   const svg = channelGlyphSvg(data.channel ?? '', 14)
   if (svg) return h('span', { className: 'hu-logo', html: svg })

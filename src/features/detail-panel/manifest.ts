@@ -1,14 +1,14 @@
-/** detail-drawer 特性唯一出口：详情面板（B 变体 verdict #9）。
+/** detail-panel 特性唯一出口：详情面板（B 变体 verdict #9）。
  * 说明：slot 挂载只注册窗口事件监听，不向 settings.section 注入任何 DOM（详情按需经 ui/sheet 居中模态挂 body）。 */
 import { installFeatureStyles } from '../../client/theme'
 import type { FeatureManifest } from '../protocol'
-import { mountDrawer } from './drawer'
+import { mountDetailPanel } from './panel'
 import { CSS } from './styles'
 
 export const feature: FeatureManifest = {
-  id: 'detail-drawer',
+  id: 'detail-panel',
   name: '详情面板',
   order: 20,
-  slots: [{ target: 'settings.section', mount: (ctx) => mountDrawer(ctx) }],
-  installStyles: () => installFeatureStyles('detail-drawer', CSS),
+  slots: [{ target: 'settings.section', mount: (ctx) => mountDetailPanel(ctx) }],
+  installStyles: () => installFeatureStyles('detail-panel', CSS),
 }

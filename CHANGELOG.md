@@ -18,6 +18,7 @@
 - **first-view 文案**：`first-view-copy.ts` 内联的 ZH/EN 字典改为查词条（导出与接口不变；`firstViewLang()` 跟随当前语言，显式传 doc 的老测试形态保留）；`dual-mode-copy.ts` 未改，经 `firstViewLang()` 自动跟随。
 - **left-filter 文案**：三段条 / 漏斗悬停 / 行悬停 / 空提示 / 收起钮改查词条；`view.ts` 在语言切换时强制重绘（重绘签名并入词条修订号）。
 - **设置面板**：标题与挂载失败文案走词条；换语时面板重挂（订阅 `locale` 服务）。
+- **代码命名对齐「详情面板」（#189）**：纯改名（对外行为不变）——feature 目录 `detail-drawer/` → `detail-panel/`（`drawer.ts` → `panel.ts`，feature id / CSS 前缀 / 验证器 `detail-panel.ts` 同步）；A1 私有件 `home-asst-create.ts` / `home-asst-fields.ts` / `home-asst-profile-act.ts` / `home-assist-edit-listen.ts` → `home-assistant-create.ts` / `home-assistant-profile-fields.ts` / `home-assistant-profile-act.ts` / `home-assistant-profile-edit-listen.ts`；跨功能事件 `OPEN_DRAWER_EVENT` → `OPEN_DETAIL_PANEL_EVENT`、`OPEN_ASSIST_EDIT_EVENT` → `OPEN_ASSISTANT_PROFILE_EDIT_EVENT`（`docs/features-contract.md` 契约先行同步）；验证器 `home-asst-profile.ts` → `home-assistant-profile.ts`；截图资产同批改名。内部 window 事件字面量随常量改名（`'dsh-im-companion:open-drawer'` → `'…:open-detail-panel'`、`'…:open-assist-edit'` → `'…:open-assistant-profile-edit'`，派发/监听同批、同一 bundle 自洽），字面量登记见 `docs/features-contract.md` §4。改动前 `npm run check` 与改动后逐项等价（test 语义未动）。
 
 ### Fixed
 - **英文三段条标签被截断**：切 English 后全称（With assistants / Without assistants）在三段等宽（每段约 90px）里必被 ellipsis；英文词条改短词 **All / Assigned / Unassigned**（12px 粗体含计数约 80px 内可读），漏斗与行悬停仍是完整英文句；中文词条不动。

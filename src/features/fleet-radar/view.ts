@@ -1,14 +1,14 @@
 /** FleetRadar 舰队雷达（A 稠密表 verdict #10；DSH 正中大弹窗，一次完整展示、无横向滚动）。
  * 行＝家：每行一个 home，看其下有哪些助理（assistant），助理的渠道由其绑定的机器人决定（channelOf）；
  * 格＝同家同渠道多助理合并；行汇总＝整行状态（在线/待确认/离线＋助理构成＋待绑/失联）。无家表时回落旧 Agent 矩阵。
- * 事件制（DetailDrawer 抽屉同款）：A1 船按钮经 FLEET_VIEW_EVENT 派发，本特性监听后居中弹模态；
+ * 事件制（详情面板同款）：A1 船按钮经 FLEET_VIEW_EVENT 派发，本特性监听后居中弹模态；
  * 弹窗挂 body（宽版一次放下 9 列），Esc/点外部/关闭键三路可关；开弹窗才订阅、关即退订。
- * 数据：单份 stream 订阅 + meta 读取 + 家表（home.list）；无自有轮询；点格派发 drillKey（home.path，抽屉兼容）。
+ * 数据：单份 stream 订阅 + meta 读取 + 家表（home.list）；无自有轮询；点格派发 drillKey（home.path，详情面板兼容）。
  * 双语：跟随 DSH 系统语言（documentElement.lang + 属性监听即时跟随，无开关）+ data.ts 字典。
- * LOGO：渠道 glyph（dsh-im 同款字符串，DetailDrawer 同渲染模式 html 注入）+ 文字，表头同；未知渠道只剩文字。 */
+ * LOGO：渠道 glyph（dsh-im 同款字符串，DetailPanel 同渲染模式 html 注入）+ 文字，表头同；未知渠道只剩文字。 */
 import { h, mount } from '../../client/dom'
 import { EMPTY_META } from '../../client/data/meta'
-import { FLEET_VIEW_EVENT, OPEN_DRAWER_EVENT, type FleetViewDetail, type OpenDrawerDetail } from '../../client/data/config'
+import { FLEET_VIEW_EVENT, OPEN_DETAIL_PANEL_EVENT, type FleetViewDetail, type OpenDetailPanelDetail } from '../../client/data/config'
 import { showSheet } from '../../client/ui/sheet'
 import { channelGlyphSvg } from '../../client/icons'
 import { makeEmpty } from '../../client/ui/empty'
@@ -24,11 +24,11 @@ import {
 import { buildHomeMatrix } from './home-matrix'
 import { disposeCellPop, hideCellPop, setCellPopRpc, showCellPop, warmCellPopImages } from './cell-pop'
 
-function emitDrawer(key: string): void {
+function emitDetailPanel(key: string): void {
   try {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
     const evt = drillEventFor(key)
-    window.dispatchEvent(new window.CustomEvent<OpenDrawerDetail>(evt.name, { detail: evt.detail }))
+    window.dispatchEvent(new window.CustomEvent<OpenDetailPanelDetail>(evt.name, { detail: evt.detail }))
   } catch (e) {
     if (logOn('debug')) logLine('debug', 'ui.action', { area: 'fleet-radar', action: 'drill-dispatch-fail', ok: false, message: '钻取事件派发失败（不影响展示）：' + String((e as Error)?.message ?? e) })
   }
@@ -98,7 +98,7 @@ function renderCell(row: MatrixRow, cell: MatrixCell, lang: Lang): HTMLElement {
     type: 'button',
     className: cls,
     ...(cell.mates.length ? {} : { title: cellTitle(cell, lang) }),
-    onClick: () => emitDrawer(row.drillKey || row.key),
+    onClick: () => emitDetailPanel(row.drillKey || row.key),
   }, h('span', { className: 'fleet-radar-dot ' + cell.health }), ...cellTextNodes(cell, lang)) as HTMLElement
   if (cell.mates.length) {
     btn.addEventListener('mouseenter', () => showCellPop(btn, cell, lang))
@@ -113,7 +113,7 @@ function renderHomeHead(row: MatrixRow, lang: Lang): HTMLElement {
     type: 'button',
     className: 'fleet-radar-rowbtn',
     title: row.name + '，' + strings(lang).drillHint,
-    onClick: () => emitDrawer(row.drillKey || row.key),
+    onClick: () => emitDetailPanel(row.drillKey || row.key),
   }, h('span', { className: 'fleet-radar-agent' }, av,
     h('span', null, h('div', { className: 'fleet-radar-nm' }, row.name), h('div', { className: 'fleet-radar-bs' }, row.base || row.workspace || row.key)))) as unknown as HTMLElement
 }
@@ -280,7 +280,7 @@ export function openRadar(fctx: FeatureCtx): void {
   }
 }
 
-/** 特性挂载：只监听开窗事件（DetailDrawer 抽屉同款）；弹窗/DOM/订阅全由 openRadar 持有并清理。 */
+/** 特性挂载：只监听开窗事件（详情面板同款）；弹窗/DOM/订阅全由 openRadar 持有并清理。 */
 export function mountRadar(fctx: FeatureCtx): () => void {
   const onEvent = (e: Event): void => {
     try {

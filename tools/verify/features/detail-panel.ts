@@ -1,4 +1,4 @@
-// DetailDrawer 详情面板自验证（F0 每功能自验证）：host 身份持久化 + 抽屉纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
+// 详情面板自验证（F0 每功能自验证）：host 身份持久化 + 详情面板纯数据层 + 注册/样式/渲染断言（node --test，零第三方依赖）。
 // 做法：tsc 转译相关链到临时目录再断言（照抄 left-badges.ts 模式）。B 变体 verdict（#9）：摘要直改 + 折叠详情 + 即时写（无保存按钮）。
 import { mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,7 +14,7 @@ const HOST = join(REPO, 'src', 'host');
 const ROUTES = join(HOST, 'routes.ts');
 const DATA = join(REPO, 'src', 'client', 'data');
 const UI = join(REPO, 'src', 'client', 'ui');
-const FEAT = join(REPO, 'src', 'features', 'detail-drawer');
+const FEAT = join(REPO, 'src', 'features', 'detail-panel');
 const ENTRIES = [
   join(HOST, 'meta-store.ts'),
   join(HOST, 'rpc.ts'),
@@ -31,14 +31,14 @@ const ENTRIES = [
   join(REPO, 'src', 'client', 'components', 'home-events.ts'),
   join(FEAT, 'data.ts'),
   join(FEAT, 'actions.ts'),
-  join(FEAT, 'drawer.ts'),
+  join(FEAT, 'panel.ts'),
   join(FEAT, 'view.ts'),
   join(FEAT, 'profile-section.ts'),
   join(FEAT, 'manifest.ts'),
   join(REPO, 'src', 'features', 'index.ts'),
 ];
 
-const tmp = mkdtempSync(join(tmpdir(), 'detail-drawer-'));
+const tmp = mkdtempSync(join(tmpdir(), 'detail-panel-'));
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
@@ -62,12 +62,12 @@ const req = createRequire(join(tmp, 'run.cjs'));
 const storeMod: any = req('./host/meta-store.js');
 const config: any = req('./client/data/config.js');
 const clientMeta: any = req('./client/data/meta.js');
-const data: any = req('./features/detail-drawer/data.js');
-const actions: any = req('./features/detail-drawer/actions.js');
+const data: any = req('./features/detail-panel/data.js');
+const actions: any = req('./features/detail-panel/actions.js');
 const picker: any = req('./client/ui/dir-picker.js');
 const fleetApi: any = req('./client/data/fleet-api.js');
 const modelMod: any = req('./client/data/model.js');
-const styles: any = req('./features/detail-drawer/styles.js');
+const styles: any = req('./features/detail-panel/styles.js');
 const registry: any = req('./features/index.js');
 
 const doc: any = createDocument();
@@ -77,8 +77,8 @@ const doc: any = createDocument();
   dispatchEvent: () => true,
 };
 (globalThis as any).document = (globalThis as any).document ?? doc;
-const view: any = req('./features/detail-drawer/view.js');
-const drawerMod: any = req('./features/detail-drawer/drawer.js');
+const view: any = req('./features/detail-panel/view.js');
+const panelMod: any = req('./features/detail-panel/panel.js');
 const sheet: any = req('./client/ui/sheet.js');
 
 const W1 = 'D:\\agents\\xiaoshuai';
@@ -93,7 +93,7 @@ const metaDoc = (over = {}) => ({ names: {}, avatars: {}, locals: [], presets: {
 
 // ---- host 持久化：预设/上下文校验 + 落盘 ----
 test('host：非法预设/强度静默忽略，合法落盘且重载仍在', async () => {
-  const dir = mkdtempSync(join(tmpdir(), 'detail-drawer-meta-'));
+  const dir = mkdtempSync(join(tmpdir(), 'detail-panel-meta-'));
   try {
     const f = join(dir, 'meta.json');
     const s = new storeMod.AgentMetaStore(f);
@@ -151,10 +151,10 @@ test('data：预设/上下文 payload 与盲写守卫', () => {
   data.unwrapRpc({ ok: true, value: {} });
 });
 
-test('data：抽屉模型派生自上游真值（一致/混合/未读/未知键/路由 seat 空）', () => {
-  assert.equal(data.buildDrawerModel([bot()], metaDoc(), 'nope:'), null);
+test('data：详情面板模型派生自上游真值（一致/混合/未读/未知键/路由 seat 空）', () => {
+  assert.equal(data.buildDetailPanelModel([bot()], metaDoc(), 'nope:'), null);
   const catalogs = { feishu: { defaultId: 'coder', items: [{ id: 'coder', label: '代码助手' }] } };
-  const m0 = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs);
+  const m0 = data.buildDetailPanelModel([bot()], metaDoc(), W1, catalogs);
   assert.equal(m0.name, 'Xiaoshuai');
   assert.equal(m0.preset, data.PRESET_FOLLOW);
   assert.equal(m0.presetReady, true);
@@ -164,26 +164,26 @@ test('data：抽屉模型派生自上游真值（一致/混合/未读/未知键/
   assert.equal(m0.bound, true);
   assert.deepEqual(m0.routes, []);
   assert.equal(m0.channels.length, 1);
-  const m1 = data.buildDrawerModel([bot({ agentPreset: 'coder' })], metaDoc(), W1, catalogs);
+  const m1 = data.buildDetailPanelModel([bot({ agentPreset: 'coder' })], metaDoc(), W1, catalogs);
   assert.equal(m1.preset, 'coder');
-  const mixed = data.buildDrawerModel(
+  const mixed = data.buildDetailPanelModel(
     [bot({ botId: 'b1' }), bot({ botId: 'b2', channel: 'qq', agentPreset: 'coder', workspace: W1 })],
     metaDoc(), W1, catalogs);
   assert.equal(mixed.preset, data.PRESET_MIXED);
-  const unread = data.buildDrawerModel([bot({ agentPreset: undefined, contextEnhancement: undefined })], metaDoc(), W1, catalogs);
+  const unread = data.buildDetailPanelModel([bot({ agentPreset: undefined, contextEnhancement: undefined })], metaDoc(), W1, catalogs);
   assert.equal(unread.presetReady, false);
   assert.equal(unread.ctxReady, false);
   assert.equal(unread.channels[0].ctx, undefined);
-  assert.equal(typeof data.OPEN_DRAWER_EVENT ?? config.OPEN_DRAWER_EVENT, 'string');
-  assert.equal(config.OPEN_DRAWER_EVENT, 'dsh-im-companion:open-drawer');
+  assert.equal(typeof data.OPEN_DETAIL_PANEL_EVENT ?? config.OPEN_DETAIL_PANEL_EVENT, 'string');
+  assert.equal(config.OPEN_DETAIL_PANEL_EVENT, 'dsh-im-companion:open-detail-panel');
 });
 
 // ---- #173 助理人设：模型携带 brief（详情面板只读块） ----
-test('data：DrawerModel 携带助理 brief（#173 只读块，缺省 null）', () => {
+test('data：DetailPanelModel 携带助理 brief（#173 只读块，缺省 null）', () => {
   const brief = { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' };
-  const m = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], brief);
+  const m = data.buildDetailPanelModel([bot()], metaDoc(), W1, {}, [], brief);
   assert.deepEqual(m.assistant, brief, '第 6 参原样进模型（名字/简介/人物设定）');
-  assert.equal(data.buildDrawerModel([bot()], metaDoc(), W1).assistant, null, '未带 brief 时为 null（不是 undefined）');
+  assert.equal(data.buildDetailPanelModel([bot()], metaDoc(), W1).assistant, null, '未带 brief 时为 null（不是 undefined）');
   assert.equal(data.loadingModel('k').assistant, null, '加载态模型也有 assistant 键');
 });
 
@@ -210,13 +210,13 @@ test('client meta：Rpc/Local 双实现走通 preset/ctx', async () => {
 });
 
 // ---- 注册/样式/sheet ----
-test('manifest：detail-drawer 注册进 FEATURES，样式命名空间干净', () => {
-  const found = registry.FEATURES.find((f: any) => f.id === 'detail-drawer');
-  assert.ok(found, 'FEATURES 缺 detail-drawer');
+test('manifest：detail-panel 注册进 FEATURES，样式命名空间干净', () => {
+  const found = registry.FEATURES.find((f: any) => f.id === 'detail-panel');
+  assert.ok(found, 'FEATURES 缺 detail-panel');
   assert.equal(typeof found.installStyles, 'function');
   assert.ok(Array.isArray(found.slots));
-  assert.match(styles.CSS, /.detail-drawer-/);
-  /* 地基修正：detail-drawer 复用共享按钮原语（makeButton → .af-btn），作用域内覆写 .af-btn 合法；禁的是其他 .af-* 串色。 */
+  assert.match(styles.CSS, /.detail-panel-/);
+  /* 地基修正：detail-panel 复用共享按钮原语（makeButton → .af-btn），作用域内覆写 .af-btn 合法；禁的是其他 .af-* 串色。 */
   assert.doesNotMatch(styles.CSS, /\.af-(?!btn\b)/);
   assert.doesNotMatch(styles.CSS, /dsw-alias-bg-subtle/);
   assert.equal(typeof sheet.showSheet, 'function');
@@ -248,9 +248,9 @@ function findByClass(el: any, cls: string): any[] {
 
 test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位', () => {
   const catalogs = { feishu: { defaultId: '', items: [{ id: 'coder', label: '代码助手' }] } };
-  const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs);
+  const model = data.buildDetailPanelModel([bot()], metaDoc(), W1, catalogs);
   const noop = () => {};
-  const root = view.renderDrawerContent(model, {
+  const root = view.renderDetailPanelContent(model, {
     onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
     onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
@@ -259,9 +259,9 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
   for (const needle of ['Xiaoshuai', '跟随默认', '代码助手', '模式', '沟通模式', '上下文', '群聊增强', '私聊增强', 'senderId', '新会话生效', '浏览', '保存路径', '绑定工作区', '会话路由摘要', '渠道管理', '测试']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
-  assert.ok(findByClass(root, 'detail-drawer-summary').length >= 1);
+  assert.ok(findByClass(root, 'detail-panel-summary').length >= 1);
   assert.ok(all.includes('暂无已绑定会话映射'));
-  const pills = findByClass(root, 'detail-drawer-sw');
+  const pills = findByClass(root, 'detail-panel-sw');
   assert.equal(pills.length, 2);
   const states = pills.map((p: any) => p.getAttribute('aria-checked')).sort();
   assert.deepEqual(states, ['false', 'true']);
@@ -270,12 +270,12 @@ test('view：A\' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位
 
 test('view：路由行渲染全显映射 + 幽灵告警 + 复制按钮', () => {
   const catalogs = { feishu: { defaultId: '', items: [] } };
-  const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs, [
+  const model = data.buildDetailPanelModel([bot()], metaDoc(), W1, catalogs, [
     { chat: '私聊 ou_zhangsan0123456789', sessionId: 'session-aaa11111-2222', channel: 'feishu' },
     { chat: '旧映射 ou_ghost01', sessionId: 'session-legacy9-0000', ghost: true, channel: 'feishu' },
   ]);
   const noop = () => {};
-  const root = view.renderDrawerContent(model, {
+  const root = view.renderDetailPanelContent(model, {
     onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
     onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
@@ -283,25 +283,25 @@ test('view：路由行渲染全显映射 + 幽灵告警 + 复制按钮', () => {
   const all = texts(root).join('|');
   assert.ok(all.includes('会话路由摘要（2）'));
   assert.ok(all.includes('飞书|私聊 ou_zhangsan0123456789'), '渠道与对话各自成节点（分隔靠 gap 不靠符号，#139）');
-  assert.equal(findByClass(root, 'detail-drawer-rchat')[0].getAttribute('title'), '飞书，私聊 ou_zhangsan0123456789',
+  assert.equal(findByClass(root, 'detail-panel-rchat')[0].getAttribute('title'), '飞书，私聊 ou_zhangsan0123456789',
     'title 走不可见文案口径（逗号，#139）');
   assert.ok(all.includes('session-aaa11111-2222'));
   assert.ok(all.includes('旧映射'));
   assert.ok(all.includes('复制'));
-  assert.equal(findByClass(root, 'detail-drawer-route').length, 2);
-  assert.equal(findByClass(root, 'detail-drawer-ghost').length, 1);
+  assert.equal(findByClass(root, 'detail-panel-route').length, 2);
+  assert.equal(findByClass(root, 'detail-panel-ghost').length, 1);
 });
 
 test('view：多渠道不一致渲染占位且可继续操作', () => {
   const catalogs = { feishu: { defaultId: '', items: [{ id: 'coder', label: '代码助手' }] } };
-  const model = data.buildDrawerModel(
+  const model = data.buildDetailPanelModel(
     [bot({ botId: 'b1' }), bot({ botId: 'b2', channel: 'qq', agentPreset: 'coder', workspace: W1,
       contextEnhancement: { groupEnabled: true, directEnabled: true, fields: [], guidance: '' } })],
     metaDoc(), W1, catalogs);
   assert.equal(model.preset, data.PRESET_MIXED);
   assert.equal(model.ctxReady, true);
   const noop = () => {};
-  const root = view.renderDrawerContent(model, {
+  const root = view.renderDetailPanelContent(model, {
     onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
     onSaveWorkspace: noop, onRemoveBot: noop, onTestSend: noop, onClose: noop,
   });
@@ -313,11 +313,11 @@ test('view：弹窗内无省略号——引导语全文换行展示', () => {
   const longGuide = '你是飞书群里的靠谱助手，说话简洁幽默，重要事项逐条列出并艾特相关人，闲聊时可以接梗但不刷屏。';
   assert.ok(longGuide.length > 40);
   const catalogs = { feishu: { defaultId: '', items: [] } };
-  const model = data.buildDrawerModel([bot({
+  const model = data.buildDetailPanelModel([bot({
     contextEnhancement: { groupEnabled: true, directEnabled: true, fields: ['senderId'], guidance: longGuide },
   })], metaDoc(), W1, catalogs);
   const noop = () => {};
-  const root = view.renderDrawerContent(model, {
+  const root = view.renderDetailPanelContent(model, {
     onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
     onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
@@ -325,11 +325,11 @@ test('view：弹窗内无省略号——引导语全文换行展示', () => {
   const all = texts(root).join('|');
   assert.ok(all.includes(longGuide), '引导语被截断');
   assert.ok(!all.includes('…'), '弹窗内仍有省略号');
-  assert.equal(findByClass(root, 'detail-drawer-note').length, 1);
+  assert.equal(findByClass(root, 'detail-panel-note').length, 1);
 });
 
 test('paint：同构快照指纹稳定，真变才变（15s 轮询不抖动）', () => {
-  const mk = (ctx: typeof CTX0) => data.buildDrawerModel([bot({ contextEnhancement: { ...ctx } })], metaDoc(), W1, {});
+  const mk = (ctx: typeof CTX0) => data.buildDetailPanelModel([bot({ contextEnhancement: { ...ctx } })], metaDoc(), W1, {});
   const a = mk({ ...CTX0 });
   const b = mk({ ...CTX0 });
   assert.ok(a && b);
@@ -339,7 +339,7 @@ test('paint：同构快照指纹稳定，真变才变（15s 轮询不抖动）',
   assert.notEqual(data.modelSig(a), data.modelSig(c));
 });
 
-test('drawer：抽屉占满面板几何（视口右沿兜底）', () => {
+test('panel：详情面板占满面板几何（视口右沿兜底）', () => {
   assert.deepEqual(
     data.sheetGeometry({ top: 60, right: 1200, bottom: 800, left: 220 }, { width: 1600, height: 900 }),
     { top: 60, right: 400, bottom: 100, width: 980 },
@@ -350,11 +350,11 @@ test('drawer：抽屉占满面板几何（视口右沿兜底）', () => {
   assert.equal(data.sheetGeometry({ top: 0, right: 0, bottom: 0, left: 0 }, { width: 1600, height: 900 }), null);
 });
 
-test('drawer：可见矩形裁剪——内容高于面板时底边锁面板底（#9 真机根因）', () => {
+test('panel：可见矩形裁剪——内容高于面板时底边锁面板底（#9 真机根因）', () => {
   // .af-root 内容顶 200 底 1400（Agent 列表超长）；面板可视 200..800；视口高 900
   const content = { top: 200, right: 1200, bottom: 1400, left: 220 };
   const pane = [{ top: 200, left: 200, right: 1230, bottom: 800 }];
-  // 旧逻辑：直接用内容矩形 → bottom 偏移被钳成 0 → 抽屉顶到视口（DSH）底
+  // 旧逻辑：直接用内容矩形 → bottom 偏移被钳成 0 → 详情面板顶到视口（DSH）底
   const legacy = data.sheetGeometry(content, { width: 1600, height: 900 });
   assert.equal(legacy.bottom, 0);
   // 新逻辑：先裁剪 → 底边锁面板底 → bottom = 视口高 - 面板底 = 100
@@ -469,19 +469,19 @@ test('data：路由取数经自有通道，失败静默空数组', async () => {
 
 test('view：渠道行自带发送测试按钮（分渠道直发）', () => {
   const catalogs = { feishu: { defaultId: '', items: [] } };
-  const model = data.buildDrawerModel([bot()], metaDoc(), W1, catalogs);
+  const model = data.buildDetailPanelModel([bot()], metaDoc(), W1, catalogs);
   const noop = () => {};
   const cbs = {
     onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
     onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
   };
-  const all = texts(view.renderDrawerContent(model, cbs)).join('|');
+  const all = texts(view.renderDetailPanelContent(model, cbs)).join('|');
   assert.ok(all.includes('测试'));
   assert.ok(!all.includes('发测试消息'));
   const seen: string[] = [];
   const cbs2 = { ...cbs, onTestSend: (ch: string, id: string) => { seen.push(ch + '/' + id); } };
-  const root2 = view.renderDrawerContent(model, cbs2);
+  const root2 = view.renderDetailPanelContent(model, cbs2);
   const btns = root2.querySelectorAll('.af-btn');
   const send = btns.find((b: any) => b.textContent === '测试');
   assert.ok(send);
@@ -590,7 +590,7 @@ test('routes.list：端点只读聚合，缺席不炸', async () => {
 });
 
 // ---- #173 助理人设：派发侧（home-events / panel-body）与编辑跳转 ----
-test('home-events：emitDrawer 第二参可选，brief 原样进 detail（#173）', () => {
+test('home-events：emitDetailPanel 第二参可选，brief 原样进 detail（#173）', () => {
   const prev = (globalThis as any).window;
   const seen: any[] = [];
   (globalThis as any).window = {
@@ -599,10 +599,10 @@ test('home-events：emitDrawer 第二参可选，brief 原样进 detail（#173�
   };
   try {
     const ev: any = req('./client/components/home-events.js');
-    ev.emitDrawer('D:\\agents\\xiaoshuai');
-    ev.emitDrawer('D:\\agents\\xiaoshuai', { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' });
+    ev.emitDetailPanel('D:\\agents\\xiaoshuai');
+    ev.emitDetailPanel('D:\\agents\\xiaoshuai', { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' });
     assert.equal(seen.length, 2, '两次派发都发出去了');
-    assert.equal(seen[0].type, config.OPEN_DRAWER_EVENT);
+    assert.equal(seen[0].type, config.OPEN_DETAIL_PANEL_EVENT);
     assert.deepEqual(seen[0].detail, { key: 'D:\\agents\\xiaoshuai', assistant: null }, '不带 brief 时 assistant=null（向后兼容）');
     assert.deepEqual(seen[1].detail.assistant, { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' }, 'brief 原样透传');
   } finally { (globalThis as any).window = prev; }
@@ -610,11 +610,11 @@ test('home-events：emitDrawer 第二参可选，brief 原样进 detail（#173�
 
 test('panel-body：#173 detail-a 派发带 brief（缺省空串兜底）', () => {
   const body = readFileSync(join(REPO, 'src', 'client', 'components', 'panel-body.ts'), 'utf8');
-  assert.ok(body.includes("emitDrawer(home ? home.path : '', a ? { id: a.id, name: asstName(v, a), description: a.description ?? '', persona: a.persona ?? '' } : null)"), 'detail-a 派发四键 brief');
+  assert.ok(body.includes("emitDetailPanel(home ? home.path : '', a ? { id: a.id, name: asstName(v, a), description: a.description ?? '', persona: a.persona ?? '' } : null)"), 'detail-a 派发四键 brief');
   assert.ok(body.includes('asstName'), '名字取共享行层的 asstName（不另拼显示名）');
 });
 
-test('drawer：jumpToAssistEdit 派发 OPEN_ASSIST_EDIT_EVENT 后关面板（#173 编辑跳转）', () => {
+test('panel：jumpToAssistantProfileEdit 派发 OPEN_ASSISTANT_PROFILE_EDIT_EVENT 后关面板（#173 编辑跳转）', () => {
   const prev = (globalThis as any).window;
   const seen: any[] = [];
   (globalThis as any).window = {
@@ -623,33 +623,33 @@ test('drawer：jumpToAssistEdit 派发 OPEN_ASSIST_EDIT_EVENT 后关面板（#17
   };
   try {
     let closed = 0;
-    drawerMod.jumpToAssistEdit({ assistant: { id: 'a1' }, workspace: W1 }, () => { closed += 1 });
+    panelMod.jumpToAssistantProfileEdit({ assistant: { id: 'a1' }, workspace: W1 }, () => { closed += 1 });
     assert.equal(closed, 1, '派发后关面板');
-    assert.equal(seen[0].type, config.OPEN_ASSIST_EDIT_EVENT);
+    assert.equal(seen[0].type, config.OPEN_ASSISTANT_PROFILE_EDIT_EVENT);
     assert.deepEqual(seen[0].detail, { assistantId: 'a1', homePath: W1 });
-    drawerMod.jumpToAssistEdit({ assistant: null, workspace: '' }, () => undefined);
+    panelMod.jumpToAssistantProfileEdit({ assistant: null, workspace: '' }, () => undefined);
     assert.deepEqual(seen[1].detail, { assistantId: '', homePath: '' }, '缺助理时 assistantId 空串（接收侧 fail-soft 忽略）');
   } finally { (globalThis as any).window = prev; }
 });
 
-test('drawer：派发失败不阻断关闭（try/catch 兜底）', () => {
+test('panel：派发失败不阻断关闭（try/catch 兜底）', () => {
   const prev = (globalThis as any).window;
   (globalThis as any).window = { CustomEvent: class { constructor() { throw new Error('boom'); } }, dispatchEvent: () => true };
   try {
     let closed = 0;
-    drawerMod.jumpToAssistEdit({ assistant: { id: 'a1' }, workspace: W1 }, () => { closed += 1 });
+    panelMod.jumpToAssistantProfileEdit({ assistant: { id: 'a1' }, workspace: W1 }, () => { closed += 1 });
     assert.equal(closed, 1);
   } finally { (globalThis as any).window = prev; }
 });
 
 test('manifest：#173 特性名改「详情面板」，挂载点不变', () => {
-  const found = registry.FEATURES.find((f: any) => f.id === 'detail-drawer');
+  const found = registry.FEATURES.find((f: any) => f.id === 'detail-panel');
   assert.equal(found.name, '详情面板');
   assert.ok(found.slots.some((s: any) => s.target === 'settings.section'), '挂载点不变（不改装配）');
 });
 
 // ---- #173 助理人设只读块（US #39 看简介/人设 · US #40 一键跳编辑） ----
-const profMod: any = req('./features/detail-drawer/profile-section.js');
+const profMod: any = req('./features/detail-panel/profile-section.js');
 const briefA = { id: 'a1', name: '小帅', description: '客服小帅', persona: '说话简短' };
 const mini = (assistant: any) => ({ assistant, workspace: W1 });
 
@@ -659,11 +659,11 @@ test('profile：三行 名字/简介/人物设定齐全；缺助理只提示且�
   for (const needle of ['助理人设', '名字', '小帅', '简介', '客服小帅', '人物设定', '说话简短', '复制', '编辑']) {
     assert.ok(all.includes(needle), '缺文案: ' + needle);
   }
-  assert.equal(findByClass(el, 'detail-drawer-profile-actions').length, 1, '有助理才出动作行');
+  assert.equal(findByClass(el, 'detail-panel-profile-actions').length, 1, '有助理才出动作行');
   const none = profMod.renderProfileSection(mini(null), { onEditAssistant: () => undefined });
   const nall = texts(none).join('|');
   assert.ok(nall.includes('该工作区暂无助理资料'));
-  assert.equal(findByClass(none, 'detail-drawer-profile-actions').length, 0, '缺助理隐藏编辑/复制');
+  assert.equal(findByClass(none, 'detail-panel-profile-actions').length, 0, '缺助理隐藏编辑/复制');
   const empty = profMod.renderProfileSection(mini({ id: 'a1', name: '小帅', description: '', persona: '' }), { onEditAssistant: () => undefined });
   assert.ok(texts(empty).join('|').includes('还没有填写简介与人物设定。'), '空栏有引导文案');
 });
@@ -671,7 +671,7 @@ test('profile：三行 名字/简介/人物设定齐全；缺助理只提示且�
 test('profile：persona 默认折 3 行，展开/收起切类名与 aria-expanded', () => {
   const long = Array.from({ length: 6 }, (_, i) => '人设第' + (i + 1) + '行').join('\n');
   const el = profMod.renderProfileSection(mini({ ...briefA, persona: long }), { onEditAssistant: () => undefined });
-  const persona = findByClass(el, 'detail-drawer-profile-persona')[0];
+  const persona = findByClass(el, 'detail-panel-profile-persona')[0];
   assert.ok(persona.classList.contains('is-clamped'), '默认折叠');
   const toggle = findByClass(el, 'af-btn').find((b: any) => texts(b).join('').includes('展开'));
   assert.ok(toggle, '长人设才有展开按钮');
@@ -721,9 +721,9 @@ test('profile：超长历史值完整显示 + 低调提示（200 字边界不提
 });
 
 test('view：详情面板正文出现「助理人设」块（#173 接入）', () => {
-  const model = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], briefA);
+  const model = data.buildDetailPanelModel([bot()], metaDoc(), W1, {}, [], briefA);
   const noop = () => {};
-  const root = view.renderDrawerContent(model, {
+  const root = view.renderDetailPanelContent(model, {
     onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
     onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
@@ -735,9 +735,9 @@ test('view：详情面板正文出现「助理人设」块（#173 接入）', ()
 
 // ---- #174 旧写入口退役 + 词面硬门 ----
 test('view：旧引导语写入口已退役（无 textarea 与旧文案，正向块仍在）', () => {
-  const model = data.buildDrawerModel([bot()], metaDoc(), W1, {}, [], briefA);
+  const model = data.buildDetailPanelModel([bot()], metaDoc(), W1, {}, [], briefA);
   const noop = () => {};
-  const root = view.renderDrawerContent(model, {
+  const root = view.renderDetailPanelContent(model, {
     onPreset: noop, onToggleGroup: noop, onToggleDirect: noop,
     onSaveWorkspace: noop, onBrowseWorkspace: noop, onDraftWorkspace: noop,
     onRemoveBot: noop, onTestSend: noop, onClose: noop,
@@ -780,7 +780,7 @@ test('源码词面硬门：退役词与旧称在 src 与 tools/verify 零残留'
   assert.deepEqual(hits, [], '硬门残留：' + hits.join('；'));
 });
 
-test('first-view-copy：详情面板中英词面统一（中文叫面板，英文无 drawer）', async () => {
+test('first-view-copy：详情面板中英词面统一（中文叫面板，英文不用 drawer）', async () => {
   /* #184：中英词条搬进 locales.yaml（ns: first-view），断言改从词条真相取（源里不再有内联 EN 段）。 */
   const { loadLocales } = await import('../../../scripts/i18n-locales.mjs');
   const loaded = loadLocales(REPO);

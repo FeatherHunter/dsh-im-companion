@@ -30,7 +30,7 @@ export const CSS = `
 .session-header-chst.offline { background: color-mix(in srgb, var(--af-primary) 35%, transparent); }
 .session-header-btn { flex: 1; font: inherit; font-size: 12px; padding: 6px 10px; border-radius: 9px; border: 1px solid var(--af-hairline-strong); background: var(--af-bg); color: var(--af-primary); cursor: pointer; }
 .session-header-btn:hover { border-color: var(--af-accent); color: var(--af-accent); }
-/* 白字按钮底色用实色：宿主 brand 别名在真机可为白色致白底白字，见 #26（DetailDrawer 同款追改） */
+/* 白字按钮底色用实色：宿主 brand 别名在真机可为白色致白底白字，见 #26（DetailPanel 同款追改） */
 .session-header-btn.primary { background: #0a84ff; border-color: #0a84ff; color: #fff; }
 .session-header-btn.primary:hover { color: #fff; opacity: .88; }
 .session-header-btn:disabled { opacity: .6; cursor: default; }

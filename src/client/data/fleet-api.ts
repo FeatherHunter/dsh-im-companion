@@ -200,7 +200,7 @@ export async function fetchBots(rpc: RpcCall): Promise<{ bots: BotSnap[]; failed
 }
 
 /** B1 verdict 延续（connection-stream 落地前各调用方复用）：传输失败的渠道保留上一轮快照并标 stale（时间冻结、按未知展示），不丢弃谎报离线；ok:false 是权威空，不保留。 */
-/** 会话路由行（E4 welcome-banner 共用；DetailDrawer 自持版本不动）：读自有通道 routes.list，
+/** 会话路由行（E4 welcome-banner 共用；DetailPanel 自持版本不动）：读自有通道 routes.list，
  * 任何失败静默 []（调用方渲染“暂无路由”静态态）；session 已由 host 侧脱敏，只做展示。 */
 export interface RouteRow {
   chat: string;

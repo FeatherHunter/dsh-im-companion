@@ -11,7 +11,7 @@ import { closeHomePop, openHomePop, type AnchorRef } from './home-pop'
 import { homeName } from './home-rows'
 import { avatarEl } from './home-avatar-view'
 import { botSubNode, field, footBtns, optList, type FormDeps } from './home-forms'
-import { asstFieldsUi } from './home-asst-fields'
+import { asstFieldsUi } from './home-assistant-profile-fields'
 import { logLine, logOn } from '../log'
 
 /* 表单侧兜底（与 home-forms / home-bind-forms 同口径）：只 debug，不进恒落盘通道。 */

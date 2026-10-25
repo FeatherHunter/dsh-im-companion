@@ -6,7 +6,7 @@
  * 只认 `new-asst`，其余 kind 回 false（调用方继续往下走）。 */
 import { logLine } from '../log'
 import { type FormOps } from './home-forms'
-import { newAsstPop } from './home-asst-create'
+import { newAsstPop } from './home-assistant-create'
 import type { AnchorRef } from './home-pop'
 import type { RowView } from './home-rows'
 

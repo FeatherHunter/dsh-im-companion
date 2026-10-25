@@ -18,34 +18,34 @@ export const HEALTH_LABELS: Record<HealthKind, string> = {
   online: '在线', warn: '待确认', offline: '离线',
 }
 
-/** DetailDrawer 抽屉打开事件名：detail = { key }（key = AgentView.key；A1 行派发，DetailDrawer 特性监听，见 OPEN_AGENT_EVENT 先例）。 */
-export const OPEN_DRAWER_EVENT = 'dsh-im-companion:open-drawer'
+/** 详情面板打开事件名：detail = { key }（key = AgentView.key；A1 行派发，DetailPanel 特性监听，见 OPEN_AGENT_EVENT 先例）。 */
+export const OPEN_DETAIL_PANEL_EVENT = 'dsh-im-companion:open-detail-panel'
 
-export interface OpenDrawerDetail {
+export interface OpenDetailPanelDetail {
   key: string
   /** 助理资料快照（#173 详情面板只读块）：null / 缺省＝该 Agent 未绑定助理，或调用方（A1 行）没带。 */
-  assistant?: AssistBrief | null
+  assistant?: AssistantProfileBrief | null
 }
 
 /** 助理资料快照（#173）：形状对齐共享模块 assistant-fields 的 description/persona（未填写用空串，不给 undefined）。 */
-export interface AssistBrief {
+export interface AssistantProfileBrief {
   id: string
   name: string
   description: string
   persona: string
 }
 
-/** 编辑助理资料事件名（T8-4 #172 定契约，Added-only 供 #173 详情面板使用）：detail = AssistEditDetail。
- * 派发方＝详情面板的「编辑」按钮；监听方＝家面板 A1 私有层（home-assist-edit-listen.ts）——
+/** 编辑助理资料事件名（T8-4 #172 定契约，Added-only 供 #173 详情面板使用）：detail = AssistantProfileEditDetail。
+ * 派发方＝详情面板的「编辑」按钮；监听方＝家面板 A1 私有层（home-assistant-profile-edit-listen.ts）——
  * 规格 #168 已把它记成已知债务，不另开第四条能力通道。 */
-export const OPEN_ASSIST_EDIT_EVENT = 'dsh-im-companion:open-assist-edit'
+export const OPEN_ASSISTANT_PROFILE_EDIT_EVENT = 'dsh-im-companion:open-assistant-profile-edit'
 
-export interface AssistEditDetail {
+export interface AssistantProfileEditDetail {
   assistantId: string
   homePath?: string
 }
 
-/** 舰队视图切换事件名：detail = { view }（A1 船按钮/矩阵返回按钮派发，装配层监听做显隐切换；DetailDrawer 抽屉同款事件制）。 */
+/** 舰队视图切换事件名：detail = { view }（A1 船按钮/矩阵返回按钮派发，装配层监听做显隐切换；详情面板同款事件制）。 */
 export const FLEET_VIEW_EVENT = 'dsh-im-companion:fleet-view'
 
 /** 串门搬家开窗事件名（A1 工具栏按钮派发，adopt 特性监听自开面板；FLEET_VIEW_EVENT 同款事件制）。 */

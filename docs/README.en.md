@@ -129,7 +129,7 @@ dsh-im owns connecting; dsh-im-companion adds capabilities through the concepts 
 
 <strong>👇 Open an assistant card: mode, status and per-channel switches at a glance.</strong>
 
-<img src="../assets/助理卡-详情抽屉-深色.png" width="640" alt="Assistant detail drawer">
+<img src="../assets/助理卡-详情面板-深色.png" width="640" alt="Assistant detail panel">
 
 <strong>👇 Fleet radar: the Agent × channel matrix shows the whole fleet online state.</strong>
 

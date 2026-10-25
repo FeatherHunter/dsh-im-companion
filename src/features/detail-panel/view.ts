@@ -1,14 +1,14 @@
-/** DetailDrawer 抽屉视图层：A' 纯渲染（无 RPC、无订阅，dom-shim 可测）。
+/** 详情面板视图层：A' 纯渲染（无 RPC、无订阅，dom-shim 可测）。
  * 预设下拉读动态目录＋跟随默认；上下文双开关（群/私聊各一）；fields/guidance 只读展示。 */
 import { h } from '../../client/dom'
 import { makeButton } from '../../client/ui/button'
 import { HEALTH_LABELS, channelLabel } from '../../client/data/config'
 import { channelGlyphSvg } from '../../client/icons'
-import { PRESET_FOLLOW, PRESET_MIXED, type DrawerChannel, type DrawerModel } from './data'
+import { PRESET_FOLLOW, PRESET_MIXED, type DetailPanelChannel, type DetailPanelModel } from './data'
 import { renderProfileSection } from './profile-section'
 
 /** 加载态静默回调：除关闭外全是空操作（数据到之前误点不写坏任何东西）。 */
-export function quietCallbacks(onClose: () => void): DrawerCallbacks {
+export function quietCallbacks(onClose: () => void): DetailPanelCallbacks {
   return {
     onPreset: () => undefined,
     onToggleGroup: () => undefined,
@@ -23,7 +23,7 @@ export function quietCallbacks(onClose: () => void): DrawerCallbacks {
   }
 }
 
-export interface DrawerCallbacks {
+export interface DetailPanelCallbacks {
   onPreset(id: string): void
   onToggleGroup(channel: string, botId: string): void
   onToggleDirect(channel: string, botId: string): void
@@ -32,14 +32,14 @@ export interface DrawerCallbacks {
   onDraftWorkspace(draft: string): void
   onRemoveBot(channel: string, botId: string): void
   onTestSend(channel: string, botId: string): void
-  /** #173 助理人设块的「编辑」：抽屉层派发 OPEN_ASSIST_EDIT_EVENT 并关面板。 */
+  /** #173 助理人设块的「编辑」：详情面板层派发 OPEN_ASSISTANT_PROFILE_EDIT_EVENT 并关面板。 */
   onEditAssistant(): void
   /** 只读块复制后的轻提示（可选：静默渲染没有 toast）。 */
   onNotify?(message: string, icon?: 'check'): void
   onClose(): void
 }
 
-function presetSelect(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
+function presetSelect(model: DetailPanelModel, cbs: DetailPanelCallbacks): HTMLElement {
   const sel = h('select', {
     title: model.presetReady ? '沟通模式（写入真系统，新会话生效）' : '预设真值尚未读到，只读展示',
     'aria-label': '沟通模式',
@@ -61,13 +61,13 @@ function presetSelect(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
 
 /** B 方向原语：小节 caption＋列表卡＋行（左文右控件）＋胶囊开关。 */
 function caption(text: string): HTMLElement {
-  return h('div', { className: 'detail-drawer-cap' }, text)
+  return h('div', { className: 'detail-panel-cap' }, text)
 }
 
 function listRow(label: string, control: HTMLElement, title?: string): HTMLElement {
-  const row = h('div', { className: 'detail-drawer-row' })
-  row.appendChild(h('span', { className: 'detail-drawer-lab' }, label))
-  const right = h('span', { className: 'detail-drawer-rval' })
+  const row = h('div', { className: 'detail-panel-row' })
+  row.appendChild(h('span', { className: 'detail-panel-lab' }, label))
+  const right = h('span', { className: 'detail-panel-rval' })
   right.appendChild(control)
   row.appendChild(right)
   if (title) row.setAttribute('title', title)
@@ -75,26 +75,26 @@ function listRow(label: string, control: HTMLElement, title?: string): HTMLEleme
 }
 
 function pillSwitch(label: string, on: boolean, ready: boolean, title: string, onFlip: () => void): HTMLElement {
-  const btn = h('button', { type: 'button', className: 'detail-drawer-sw', role: 'switch', title }) as HTMLButtonElement
+  const btn = h('button', { type: 'button', className: 'detail-panel-sw', role: 'switch', title }) as HTMLButtonElement
   btn.setAttribute('aria-checked', on ? 'true' : 'false')
   if (!ready) btn.setAttribute('disabled', 'true')
   btn.addEventListener('click', () => { if (ready) onFlip() })
-  const wrap = h('span', { className: 'detail-drawer-rval' })
+  const wrap = h('span', { className: 'detail-panel-rval' })
   wrap.appendChild(btn)
   wrap.appendChild(h('b', null, on ? '开' : '关'))
-  const row = h('div', { className: 'detail-drawer-row' })
-  row.appendChild(h('span', { className: 'detail-drawer-lab' }, label))
+  const row = h('div', { className: 'detail-panel-row' })
+  row.appendChild(h('span', { className: 'detail-panel-lab' }, label))
   row.appendChild(wrap)
   return row
 }
 
 /** 上下文增强分渠道（B 列表风）：每渠道 caption＋列表卡；开关胶囊化，字段/引导语右对齐弱化。 */
-function ctxSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
+function ctxSection(model: DetailPanelModel, cbs: DetailPanelCallbacks): HTMLElement {
   const frag = h('div', null)
   if (!model.channels.length) {
     frag.appendChild(caption('上下文增强'))
-    const empty = h('div', { className: 'detail-drawer-list' })
-    empty.appendChild(h('div', { className: 'detail-drawer-empty' }, '尚未接入渠道。'))
+    const empty = h('div', { className: 'detail-panel-list' })
+    empty.appendChild(h('div', { className: 'detail-panel-empty' }, '尚未接入渠道。'))
     frag.appendChild(empty)
     return frag
   }
@@ -102,7 +102,7 @@ function ctxSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
     const ready = ch.ctx !== undefined
     const cur = ch.ctx ?? null
     frag.appendChild(caption('上下文（' + ch.label + '）'))
-    const card = h('div', { className: 'detail-drawer-list' })
+    const card = h('div', { className: 'detail-panel-list' })
     card.appendChild(pillSwitch('群聊增强', cur?.groupEnabled === true, ready,
       ready ? '群聊增强（只写本渠道，即时生效）' : '本渠道真值尚未读到，禁用写',
       () => cbs.onToggleGroup(ch.id, ch.botId)))
@@ -113,21 +113,21 @@ function ctxSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
       cur && cur.fields.length ? cur.fields.join('、') : '未设置')
     card.appendChild(listRow('字段', fields))
     const g = (cur?.guidance ?? '').trim()
-    card.appendChild(h('div', { className: 'detail-drawer-cap' }, '引导语'))
-    card.appendChild(h('div', { className: 'detail-drawer-note', title: g || '无引导语' }, g || '无引导语'))
+    card.appendChild(h('div', { className: 'detail-panel-cap' }, '引导语'))
+    card.appendChild(h('div', { className: 'detail-panel-note', title: g || '无引导语' }, g || '无引导语'))
     frag.appendChild(card)
   }
-  const note = h('div', { className: 'detail-drawer-meta' }, '打开后 AI 能看到消息哪来的；字段与引导语请去 dsh-im 上游改。')
+  const note = h('div', { className: 'detail-panel-meta' }, '打开后 AI 能看到消息哪来的；字段与引导语请去 dsh-im 上游改。')
   note.setAttribute('style', 'padding:0 4px')
   frag.appendChild(note)
   return frag
 }
 
-function workspaceSection(model: DrawerModel, draft: string | null, cbs: DrawerCallbacks): HTMLElement {
+function workspaceSection(model: DetailPanelModel, draft: string | null, cbs: DetailPanelCallbacks): HTMLElement {
   const frag = h('div', null)
   frag.appendChild(caption('绑定工作区'))
-  const card = h('div', { className: 'detail-drawer-list' })
-  card.appendChild(h('div', { className: 'detail-drawer-ws' }, model.workspace || '未绑定工作区'))
+  const card = h('div', { className: 'detail-panel-list' })
+  card.appendChild(h('div', { className: 'detail-panel-ws' }, model.workspace || '未绑定工作区'))
   const input = h('input', { type: 'text', value: draft ?? model.workspace, placeholder: '工作区绝对路径', 'aria-label': '工作区路径', style: { flex: '1', minWidth: '120px' } }) as HTMLInputElement
   input.addEventListener('change', () => cbs.onDraftWorkspace(input.value))
   const browse = makeButton({
@@ -138,7 +138,7 @@ function workspaceSection(model: DrawerModel, draft: string | null, cbs: DrawerC
     kind: 'primary', size: 'sm', label: '保存路径', title: '写入全部已绑机器人',
     onClick: () => cbs.onSaveWorkspace(input.value),
   })
-  const row = h('div', { className: 'detail-drawer-row' })
+  const row = h('div', { className: 'detail-panel-row' })
   row.appendChild(input)
   row.appendChild(browse)
   row.appendChild(save)
@@ -147,21 +147,21 @@ function workspaceSection(model: DrawerModel, draft: string | null, cbs: DrawerC
   return frag
 }
 
-function routesSection(model: DrawerModel): HTMLElement {
-  const sec = h('details', { className: 'detail-drawer-sec' })
+function routesSection(model: DetailPanelModel): HTMLElement {
+  const sec = h('details', { className: 'detail-panel-sec' })
   sec.setAttribute('open', '')
   sec.appendChild(h('summary', null, '会话路由摘要（' + model.routes.length + '）'))
   if (!model.routes.length) {
-    sec.appendChild(h('div', { className: 'detail-drawer-empty' }, '暂无已绑定会话映射（只读投影，随轮询刷新）。'))
+    sec.appendChild(h('div', { className: 'detail-panel-empty' }, '暂无已绑定会话映射（只读投影，随轮询刷新）。'))
     return sec
   }
   for (const r of model.routes) {
-    const row = h('div', { className: 'detail-drawer-route' + (r.ghost ? ' detail-drawer-ghost' : '') })
+    const row = h('div', { className: 'detail-panel-route' + (r.ghost ? ' detail-panel-ghost' : '') })
     const chName = r.channel ? channelLabel(r.channel) : ''
     const who = chName ? chName + '，' + r.chat : r.chat
-    row.appendChild(h('span', { className: 'detail-drawer-rchat', title: r.ghost ? '旧 direct: 存量映射，可忽略' : who },
+    row.appendChild(h('span', { className: 'detail-panel-rchat', title: r.ghost ? '旧 direct: 存量映射，可忽略' : who },
       chName ? h('span', null, chName) : null, h('span', null, r.chat)))
-    if (r.ghost) row.appendChild(h('span', { className: 'detail-drawer-meta' }, '旧映射'))
+    if (r.ghost) row.appendChild(h('span', { className: 'detail-panel-meta' }, '旧映射'))
     row.appendChild(h('code', null, '→ ' + r.sessionId))
     const btn = makeButton({
       kind: 'ghost', size: 'sm', label: '复制', title: '复制完整会话标识',
@@ -175,29 +175,29 @@ function routesSection(model: DrawerModel): HTMLElement {
         }
       },
     })
-    row.appendChild(h('span', { className: 'detail-drawer-push' }, btn))
+    row.appendChild(h('span', { className: 'detail-panel-push' }, btn))
     sec.appendChild(row)
   }
   return sec
 }
 
-function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement {
-  const sec = h('details', { className: 'detail-drawer-sec' })
+function channelsSection(model: DetailPanelModel, cbs: DetailPanelCallbacks): HTMLElement {
+  const sec = h('details', { className: 'detail-panel-sec' })
   sec.setAttribute('open', '')
   sec.appendChild(h('summary', null, '渠道管理（' + model.channels.length + '）'))
   if (!model.channels.length) {
-    sec.appendChild(h('div', { className: 'detail-drawer-empty' }, '尚未接入渠道，用行内接入添加。'))
+    sec.appendChild(h('div', { className: 'detail-panel-empty' }, '尚未接入渠道，用行内接入添加。'))
     return sec
   }
   for (const ch of model.channels) {
-    const row = h('div', { className: 'detail-drawer-chrow' })
-    row.appendChild(h('span', { className: 'detail-drawer-dot ' + ch.status }))
+    const row = h('div', { className: 'detail-panel-chrow' })
+    row.appendChild(h('span', { className: 'detail-panel-dot ' + ch.status }))
     const label = channelLabel(ch.id)
     const health = HEALTH_LABELS[ch.status] ?? ch.status
     const logo = channelGlyphSvg(ch.id, 16)
     row.appendChild(logo
-      ? h('span', { className: 'detail-drawer-chlogo', html: logo })
-      : h('span', { className: 'detail-drawer-chlogo detail-drawer-chbadge', title: label }, label.charAt(0) || '?'))
+      ? h('span', { className: 'detail-panel-chlogo', html: logo })
+      : h('span', { className: 'detail-panel-chlogo detail-panel-chbadge', title: label }, label.charAt(0) || '?'))
     row.appendChild(h('span', { title: label + '，' + health + '，' + ch.botId }, label))
     const send = makeButton({
       kind: 'tinted', size: 'sm', label: '测试', title: '向本渠道发送测试消息',
@@ -223,25 +223,25 @@ function channelsSection(model: DrawerModel, cbs: DrawerCallbacks): HTMLElement 
   return sec
 }
 
-/** 纯渲染（dom-shim 可测）：模型 + 回调 → 抽屉体。 */
-export function renderDrawerContent(model: DrawerModel, cbs: DrawerCallbacks, draftWs: string | null = null): HTMLElement {
+/** 纯渲染（dom-shim 可测）：模型 + 回调 → 详情面板体。 */
+export function renderDetailPanelContent(model: DetailPanelModel, cbs: DetailPanelCallbacks, draftWs: string | null = null): HTMLElement {
   const closeBtn = makeButton({ kind: 'ghost', size: 'sm', label: '关闭', title: '关闭详情面板', onClick: () => cbs.onClose() })
-  const head = h('div', { className: 'detail-drawer-dhead' },
-    h('span', { className: 'detail-drawer-dot ' + model.status }),
+  const head = h('div', { className: 'detail-panel-dhead' },
+    h('span', { className: 'detail-panel-dot ' + model.status }),
     h('span', null, model.name),
-    h('span', { className: 'detail-drawer-meta' }, '详情'),
+    h('span', { className: 'detail-panel-meta' }, '详情'),
     h('span', { style: { marginLeft: 'auto' } }, closeBtn))
-  const sum = h('div', { className: 'detail-drawer-summary' })
+  const sum = h('div', { className: 'detail-panel-summary' })
   sum.appendChild(listRow('模式', presetSelect(model, cbs)))
   const stateVal = h('span', { style: { fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '8px' } },
     h('span', null, '路由 ' + model.routes.length),
     h('span', null, '渠道 ' + model.channels.length),
     h('span', null, model.statusLabel))
   sum.appendChild(listRow('状态', stateVal))
-  const sumNote = h('div', { className: 'detail-drawer-meta' }, '沟通模式：DSH 用哪种方式回话（如 PTC、标准、创造等），与助理人物设定无关。写入真系统，新会话生效。')
+  const sumNote = h('div', { className: 'detail-panel-meta' }, '沟通模式：DSH 用哪种方式回话（如 PTC、标准、创造等），与助理人物设定无关。写入真系统，新会话生效。')
   sumNote.setAttribute('style', 'padding:6px 4px 0')
-  const body = h('div', { className: 'detail-drawer-dbody' }, sum, sumNote, renderProfileSection(model, cbs),
+  const body = h('div', { className: 'detail-panel-dbody' }, sum, sumNote, renderProfileSection(model, cbs),
   ctxSection(model, cbs),
     workspaceSection(model, draftWs, cbs), routesSection(model), channelsSection(model, cbs))
-  return h('div', { className: 'detail-drawer' }, head, body)
+  return h('div', { className: 'detail-panel' }, head, body)
 }

@@ -7,7 +7,7 @@ import { firstViewCopy, winnerAvatarClass, winnerAvatarText } from './first-view
 import { makeButton } from '../ui/button'
 import { makeNameEditor } from '../ui/field'
 import { makeRow } from '../ui/list'
-import { HEALTH_LABELS, OPEN_DRAWER_EVENT, stateColor, type OpenDrawerDetail } from '../data/config'
+import { HEALTH_LABELS, OPEN_DETAIL_PANEL_EVENT, stateColor, type OpenDetailPanelDetail } from '../data/config'
 import { paletteOf, type AgentView } from '../data/model'
 import { openMoreMenu } from './row-actions'
 import { logLine, logOn } from '../log'
@@ -107,7 +107,7 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
       size: 'sm',
       label: copy.detail,
       title: copy.detailTitle,
-      onClick: () => emitOpenDrawer(view.key),
+      onClick: () => emitOpenDetailPanel(view.key),
     })
     actions.appendChild(detailBtn)
     const moreBtn = h('button', {
@@ -138,13 +138,13 @@ export function makeAgentRow(view: AgentView, cb: RowCallbacks, variant: RowVari
   return row
 }
 
-/** DetailDrawer 抽屉打开意图（§10 例外：A1 行唯一新增触碰点；DetailDrawer 特性监听，无反向依赖）。 */
-function emitOpenDrawer(key: string): void {
+/** 详情面板打开意图（§10 例外：A1 行唯一新增触碰点；DetailPanel 特性监听，无反向依赖）。 */
+function emitOpenDetailPanel(key: string): void {
   try {
     if (typeof window === 'undefined' || typeof window.CustomEvent !== 'function') return
-    const detail: OpenDrawerDetail = { key }
-    window.dispatchEvent(new window.CustomEvent(OPEN_DRAWER_EVENT, { detail }))
+    const detail: OpenDetailPanelDetail = { key }
+    window.dispatchEvent(new window.CustomEvent(OPEN_DETAIL_PANEL_EVENT, { detail }))
   } catch (e) {
-    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'row', action: 'open-drawer', ok: false, message: '派发失败，抽屉打不开：' + String((e as Error)?.message ?? e) })
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'row', action: 'open-detail-panel', ok: false, message: '派发失败，详情面板打不开：' + String((e as Error)?.message ?? e) })
   }
 }

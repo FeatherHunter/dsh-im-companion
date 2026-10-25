@@ -2,7 +2,7 @@
  * 预置钮 `avatarOptButton` 与弹层共用同一套字形/色板规则；自有格子位（条带/气泡）调 `paintAvatarFace`，
  * 三者同规则（有图铺图、有 kind 归属图标＋归属色板、无 kind 首字），规则只活这一处；
  * 样式自带独立 id 装配（home-row-styles 同款机制，防 home-ui-styles.ts 300 行破线——契约 §6 只加类、不占 .af-*）。
- * 删掉本文件即整块退场：调用方只剩 import 行需回退（home-rows / home-forms / home-detail / home-asst-create / home-row-strip / home-row-tip）。 */
+ * 删掉本文件即整块退场：调用方只剩 import 行需回退（home-rows / home-forms / home-detail / home-assistant-create / home-row-strip / home-row-tip）。 */
 import { h } from '../dom'
 import { installFeatureStyles } from '../theme'
 import { huIcon, type HuIconName } from './home-icons'

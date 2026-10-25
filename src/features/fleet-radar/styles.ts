@@ -1,4 +1,4 @@
-/** FleetRadar 矩阵样式（fleet-radar-* 命名空间：fleet-radar = fleet-radar 缩写，全局唯一；颜色直引 --dsw-alias-* 令牌 + 浅色回退，深浅主题免费跟随，仿 DetailDrawer）。 */
+/** FleetRadar 矩阵样式（fleet-radar-* 命名空间：fleet-radar = fleet-radar 缩写，全局唯一；颜色直引 --dsw-alias-* 令牌 + 浅色回退，深浅主题免费跟随，仿 DetailPanel）。 */
 export const CSS = `
 .fleet-radar-root { padding: 6px 4px 12px; }
 .fleet-radar-overlay { position: fixed; inset: 0; z-index: 1200; background: rgba(0,0,0,.45); }

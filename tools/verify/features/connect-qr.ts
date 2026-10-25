@@ -56,7 +56,7 @@ function locate(base: string, name: string): string {
   throw new Error('not found: ' + name);
 }
 
-/* 地基修复（同 detail-drawer.ts）：tmp 无 node_modules 上溯链，junction 指回仓库。 */
+/* 地基修复（同 detail-panel.ts）：tmp 无 node_modules 上溯链，junction 指回仓库。 */
 try {
   symlinkSync(join(REPO, 'node_modules'), join(tmp, 'node_modules'), 'junction');
 } catch {
@@ -737,8 +737,8 @@ test('#62 创建接线：面板创建表单必带选家（T6a 起改钉「建家
   const panel = readFileSync(join(REPO, 'src', 'client', 'components', 'panel.ts'), 'utf8');
   const compose = readFileSync(join(REPO, 'src', 'client', 'components', 'compose-bar.ts'), 'utf8');
   const forms = readFileSync(join(REPO, 'src', 'client', 'components', 'home-forms.ts'), 'utf8')
-  /* T8-3 #171：新建助理弹层从 home-forms 纯搬到 home-asst-create（299 行顶格放不下两栏）——选家/选机器人两条钉改读新家。 */
-  const asstCreate = readFileSync(join(REPO, 'src', 'client', 'components', 'home-asst-create.ts'), 'utf8');
+  /* T8-3 #171：新建助理弹层从 home-forms 纯搬到 home-assistant-create（299 行顶格放不下两栏）——选家/选机器人两条钉改读新家。 */
+  const asstCreate = readFileSync(join(REPO, 'src', 'client', 'components', 'home-assistant-create.ts'), 'utf8');
   const body = readFileSync(join(REPO, 'src', 'client', 'components', 'panel-body.ts'), 'utf8');
   const rows = readFileSync(join(REPO, 'src', 'client', 'components', 'home-rows.ts'), 'utf8');
   const ops = readFileSync(join(REPO, 'src', 'client', 'components', 'home-ops.ts'), 'utf8');

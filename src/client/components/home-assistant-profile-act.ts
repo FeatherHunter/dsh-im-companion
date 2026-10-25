@@ -1,7 +1,7 @@
 /** 助理资料编辑弹窗（T8-4 #172）：只含「简介 / 人物设定」两栏的小弹窗。
  *
  * 两条入口共用同一张窗：L2 助理行第 4 个图标（profile-a），以及详情面板（#173）派发的
- * OPEN_ASSIST_EDIT_EVENT（监听在 home-assist-edit-listen.ts，panel-body 接线）。窗口本体留在本文件，
+ * OPEN_ASSISTANT_PROFILE_EDIT_EVENT（监听在 home-assistant-profile-edit-listen.ts，panel-body 接线）。窗口本体留在本文件，
  * panel-body 只留一行 act 分支 ＋ 一行订阅，守它的 300 行红线。
  *
  * 保存四分支照规格 #168：校验不过 ⇒ 弹窗不动；归一后没改 ⇒ 关窗且**零写请求**；成功 ⇒ **先关窗**
@@ -12,7 +12,7 @@
 import { h } from '../dom'
 import { ASSISTANT_FIELDS, normalizeFieldText, type AssistantFieldsValue } from '../../assistant-fields'
 import { logLine, logOn } from '../log'
-import { asstFieldsUi } from './home-asst-fields'
+import { asstFieldsUi } from './home-assistant-profile-fields'
 import { footBtns, type EditDeps } from './home-forms'
 import { huIcon } from './home-icons'
 import { closeHomePop, openHomePop, type AnchorRef } from './home-pop'

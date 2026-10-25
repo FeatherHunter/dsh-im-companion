@@ -1,5 +1,5 @@
 // FleetRadar 矩阵总览自验证（F0 每功能自验证）：纯数据层 + 注册/样式断言（node --test，零第三方依赖）。
-// 做法：tsc 转译相关链到临时目录再断言（照抄 detail-drawer.ts 模式）；view/styles 只转译不断言运行时。
+// 做法：tsc 转译相关链到临时目录再断言（照抄 detail-panel.ts 模式）；view/styles 只转译不断言运行时。
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -103,9 +103,9 @@ test('空态：0 行 + 计数归零；全空列仅在有行时计算', () => {
   assert.ok(!m2.emptyColumns.includes('feishu'));
 });
 
-test('钻取载荷：事件名即 DetailDrawer 抽屉订阅的 OPEN_DRAWER_EVENT', () => {
+test('钻取载荷：事件名即 详情面板订阅的 OPEN_DETAIL_PANEL_EVENT', () => {
   const e = data.drillEventFor('D:/ws/a');
-  assert.equal(e.name, config.OPEN_DRAWER_EVENT);
+  assert.equal(e.name, config.OPEN_DETAIL_PANEL_EVENT);
   assert.deepEqual(e.detail, { key: 'D:/ws/a' });
 });
 
@@ -126,7 +126,7 @@ test('家矩阵：行＝家；墓碑与悬空 homeId 不渲染；同家同渠道
   const m = hm.buildHomeMatrix(bots, homes, assistants);
   assert.deepEqual(m.rows.map((r: any) => r.key), ['h1', 'h3'], '在线家在前，墓碑/悬空不占行');
   const h1 = m.rows[0];
-  assert.equal(h1.drillKey, 'D:/ws/a', '钻取走 home.path（抽屉兼容）');
+  assert.equal(h1.drillKey, 'D:/ws/a', '钻取走 home.path（详情面板兼容）');
   assert.equal(h1.assistantCount, 3);
   assert.equal(h1.boundCount, 2);
   assert.equal(h1.unboundCount, 1);

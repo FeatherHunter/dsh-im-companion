@@ -226,7 +226,7 @@ test('T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重�
   assert.ok(String(icons.channelGlyphSvg('feishu', 14)).includes('#00D6B9'), '品牌色保留（用户裁定：不跟 currentColor 变灰）');
   assert.equal(icons.channelGlyphSvg('nope-unknown', 14), null, '未知渠道回 null（气泡走首字徽标回退）');
   assert.ok(tipSrc.includes('channelGlyphSvg(data.channel'), '气泡 logo 就地取自 icons.ts（调用点，不是只 import）');
-  assert.ok(tipSrc.includes('hu-logo-fb'), '未知渠道有首字徽标回退（detail-drawer 同款）');
+  assert.ok(tipSrc.includes('hu-logo-fb'), '未知渠道有首字徽标回退（detail-panel 同款）');
   assert.equal(cls(shown()[0], 'hu-logo').length, 1, '气泡里有且仅有一个 logo 位（桩不解析 svg，只钉位数）');
   tip.hideAsstTip();
   const el3 = strip.homeStrip({ homeId: 'h8', orphan: false, path: '', assts: [asst({ id: 'ax', name: '野助理', on: null, channel: 'nope-unknown', sub: '火星来客' })] });

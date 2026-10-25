@@ -1,15 +1,15 @@
-/** DetailDrawer 抽屉数据层（DOM-free，可 node 直测）：A' 方案——读上游真值，写上游真接口。
- * 第一性：dsh-im 是唯一真源，companion 不自持第二账本（host meta presets/ctx 端点保留不断路，抽屉不再用）。
+/** 详情面板数据层（DOM-free，可 node 直测）：A' 方案——读上游真值，写上游真接口。
+ * 第一性：dsh-im 是唯一真源，companion 不自持第二账本（host meta presets/ctx 端点保留不断路，详情面板不再用）。
  * 读：connection.status 经 BotSnap.agentPreset/contextEnhancement + catalogs 回流（fleet-api 提取）。
  * 写：bot.preset.set {botId, agentPreset}；bot.context-enhancement.set {botId, config 全量4键，读-改-写}。
  * 守卫：读不到（undefined）就不写——盲写覆盖用户引导语是正确性红线。 */
-import { OPEN_DRAWER_EVENT, type AssistBrief, type HealthKind } from '../../client/data/config'
+import { OPEN_DETAIL_PANEL_EVENT, type AssistantProfileBrief, type HealthKind } from '../../client/data/config'
 import { buildModel } from '../../client/data/model'
 import { logLine, logOn } from '../../client/log'
 import type { AgentPresetCatalog, BotSnap, RpcCall, UpstreamCtx } from '../../client/data/fleet-api'
 import type { AgentMetaDoc } from '../../client/data/meta'
 
-export { OPEN_DRAWER_EVENT }
+export { OPEN_DETAIL_PANEL_EVENT }
 
 /** 跟随默认（上游 null）：改动只对新会话生效，已有会话不受影响。 */
 export const PRESET_FOLLOW = '__follow__'
@@ -18,14 +18,14 @@ export const PRESET_MIXED = '__mixed__'
 
 const PRESET_ID_RE = /^[a-z0-9][a-z0-9-]*$/
 
-export interface DrawerBot {
+export interface DetailPanelBot {
   channel: string
   botId: string
   preset: string | null | undefined
   ctx: UpstreamCtx | null | undefined
 }
 
-export interface DrawerChannel {
+export interface DetailPanelChannel {
   id: string
   label: string
   status: HealthKind
@@ -34,7 +34,7 @@ export interface DrawerChannel {
   ctx: UpstreamCtx | null | undefined
 }
 
-export interface DrawerModel {
+export interface DetailPanelModel {
   key: string
   name: string
   workspace: string
@@ -48,17 +48,17 @@ export interface DrawerModel {
   presetReady: boolean
   /** false = 还有渠道没读到上下文真值，该渠道行开关禁用（防盲写）。 */
   ctxReady: boolean
-  channels: DrawerChannel[]
-  bots: DrawerBot[]
+  channels: DetailPanelChannel[]
+  bots: DetailPanelBot[]
   routes: RouteEntry[]
   /** 助理资料快照（#173 只读块）：null＝该 Agent 未绑定助理或调用方未带 brief。 */
-  assistant: AssistBrief | null
+  assistant: AssistantProfileBrief | null
 }
 
 export interface PanelRect { top: number; right: number; bottom: number; left: number }
 export interface SheetGeom { top: number; right: number; bottom: number; width: number }
 
-/** 抽屉占满设置面板：fixed 相对视口，用面板矩形反推四边，宽 = 面板全宽；面板找不到回 null（调用方 CSS 视口右沿兜底）。 */
+/** 详情面板占满设置面板：fixed 相对视口，用面板矩形反推四边，宽 = 面板全宽；面板找不到回 null（调用方 CSS 视口右沿兜底）。 */
 export function sheetGeometry(panel: PanelRect | null, viewport: { width: number; height: number }): SheetGeom | null {
   if (!panel || !(viewport.width > 0 && viewport.height > 0)) return null
   const pw = panel.right - panel.left
@@ -73,7 +73,7 @@ export function sheetGeometry(panel: PanelRect | null, viewport: { width: number
 }
 
 /** 重绘指纹：同构快照字符串相等即跳过重绘（15s 轮询不抖动滚动/焦点）；模型只含纯数据，无易变字段。 */
-export function modelSig(model: DrawerModel): string {
+export function modelSig(model: DetailPanelModel): string {
   try {
     return JSON.stringify(model)
   } catch {
@@ -83,7 +83,7 @@ export function modelSig(model: DrawerModel): string {
 
 /** 可见矩形：元素矩形与一组裁剪框（祖先 padding-box，升序）求交；求交无效回 null。
  * 溢出场景真机根因：.af-root 高度=Agent 列表内容高度，高于设置面板可视区时
- * 底边被 sheetGeometry 的 Math.max(0) 钳成 0 → 抽屉顶到 DSH 视口底。
+ * 底边被 sheetGeometry 的 Math.max(0) 钳成 0 → 详情面板顶到 DSH 视口底。
  * 先裁剪到面板可视区，底边即锁在面板底（不再越界）。 */
 export function clipRect(rect: PanelRect, clips: PanelRect[]): PanelRect | null {
   let out: PanelRect = { ...rect }
@@ -110,7 +110,7 @@ export interface RouteEntry {
 /** 自有通道（不求上游）：/im-companion routes.list。 */
 export const ROUTES_CHANNEL = '/im-companion'
 
-/** 只读取数：任何失败（无 rpc/拒答/形状不对）都静默 []，抽屉空席位兜底。 */
+/** 只读取数：任何失败（无 rpc/拒答/形状不对）都静默 []，详情面板空席位兜底。 */
 export async function fetchRoutes(rpc: RpcCall | null, bots: { channel: string; botId: string }[]): Promise<RouteEntry[]> {
   try {
     if (!rpc || !(bots ?? []).length) return []
@@ -128,13 +128,13 @@ export async function fetchRoutes(rpc: RpcCall | null, bots: { channel: string; 
       }]
     })
   } catch (e) {
-    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'routes-degrade', ok: false, message: 'routes 取数失败，静默空数组兜底（抽屉空席位）：' + String((e as Error)?.message ?? e) })
+    if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-panel', action: 'routes-degrade', ok: false, message: 'routes 取数失败，静默空数组兜底（详情面板空席位）：' + String((e as Error)?.message ?? e) })
     return []
   }
 }
 
 /** 等待数据时的占位模型（key 回填，供关闭/重试逻辑识别；读写全禁用）。 */
-export function loadingModel(key: string): DrawerModel {
+export function loadingModel(key: string): DetailPanelModel {
   return {
     key, name: '加载中', workspace: '', statusLabel: '等待数据', status: 'warn',
     bound: false, preset: PRESET_FOLLOW, presetCatalog: { defaultId: '', items: [] }, presetReady: false,
@@ -143,7 +143,7 @@ export function loadingModel(key: string): DrawerModel {
   }
 }
 
-/** 上游信封解包：{ok:false} 抛错，其余透传（与 fleet-api unwrap 同语义，抽屉写路径用）。 */
+/** 上游信封解包：{ok:false} 抛错，其余透传（与 fleet-api unwrap 同语义，详情面板写路径用）。 */
 export function unwrapRpc(raw: unknown): void {
   const r = raw as { ok?: boolean; error?: { code?: string; message?: string } } | null
   if (r && r.ok === false) throw new Error(r.error?.message ?? r.error?.code ?? '上游写入失败')
@@ -189,14 +189,14 @@ function mergeCatalogs(channels: string[], catalogs: Record<string, AgentPresetC
   return { defaultId, items: out }
 }
 
-export function buildDrawerModel(
+export function buildDetailPanelModel(
   bots: BotSnap[], meta: AgentMetaDoc, key: string, catalogs: Record<string, AgentPresetCatalog> = {},
-  routes: RouteEntry[] = [], assistant: AssistBrief | null = null,
-): DrawerModel | null {
+  routes: RouteEntry[] = [], assistant: AssistantProfileBrief | null = null,
+): DetailPanelModel | null {
   const fleet = buildModel(bots, meta, 'agent', '')
   const view = fleet.agents.find((a) => a.key === key)
   if (!view) return null
-  const dbots: DrawerBot[] = view.bots.map((b) => {
+  const dbots: DetailPanelBot[] = view.bots.map((b) => {
     const s = bots.find((x) => x && x.channel === b.channel && x.botId === b.botId)
     return { channel: b.channel, botId: b.botId, preset: s?.agentPreset, ctx: s?.contextEnhancement }
   })

@@ -1,4 +1,4 @@
-/** DetailDrawer 抽屉容器：事件开合 + 真系统写透 + stream 保活（P0-3）。A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写。 */
+/** 详情面板容器：事件开合 + 真系统写透 + stream 保活（P0-3）。A'：预设/上下文直写 dsh-im 真接口（按 botId 逐渠道），读不到真值禁用写。 */
 import { mount } from '../../client/dom'
 import { logLine, logOn } from '../../client/log'
 import { nativePicker, openDirPicker } from '../../client/ui/dir-picker'
@@ -7,46 +7,46 @@ import { toast } from '../../client/ui/toast'
 import { chooseBot, runTestSend } from '../../client/data/header-overlay'
 import type { AgentPresetCatalog } from '../../client/data/fleet-api'
 import type { FeatureCtx } from '../protocol'
-import { OPEN_ASSIST_EDIT_EVENT, channelLabel, type AssistBrief, type AssistEditDetail, type OpenDrawerDetail } from '../../client/data/config'
+import { OPEN_ASSISTANT_PROFILE_EDIT_EVENT, channelLabel, type AssistantProfileBrief, type AssistantProfileEditDetail, type OpenDetailPanelDetail } from '../../client/data/config'
 import { rpcOf, writeBots, type WriteDeps } from './actions'
 import {
-  OPEN_DRAWER_EVENT, PRESET_MIXED, buildDrawerModel, ctxPayloadFor, fetchRoutes, loadingModel,
-  modelSig, presetPayloadFor, type DrawerModel, type RouteEntry,
+  OPEN_DETAIL_PANEL_EVENT, PRESET_MIXED, buildDetailPanelModel, ctxPayloadFor, fetchRoutes, loadingModel,
+  modelSig, presetPayloadFor, type DetailPanelModel, type RouteEntry,
 } from './data'
-import { quietCallbacks, renderDrawerContent, type DrawerCallbacks } from './view'
+import { quietCallbacks, renderDetailPanelContent, type DetailPanelCallbacks } from './view'
 
 let currentClose: (() => void) | null = null
 
-export function mountDrawer(fctx: FeatureCtx): () => void {
+export function mountDetailPanel(fctx: FeatureCtx): () => void {
   const onEvent = (e: Event): void => {
     try {
-      const detail = (e as CustomEvent)?.detail as Partial<OpenDrawerDetail> | undefined
+      const detail = (e as CustomEvent)?.detail as Partial<OpenDetailPanelDetail> | undefined
       const key = detail?.key
-      if (typeof key === 'string' && key) void openDrawer(fctx, key, detail?.assistant ?? null)
+      if (typeof key === 'string' && key) void openDetailPanel(fctx, key, detail?.assistant ?? null)
     } catch {
       /* ignore */
     }
   }
   try {
     if (typeof window === 'undefined' || typeof window.addEventListener !== 'function') return () => undefined
-    window.addEventListener(OPEN_DRAWER_EVENT, onEvent as EventListener)
-  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'detail-drawer', message: String((e as Error)?.message ?? e) }); return () => undefined }
+    window.addEventListener(OPEN_DETAIL_PANEL_EVENT, onEvent as EventListener)
+  } catch (e) { logLine('error', 'feature.mount.fail', { feature: 'detail-panel', message: String((e as Error)?.message ?? e) }); return () => undefined }
   return () => {
-    try { window.removeEventListener(OPEN_DRAWER_EVENT, onEvent as EventListener) } catch { /* ignore */ }
+    try { window.removeEventListener(OPEN_DETAIL_PANEL_EVENT, onEvent as EventListener) } catch { /* ignore */ }
   }
 }
 
 type MetaDoc = Awaited<ReturnType<FeatureCtx['meta']['loadMeta']>>
-type SnapBots = Parameters<typeof buildDrawerModel>[0]
-/** #173 编辑跳转：派发 OPEN_ASSIST_EDIT_EVENT（feature→A1，契约 §4）后关面板；派发失败不阻断关闭。 */
-export function jumpToAssistEdit(model: DrawerModel, close: () => void): void {
-  const detail: AssistEditDetail = { assistantId: model.assistant?.id ?? '', homePath: model.workspace }
-  try { window.dispatchEvent(new window.CustomEvent(OPEN_ASSIST_EDIT_EVENT, { detail })) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'open-assist-edit', ok: false, message: String((e as Error)?.message ?? e) }) }
+type SnapBots = Parameters<typeof buildDetailPanelModel>[0]
+/** #173 编辑跳转：派发 OPEN_ASSISTANT_PROFILE_EDIT_EVENT（feature→A1，契约 §4）后关面板；派发失败不阻断关闭。 */
+export function jumpToAssistantProfileEdit(model: DetailPanelModel, close: () => void): void {
+  const detail: AssistantProfileEditDetail = { assistantId: model.assistant?.id ?? '', homePath: model.workspace }
+  try { window.dispatchEvent(new window.CustomEvent(OPEN_ASSISTANT_PROFILE_EDIT_EVENT, { detail })) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-panel', action: 'open-assistant-profile-edit', ok: false, message: String((e as Error)?.message ?? e) }) }
   close()
 }
 
-async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief | null = null): Promise<void> {
-  logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'open', ok: true, message: '打开 Agent 详情：' + key })
+async function openDetailPanel(fctx: FeatureCtx, key: string, assistant: AssistantProfileBrief | null = null): Promise<void> {
+  logLine('debug', 'ui.action', { area: 'detail-panel', action: 'open', ok: true, message: '打开 Agent 详情：' + key })
   try {
     currentClose?.()
   } catch {
@@ -63,12 +63,12 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
   let lastCatalogs: Record<string, AgentPresetCatalog> = {}
   let lastRoutes: RouteEntry[] = []
   const closeAll = (): void => {
-    try { sheet?.close() } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'close-fail', ok: false, message: String((e as Error)?.message ?? e) }) }
+    try { sheet?.close() } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-panel', action: 'close-fail', ok: false, message: String((e as Error)?.message ?? e) }) }
   }
   try {
     sheet = showSheet({
-      overlayClass: 'detail-drawer-overlay',
-      panelClass: 'detail-drawer-sheet',
+      overlayClass: 'detail-panel-overlay',
+      panelClass: 'detail-panel-sheet',
       label: 'Agent 详情面板',
       onClose: () => {
         closed = true
@@ -83,9 +83,9 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
     })
   } catch (e) {
     sheet = null
-    logLine('error', 'ui.render.fail', { area: 'detail-drawer', message: 'showSheet 抛错：' + String((e as Error)?.message ?? e) })
+    logLine('error', 'ui.render.fail', { area: 'detail-panel', message: 'showSheet 抛错：' + String((e as Error)?.message ?? e) })
   }
-  if (!sheet) { logLine('error', 'ui.render.fail', { area: 'detail-drawer', message: '抽屉面板未建出（showSheet 返回空）' }); toast('详情面板打开失败'); return }
+  if (!sheet) { logLine('error', 'ui.render.fail', { area: 'detail-panel', message: '详情面板未建出（showSheet 返回空）' }); toast('详情面板打开失败'); return }
   currentClose = closeAll
   let settled = false
   let giveUp: ReturnType<typeof setTimeout> | null = null
@@ -96,9 +96,9 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
   const paintLoading = (): void => {
     if (closed || !sheet) return
     try {
-      mount(sheet.panel, renderDrawerContent(loadingModel(key), quietCallbacks(() => closeAll())))
+      mount(sheet.panel, renderDetailPanelContent(loadingModel(key), quietCallbacks(() => closeAll())))
     } catch (e) {
-      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'loading-paint-fail', ok: false, message: String((e as Error)?.message ?? e) })
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-panel', action: 'loading-paint-fail', ok: false, message: String((e as Error)?.message ?? e) })
     }
   }
   try {
@@ -116,7 +116,7 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
   let lastSig: string | null = null
   const paint = (): void => {
     if (closed || !meta || !sheet) return
-    const model = buildDrawerModel(lastBots, meta, key, lastCatalogs, lastRoutes, assistant)
+    const model = buildDetailPanelModel(lastBots, meta, key, lastCatalogs, lastRoutes, assistant)
     if (!model) {
       if (settled) {
         settled = false
@@ -133,15 +133,15 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
     if (settled && sig && sig === lastSig) return
     settled = true
     clearGiveUp()
-    const bd = sheet.panel.querySelector('.detail-drawer-dbody') as HTMLElement | null
+    const bd = sheet.panel.querySelector('.detail-panel-dbody') as HTMLElement | null
     const st = bd ? bd.scrollTop : 0
     const sl = bd ? bd.scrollLeft : 0
     try {
-      mount(sheet.panel, renderDrawerContent(model, cbs(model), draftWs))
+      mount(sheet.panel, renderDetailPanelContent(model, cbs(model), draftWs))
     } catch (e) {
-      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'paint-fail', ok: false, message: '保留旧帧：' + String((e as Error)?.message ?? e) })
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-panel', action: 'paint-fail', ok: false, message: '保留旧帧：' + String((e as Error)?.message ?? e) })
     }
-    const nb = sheet.panel.querySelector('.detail-drawer-dbody') as HTMLElement | null
+    const nb = sheet.panel.querySelector('.detail-panel-dbody') as HTMLElement | null
     if (nb) { nb.scrollTop = st; nb.scrollLeft = sl }
     lastSig = sig
   }
@@ -154,10 +154,10 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
   }
   let draftWs: string | null = null
   const deps = (): WriteDeps => ({ rpc: fctx.rpc, refresh: () => fctx.refresh(), reloadMeta, paint, notify: toast })
-  const cbs = (model: DrawerModel): DrawerCallbacks => {
+  const cbs = (model: DetailPanelModel): DetailPanelCallbacks => {
     const flipOne = (channel: string, botId: string, which: 'group' | 'direct'): void => {
       const target = model.bots.find((b) => b.channel === channel && b.botId === botId)
-      if (!target || target.ctx === undefined) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-drawer', action: 'toggle-rejected', ok: false, message: '本渠道真值未读到，拒绝翻转（防覆盖已有配置）' }); toast('本渠道真值尚未读到，稍后再试（防覆盖已有配置）'); return }
+      if (!target || target.ctx === undefined) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'detail-panel', action: 'toggle-rejected', ok: false, message: '本渠道真值未读到，拒绝翻转（防覆盖已有配置）' }); toast('本渠道真值尚未读到，稍后再试（防覆盖已有配置）'); return }
       const cur = target.ctx
       const on = cur !== null && (which === 'group' ? cur.groupEnabled : cur.directEnabled) === true
       const cfg = ctxPayloadFor(cur, which, !on)
@@ -165,7 +165,7 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
         toast('本渠道真值缺失，稍后再试')
         return
       }
-      const single: DrawerModel = { ...model, bots: [target] }
+      const single: DetailPanelModel = { ...model, bots: [target] }
       const kind = channelLabel(channel) + (which === 'group' ? '群聊增强' : '私聊增强')
       void writeBots(single, deps(), kind,
         () => rpcOf(fctx.rpc, channel, 'bot.context-enhancement.set', { botId: botId, config: cfg }))
@@ -257,7 +257,7 @@ async function openDrawer(fctx: FeatureCtx, key: string, assistant: AssistBrief 
         }
       })()
     },
-    onEditAssistant: () => jumpToAssistEdit(model, closeAll),
+    onEditAssistant: () => jumpToAssistantProfileEdit(model, closeAll),
     onNotify: (message, icon) => toast(message, icon),
     onClose: () => closeAll(),
     }

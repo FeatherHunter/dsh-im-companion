@@ -1,5 +1,5 @@
 /** 特性注册表：新增功能 = 加一行 import + 一行数组项（client/index 只读此列表）。 */
-import { feature as detailDrawer } from './detail-drawer/manifest'
+import { feature as detailPanel } from './detail-panel/manifest'
 import { feature as leftBadges } from './left-badges/manifest'
 import { feature as leftFilter } from './left-filter/manifest'
 import { feature as adopt } from './adopt/manifest'
@@ -11,6 +11,6 @@ import { feature as designPreview } from './design-preview/manifest'
 import { feature as updateCenter } from './update-center/manifest'
 import type { FeatureManifest } from './protocol'
 
-export const FEATURES: FeatureManifest[] = [detailDrawer, leftBadges, leftFilter, adopt, presence, welcomeBanner, fleetRadar, sessionHeader, designPreview, updateCenter].sort((a, b) => a.order - b.order)
+export const FEATURES: FeatureManifest[] = [detailPanel, leftBadges, leftFilter, adopt, presence, welcomeBanner, fleetRadar, sessionHeader, designPreview, updateCenter].sort((a, b) => a.order - b.order)
 
 export type { FeatureCtx, FeatureManifest, FeatureSlot, SlotTarget, SlotsService } from './protocol'

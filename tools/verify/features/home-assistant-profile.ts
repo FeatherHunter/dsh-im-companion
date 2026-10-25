@@ -15,7 +15,7 @@ const CLIENT = join(REPO, 'src', 'client');
 const COMP = join(CLIENT, 'components');
 
 /* —— 面板真渲染链：与 home-steel 同一个 tsc 口径（rootDir 钉死 src，产物落 client/components/） —— */
-const tmpBox = mkdtempSync(join(tmpdir(), 'home-asst-profile-box-'));
+const tmpBox = mkdtempSync(join(tmpdir(), 'home-assistant-profile-box-'));
 try {
   execFileSync(process.execPath, [
     join(REPO, 'node_modules', 'typescript', 'bin', 'tsc'),
@@ -33,7 +33,7 @@ try {
 }
 try { symlinkSync(join(REPO, 'node_modules'), join(tmpBox, 'node_modules'), 'junction'); } catch { /* 已存在跳过 */ }
 
-/* —— DOM 桩：window 做成**真事件总线**（#172 的 OPEN_ASSIST_EDIT_EVENT 派发/退订要能被点到） —— */
+/* —— DOM 桩：window 做成**真事件总线**（#172 的 OPEN_ASSISTANT_PROFILE_EDIT_EVENT 派发/退订要能被点到） —— */
 const domDoc: any = createDocument();
 const bus = new Map<string, Set<Function>>();
 const domWin: any = {
@@ -41,7 +41,7 @@ const domWin: any = {
   requestAnimationFrame: (fn: () => void) => setTimeout(fn, 0),
   navigator: { userAgent: 'node-shim' },
   localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} },
-  location: { protocol: 'http:', host: 'home-asst-profile' },
+  location: { protocol: 'http:', host: 'home-assistant-profile' },
   innerWidth: 1024, innerHeight: 768,
   CustomEvent: class { type: string; detail: any; constructor(t: string, o?: any) { this.type = t; this.detail = o?.detail } },
   addEventListener: (t: string, fn: Function) => {
@@ -65,7 +65,7 @@ const reqBox = (rel: string): any => {
 };
 const bodyMod: any = reqBox('panel-body.js');
 const popMod: any = reqBox('home-pop.js');
-const actMod: any = reqBox('home-asst-profile-act.js');
+const actMod: any = reqBox('home-assistant-profile-act.js');
 const cfgMod: any = (() => {
   try { return boxReq('./client/data/config.js'); } catch { return boxReq('./data/config.js'); }
 })();
@@ -342,28 +342,28 @@ test('#172 家页第三行：有简介显示、空白不占位', (t) => {
   assert.equal(metaSpans[1], sub, '.hu-sub 必须仍是名字块里的第一个 meta span');
 });
 
-/* ⑪ 事件入口（补丁 B）：OPEN_ASSIST_EDIT_EVENT 开对的那一位；未知 id 无弹层；dispose 后退订。 */
+/* ⑪ 事件入口（补丁 B）：OPEN_ASSISTANT_PROFILE_EDIT_EVENT 开对的那一位；未知 id 无弹层；dispose 后退订。 */
 test('#172 事件入口：派发打开对应助理、未知 id 不开、dispose 后退订', async (t) => {
   const { bodyEl, handle } = makeBox();
   t.after(() => handle.dispose());
   gotoL2(bodyEl);
-  assert.equal(typeof cfgMod.OPEN_ASSIST_EDIT_EVENT, 'string', '#173 的契约常量必须在 config.ts（Added-only）');
-  assert.equal(cfgMod.OPEN_ASSIST_EDIT_EVENT, 'dsh-im-companion:open-assist-edit');
-  domWin.dispatchEvent(new domWin.CustomEvent(cfgMod.OPEN_ASSIST_EDIT_EVENT, { detail: { assistantId: 'a1' } }));
+  assert.equal(typeof cfgMod.OPEN_ASSISTANT_PROFILE_EDIT_EVENT, 'string', '#173 的契约常量必须在 config.ts（Added-only）');
+  assert.equal(cfgMod.OPEN_ASSISTANT_PROFILE_EDIT_EVENT, 'dsh-im-companion:open-assistant-profile-edit');
+  domWin.dispatchEvent(new domWin.CustomEvent(cfgMod.OPEN_ASSISTANT_PROFILE_EDIT_EVENT, { detail: { assistantId: 'a1' } }));
   await flush();
   assert.equal(popMod.homePopOpen(), true, '事件应打开编辑弹层');
   let pop = popMod.homePopNode();
   assert.equal(byAttr(pop, 'aria-label', '助理简介')[0].value, '小帅简介', '预填该助理');
   popMod.closeHomePop(true);
-  domWin.dispatchEvent(new domWin.CustomEvent(cfgMod.OPEN_ASSIST_EDIT_EVENT, { detail: { assistantId: 'zz' } }));
+  domWin.dispatchEvent(new domWin.CustomEvent(cfgMod.OPEN_ASSISTANT_PROFILE_EDIT_EVENT, { detail: { assistantId: 'zz' } }));
   await flush();
   assert.equal(popMod.homePopOpen(), false, '未知 id 不许开弹层');
-  domWin.dispatchEvent(new domWin.CustomEvent(cfgMod.OPEN_ASSIST_EDIT_EVENT, { detail: { assistantId: 'a1' } }));
+  domWin.dispatchEvent(new domWin.CustomEvent(cfgMod.OPEN_ASSISTANT_PROFILE_EDIT_EVENT, { detail: { assistantId: 'a1' } }));
   await flush();
   assert.equal(popMod.homePopOpen(), true);
   handle.dispose();
   popMod.closeHomePop(true);
-  domWin.dispatchEvent(new domWin.CustomEvent(cfgMod.OPEN_ASSIST_EDIT_EVENT, { detail: { assistantId: 'a1' } }));
+  domWin.dispatchEvent(new domWin.CustomEvent(cfgMod.OPEN_ASSISTANT_PROFILE_EDIT_EVENT, { detail: { assistantId: 'a1' } }));
   await flush();
   assert.equal(popMod.homePopOpen(), false, 'dispose 后退订必须生效');
 });

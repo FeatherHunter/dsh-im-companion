@@ -73,7 +73,7 @@ export function apply(ctx: any): void {
     ...(typeof (ctx as { uiWorkspace?: { pickDirectory?: unknown } })?.uiWorkspace?.pickDirectory === 'function'
       ? { pickDirectory: () => (ctx as { uiWorkspace: { pickDirectory: () => Promise<unknown> } }).uiWorkspace.pickDirectory() }
       : {}),
-    /* 宿主服务透传（SessionHeader 取 workspaces；DetailDrawer/Adopt 取 uiWorkspace 时同口径）：取不到按缺失处理。 */
+    /* 宿主服务透传（SessionHeader 取 workspaces；DetailPanel/Adopt 取 uiWorkspace 时同口径）：取不到按缺失处理。 */
     get: getService,
   }
   const stopFeatures: (() => void)[] = []

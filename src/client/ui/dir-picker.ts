@@ -131,7 +131,7 @@ export function openDirPicker(
     h('div', { className: 'af-modal-foot', style: { flex: 'none' } }, cancel, choose),
   ], { onClose: () => done(null) })
   try {
-    /* 宽卡（长 Windows 路径不挤压）+ 置顶于 DetailDrawer 抽屉遮罩（1250 > 1200）；极简 DOM 环境缺 classList 则跳过 */
+    /* 宽卡（长 Windows 路径不挤压）+ 置顶于 详情面板遮罩（1250 > 1200）；极简 DOM 环境缺 classList 则跳过 */
     modal.el.classList.add('af-modal--wide')
     modal.el.parentElement?.classList.add('af-overlay--top')
     /* 固定弹窗几何：卡片定高纵向排布，矮屏 overlay 滚动兜底（overlay 已 overflow:auto） */

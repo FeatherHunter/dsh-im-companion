@@ -3,15 +3,15 @@
  * 结构照 T4 认可款原型 `prototypes/home-assistant/proto-studio.html`（owner 裁定 2026-10-13）：
  *   页头（返回 / 层级图标 / 标题副标 / ⋯ / ＋）→ 三级 chip 面包屑（液签）→ 行列表 → 底部主操作随层。
  * 导航＝钻取（点行进下一级），不是展开树；TAB/面包屑可向前钻取（跟随悬停或聚焦行）。
- * 旧 buildModel 列表退役（data/model.ts 保留：抽屉/徽标/会话头仍读它，verify 照旧）。
+ * 旧 buildModel 列表退役（data/model.ts 保留：详情面板/徽标/会话头仍读它，verify 照旧）。
  * T6b #114／T6c #115：改名配图/占位绑定/删助理、换工作区/移除渠道已接线（删助理走 clean 版，防种子复活）。 */
 import { h, clear } from '../dom'
-import { emitDrawer } from './home-events'
-import { bindAssistEdit } from './home-assist-edit-listen'
-import { profileAsstOpen } from './home-asst-profile-act'
+import { emitDetailPanel } from './home-events'
+import { bindAssistantProfileEdit } from './home-assistant-profile-edit-listen'
+import { profileAsstOpen } from './home-assistant-profile-act'
 import type { WorkspaceRef } from '../data/home-model'
 import { crumbsEl, footEl, headEl, slideTab, topEl, type Level } from './home-frame'
-import { newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'; import { newAsstPop } from './home-asst-create' /* T8-3 #171：本文件 300 行顶格，新文件的 import 并入本行以保持行数中性。 */
+import { newHomePop, renameAsstPop, renameHomePop, avatarHomePop, type FormOps } from './home-forms'; import { newAsstPop } from './home-assistant-create' /* T8-3 #171：本文件 300 行顶格，新文件的 import 并入本行以保持行数中性。 */
 import { finishRename } from './home-toast'
 import { avatarAsstPop } from './home-avatar-act'
 import { bindAsstPop } from './home-bind-forms'
@@ -133,7 +133,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     } else if (kind === 'detail-a') {
       const a = v.assistants.find((x) => x.id === id)
       const home = a ? v.homes.find((x) => x.id === a.homeId) : undefined
-      emitDrawer(home ? home.path : '', a ? { id: a.id, name: asstName(v, a), description: a.description ?? '', persona: a.persona ?? '' } : null)
+      emitDetailPanel(home ? home.path : '', a ? { id: a.id, name: asstName(v, a), description: a.description ?? '', persona: a.persona ?? '' } : null)
     } else if (kind === 'bind-a' || kind === 'change-a') {
       const a = v.assistants.find((x) => x.id === id)
       /* owner 2026-10-17：行上不再有「接入」——未绑定走「绑定机器人」（红档），已绑定走「更换机器人」（琥珀档）。
@@ -151,7 +151,7 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
       if (!v.assistants.some((x) => x.id === id)) { logLine('info', 'assistant.action', { action: 'update', assistantId: id, ok: false, message: '助理不在表里（可能刚被删），换头像弹层不开' }); return }
       avatarAsstPop(actAnchor(kind, id, anchor), { view: v, ops: deps.ops, asstId: id, onDone: () => render() })
     } else if (kind === 'profile-a') {
-      /* T8-4 #172：第 4 图标「编辑简介与人物设定」——窗口本体在 home-asst-profile-act.ts，这里只留一行入口。 */
+      /* T8-4 #172：第 4 图标「编辑简介与人物设定」——窗口本体在 home-assistant-profile-act.ts，这里只留一行入口。 */
       profileAsstOpen({ view: v, ops: deps.ops, onDone: () => render(), bodyEl: deps.bodyEl }, id, anchor)
     } else if (kind === 'settings-a') {
       /* L3 详情面板那颗「改名与头像」（home-detail）：仍开整套助理设置弹层，与 L2 行上的就地改名不冲突。 */
@@ -287,12 +287,12 @@ export function createPanelBody(deps: PanelBodyDeps): PanelBodyHandle {
     if (flashId && flashTimer) { /* 闪光由 class 表达，定时器只负责清除 */ }
   }
 
-  /* 补丁 B：#173 详情面板的「编辑」派发 OPEN_ASSIST_EDIT_EVENT ⇒ 开同一张弹层；dispose 必须退订。 */
-  const unbindAssistEdit = bindAssistEdit((d) => profileAsstOpen({ view: view(), ops: deps.ops, onDone: () => render(), bodyEl: deps.bodyEl }, d.assistantId, null))
+  /* 补丁 B：#173 详情面板的「编辑」派发 OPEN_ASSISTANT_PROFILE_EDIT_EVENT ⇒ 开同一张弹层；dispose 必须退订。 */
+  const unbindAssistantProfileEdit = bindAssistantProfileEdit((d) => profileAsstOpen({ view: view(), ops: deps.ops, onDone: () => render(), bodyEl: deps.bodyEl }, d.assistantId, null))
 
   return {
     render,
     openCreate,
-    dispose: () => { unbindAssistEdit(); closeHomePop(true); if (flashTimer) clearTimeout(flashTimer) },
+    dispose: () => { unbindAssistantProfileEdit(); closeHomePop(true); if (flashTimer) clearTimeout(flashTimer) },
   }
 }

@@ -4,9 +4,9 @@
  * 未绑定无渠道、不进列、计入待绑；孤儿留历史渠道、进列标失联；同格多助理合并健康）。
  * 健康只读机器人快照（按 channel+botId 查，快照缺席按离线、stale 升待确认）；绑定是助理轴，
  * 连通是机器人轴——汇总列两轴分开讲（健康词 ＋ N助理，M已绑，K待绑，J失联），不复读。
- * 钻取 key 与 DetailDrawer 同源（抽屉仍按工作区 path 查）：行 key = home.id，drillKey = home.path。
+ * 钻取 key 与 DetailPanel 同源（详情面板仍按工作区 path 查）：行 key = home.id，drillKey = home.path。
  * 旧 buildMatrix（按 Agent 分组）保留作降级 fallback：家表不可用（旧宿主/桥抖动）时雷达不空白。 */
-import { CHANNEL_ORDER, HEALTH_LABELS, OPEN_DRAWER_EVENT, channelLabel, type HealthKind } from '../../client/data/config'
+import { CHANNEL_ORDER, HEALTH_LABELS, OPEN_DETAIL_PANEL_EVENT, channelLabel, type HealthKind } from '../../client/data/config'
 import { buildModel, type AgentView } from '../../client/data/model'
 import type { AgentMetaDoc } from '../../client/data/meta'
 import type { BotSnap } from '../../client/data/fleet-api'
@@ -49,7 +49,7 @@ export function avatarColor(key: string): string {
 
 export interface MatrixRow {
   key: string
-  /** 钻取 key（home.path）：抽屉按工作区 path 查，行身份 key = home.id，两者分开。 */
+  /** 钻取 key（home.path）：详情面板按工作区 path 查，行身份 key = home.id，两者分开。 */
   drillKey: string
   name: string
   base: string
@@ -248,7 +248,7 @@ export function buildMatrix(bots: BotSnap[], meta: AgentMetaDoc, lang: Lang = 'z
   }
 }
 
-/** 钻取事件载荷（view 层按此派发，DetailDrawer 抽屉是真消费者）。 */
+/** 钻取事件载荷（view 层按此派发，详情面板是真消费者）。 */
 export function drillEventFor(key: string): { name: string; detail: { key: string } } {
-  return { name: OPEN_DRAWER_EVENT, detail: { key } }
+  return { name: OPEN_DETAIL_PANEL_EVENT, detail: { key } }
 }

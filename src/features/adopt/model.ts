@@ -63,7 +63,7 @@ export function sloganFor(botId: string): string {
   return SLOGANS[h % SLOGANS.length]
 }
 
-/* 家的门牌（评审声明：展示名口径复用共享 viewName，与左栏徽标/抽屉同一套 meta.names）。 */
+/* 家的门牌（评审声明：展示名口径复用共享 viewName，与左栏徽标/详情面板同一套 meta.names）。 */
 export interface HomePlate {
   /** 门牌大名：用户在设置里起的中文名，无则回退目录名。 */
   name: string
