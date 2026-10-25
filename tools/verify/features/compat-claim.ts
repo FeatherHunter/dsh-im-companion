@@ -12,6 +12,7 @@ import { createRequire } from "node:module";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import test from "node:test";
+import { loadLocales } from "../../../scripts/i18n-locales.mjs";
 import assert from "node:assert/strict";
 
 const REPO = process.cwd();
@@ -108,6 +109,8 @@ try {
     join(REPO, "src", "client", "data", "config.ts"),
     join(REPO, "src", "client", "data", "model.ts"),
     join(REPO, "src", "client", "components", "first-view-copy.ts"),
+    join(REPO, "src", "client", "i18n", "core.ts"),
+    join(REPO, "src", "client", "i18n", "index.ts"),
     "--ignoreConfig",
     "--rootDir", join(REPO, "src"),
     "--outDir", tmp, "--module", "commonjs", "--target", "es2023",
@@ -119,6 +122,11 @@ try {
   process.exit(1);
 }
 const copy: any = createRequire(join(tmp, "client", "components", "run.cjs"))("./first-view-copy.js");
+/* #184：悬停/胶囊文案改由 YAML 词条提供 —— 先装载词条再断言。 */
+const i18nCore: any = createRequire(join(tmp, "client", "components", "run.cjs"))("../i18n/core.js");
+const i18nDicts = loadLocales(REPO);
+assert.equal(i18nDicts.problems.length, 0, "locales.yaml 校验失败：" + i18nDicts.problems.join("；"));
+i18nCore.setDictionaries(i18nDicts.dicts);
 
 test("#175 悬停文案写真实基线（中英同源，5.1.0 + 6.0 前重跑取证；旧 4.17.1+ 口径退场）", () => {
   const zh = copy.firstViewCopy("zh");

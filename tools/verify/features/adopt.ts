@@ -624,11 +624,15 @@ test('adopt：监听工具栏事件自开面板，卸载即退订', () => {
   assert.ok(cfg.includes("ADOPT_VIEW_EVENT = 'dsh-im-companion:adopt-view'"), '事件名单点定义在共享 config');
 });
 
-test('toolbar：home 图标与悬浮文案', () => {
+test('toolbar：home 图标与悬浮文案', async () => {
   const icons = readFileSync(join(CLIENT, 'icons.ts'), 'utf8');
   assert.ok(icons.includes('home:'), '图标集应追加 home（只加不改）');
   const copy = readFileSync(join(REPO, 'src', 'client', 'components', 'first-view-copy.ts'), 'utf8');
-  assert.ok(copy.includes('扬帆远航'), '舰队悬浮应为扬帆远航');
+  /* #184：文案搬进 locales.yaml（first-view.radar），词面断言改从词条真相取。 */
+  const { loadLocales } = await import('../../../scripts/i18n-locales.mjs');
+  const loaded = loadLocales(REPO);
+  assert.equal(loaded.problems.length, 0, 'locales.yaml 校验失败：' + loaded.problems.join('；'));
+  assert.ok(String(loaded.dicts['first-view']?.zh?.radar ?? '').includes('扬帆远航'), '舰队悬浮应为扬帆远航（词条真相）');
   assert.ok(!copy.includes('舰队视图事件入口'), '旧悬浮文案不得残留');
 });
 

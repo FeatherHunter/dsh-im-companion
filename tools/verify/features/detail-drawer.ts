@@ -780,17 +780,15 @@ test('源码词面硬门：退役词与旧称在 src 与 tools/verify 零残留'
   assert.deepEqual(hits, [], '硬门残留：' + hits.join('；'));
 });
 
-test('first-view-copy：详情面板中英词面统一（中文叫面板，英文无 drawer）', () => {
-  const body = readFileSync(join(REPO, 'src', 'client', 'components', 'first-view-copy.ts'), 'utf8');
-  const enAt = body.indexOf('const EN');
-  assert.ok(enAt > 0, '找不到英文段');
-  const pick = (src: string): string => {
-    const m = /detailTitle:\s*'([^']+)'/.exec(src);
-    assert.ok(m, '缺 detailTitle');
-    return m![1];
-  };
-  const zh = pick(body.slice(0, enAt));
-  const en = pick(body.slice(enAt));
+test('first-view-copy：详情面板中英词面统一（中文叫面板，英文无 drawer）', async () => {
+  /* #184：中英词条搬进 locales.yaml（ns: first-view），断言改从词条真相取（源里不再有内联 EN 段）。 */
+  const { loadLocales } = await import('../../../scripts/i18n-locales.mjs');
+  const loaded = loadLocales(REPO);
+  assert.equal(loaded.problems.length, 0, 'locales.yaml 校验失败：' + loaded.problems.join('；'));
+  const zh = String(loaded.dicts['first-view']?.zh?.detailTitle ?? '');
+  const en = String(loaded.dicts['first-view']?.en?.detailTitle ?? '');
+  assert.ok(zh.length > 0, '缺中文 detailTitle 词条');
+  assert.ok(en.length > 0, '缺英文 detailTitle 词条');
   assert.ok(zh.includes('详情面板'), '中文 detailTitle 应叫「详情面板」：' + zh);
   assert.ok(!zh.includes('抽屉'), '中文 detailTitle 仍有旧称：' + zh);
   assert.ok(!/drawer/i.test(en), '英文 detailTitle 含 drawer：' + en);

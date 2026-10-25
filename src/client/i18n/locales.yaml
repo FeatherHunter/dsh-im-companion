@@ -1,0 +1,12 @@
+# 共享层词条（ns: common）：插件级 UI 文案。
+# 形状：单文件多语言词条（ns 唯一 + zh/en 两棵平键字典，键集必须一致，构建期校验见 scripts/i18n-locales.mjs）。
+# 有构建期注入（virtual:imc-locales）→ 客户端 i18n core 查词；改这里不用改代码。
+ns: common
+zh:
+  panel.title: 'IM机器人增强'
+  panel.mountFail: '{title} 加载失败：{message}'
+  list.sep: '、'
+en:
+  panel.title: 'IM Companion'
+  panel.mountFail: '{title} failed to load: {message}'
+  list.sep: ', '

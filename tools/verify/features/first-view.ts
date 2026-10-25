@@ -1,6 +1,7 @@
 // #26 首屏赢家变体自验证（D 拼装 + 助理 + P2）：头像音节 / 莫兰迪兜底 / 双语文案 / 样式命名空间（node --test，零第三方依赖）。
 // 做法：用仓库自带 tsc 把 copy + styles 链转译到临时目录，再断言转译产物（precedent：welcome-banner.ts）。
 import { mkdtempSync, rmSync } from "node:fs";
+import { loadLocales } from "../../../scripts/i18n-locales.mjs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createRequire } from "node:module";
@@ -16,6 +17,9 @@ const ENTRIES = [
   join(COMP, "first-view-copy.ts"),
   join(COMP, "first-view-styles.ts"),
   join(REPO, "src", "client", "theme.ts"),
+  /* #184：文案改由 YAML 词条 + i18n core 提供（转译链必须带上纯查词层）。 */
+  join(REPO, "src", "client", "i18n", "core.ts"),
+  join(REPO, "src", "client", "i18n", "index.ts"),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), "fv-first-view-"));
@@ -38,6 +42,11 @@ try {
 const req = createRequire(join(tmp, "client", "components", "run.cjs"));
 const copy: any = req("./first-view-copy.js");
 const styles: any = req("./first-view-styles.js");
+/* #184：词条真相在 src 下各 locales.yaml —— 校验通过后装进 i18n core，文案断言才对得上。 */
+const i18nCore: any = req("../i18n/core.js");
+const locales = loadLocales(REPO);
+assert.equal(locales.problems.length, 0, "locales.yaml 校验失败：" + locales.problems.join("；"));
+i18nCore.setDictionaries(locales.dicts);
 
 test("Xiao 系取特征音节（A 前两字母 Xi 证伪后的 D 方案）", () => {
   assert.equal(copy.winnerAvatarText("Xiaojiang"), "Ji");

@@ -5,6 +5,24 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
+## [Unreleased]
+
+主题：**i18n 双语地基 + first-view / left-filter 试点**（#184）——插件 UI 文案改由 YAML 词条单一来源（同一份文件内 zh/en 两棵），按 DSH 语言服务当前语言查词，切换即时生效（无需刷新页面）；宿主诊断日志仍保持中文。
+
+### Added
+- **i18n 共享层**（`src/client/i18n/`）：`core.ts` 纯逻辑（词条三层表 ns→语言→键、查词回退链「当前→en→zh→键名」、`{name}` 插值、语言切换订阅与修订号）；`install.ts` 接线 DSH `locale` 服务（`ctx.get('locale')` 的 `getSnapshot().active` 与 `subscribe`，缺失时回退 `documentElement.lang` → `navigator.language` → 中文）；`index.ts` 只导出 core（不把构建期虚拟模块拖进普通导入）。
+- **YAML 词条单一来源＋构建期注入**：`scripts/i18n-locales.mjs` 扫描 `src` 下所有 `locales.yaml`（ns 唯一、zh/en 键集一致、值非空）并校验；`tsdown.config.ts` 经 `virtual:imc-locales` 把词条注入客户端包（校验失败＝构建直接失败）。本次落三份：`common`（3 键）、`first-view`（38 键）、`left-filter`（11 键）。
+- **门禁**：新增 `tools/verify/i18n.ts`（词条校验 / 查词回退插值 / zh↔en 键集一致 / 订阅语义）；`first-view`、`left-filter` 门禁补中英切换断言（三段条、行悬停、空提示、收起钮、面板标题）。
+
+### Changed
+- **first-view 文案**：`first-view-copy.ts` 内联的 ZH/EN 字典改为查词条（导出与接口不变；`firstViewLang()` 跟随当前语言，显式传 doc 的老测试形态保留）；`dual-mode-copy.ts` 未改，经 `firstViewLang()` 自动跟随。
+- **left-filter 文案**：三段条 / 漏斗悬停 / 行悬停 / 空提示 / 收起钮改查词条；`view.ts` 在语言切换时强制重绘（重绘签名并入词条修订号）。
+- **设置面板**：标题与挂载失败文案走词条；换语时面板重挂（订阅 `locale` 服务）。
+
+### 升级回归钉子（发版时随整节改名，钉子不得丢）
+- 兼容声明不变：dsh-im **5.1.0**（范围 `>=5.1.0 <6`）；**6.0** 发布前必须重跑 **T1/T2** 两份取证（`bots/` 与 `accounts/` 双路径），#170 的 persona 注入 verify 同轮复跑——#175 升级回归钉子照旧有效。
+### 说明（不在本次范围）
+- 其余 feature 文案分批迁移（每批自带 `locales.yaml`）；渠道名（飞书 / 微信 / QQ 等品牌名）不迁；宿主日志保持中文（诊断口径）；不引入第三方 i18n 库。
 ## [0.2.25] - 2026-10-24
 
 主题：**条带/气泡助理头像归位 + 更新包跟进 0.18.39**——家列表下每条 item 底部的助理小圆点与悬停气泡头像，之前还停留在"首字＋底色"老画法（行/详情已图标化）；本版收拢到共用 `paintAvatarFace`，与行/详情同一规则（有照片铺图、有 kind 归属图标＋归属色板）；更新包 pin 跟进官方最新 0.18.39。

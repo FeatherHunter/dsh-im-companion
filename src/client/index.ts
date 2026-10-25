@@ -9,6 +9,8 @@ import { createMetaStore, type MetaStore } from './data/meta'
 import { FEATURES, type FeatureCtx, type SlotsService } from '../features'
 import { flushLogs, initLog, logLine, reconcileLogSwitch } from './log'
 import { formatBuildId } from '../build-id'
+import { installI18n } from './i18n/install'
+import { onLocaleChange, t } from './i18n'
 
 /* #130 构建身份：版本与打包时刻都在打包期注入（tsdown define），与宿主侧同形（`<版本>@<时刻>`）。
  * 两段都取不到（源码直引 / harness 打包）⇒ 回空串，绝不编造一个假版本。 */
@@ -48,6 +50,16 @@ export function apply(ctx: any): void {
   }).catch(() => {
     metaCache = null
   })
+  /* #184 i18n：构建期词条 + DSH 语言（必须在任何 UI 渲染前就位；无 locale 服务/词条缺失内部已降级）。 */
+  const getService = (name: string): unknown => {
+    try {
+      const get = (ctx as { get?: (n: string) => unknown } | null)?.get
+      return typeof get === 'function' ? get(name) : undefined
+    } catch {
+      return undefined
+    }
+  }
+  const disposeI18n = installI18n(getService)
   const featureCtx: FeatureCtx = {
     rpc,
     subscribe: (fn) => stream.subscribe(fn),
@@ -62,14 +74,7 @@ export function apply(ctx: any): void {
       ? { pickDirectory: () => (ctx as { uiWorkspace: { pickDirectory: () => Promise<unknown> } }).uiWorkspace.pickDirectory() }
       : {}),
     /* 宿主服务透传（SessionHeader 取 workspaces；DetailDrawer/Adopt 取 uiWorkspace 时同口径）：取不到按缺失处理。 */
-    get: (name: string) => {
-      try {
-        const get = (ctx as { get?: (n: string) => unknown } | null)?.get
-        return typeof get === 'function' ? get(name) : undefined
-      } catch {
-        return undefined
-      }
-    },
+    get: getService,
   }
   const stopFeatures: (() => void)[] = []
   for (const f of FEATURES) {
@@ -90,6 +95,9 @@ export function apply(ctx: any): void {
 
   const FleetSettingsTab: React.FC = () => {
     const ref = React.useRef<HTMLDivElement | null>(null)
+    /* #184：语言切换即重挂设置面板（命令式面板整体重建，避免逐点补订阅）。 */
+    const [localeTick, bumpLocale] = React.useState(0)
+    React.useEffect(() => onLocaleChange(() => bumpLocale((v) => v + 1)), [])
     React.useEffect(() => {
       const mount = ref.current
       if (!mount) return
@@ -102,7 +110,7 @@ export function apply(ctx: any): void {
         /* 不再 console：统一走 dsh-log（T9 #123），面板里另有可见的失败卡。 */
         logLine('error', 'panel.mount.fail', { message: String((e as Error)?.message ?? e) })
         const box = document.createElement('div')
-        box.textContent = 'IM机器人增强 加载失败：' + String((e as Error)?.message ?? e)
+        box.textContent = t('common', 'panel.mountFail', { title: t('common', 'panel.title'), message: String((e as Error)?.message ?? e) })
         box.style.cssText = 'padding:20px;color:var(--dsw-alias-state-error-primary);'
         mount.replaceChildren(box)
       }
@@ -114,7 +122,7 @@ export function apply(ctx: any): void {
         }
         mount.replaceChildren()
       }
-    }, [])
+    }, [localeTick])
     return React.createElement('div', { ref, style: { background: 'transparent' } })
   }
 
@@ -137,6 +145,7 @@ export function apply(ctx: any): void {
       /* 清理失败忽略 */
     }
     disposeStyles()
+    try { disposeI18n() } catch { /* 退订失败忽略 */ }
     logLine('info', 'client.unload')
     try { window.removeEventListener('visibilitychange', flushOnHide) } catch { /* 无 window 环境 */ }
     flushLogs()
@@ -147,7 +156,7 @@ export function apply(ctx: any): void {
       name: 'settings.section',
       id: PLUGIN_ID,
       order: 22,
-      label: () => 'IM机器人增强',
+      label: () => t('common', 'panel.title'),
       inject: () => ({}),
     }, FleetSettingsTab),
   )

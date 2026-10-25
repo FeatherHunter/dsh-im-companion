@@ -1,22 +1,26 @@
 /** 首屏赢家变体文案（#25 D 拼装 + 助理 + P2，#26 实现票自有）。
- * 中英双语以字典提供，跟随 DSH 系统语言（documentElement.lang，en 开头即英文，无切换器）；
- * 空 / 加载 / 错误三态文案不在此表（#27 收尾票领地，本票一字不动）。 */
+ * #184 起词条真相＝同目录 locales.yaml（ns: first-view，中英同文件），经 shared i18n 查词；
+ * 语言跟随 DSH locale 服务（切换即时换语，无切换器）。空 / 加载 / 错误三态文案同表。 */
 import { initialOf } from '../data/model'
+import { activeLocale, normalizeLocale, translate } from '../i18n'
 
 export type FirstViewLang = 'zh' | 'en'
 
-/** DSH 系统语言（precedent：welcome-banner overlay docLang）：en 开头即英文。 */
+/** DSH 系统语言：显式传 doc 时按 documentElement.lang 判（老快照/测试形态）；
+ * 不传时取 i18n 当前语言（zh→zh，其他非空→en，空→zh）。 */
 export function firstViewLang(doc?: unknown): FirstViewLang {
-  try {
-    const d = (doc ?? (typeof document !== 'undefined' ? document : null)) as {
-      documentElement?: { lang?: unknown }
-    } | null
-    const lang = d?.documentElement?.lang
-    if (typeof lang === 'string' && lang.toLowerCase().startsWith('en')) return 'en'
-  } catch {
-    /* 取不到按中文 */
+  if (doc !== undefined && doc !== null) {
+    try {
+      const lang = (doc as { documentElement?: { lang?: unknown } }).documentElement?.lang
+      if (typeof lang === 'string' && lang.toLowerCase().startsWith('en')) return 'en'
+    } catch {
+      /* 取不到按中文 */
+    }
+    return 'zh'
   }
-  return 'zh'
+  const loc = normalizeLocale(activeLocale())
+  if (!loc || loc === 'zh') return 'zh'
+  return 'en'
 }
 
 export interface FirstViewCopy {
@@ -73,98 +77,61 @@ export interface FirstViewStates {
   retry: string
 }
 
-const ZH: FirstViewCopy = {
-  title: 'IM机器人增强',
-  byAgent: (n) => '按助理 (' + n + ')',
-  byChannel: (n) => '按渠道 (' + n + ')',
-  updatedTip: (t) => (t ? '更新于 ' + t + '（标题计数行已收起：助理 / 渠道数看分段）' : '助理 / 渠道数看分段'),
-  search: '搜索',
-  searchAria: '搜索助理',
-  segAria: '分组方式',
-  radar: '扬帆远航！',
-  adopt: '串门搬家',
-  refresh: '刷新列表',
-  plus: '新建助理',
-  join: '接入',
-  joinTitle: '接入新渠道',
-  joinNeedHome: '请先选择工作区后再接入',
-  needHomeForConnect: (name) => '请先为「' + name + '」选择工作区，再接入渠道',
-  detail: '详情',
-  detailTitle: '打开助理详情面板',
-  moreActions: (name) => '更多操作 ' + name + '：重命名 / 更换工作区 / 移除渠道机器人',
-  rowTip: (name) => name + '（整行悬停出按钮；触屏点一下行）',
-  starTitle: '你的⭐是我夜空中最亮的星',
-  starHref: 'https://github.com/FeatherHunter/dsh-im-companion',
-  feedbackTitle: '反馈问题',
-  feedbackHref: 'https://github.com/FeatherHunter/dsh-im-companion/issues/new',
-  versionTitle: (v) => 'dsh-im-companion ' + v + '（点跳 GitHub 仓库首页）',
-  compatChip: (v) => 'dsh-im ' + v,
-  compatTitle: (v, range) => '本插件已在 dsh-im ' + v + ' 上验收；兼容范围 ' + range
-    + '（4.x 回退代码保留但不声明；6.0 前须重跑兼容取证）。点开看兼容性说明。',
-  compatHref: 'https://github.com/FeatherHunter/dsh-im-companion#compat',
-  promoTitle: '作者其他插件',
-  promoDeck: 'dsh-mattpocock-skills-deck',
-  promoDeckDesc: 'Mattpocock SKILLS 在DSH中增强插件。开发伴侣☕️。',
-  promoPal: 'dsh-opencode-palette',
-  promoPalDesc: 'OpenCode 配色盘',
-  states: {
-    loading: '正在加载助理列表，请稍候。',
-    emptySearchTitle: '没有找到匹配的助理',
-    emptySearchSub: '试试换个关键词，或清空搜索看看全部',
-    emptyNoneTitle: '还没有助理',
-    emptyNoneSub: '点击工具栏 ＋ 新建，或接入聊天渠道',
-    errorMsg: '刚才没连上，助理列表没拿到。检查网络后点重试。',
-    retry: '重试',
-  },
-}
+const NS = 'first-view'
 
-const EN: FirstViewCopy = {
-  title: 'IM Companion',
-  byAgent: (n) => 'By Assistants (' + n + ')',
-  byChannel: (n) => 'By Channels (' + n + ')',
-  updatedTip: (t) => (t ? 'Updated ' + t + ' (title counts folded into seg labels)' : 'See seg labels for counts'),
-  search: 'Search',
-  searchAria: 'Search assistants',
-  segAria: 'Group by',
-  radar: 'Set sail!',
-  adopt: 'Visit & move',
-  refresh: 'Refresh list',
-  plus: 'New assistant',
-  join: 'Connect',
-  joinTitle: 'Connect a new channel',
-  joinNeedHome: 'Choose a workspace before connecting',
-  needHomeForConnect: (name) => 'Choose a workspace for "' + name + '" before connecting a channel.',
-  detail: 'Details',
-  detailTitle: 'Open assistant detail panel',
-  moreActions: (name) => 'More actions ' + name + ': Rename / Change workspace / Remove channel bots',
-  rowTip: (name) => name + ' (hover row for actions; tap row on touch)',
-  starTitle: 'Your ⭐ is the brightest star in my night sky',
-  starHref: 'https://github.com/FeatherHunter/dsh-im-companion',
-  feedbackTitle: 'Report an issue',
-  feedbackHref: 'https://github.com/FeatherHunter/dsh-im-companion/issues/new',
-  versionTitle: (v) => 'dsh-im-companion ' + v + ' (open repo on GitHub)',
-  compatChip: (v) => 'dsh-im ' + v,
-  compatTitle: (v, range) => 'Verified against dsh-im ' + v + '; compatible with ' + range
-    + ' (4.x fallback is retained but undeclared; re-run the compatibility evidence before 6.0). Open the compatibility notes.',
-  compatHref: 'https://github.com/FeatherHunter/dsh-im-companion/blob/master/docs/README.en.md#compat',
-  promoTitle: 'Related projects',
-  promoDeck: 'dsh-mattpocock-skills-deck',
-  promoDeckDesc: 'Agent skills method deck',
-  promoPal: 'dsh-opencode-palette',
-  promoPalDesc: 'OpenCode color palettes',
-  states: {
-    loading: 'Loading assistants, please wait.',
-    emptySearchTitle: 'No matching assistants',
-    emptySearchSub: 'Try another keyword, or clear search to see all',
-    emptyNoneTitle: 'No assistants yet',
-    emptyNoneSub: 'Click + in the toolbar, or connect a channel',
-    errorMsg: 'Connection failed, list not loaded. Check network, then retry.',
-    retry: 'Retry',
-  },
+/** 语言无关的链接（两种语言同一地址；compatHref 中英不同，故进词条表）。 */
+const REPO_HREF = 'https://github.com/FeatherHunter/dsh-im-companion'
+const ISSUES_HREF = 'https://github.com/FeatherHunter/dsh-im-companion/issues/new'
+
+function copyFor(lang: FirstViewLang): FirstViewCopy {
+  const tr = (key: string, params?: Record<string, string | number>): string => translate(lang, NS, key, params)
+  return {
+    title: tr('title'),
+    byAgent: (n) => tr('byAgent', { n }),
+    byChannel: (n) => tr('byChannel', { n }),
+    updatedTip: (t) => (t ? tr('updatedTip', { t }) : tr('updatedTipEmpty')),
+    search: tr('search'),
+    searchAria: tr('searchAria'),
+    segAria: tr('segAria'),
+    radar: tr('radar'),
+    adopt: tr('adopt'),
+    refresh: tr('refresh'),
+    plus: tr('plus'),
+    join: tr('join'),
+    joinTitle: tr('joinTitle'),
+    joinNeedHome: tr('joinNeedHome'),
+    needHomeForConnect: (name) => tr('needHomeForConnect', { name }),
+    detail: tr('detail'),
+    detailTitle: tr('detailTitle'),
+    moreActions: (name) => tr('moreActions', { name }),
+    rowTip: (name) => tr('rowTip', { name }),
+    starTitle: tr('starTitle'),
+    starHref: REPO_HREF,
+    feedbackTitle: tr('feedbackTitle'),
+    feedbackHref: ISSUES_HREF,
+    versionTitle: (v) => tr('versionTitle', { v }),
+    compatChip: (v) => tr('compatChip', { v }),
+    compatTitle: (v, range) => tr('compatTitle', { v, range }),
+    compatHref: tr('compatHref'),
+    promoTitle: tr('promoTitle'),
+    promoDeck: tr('promoDeck'),
+    promoDeckDesc: tr('promoDeckDesc'),
+    promoPal: tr('promoPal'),
+    promoPalDesc: tr('promoPalDesc'),
+    states: {
+      loading: tr('states.loading'),
+      emptySearchTitle: tr('states.emptySearchTitle'),
+      emptySearchSub: tr('states.emptySearchSub'),
+      emptyNoneTitle: tr('states.emptyNoneTitle'),
+      emptyNoneSub: tr('states.emptyNoneSub'),
+      errorMsg: tr('states.errorMsg'),
+      retry: tr('states.retry'),
+    },
+  }
 }
 
 export function firstViewCopy(lang?: FirstViewLang): FirstViewCopy {
-  return (lang ?? firstViewLang()) === 'en' ? EN : ZH
+  return copyFor(lang ?? firstViewLang())
 }
 
 /** D 头像文案：Xiao 系去前缀取特征音节（Ji/Sh/Su/Wa），其余维持首字母。

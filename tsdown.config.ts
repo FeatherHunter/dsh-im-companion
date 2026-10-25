@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import type { UserConfig } from 'tsdown'
+import { loadLocales } from './scripts/i18n-locales.mjs'
 
 const PLUGIN_ID = "dsh-im-companion"
 
@@ -42,6 +43,27 @@ const CLIENT_EXTERNALS = [
   '@deepseek-ai/dsh-client-runtime/client',
 ]
 
+/* #184 i18n：src 下所有 locales.yaml 汇总成 virtual:imc-locales 打进客户端 bundle。
+ * 词条单一真相是 YAML（形状/校验见 scripts/i18n-locales.mjs）；校验不过即构建失败（不静默降级）。 */
+const LOCALES_VIRTUAL_ID = 'virtual:imc-locales'
+const LOCALES_RESOLVED_ID = '\0' + LOCALES_VIRTUAL_ID
+
+function localesPlugin() {
+  const repoRoot = fileURLToPath(new URL('.', import.meta.url))
+  return {
+    name: 'imc-locales',
+    resolveId(id: string) {
+      return id === LOCALES_VIRTUAL_ID ? LOCALES_RESOLVED_ID : null
+    },
+    load(id: string) {
+      if (id !== LOCALES_RESOLVED_ID) return null
+      const { dicts, files, problems } = loadLocales(repoRoot)
+      if (problems.length > 0) throw new Error('[i18n] locales.yaml 校验失败（' + problems.length + ' 条）：\n' + problems.join('\n'))
+      return 'export default ' + JSON.stringify(dicts) + ' /* ' + files.length + ' 份 locales.yaml（构建期注入） */'
+    },
+  }
+}
+
 const clientBundle: UserConfig = {
   entry: { client: 'src/client/index.ts' },
   outDir: 'lib',
@@ -50,6 +72,7 @@ const clientBundle: UserConfig = {
   dts: false,
   sourcemap: true,
   clean: false,
+  plugins: [localesPlugin()],
   define: {
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV ?? 'production'),
     __PLUGIN_VERSION__: JSON.stringify(pluginVersion()),

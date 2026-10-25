@@ -1,0 +1,28 @@
+# 左栏筛选条词条（ns: left-filter）。
+# 诊断日志（filter-reasons / pick-filter 等）仍用 model.ts 的 FILTER_LABEL 中文口径，不随语言漂移。
+# 渠道名（feishu/weixin…）本轮未本地化（后批）。
+ns: left-filter
+zh:
+  filters.all: '全部'
+  filters.bound: '有助理'
+  filters.unbound: '无助理'
+  header.tip: '绑定筛选：{label} {n}（全部 {all}，有助理 {bound}，无助理 {unbound}），点击切换'
+  row.tip.assigned: '助理：{names}'
+  row.tip.channels: '（{channels}）'
+  row.tip.empty: '暂无助理认领'
+  empty.workspace: '没有匹配的工作区'
+  empty.session: '没有匹配的会话'
+  collapse.label: '收起'
+  collapse.tip: '一键收起当前可见分组'
+en:
+  filters.all: 'All'
+  filters.bound: 'With assistants'
+  filters.unbound: 'Without assistants'
+  header.tip: 'Filter: {label} {n} (All {all}, With assistants {bound}, Without assistants {unbound}). Click to cycle.'
+  row.tip.assigned: 'Assistants: {names}'
+  row.tip.channels: ' ({channels})'
+  row.tip.empty: 'No assistants yet'
+  empty.workspace: 'No matching workspaces'
+  empty.session: 'No matching sessions'
+  collapse.label: 'Collapse'
+  collapse.tip: 'Collapse all visible groups'

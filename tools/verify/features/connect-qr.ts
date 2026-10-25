@@ -8,6 +8,8 @@ import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createDocument } from '../dom-shim.ts';
+/* #184：agent-row 接入按钮文案改查 YAML 词条（first-view），先装字典再渲染。 */
+import { loadLocales } from '../../../scripts/i18n-locales.mjs';
 
 const REPO = process.cwd();
 const ENTRIES = [
@@ -62,6 +64,10 @@ try {
 }
 const req = createRequire(join(tmp, 'run.cjs'));
 const api: any = req(locate(tmp, 'fleet-api.js'));
+const i18nCore: any = req(locate(tmp, 'core.js'));
+const localesI18n: any = loadLocales(REPO);
+assert.equal(localesI18n.problems.length, 0, 'locales.yaml 校验失败：' + localesI18n.problems.join('；'));
+i18nCore.setDictionaries(localesI18n.dicts);
 
 const doc: any = createDocument();
 (globalThis as any).window = (globalThis as any).window ?? {
