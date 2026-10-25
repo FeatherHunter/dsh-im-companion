@@ -29,6 +29,26 @@ export function headerTip(filter: FilterId, counts: GroupCount): string {
   })
 }
 
+/* #184 验收修：DSH 换语言会重建左栏头（真机：两枚插件头钮一起消失）。记着头节点身份，变了就报 true，
+ * 调用方据此清签名强制重绘；同时记 debug 便于事后判定「钮是被换头带走的」。 */
+let lastHeader: Element | null = null
+
+export function headerChanged(header: Element | null): boolean {
+  if (header === lastHeader) return false
+  const had = !!lastHeader
+  lastHeader = header
+  if (had) {
+    try { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'header-replace', ok: true, message: '头栏节点已变化（旧头注入钮随之失效）⇒ 强制重绘重挂；新头' + (header ? '已找到' : '未找到（fail-closed 等结构稳定）') }) } catch { /* 日志失败忽略 */ }
+  }
+  return true
+}
+
+/** 当前头里有没有漏斗钮（#184 验收修：签名加这一位，钮被摘掉而同头还在时也能越过短路重挂）。 */
+export function hasHeaderBtn(header: Element | null): boolean {
+  if (!header) return false
+  try { return !!header.querySelector('.' + HB_CLASS) } catch { return false }
+}
+
 /** 头栏定位：唯一锚点（client/dom.findWorkspaceHeaderFromNode）。
  * 旧注释保留口径：从容器逐级上行，真机列表与头栏之间隔着多层容器；就近优先，头栏排在列表区之前。
  * 验货（有钮无行、宽度像侧栏）不通过即返回空——调用方 fail-closed 不挂按钮。 */
@@ -55,6 +75,7 @@ export function ensureHeaderBtn(header: Element, filter: FilterId, counts: Group
     let btn: Element | null = null
     try { btn = header.querySelector('.' + HB_CLASS) } catch { btn = null }
     if (!btn) {
+      if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'header-reinject', ok: true, message: '头里没有漏斗钮（首挂/换头/被摘）⇒ 新建并挂上' })
       const fresh = document.createElement('button')
       fresh.setAttribute('class', HB_CLASS)
       fresh.setAttribute('type', 'button')

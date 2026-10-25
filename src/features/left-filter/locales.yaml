@@ -16,9 +16,12 @@ zh:
   collapse.tip: '一键收起当前可见分组'
 en:
   filters.all: 'All'
-  filters.bound: 'With assistants'
-  filters.unbound: 'Without assistants'
-  header.tip: 'Filter: {label} {n} (All {all}, With assistants {bound}, Without assistants {unbound}). Click to cycle.'
+  # #184 验收修：英文全称（With assistants / Without assistants）12px 粗体约 95px，
+  # 三段等宽后每段仅约 90px（条带减绿点 14 + 收起钮 26 + 缝 12 再三等分）⇒ 必 ellipsis。
+  # 改短词（Assigned / Unassigned 带计数约 80px 内）保证英文可读；中文口径不动。
+  filters.bound: 'Assigned'
+  filters.unbound: 'Unassigned'
+  header.tip: 'Filter: {label} {n} (All {all}, Assigned {bound}, Unassigned {unbound}). Click to cycle.'
   row.tip.assigned: 'Assistants: {names}'
   row.tip.channels: ' ({channels})'
   row.tip.empty: 'No assistants yet'

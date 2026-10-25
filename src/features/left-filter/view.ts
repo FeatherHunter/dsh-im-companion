@@ -13,7 +13,7 @@ import type { FeatureCtx } from '../protocol'
 import { FILTERS, FILTER_LABEL, countsOf, passFilter, resolveWorkspaceRow, segLabel, type FilterId } from './model'
 import { ensureCollapseBtn } from './collapse-all'
 import { logResolveStats } from './resolve-log'
-import { ensureHeaderBtn, headerOfInjectedBtn, nextFilter, removeHeaderBtns, resolveHeader } from './header-btn'
+import { ensureHeaderBtn, hasHeaderBtn, headerChanged, headerOfInjectedBtn, nextFilter, removeHeaderBtns, resolveHeader } from './header-btn'
 
 import { GROUP_SEL, clearTips, hideRootsFor, isListContainer, restoreAll, searchQueryActive, setHidden, textOf, tuneLabels } from './dom-scope'
 const STRIP_CLASS = 'left-filter-strip'
@@ -164,10 +164,15 @@ function paint(bots: BotSnap[], gen: number): void {
    * （原生头栏不重渲染，注入钮仍在原头栏；「钮挂在哪个头」的知识归 header-btn）。头钮挂载不依赖条带验货。 */
   const seedForHeader = groups.length > 0 ? groups[0] : validContainer
   const header: Element | null = (seedForHeader ? resolveHeader(seedForHeader) : null) || (searchOn ? headerOfInjectedBtn() : null)
-  const sig = currentFilter + '|' + localeRevision() + '|' + counts.all + '/' + counts.bound + '/' + counts.unbound + '|' + visKeys.join(',') + '|' + hiddenSections.length + '|s:' + (searchOn ? '1' : '0') + '|h:' + (header ? '1' : '0')
+  /* #184 验收修：换语言时 DSH 重建左栏头（注入钮随旧头失效）；头变了清签名、签名记 hb ⇒ 重挂（详见 header-btn）。 */
+  if (headerChanged(header)) lastSig = ''
+  /* 签名里的 hb 现读 DOM：挂完钮要按「真实已挂」记账（首绘签名 hb:0，若按挂前记账，之后钮被摘时 hb:0 撞旧签名 ⇒ 又短路）。 */
+  const buildSig = (): string => currentFilter + '|' + localeRevision() + '|' + counts.all + '/' + counts.bound + '/' + counts.unbound + '|' + visKeys.join(',') + '|' + hiddenSections.length + '|s:' + (searchOn ? '1' : '0') + '|h:' + (header ? '1' : '0') + '|hb:' + (hasHeaderBtn(header) ? '1' : '0')
+  const sig = buildSig()
   const mountHead = (): void => {
     if (!header) { if (searchOn) { try { removeHeaderBtns() } catch { /* 摘除失败忽略 */ } } return }
     try { ensureHeaderBtn(header, currentFilter, counts, () => { currentFilter = nextFilter(currentFilter); logLine('debug', 'ui.action', { area: 'left-filter', action: 'cycle-filter', ok: true, message: FILTER_LABEL[currentFilter] }); scheduleRepaint(latestBots, activeGen) }, searchOn) } catch { /* 头按钮失败不影响条带 */ }
+    lastSig = buildSig()
   }
   /* 第三步验货：容器混入行外原生按钮或超宽即猜大了→条带 fail-closed（摘条带、还原），但头钮照常挂。 */
   try {
@@ -199,12 +204,10 @@ function paint(bots: BotSnap[], gen: number): void {
   }
   ensureStrip(validContainer, gen)
   mountHead()
-  const key = counts.all + '/' + counts.bound + '/' + counts.unbound
   try {
     if (stripSeg) for (const f of FILTERS) stripSeg.setLabel(f, segLabel(f, counts[f]))
   } catch { /* 计数更新失败下次再试 */ }
   tuneLabels(strip)
-  void key
   for (const s of hiddenSections) setHidden(s, true)
   logReasons(currentFilter, visLabels, hiddenLabels)
   const treeEmpty = groups.length > 0 && visKeys.length === 0

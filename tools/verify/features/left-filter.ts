@@ -90,10 +90,12 @@ test('#184 文案词条化：三段条 / 悬停 / 空提示 / 收起钮随语言
   i18n.setActiveLocale('en');
   try {
     assert.equal(model.segLabel('all', 5), 'All 5');
-    assert.equal(model.segLabel('bound', 2), 'With assistants 2');
+    /* #184 验收修：英文三段词条改短词（原 With assistants 在三段等宽条带里必 ellipsis）。 */
+    assert.equal(model.segLabel('bound', 2), 'Assigned 2');
+    assert.equal(model.segLabel('unbound', 1), 'Unassigned 1');
     assert.match(model.rowTip(W1, bots), /^Assistants: 小帅/);
     assert.equal(model.rowTip('D:\\agents\\dsh-im', bots), 'No assistants yet');
-    assert.ok(headerBtn.headerTip('bound', { all: 3, bound: 2, unbound: 1 }).indexOf('With assistants 2') >= 0, '漏斗悬停走英文模板');
+    assert.ok(headerBtn.headerTip('bound', { all: 3, bound: 2, unbound: 1 }).indexOf('Assigned 2') >= 0, '漏斗悬停走英文模板');
     assert.equal(collapseAll.collapseLabel(), 'Collapse');
   } finally {
     i18n.setActiveLocale('zh');
@@ -447,6 +449,39 @@ test('#183 view：搜索态不挂条带、头钮置灰且点击无效；退出�
   assert.match(String(hb.attrs.title ?? ''), /有助理/, '退出搜索后点击循环照旧');
   dispose();
   assert.equal(header.children.length, 2, '卸载摘除漏斗');
+});
+
+test('#184 验收修：换头 / 钮被摘后，下一轮同计数快照把漏斗钮重挂回来（不靠筛选变化）', () => {
+  groupRows = []; searchInputs = [];
+  const root = stubNode('div');
+  const header = stubNode('div');
+  header.appendChild(stubNode('button'));
+  root.appendChild(header);
+  const mid = stubNode('div');
+  root.appendChild(mid);
+  const container = stubNode('div');
+  mid.appendChild(container);
+  sectionWith('小帅', container);
+  let snapFn: any = null;
+  const dispose = view.mountLeftFilter({ subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; } });
+  snapFn({ bots, failed: [], updatedAt: 51 });
+  const isFunnel = (n: any) => String(n.attrs?.class ?? '').includes('left-filter-hbtn');
+  const hb0 = header.children.find(isFunnel);
+  assert.ok(hb0, '首轮漏斗在位');
+  /* ① 头还在、注入钮被摘（DSH 重渲染带走注入子节点）：同名头 + 同计数快照。
+   * 旧签名只记「头栏找得到」（h:1）⇒ 签名不变 ⇒ 短路 return ⇒ 钮永久丢；加 hb 位后必须重挂。 */
+  header.removeChild(hb0);
+  snapFn({ bots, failed: [], updatedAt: 52 });
+  assert.ok(header.children.find(isFunnel), '钮被摘后同计数快照也能重挂（签名 hb 位生效）');
+  /* ② 头节点整个换新（切语言真机形态）：新头 + 同计数快照 ⇒ 必须挂到新头（headerChanged 清签名）。 */
+  const header2 = stubNode('div');
+  header2.appendChild(stubNode('button'));
+  root.removeChild(header);
+  root.insertBefore(header2, mid);
+  snapFn({ bots, failed: [], updatedAt: 53 });
+  assert.ok(header2.children.find(isFunnel), '头换新后漏斗挂到新头');
+  dispose();
+  assert.equal(header2.children.length, 1, '卸载摘除新头里的漏斗');
 });
 
 test('#183 view：无容器且非搜索态 ⇒ 头钮保持不摘（行为同改前，避免瞬态摘了再挂）', () => {
