@@ -1,0 +1,58 @@
+{
+  "name": "dsh-profile-desktop",
+  "private": true,
+  "dependencies": {
+    "@linxin666/dsh-client-ui-git-graph": "0.4.7",
+    "@xmanrui/dsh-im": "5.1.0",
+    "billion-context": "0.1.201",
+    "dsh-bili-scroll": "0.1.7",
+    "dsh-bill-ilife": "0.3.83",
+    "dsh-calorie": "0.3.83",
+    "dsh-chef": "0.3.83",
+    "dsh-codinput": "github:Witherwithwinter/DSH-Codinput",
+    "dsh-home-ilife": "0.3.83",
+    "dsh-im-companion": "0.2.19",
+    "dsh-life-pack": "0.3.83",
+    "dsh-mattpocock-skills-deck": "1.9.0-beta.8",
+    "dsh-memo-ilife": "0.3.83",
+    "dsh-opencode-go": "0.1.24",
+    "dsh-opencode-palette": "2.1.10",
+    "dsh-plugin-update": "0.18.38",
+    "dsh-prompt": "0.4.38",
+    "dsh-schedule-ilife": "0.3.83",
+    "dsh-usage-statistics-panel": "0.3.3",
+    "dsh-vision-router": "3.0.4",
+    "dshmarket": "1.66.39"
+  },
+  "dsh": {
+    "profile": {
+      "bundles": [
+        "@deepseek-ai/dsh-base",
+        "@deepseek-ai/dsh-web-app",
+        "@deepseek-ai/dsh-experimental-auto-review",
+        "@deepseek-ai/dsh-experimental-agent-team-profile",
+        "dsh-vision-router",
+        "dsh-opencode-go",
+        "@deepseek-ai/dsh-experimental-inspector-profile",
+        "@deepseek-ai/dsh-experimental-plugin-market-bundle",
+        "dshmarket",
+        "@linxin666/dsh-client-ui-git-graph",
+        "dsh-bili-scroll",
+        "dsh-life-pack",
+        "dsh-bill-ilife",
+        "dsh-calorie",
+        "dsh-memo-ilife",
+        "dsh-schedule-ilife",
+        "dsh-home-ilife",
+        "dsh-chef",
+        "dsh-usage-statistics-panel",
+        "@xmanrui/dsh-im",
+        "billion-context",
+        "dsh-im-companion",
+        "dsh-prompt",
+        "dsh-opencode-palette",
+        "dsh-mattpocock-skills-deck"
+      ]
+    }
+  }
+}

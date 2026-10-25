@@ -1,0 +1,12 @@
+{
+  "name": "dsh-persona-inject-proto",
+  "version": "0.0.0",
+  "private": true,
+  "description": "T6 #166 wayfinder prototype: minimal host-side systemPrompt.section persona injection probe (throwaway, not product code)",
+  "type": "module",
+  "main": "./index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  }
+}

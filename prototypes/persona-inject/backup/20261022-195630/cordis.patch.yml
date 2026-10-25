@@ -1,0 +1,185 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+- id: agent-default-model
+  name: "@deepseek-ai/dsh-agent-default-model"
+  config:
+    provider: dsh-opencode-go
+    model: deepseek-v4.1-flash
+    reasoningEffort: max
+- id: ui-settings-account
+  name: "@deepseek-ai/dsh-client-ui-settings-account"
+  config:
+    version: 1
+    step: done
+    purpose: both
+    process: standard
+    completion: completed
+    usage: detailed
+    developerTools: true
+- id: ui-chat
+  name: "@deepseek-ai/dsh-client-ui-chat"
+  config:
+    transcriptView: standard
+    performanceUsage: detailed
+- id: ui-settings
+  name: "@deepseek-ai/dsh-client-ui-settings"
+  config:
+    enabled: true
+- id: ui-theme
+  name: "@deepseek-ai/dsh-client-ui-theme"
+  config:
+    preference: dark
+- id: opencode-go
+  name: dsh-opencode-go
+  config:
+    modelVisibility:
+      deepseek-v4-pro: false
+      glm-5.2: false
+      glm-5.3: false
+      grok-4.6: false
+      grok-4.7: false
+      muse-spark-1.2-contributor: false
+      glm-5.3-flash: false
+      gpt-5.6-luna: false
+      gpt-6-luna: false
+      claude-haiku-5-5: false
+      hy3: false
+      hy4-preview: false
+      kimi-k2.7-code: false
+      kimi-k3: false
+      mimo-v2.5: false
+      mimo-v2.6-flash: false
+      mimo-v2.5-pro: false
+      mimo-v2.6-pro: false
+      minimax-m2.7: false
+      minimax-m3: false
+      space-bunny: false
+      longcat-2.0: false
+      longcat-2.5-preview-free: false
+      step-5-preview-free: false
+      qwen3.8-max: false
+      qwen3.8-flash: false
+      qwen3.7-plus: false
+      cat-jam-free: false
+      step-5-preview: false
+      beam-free: false
+    apiKeyEnv: DSH_OPENCODE_GO_ACCOUNT_4A59B2F6BF28826EF22E38CF94E04AC4
+    accounts:
+      - id: 4a59b2f6bf28826ef22e38cf94e04ac4
+        name: wch1
+        apiKeyEnv: DSH_OPENCODE_GO_ACCOUNT_4A59B2F6BF28826EF22E38CF94E04AC4
+      - id: d2cad812d0404a6ef5cf969598219a5b
+        name: wch9
+        apiKeyEnv: DSH_OPENCODE_GO_ACCOUNT_D2CAD812D0404A6EF5CF969598219A5B
+      - id: 803bb6d9d9e041de7f7fda4212c69690
+        name: wch10
+        apiKeyEnv: DSH_OPENCODE_GO_ACCOUNT_803BB6D9D9E041DE7F7FDA4212C69690
+      - id: 8bc128d4bd82e0f5c488b66bf2f6a760
+        name: wch8
+        apiKeyEnv: DSH_OPENCODE_GO_ACCOUNT_8BC128D4BD82E0F5C488B66BF2F6A760
+    autoSwitch: true
+    accountOperations: []
+    modelLimits:
+      muse-spark-1.3-contributor:
+        contextWindow: 1048576
+        maxTokens: 131072
+- id: vision-router
+  name: dsh-vision-router
+  config:
+    progressiveTools: false
+    onboardingSeen: true
+    routingMode: ordered
+    providers:
+      - provider: dsh-opencode-go
+        model: minimax-m3.1-flash-free
+        fallbacks: []
+      - provider: minimax-cn
+        model: M3.1-Flash
+        fallbacks: []
+      - provider: vision-http
+        model: ovh/Qwen3.5-397B-A17B
+        fallbacks: []
+    routingPreference: quality
+    backgroundBenchmarking: all
+    structuredVisionBootstrap: true
+    visionDepth: deep
+    localOllama:
+      enabled: true
+      baseURL: http://127.0.0.1:11434/v1
+      model: qwen2.5vl
+      format: openai
+      maxTokens: 4096
+      reasoningEffort: none
+    desktopScreenshot: true
+- id: permission
+  name: "@deepseek-ai/dsh-permission-presets"
+  config:
+    presets:
+      read-only:
+        sandbox: read-only
+        approval: ask
+      workspace-write:
+        sandbox: workspace-write
+        approval: ask
+      danger-full-access:
+        sandbox: danger-full-access
+        approval: never
+    defaultPreset: danger-full-access
+- id: ui-conversation
+  name: "@deepseek-ai/dsh-client-ui-conversation"
+  config:
+    busyEnter: steer
+- id: locale
+  name: "@deepseek-ai/dsh-client-locale"
+  config:
+    preference: zh
+- id: subagent-model-selection-settings
+  name: "@deepseek-ai/dsh-tool-subagent/model-selection-settings"
+  config:
+    enabled: true
+    allowedModels:
+      - provider: dsh-opencode-go
+        model: muse-spark-1.3-contributor
+      - provider: dsh-opencode-go-vision
+        model: muse-spark-1.3-contributor
+- id: ui-git-graph
+  disabled: true
+- id: plugin-market
+  name: "@deepseek-ai/dsh-plugin-market"
+  config:
+    indexes:
+      - https://raw.githubusercontent.com/bruc3van/awesome-dsh-plugin/main/data/dsh-market-index.json
+      - https://raw.githubusercontent.com/yueyexiayu/dsh-market-zh/main/index.json
+- id: agent-preset-registry
+  name: "@deepseek-ai/dsh-agent-preset-registry"
+  config:
+    default: standard
+    selectedDefault: standard
+- id: llm-pi-ai
+  name: "@deepseek-ai/dsh-llm-pi-ai"
+  config:
+    providers:
+      minimax-cn:
+        apiKeyEnv: MINIMAX_CN_API_KEY
+        models:
+          - id: M3.1-Flash
+            name: M3.1-Flash
+            contextWindow: 1000000
+            maxTokens: 120000
+            input:
+              - text
+              - image
+- id: bili-scroll
+  name: dsh-bili-scroll
+  config:
+    enabled: true
+    dmMode: off
+    transcribe: true
+    keywords: []
+    pythonPath: C:\Users\辰辰洋洋\.dsh\bili-duty\.venv\Scripts\python.exe
+    workspace: ""
+- id: ui-settings-general
+  name: "@deepseek-ai/dsh-client-ui-settings-general"
+  config:
+    welcomeNoticeVersion: 2026-09-28.1

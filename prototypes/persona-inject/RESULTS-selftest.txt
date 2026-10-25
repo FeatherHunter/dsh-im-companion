@@ -1,0 +1,43 @@
+PASS ctx.inject called
+PASS inject 服务名 = systemPrompt
+PASS section 注册一次
+PASS section.name 带 dsh-im-companion: 前缀
+PASS section.order = 650
+PASS section.interpolate = false
+PASS section.text 是函数
+PASS Q1 归属命中 ⇒ 注入文本非空
+PASS 模板前缀正确
+PASS 模板含可辨识标记 PERSONA-PROTO
+PASS 模板后缀正确
+PASS personaNorm 无 CR 残留
+PASS 未归属会话 ⇒ 空串（不注入）
+PASS 同一未归属会话 2s 内再查 ⇒ 负结果缓存（仍空串）
+PASS 无 agent 的 context ⇒ 空串且不抛
+PASS 新会话首次调用可 miss（空串）
+PASS 落盘出现绑定后，下一次 text 调用命中（第二条必须中）
+PASS 证据含 plugin.load
+PASS 证据含 section.registered
+PASS 证据含 session.shape（Q2）
+PASS 证据含 persona.text（Q1/Q3）
+PASS 证据含 ownership.refresh（Q3 耗时）
+PASS 坏 JSON / sessions 非对象 ⇒ refresh.fail（fail-soft）
+PASS 1:N ⇒ ownership.ambiguity
+PASS dispose 时清掉 interval 并记 plugin.dispose
+PASS session.shape 命中真实会话 id
+PASS Q2 session.id 是 string
+PASS Q2 context = {agent, scope, signal}
+PASS Q2 agent.session 可用
+PASS Q2 记录 sessionKeys
+PASS Q2 scope === agent
+PASS Q2 signal 是 AbortSignal
+PASS Q2 记录 cwd/agentPreset/origin/parentSession 字段
+PASS Q2 记录 session 上有没有 botId
+PASS inject 事件 ≥ 1
+PASS 1:N 时 inject 事件标 ambiguous
+PASS 1:N 取 mtime 最新者（bot_beta）
+PASS 终稿指纹 sha8（8 位）
+PASS 每行都有 t/seq（JSONL 可机器读）
+PASS 负结果缓存命中被记录（≤2s TTL）
+
+EVENTS=22 PATH=D:\Temp\persona-inject-selftest-TtDAdo\evidence.jsonl
+SELFTEST-PASS 40/40
