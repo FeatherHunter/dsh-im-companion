@@ -2,7 +2,8 @@
  * 无 DOM；视图只做“按结论藏/显节点”。绑定真相唯一来源 stream 快照。 */
 import type { BotSnap } from '../../client/data/fleet-api'
 import { channelLabel } from '../../client/data/config'
-import { EMPTY_WORKSPACE_INDEX, resolveResultWorkspace, resolveRowWorkspace, type WorkspaceIndex, type WorkspaceResolution } from '../../client/data/workspace-index'
+import { t } from '../../client/i18n'
+import { EMPTY_WORKSPACE_INDEX, resolveRowWorkspace, type WorkspaceIndex, type WorkspaceResolution } from '../../client/data/workspace-index'
 
 export type FilterId = 'all' | 'bound' | 'unbound'
 
@@ -44,16 +45,6 @@ export function resolveWorkspaceRow(
   return resolveRowWorkspace(rowText, workspaceId, index, bots)
 }
 
-/** 搜索结果行全文 → 归属 workspace：结果行含标题+归属名+摘要，只能做包含匹配。
- * 误伤上界 = 行文本偶然含另一工作区名（摘要极少见，可接受，见 A4）。 */
-export function resolveResultKey(
-  fullText: string,
-  bots: BotSnap[],
-  index: WorkspaceIndex = EMPTY_WORKSPACE_INDEX,
-): string {
-  return resolveResultWorkspace(fullText, index, bots).path
-}
-
 export function isBoundWorkspace(wsPath: string, bots: BotSnap[]): boolean {
   for (const b of bots) if (b.workspace === wsPath) return true
   return false
@@ -75,8 +66,13 @@ export function countsOf(resolvedPaths: string[], bots: BotSnap[]): GroupCount {
   return { all: resolvedPaths.length, bound, unbound: resolvedPaths.length - bound }
 }
 
+/** 三段条 UI 文案（#184 起走词条表）；诊断日志仍用 FILTER_LABEL 的中文口径，不随语言漂移。 */
+export function filterLabel(filter: FilterId): string {
+  return t('left-filter', 'filters.' + filter)
+}
+
 export function segLabel(filter: FilterId, n: number): string {
-  return FILTER_LABEL[filter] + ' ' + n
+  return filterLabel(filter) + ' ' + n
 }
 
 /** 渠道中文名：共用 9 渠道表（client/data/config.ts 的 channelLabel），不再自建局部表——
@@ -99,12 +95,14 @@ export function assistantsOf(wsPath: string, bots: BotSnap[]): string[] {
 /** 行悬停名牌（只读 title 属性，不写节点）：有助理→名字+渠道，无→无助理。 */
 export function rowTip(wsPath: string, bots: BotSnap[]): string {
   const names = assistantsOf(wsPath, bots)
-  if (!names.length) return '暂无助理认领'
+  const sep = t('common', 'list.sep')
+  if (!names.length) return t('left-filter', 'row.tip.empty')
   const channels: string[] = []
   for (const b of bots) {
     if (b.workspace !== wsPath) continue
     const c = channelName(b.channel)
     if (c && channels.indexOf(c) === -1) channels.push(c)
   }
-  return '助理：' + names.join('、') + (channels.length ? '（' + channels.join('、') + '）' : '')
+  const base = t('left-filter', 'row.tip.assigned', { names: names.join(sep) })
+  return channels.length ? base + t('left-filter', 'row.tip.channels', { channels: channels.join(sep) }) : base
 }

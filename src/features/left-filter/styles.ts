@@ -18,6 +18,9 @@ export const CSS = [
   '.left-filter-hbtn{width:28px;height:28px;border-radius:50%;border:none;background:transparent;color:var(--dsw-alias-label-secondary,#6e6e73);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex:none;padding:0;margin:0;}',
   '.left-filter-hbtn:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.06));color:var(--dsw-alias-label-primary,#1c1c1e);}',
   '.left-filter-hbtn.on{background:color-mix(in srgb,var(--dsw-alias-brand-primary,#0a84ff) 16%,transparent);color:var(--dsw-alias-brand-primary,#0a84ff);}',
+  /* #183：搜索态不参与筛选 ⇒ 漏斗置灰且点击无效（tooltip 说明口径）。 */
+  '.left-filter-hbtn.off{opacity:.4;cursor:not-allowed;}',
+  '.left-filter-hbtn.off:hover{background:transparent;color:var(--dsw-alias-label-secondary,#6e6e73);}',
   '.left-filter-hbtn svg{width:14px;height:14px;display:block;}',
   '.left-filter-collapse{flex:none;width:26px;height:26px;padding:0;border:none;border-radius:7px;background:transparent;color:var(--af-tertiary);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}',
   '.left-filter-collapse:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(0,0,0,.06));color:var(--af-primary);}',

@@ -4,11 +4,17 @@
  * 无轮询、无存储、无跨 feature 引用；按钮随条带同生同灭。 */
 import { isLineageNode } from '../../client/dom'
 import { logLine } from '../../client/log'
+import { t } from '../../client/i18n'
 import { GROUP_SEL, HIDE_ATTR, HIDE_ON } from './dom-scope'
 
 export const COLLAPSE_CLASS = 'left-filter-collapse'
-export const COLLAPSE_LABEL = '收起'
-export const COLLAPSE_TIP = '一键收起当前可见分组'
+/* #184：文案进词条表（按钮下次重绘即换语）。 */
+export function collapseLabel(): string {
+  return t('left-filter', 'collapse.label')
+}
+export function collapseTip(): string {
+  return t('left-filter', 'collapse.tip')
+}
 
 /* G 方案（2026-09-08 用户拍板）：圆圈 + 单箭头图标，无文本；含义走 title/aria-label 全文案兜底。 */
 export const COLLAPSE_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8" r="5.5"/><path d="M5.8 9.6l2.2-2.2 2.2 2.2"/></svg>'
@@ -170,9 +176,9 @@ export function ensureCollapseBtn(strip: Element | null | undefined): Element | 
     btn = doc.createElement('button')
     btn.setAttribute('class', COLLAPSE_CLASS)
     btn.setAttribute('type', 'button')
-    btn.setAttribute('title', COLLAPSE_TIP)
-    btn.setAttribute('aria-label', COLLAPSE_TIP)
-    try { (btn as HTMLElement).innerHTML = COLLAPSE_SVG } catch { try { (btn as HTMLElement).textContent = COLLAPSE_LABEL } catch { /* 无内容环境留空钮（aria-label 仍可读） */ } }
+    btn.setAttribute('title', collapseTip())
+    btn.setAttribute('aria-label', collapseTip())
+    try { (btn as HTMLElement).innerHTML = COLLAPSE_SVG } catch { try { (btn as HTMLElement).textContent = collapseLabel() } catch { /* 无内容环境留空钮（aria-label 仍可读） */ } }
     try {
       btn.addEventListener('click', (e: Event) => {
         try { e.stopPropagation() } catch { /* 阻断失败忽略 */ }

@@ -2,10 +2,31 @@
  * 法医结论（Round 6）：组行常被悬停卡片包一层独占 div，会话是该包的兄弟而非组行的兄弟——
  * 故隐藏单元不能是“组行父级”，而是“子树只含本组的最小祖先”；扁平列表则退化为组行 + 后续会话兄弟。 */
 export const GROUP_SEL = 'div[role="treeitem"][aria-expanded]'
-export const RESULT_SEL = 'button[role="treeitem"]'
 export const HIDE_ATTR = 'data-left-filter'
 export const HIDE_ON = 'hidden'
 export const TIP_ATTR = 'data-lf-tip'
+
+/** #183 搜索态判定（决策：搜索态不参与筛选，维护者 2026-10-23 拍板）。
+ * 实测锚点（DSH 2026-10-24 构建）：侧栏搜索框常驻 DOM（折叠时 opacity:0/width:0/tabindex=-1），
+ * 故「输入框存在」不能当搜索态；非空白 query 会以单一扁平结果列表替换浏览树 ⇒ 以 value 非空判态。
+ * 该输入框是当前构建唯一带 type="text" + maxlength 的常驻输入（maxlength 来自 SEARCH_QUERY_MAX_CODE_UNITS）；
+ * 不用 role="searchbox"（现构建没有）；不用结果行 role=treeitem[aria-selected]（普通会话行同样带，会误判）。 */
+export const SEARCH_INPUT_SEL = 'input[type="text"][maxlength]'
+
+/** 侧栏搜索框当前是否有非空查询（=扁平结果列表在显示）。只读 DOM，失败一律按否（不误禁用筛选）。 */
+export function searchQueryActive(): boolean {
+  try {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return false
+    let active = false
+    document.querySelectorAll(SEARCH_INPUT_SEL).forEach((el) => {
+      try {
+        const v = (el as HTMLInputElement).value
+        if (!active && typeof v === 'string' && v.trim() !== '') active = true
+      } catch { /* 单个输入失败忽略 */ }
+    })
+    return active
+  } catch { return false }
+}
 
 function tagOf(el: Element | null | undefined): string {
   try { return String(el?.tagName ?? '').toLowerCase() } catch { return '' }

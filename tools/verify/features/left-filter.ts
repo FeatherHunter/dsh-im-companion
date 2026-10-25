@@ -1,6 +1,7 @@
 // B2 自验证（F0 每功能自验证）：left-filter 纯逻辑 + 叠加视图断言（node --test，零第三方依赖）。
 // 做法：tsc 转译特性链到临时目录，再断言转译产物；DOM 用最小桩（行/组容器/条带）。
-import { mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
+import { loadLocales } from '../../../scripts/i18n-locales.mjs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -26,6 +27,9 @@ const ENTRIES = [
   join(REPO, 'src', 'client', 'theme.ts'),
   /* #154：共享层工作区索引（行身份 → 路径）单点真相。 */
   join(REPO, 'src', 'client', 'data', 'workspace-index.ts'),
+  /* #184：UI 文案走 YAML 词条 + i18n core（诊断日志仍用 FILTER_LABEL 中文）。 */
+  join(REPO, 'src', 'client', 'i18n', 'core.ts'),
+  join(REPO, 'src', 'client', 'i18n', 'index.ts'),
 ];
 
 const tmp = mkdtempSync(join(tmpdir(), 'b2-left-filter-'));
@@ -55,8 +59,13 @@ const headerBtn: any = req('./features/left-filter/header-btn.js');
 const collapseAll: any = req('./features/left-filter/collapse-all.js');
 const dom: any = req('./client/dom.js');
 const styles: any = req('./features/left-filter/styles.js');
+const domScope: any = req('./features/left-filter/dom-scope.js');
 const registry: any = req('./features/index.js');
 const wsIndex: any = req('./client/data/workspace-index.js');
+const i18n: any = req('./client/i18n/core.js');
+const locales = loadLocales(REPO);
+assert.equal(locales.problems.length, 0, 'locales.yaml 校验失败：' + locales.problems.join('；'));
+i18n.setDictionaries(locales.dicts);
 
 const W1 = 'D:\\agents\\xiaoshuai';
 const W2 = 'D:\\agents\\xinghuo';
@@ -76,6 +85,22 @@ test('model：行数口径计数 + 三态放行（stale 仍算绑定）', () => 
   assert.equal(model.segLabel('unbound', 1), '无助理 1');
 });
 
+test('#184 文案词条化：三段条 / 悬停 / 空提示 / 收起钮随语言切换（中英同源）', () => {
+  assert.equal(model.segLabel('bound', 2), '有助理 2', '默认中文（setup 已装词条）');
+  i18n.setActiveLocale('en');
+  try {
+    assert.equal(model.segLabel('all', 5), 'All 5');
+    assert.equal(model.segLabel('bound', 2), 'With assistants 2');
+    assert.match(model.rowTip(W1, bots), /^Assistants: 小帅/);
+    assert.equal(model.rowTip('D:\\agents\\dsh-im', bots), 'No assistants yet');
+    assert.ok(headerBtn.headerTip('bound', { all: 3, bound: 2, unbound: 1 }).indexOf('With assistants 2') >= 0, '漏斗悬停走英文模板');
+    assert.equal(collapseAll.collapseLabel(), 'Collapse');
+  } finally {
+    i18n.setActiveLocale('zh');
+  }
+  assert.equal(model.segLabel('bound', 2), '有助理 2', '切回中文后立即还原');
+});
+
 test('model：助理名牌（去重/渠道/无助理）', () => {
   assert.deepEqual(model.assistantsOf(W1, bots), ['小帅']);
   assert.deepEqual(model.assistantsOf('D:\\agents\\dsh-im', bots), []);
@@ -83,15 +108,13 @@ test('model：助理名牌（去重/渠道/无助理）', () => {
   assert.equal(model.rowTip('D:\\agents\\dsh-im', bots), '暂无助理认领');
 });
 
-test('model：名称映射（basename/Bot名/大小写/搜索归属包含）+ 未解析哨兵', () => {
+test('model：名称映射（basename/Bot名/大小写）+ 未解析哨兵', () => {
   assert.equal(model.resolveWorkspaceKey('xiaoshuai', bots), W1);
   assert.equal(model.resolveWorkspaceKey('XiaoShuai', bots), W1);
   assert.equal(model.resolveWorkspaceKey('小帅', bots), W1);
   assert.equal(model.resolveWorkspaceKey(W1, bots), W1);
   /* #154：解析不出 ⇒ 空串哨兵；绝不把「无法解析的显示名」当工作区标识传下去。 */
   assert.equal(model.resolveWorkspaceKey('某个空组', bots), '');
-  assert.equal(model.resolveResultKey('星火周报 星火 会议纪要', bots), W2);
-  assert.equal(model.resolveResultKey('毫不相关的标题', bots), '');
 });
 
 test('#154：默认工作区按行身份解析（显示名本地化 ≠ 绑定路径）', () => {
@@ -144,7 +167,8 @@ test('styles：命名空间前缀，不占 .af-', () => {
 /* ---- 最小 DOM 桩 ---- */
 const allNodes: any[] = [];
 let groupRows: any[] = [];
-let resultRows: any[] = [];
+/* #183：搜索框桩（判据只读 value；空/空白=未搜索，框常驻 DOM）。 */
+let searchInputs: any[] = [];
 const stubNode: any = (tag: string) => {
   const n: any = {
     nodeType: 1,
@@ -189,7 +213,6 @@ const stubNode: any = (tag: string) => {
       const walk = (x: any) => { for (const c of x.children ?? []) { deep.push(c); walk(c); } };
       walk(n);
       if (sel === GROUP_SEL) return deep.filter((c: any) => c.tagName === 'DIV' && c.attrs?.role === 'treeitem' && ('aria-expanded' in (c.attrs ?? {})));
-      if (sel === RESULT_SEL) return deep.filter((c: any) => c.tagName === 'BUTTON' && c.attrs?.role === 'treeitem');
       if (sel === 'button') return deep.filter((c: any) => c.tagName === 'BUTTON');
       if (sel.startsWith('.')) { const cls = sel.slice(1); return deep.filter((c: any) => String(c.attrs?.class ?? '').split(' ').includes(cls)); }
       return [];
@@ -213,7 +236,7 @@ const stubNode: any = (tag: string) => {
   return n;
 };
 const GROUP_SEL = 'div[role="treeitem"][aria-expanded]';
-const RESULT_SEL = 'button[role="treeitem"]';
+const SEARCH_INPUT_SEL = 'input[type="text"][maxlength]';
 const docStub: any = {
   createElement: (t: string) => stubNode(t),
   createTextNode: (t: string) => ({ nodeType: 3, text: String(t), parentNode: null }),
@@ -221,7 +244,7 @@ const docStub: any = {
   addEventListener() {}, removeEventListener() {},
   querySelectorAll(sel: string) {
     if (sel === GROUP_SEL) return groupRows;
-    if (sel === RESULT_SEL) return resultRows;
+    if (sel === SEARCH_INPUT_SEL) return searchInputs;
     if (sel.indexOf('data-left-filter') >= 0) return allNodes.filter((n) => n.attrs['data-left-filter'] === 'hidden');
     if (sel.startsWith('.')) { const cls = sel.slice(1); return allNodes.filter((n) => String(n.attrs?.class ?? '').split(' ').includes(cls)); }
     return [];
@@ -270,14 +293,6 @@ const nestedSectionWith = (text: string, sessions: string[], container: any) => 
   container.appendChild(sec);
   return sec;
 };
-const resultButton = (text: string, container: any) => {
-  const b = stubNode('button');
-  b.setAttribute('role', 'treeitem');
-  b._text = text;
-  container.appendChild(b);
-  resultRows.push(b);
-  return b;
-};
 const segButton = (strip: any, id: string) => {
   const found: any[] = [];
   const walk = (n: any) => { if (n.dataset && n.dataset.id === id) found.push(n); for (const c of n.children ?? []) walk(c); };
@@ -292,7 +307,7 @@ const segLabels = (strip: any) => {
 };
 
 test('#154 view：默认工作区组行（本地化显示名 + 行身份）在「有助理」下留得住', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   const sec = stubNode('div');
   sec.appendChild(groupRowWithKey('默认工作区', 'w-default'));
@@ -314,7 +329,7 @@ test('#154 view：默认工作区组行（本地化显示名 + 行身份）在�
 });
 
 test('view：条带挂载 + 三段计数 + 整组藏显 + 卸载还原', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   const sec1 = sectionWith('小帅', container);
   const sec2 = sectionWith('xinghuo', container);
@@ -346,29 +361,118 @@ test('view：条带挂载 + 三段计数 + 整组藏显 + 卸载还原', () => {
   assert.equal(container.children.includes(strip), false, '卸载摘除条带');
 });
 
-test('view：搜索态结果行按归属 AND 过滤 + 空提示', () => {
-  groupRows = []; resultRows = [];
+test('#183 dom-scope：搜索态判据看查询非空（框常驻，空/空白=未搜索）', () => {
+  searchInputs = [];
+  const mk = (value: string) => { const i = stubNode('input'); i.value = value; return i; };
+  assert.equal(domScope.searchQueryActive(), false, '无框 ⇒ 非搜索态');
+  searchInputs = [mk('')];
+  assert.equal(domScope.searchQueryActive(), false, '空查询 ⇒ 非搜索态');
+  searchInputs = [mk('   ')];
+  assert.equal(domScope.searchQueryActive(), false, '全空白 ⇒ 非搜索态');
+  searchInputs = [mk('星火')];
+  assert.equal(domScope.searchQueryActive(), true, '非空查询 ⇒ 搜索态');
+  searchInputs = [];
+  assert.equal(String(domScope.SEARCH_INPUT_SEL), SEARCH_INPUT_SEL, '选择器契约：type=text + maxlength（与桩同一常量，改选择器即红）');
+});
+
+test('#183 header-btn：禁用态 off + aria-disabled + 搜索态 tooltip + 点击无效，恢复后照常循环', () => {
+  const header = stubNode('div');
+  const counts = { all: 2, bound: 1, unbound: 1 };
+  let cycles = 0;
+  const btn = headerBtn.ensureHeaderBtn(header, 'all', counts, () => { cycles += 1; }, true);
+  assert.ok(btn, '按钮创建');
+  assert.ok(String(btn.attrs.class ?? '').split(' ').includes('off'), 'off 形态');
+  assert.ok(String(btn.attrs.class ?? '').split(' ').includes('left-filter-hbtn'), '保留命名空间类');
+  assert.equal(btn.attrs['aria-disabled'], 'true');
+  assert.match(String(btn.attrs.title ?? ''), /搜索态不参与筛选/);
+  btn.fire('click');
+  assert.equal(cycles, 0, '禁用态点击不循环（不留可点无反馈）');
+  headerBtn.ensureHeaderBtn(header, 'all', counts, () => { cycles += 1; }, false);
+  assert.equal(btn.attrs['aria-disabled'], undefined, '退出搜索摘除 aria-disabled');
+  assert.equal(String(btn.attrs.class ?? '').split(' ').includes('off'), false, 'off 形态摘除');
+  assert.match(String(btn.attrs.title ?? ''), /全部 2/, '恢复三数 tooltip');
+  btn.fire('click');
+  assert.equal(cycles, 1, '恢复后同一颗按钮点击循环一次');
+  headerBtn.removeHeaderBtns();
+  assert.equal(header.children.length, 0, '清理污染');
+});
+
+test('#183 view：搜索态不挂条带、头钮置灰且点击无效；退出搜索自动恢复', () => {
+  groupRows = []; searchInputs = [];
+  const root = stubNode('div');
+  const header = stubNode('div');
+  header.appendChild(stubNode('button'));
+  header.appendChild(stubNode('button'));
+  root.appendChild(header);
+  const mid = stubNode('div');
+  root.appendChild(mid);
   const container = stubNode('div');
-  const r1 = resultButton('星火周报 星火', container);
-  const r2 = resultButton('dsh-im 试运行 dsh-im', container);
+  mid.appendChild(container);
+  sectionWith('小帅', container);
+  sectionWith('某个空组', container);
   let snapFn: any = null;
   const dispose = view.mountLeftFilter({ subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; } });
-  snapFn({ bots, failed: [], updatedAt: 2 });
-  const strip = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-strip'));
-  assert.ok(strip, '搜索态条带仍有锚点');
-  segButton(strip, 'bound').fire('click');
-  assert.equal((r1 as any).style.display !== 'none', true, '有助理归属的结果保留');
-  assert.equal((r2 as any).style.display, 'none', '无助理归属的结果被藏');
-  segButton(strip, 'unbound').fire('click');
-  const hint = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-empty'));
-  assert.ok(!hint, '搜索未筛空时无空提示');
-  segButton(strip, 'all').fire('click');
+  snapFn({ bots, failed: [], updatedAt: 41 });
+  const strip0 = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-strip'));
+  assert.ok(strip0, '常规态条带在位');
+  const hb = header.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-hbtn'));
+  assert.ok(hb, '常规态漏斗在位');
+  /* 进入搜索：扁平结果列表替换浏览树 ⇒ 组行 0 + 搜索框 query 非空。 */
+  groupRows = [];
+  container.children = [];
+  const input = stubNode('input');
+  input.value = '星火';
+  searchInputs = [input];
+  snapFn({ bots, failed: [], updatedAt: 42 });
+  assert.equal(container.children.some((c: any) => String(c.attrs?.class ?? '').includes('left-filter-strip')), false, '搜索态不挂条带');
+  assert.equal(hb.attrs['aria-disabled'], 'true', '头钮置灰');
+  assert.ok(String(hb.attrs.class ?? '').split(' ').includes('off'), 'off 形态');
+  assert.match(String(hb.attrs.title ?? ''), /搜索态不参与筛选/, 'tooltip 说明不参与筛选');
+  const title0 = hb.attrs.title;
+  hb.fire('click');
+  assert.equal(hb.attrs.title, title0, '点击无效（不循环）');
+  /* 退出搜索：组行回来（计数换成 2 有助理 / 0 无助理）⇒ 条带回且三段计数/选中态必须刷新。 */
+  searchInputs = [];
+  sectionWith('小帅', container);
+  sectionWith('xinghuo', container);
+  snapFn({ bots, failed: [], updatedAt: 43 });
+  const strip1 = container.children.find((c: any) => String(c.attrs?.class ?? '').includes('left-filter-strip'));
+  assert.ok(strip1, '退出搜索条带回来');
+  assert.ok(segLabels(strip1).includes('bound=有助理 2'), '退出搜索后三段计数刷新（条带句柄一起重建，不冻结）：' + segLabels(strip1));
+  assert.ok(segLabels(strip1).includes('unbound=无助理 0'), '计数换成 0 也必须刷新：' + segLabels(strip1));
+  assert.equal(hb.attrs['aria-disabled'], undefined, 'aria-disabled 摘除');
+  assert.equal(String(hb.attrs.class ?? '').split(' ').includes('off'), false, 'off 形态撤除');
+  assert.match(String(hb.attrs.title ?? ''), /全部 2/, '恢复三数 tooltip');
+  hb.fire('click');
+  assert.match(String(hb.attrs.title ?? ''), /有助理/, '退出搜索后点击循环照旧');
   dispose();
-  assert.equal((r2 as any).style.display, '', '卸载还原结果行');
+  assert.equal(header.children.length, 2, '卸载摘除漏斗');
+});
+
+test('#183 view：无容器且非搜索态 ⇒ 头钮保持不摘（行为同改前，避免瞬态摘了再挂）', () => {
+  groupRows = []; searchInputs = [];
+  const root = stubNode('div');
+  const header = stubNode('div');
+  header.appendChild(stubNode('button'));
+  root.appendChild(header);
+  const mid = stubNode('div');
+  root.appendChild(mid);
+  const container = stubNode('div');
+  mid.appendChild(container);
+  sectionWith('小帅', container);
+  let snapFn: any = null;
+  const dispose = view.mountLeftFilter({ subscribe: (fn: any) => { snapFn = fn; return () => { snapFn = null; }; } });
+  snapFn({ bots, failed: [], updatedAt: 44 });
+  assert.equal(header.children.length, 2, '常规态漏斗在位（原生 1 + 注入 1）');
+  groupRows = [];
+  container.children = [];
+  snapFn({ bots, failed: [], updatedAt: 45 });
+  assert.equal(header.children.length, 2, '无容器非搜索态 ⇒ 不摘头钮（改前行为：留给下一轮重绘更新）');
+  dispose();
 });
 
 test('view：老代挂载在新代出现后不覆盖（代际哨兵）', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   sectionWith('小帅', container);
   sectionWith('某个空组', container);
@@ -412,7 +516,7 @@ test('header-btn：循环三态 + tooltip 三数 + 原生按钮不动', () => {
 });
 
 test('view：头栏第 4 按钮挂载 + 点击循环 + 卸载摘除', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const root = stubNode('div');
   const header = stubNode('div');
   header.appendChild(stubNode('button'));
@@ -444,7 +548,7 @@ test('view：头栏第 4 按钮挂载 + 点击循环 + 卸载摘除', () => {
 });
 
 test('view：嵌套包一层（悬停卡片）整组藏，会话跟随', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   const sec1 = nestedSectionWith('小帅', ['需求讨论', '周报'], container);
   const sec3 = nestedSectionWith('某个空组', ['试运行'], container);
@@ -460,7 +564,7 @@ test('view：嵌套包一层（悬停卡片）整组藏，会话跟随', () => {
 });
 
 test('view：扁平列表退化（组行+后续会话兄弟，遇下组即停）', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   const g1 = groupRow('某个空组');
   const s1 = sessionRow('会话一');
@@ -484,7 +588,7 @@ test('view：扁平列表退化（组行+后续会话兄弟，遇下组即停）
 });
 
 test('view：无头栏时只留条带（fail-closed 头按钮）', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   sectionWith('小帅', container);
   let snapFn: any = null;
@@ -496,7 +600,7 @@ test('view：无头栏时只留条带（fail-closed 头按钮）', () => {
 });
 
 test('view：容器混入头栏按钮即猜大→藏条带（首装全宽回归）', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const sidebar = stubNode('div');
   const header = stubNode('div');
   header.appendChild(stubNode('button'));
@@ -560,7 +664,7 @@ test('dom锚点：行内按钮不算混入，行外原生按钮才算（真机�
 });
 
 test('view：容器猜大时条带藏但漏斗照常挂（头钮常在）', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const root = stubNode('div');
   const header = stubNode('div');
   header.appendChild(stubNode('button'));
@@ -587,7 +691,7 @@ test('view：容器猜大时条带藏但漏斗照常挂（头钮常在）', () =
 });
 
 test('view：条带挂出后不被认成头栏（自匹配回归）', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const root = stubNode('div');
   const header = stubNode('div');
   header.appendChild(stubNode('button'));
@@ -612,7 +716,7 @@ test('view：条带挂出后不被认成头栏（自匹配回归）', () => {
 });
 
 test('view：空提示（分组全藏时出现，恢复时消失）', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   sectionWith('某个空组', container);
   let snapFn: any = null;
@@ -632,7 +736,7 @@ test('view：空提示（分组全藏时出现，恢复时消失）', () => {
 /* ---- #64 一键收起 ---- */
 
 test('collapse-all：只收可见展开组（藏起/已收/血统不动）', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   const sec1 = sectionWith('小帅', container);
   const sec2 = sectionWith('某个空组', container);
@@ -669,7 +773,7 @@ test('collapse-all：只收可见展开组（藏起/已收/血统不动）', () 
 });
 
 test('view：收起钮随条带同行挂载 + 点击只收可见组 + 卸载无残留', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const container = stubNode('div');
   sectionWith('小帅', container);
   sectionWith('xinghuo', container);
@@ -712,7 +816,7 @@ test('styles：收起钮命名空间 + 条带同行不溢出（flex）', () => {
 /* ---- #94 单组树：容器结构兜底（真机同名结构 body > #root > shell > rail > treeBody > list[role=tree] + 真实宽度） ---- */
 
 test('#94 单组树：条带仍锚在 role="tree" 列表里，且藏的是组而不是整页', () => {
-  groupRows = []; resultRows = [];
+  groupRows = []; searchInputs = [];
   const root = stubNode('div'); root.width = 1600;
   const shell = stubNode('div'); shell.width = 1600;
   const rail = stubNode('div'); rail.width = 271;
@@ -759,4 +863,29 @@ test('styles：#159 条带不吃 360 封顶（宽度跟随容器），三段 hov
   assert.match(styles.CSS, /\.left-filter-strip \.af-seg-item:not\(\.active\):hover\s*\{[^}]*background:/, '#159 用户验收：悬停要有可见底药丸（深色窄栏纯文字提亮太轻，肉眼看不到）');
   assert.match(styles.CSS, /\.left-filter-strip \.af-seg-item:active\s*\{[^}]*transform:scale\(\.96\)/, '按下缩放反馈');
   /* 行首 .af-* 定义由本文件既有两处守卫覆盖（styles 命名空间测试），此处不重复。 */
+});
+
+/* ---- #183：搜索态不参与筛选（维护者 2026-10-23 拍板）—— 防回潮源码扫描 ---- */
+
+test('#183 防回潮：结果行筛选逻辑已清、搜索态不筛口径在、头钮禁用形态在', () => {
+  const read = (f: string) => readFileSync(join(FEAT, f), 'utf8');
+  /* spec 复核：扫描必须覆盖整个 feature 目录（不止 4 个文件），且单双引号写法都要拦。 */
+  const srcFiles = readdirSync(FEAT).filter((f: string) => f.endsWith('.ts'));
+  for (const f of srcFiles) {
+    const src = read(f);
+    assert.doesNotMatch(src, /button\[role=['"]treeitem['"]\]/, f + '：不得再出现结果行按钮选择器');
+    assert.doesNotMatch(src, /RESULT_SEL|resolveResultKey|hiddenResults|searchEmpty/, f + '：搜索筛选死代码不得回潮');
+  }
+  const domScopeSrc = read('dom-scope.ts');
+  const viewSrc = read('view.ts');
+  const headerBtnSrc = read('header-btn.ts');
+  const modelSrc = read('model.ts');
+  assert.match(domScopeSrc, /SEARCH_INPUT_SEL/, '搜索态判据锚点在 dom-scope');
+  assert.match(domScopeSrc, /export function searchQueryActive/, '判据只读函数导出');
+  assert.match(viewSrc, /groups\.length === 0 && searchQueryActive\(\)/, '搜索态必须同时要求组行 0 + 查询非空');
+  assert.match(viewSrc, /stripSeg = null/, '摘条带必须连句柄一起置空（#183 spec 复核：否则三段计数冻结）');
+  assert.match(headerBtnSrc, /aria-disabled/, '头钮禁用形态');
+  assert.match(headerBtnSrc, /SEARCH_TIP/, '搜索态 tooltip 单点');
+  assert.match(styles.CSS, /\.left-filter-hbtn\.off/, '禁用态样式');
+  assert.equal(model.resolveResultKey, undefined, 'model 不再导出结果行解析');
 });

@@ -3,10 +3,14 @@
  * 头栏发现走共享唯一锚点（client/dom，第二步：猜错就藏），本文件只保留按钮行为。 */
 import { findWorkspaceHeaderFromNode } from '../../client/dom'
 import { logLine, logOn } from '../../client/log'
-import { FILTERS, FILTER_LABEL, type FilterId, type GroupCount } from './model'
+import { t } from '../../client/i18n'
+import { FILTERS, filterLabel, type FilterId, type GroupCount } from './model'
 
 export const HB_CLASS = 'left-filter-hbtn'
 export const HB_ON = 'on'
+/** #183 搜索态禁用形态：置灰 + aria-disabled + tooltip 说明「搜索态不参与筛选」。 */
+export const HB_OFF = 'off'
+export const SEARCH_TIP = '绑定筛选：搜索态不参与筛选（退出搜索后恢复），点击无效'
 
 const FUNNEL_SVG = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3.5h12l-4.6 5.4v3.9l-2.8 1.7V8.9z"/></svg>'
 
@@ -15,8 +19,14 @@ export function nextFilter(f: FilterId): FilterId {
 }
 
 export function headerTip(filter: FilterId, counts: GroupCount): string {
-  /* 地基补漏（a36e661 改名续尾）：三数口径统一走 FILTER_LABEL，不再硬编码已绑定/未绑定。 */
-  return '绑定筛选：' + FILTER_LABEL[filter] + ' ' + counts[filter] + '（' + FILTER_LABEL.all + ' ' + counts.all + '，' + FILTER_LABEL.bound + ' ' + counts.bound + '，' + FILTER_LABEL.unbound + ' ' + counts.unbound + '），点击切换'
+  /* 三数口径统一走词条表（#184）：中文模板内含「全部/有助理/无助理」，英文模板同构。 */
+  return t('left-filter', 'header.tip', {
+    label: filterLabel(filter),
+    n: counts[filter],
+    all: counts.all,
+    bound: counts.bound,
+    unbound: counts.unbound,
+  })
 }
 
 /** 头栏定位：唯一锚点（client/dom.findWorkspaceHeaderFromNode）。
@@ -26,31 +36,51 @@ export function resolveHeader(container: Element): Element | null {
   try { return findWorkspaceHeaderFromNode(container) } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'anchor-fail', ok: false, message: '头栏锚点解析失败（fail-closed 不挂漏斗钮）：' + String((e as Error)?.message ?? e) }); return null }
 }
 
-export function updateHeaderBtn(btn: Element, filter: FilterId, counts: GroupCount): void {
+export function updateHeaderBtn(btn: Element, filter: FilterId, counts: GroupCount, disabled = false): void {
   try {
     const el = btn as HTMLElement
-    el.setAttribute('class', HB_CLASS + (filter === 'all' ? '' : ' ' + HB_ON))
-    el.setAttribute('title', headerTip(filter, counts))
-    el.setAttribute('aria-label', headerTip(filter, counts))
+    el.setAttribute('class', HB_CLASS + (disabled ? ' ' + HB_OFF : filter === 'all' ? '' : ' ' + HB_ON))
+    const tip = disabled ? SEARCH_TIP : headerTip(filter, counts)
+    el.setAttribute('title', tip)
+    el.setAttribute('aria-label', tip)
+    /* #183：搜索态禁用形态（置灰 + aria-disabled + 挡点击）；退出搜索自动恢复三数 tooltip。 */
+    if (disabled) el.setAttribute('aria-disabled', 'true')
+    else el.removeAttribute('aria-disabled')
   } catch { /* 更新失败下次再试 */ }
 }
 
-export function ensureHeaderBtn(header: Element, filter: FilterId, counts: GroupCount, onCycle: () => void): Element | null {
+export function ensureHeaderBtn(header: Element, filter: FilterId, counts: GroupCount, onCycle: () => void, disabled = false): Element | null {
   try {
     if (typeof document === 'undefined') return null
     let btn: Element | null = null
     try { btn = header.querySelector('.' + HB_CLASS) } catch { btn = null }
     if (!btn) {
-      btn = document.createElement('button')
-      btn.setAttribute('class', HB_CLASS)
-      btn.setAttribute('type', 'button')
-      try { (btn as HTMLElement).innerHTML = FUNNEL_SVG } catch { /* 无 innerHTML 环境就纯按钮 */ }
-      try { btn.addEventListener('click', (e: Event) => { try { e.stopPropagation() } catch { /* 阻断失败忽略 */ } onCycle() }) } catch { /* 监听失败忽略 */ }
-      try { header.appendChild(btn) } catch { return null }
+      const fresh = document.createElement('button')
+      fresh.setAttribute('class', HB_CLASS)
+      fresh.setAttribute('type', 'button')
+      try { (fresh as HTMLElement).innerHTML = FUNNEL_SVG } catch { /* 无 innerHTML 环境就纯按钮 */ }
+      /* #183：禁用态只置灰 + 挡点击，不摘监听——退出搜索后同一颗按钮自动恢复循环。 */
+      try { fresh.addEventListener('click', (e: Event) => { try { e.stopPropagation() } catch { /* 阻断失败忽略 */ } if (fresh.getAttribute('aria-disabled') === 'true') return; onCycle() }) } catch { /* 监听失败忽略 */ }
+      try { header.appendChild(fresh) } catch { return null }
+      btn = fresh
     }
-    updateHeaderBtn(btn, filter, counts)
+    updateHeaderBtn(btn, filter, counts, disabled)
     return btn
   } catch (e) { if (logOn('debug')) logLine('debug', 'ui.action', { area: 'left-filter', action: 'header-btn-fail', ok: false, message: '漏斗钮创建失败（fail-closed 不挂）：' + String((e as Error)?.message ?? e) }); return null }
+}
+
+/** #183：已挂头钮的父级（原生头栏不重渲染，注入钮仍在原头栏）。
+ * 搜索态组行消失、没有行种子可找头栏时，用它复用上一轮头栏（漏斗不闪退）。 */
+export function headerOfInjectedBtn(): Element | null {
+  try {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return null
+    const btns = document.querySelectorAll('.' + HB_CLASS)
+    for (let i = 0; i < btns.length; i++) {
+      const p = btns[i].parentElement
+      if (p) return p
+    }
+  } catch { /* 复用失败按无头栏处理 */ }
+  return null
 }
 
 export function removeHeaderBtns(): void {
