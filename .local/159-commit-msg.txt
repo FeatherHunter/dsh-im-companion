@@ -1,0 +1,11 @@
+fix(left-filter): 条带宽度跟随容器 + 三分段补 hover/active（#159）
+
+- 去掉 .left-filter-strip 的 max-width:360px 与居中 margin，宽度跟随侧栏容器（264–420 全档不再两侧露下层内容）
+- 三分段 hover/active 写进 left-filter 命名空间（复用设置面板同款表现，不定义 .af-*，不改 first-view 安装点）
+- tools/verify/features/left-filter.ts 增加 #159 回归断言（先红后绿；锁“条带无 max-width 封顶”这一类别，而非 360 字面量）
+- npm run check 全绿（build + typecheck + verify + guard，verify 26/26）；构建产物已热部署到 desktop profile（真目录）
+  - lib/client.js sha256 7B57C6F64D7F81AE12B1B36F9932EDF732A00A60379A5F541B2E46BDF5892402，1,101,708 B
+  - lib/index.js sha256 ADAFE3128ADCE6983557EEB20F30897816966ED960FE433BAB39930EEC6A04F6，11,876 B
+- 双轴 code-review 已跑：Standards 0 硬违规（判断项已收：断言锁类别、去重复守卫、注释如实）；Spec 确认实现符合 Q1=A/Q2=A 拍板，待真机五档 + hover/active 验收
+
+真机视觉验收（264/280/360/380/420 + hover/active）通过后按 #130 pin 并关闭。

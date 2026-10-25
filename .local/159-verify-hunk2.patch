@@ -1,0 +1,21 @@
+diff --git a/tools/verify/features/left-filter.ts b/tools/verify/features/left-filter.ts
+index f76abe3..3390edd 100644
+--- a/tools/verify/features/left-filter.ts
++++ b/tools/verify/features/left-filter.ts
+@@ -683,12 +752,10 @@ test('styles：#159 条带不吃 360 封顶（宽度跟随容器），三段 hov
+   assert.ok(stripLine, '条带基础规则存在');
+   const rule = stripLine.slice(stripLine.indexOf('{') + 1, stripLine.lastIndexOf('}'));
+   assert.match(rule, /width:100%/, '条带宽度跟随容器');
+-  assert.doesNotMatch(rule, /max-width:360px/, '#159：不得再固定 360 封顶（宽栏时两侧露下层内容）');
+-  assert.doesNotMatch(rule, /margin:0 auto/, '#159：不得居中留侧缝');
++  assert.doesNotMatch(rule, /max-width\s*:/, '#159：条带不得有 max-width 封顶（宽度由容器决定，防又改成 380/400 之类字面量）');
++  assert.doesNotMatch(rule, /margin\s*:[^;]*\bauto\b/, '#159：不得居中留侧缝');
+   /* 三段悬停/按下：沿用设置面板同一套原语表现，但必须挂在 .left-filter-strip 后代上（启动期随 FEATURES 安装）。 */
+   assert.match(styles.CSS, /\.left-filter-strip \.af-seg-item:not\(\.active\):hover\s*\{[^}]*color:var\(--af-primary\)/, '非当前段 hover 提升文字对比');
+   assert.match(styles.CSS, /\.left-filter-strip \.af-seg-item:active\s*\{[^}]*transform:scale\(\.96\)/, '按下缩放反馈');
+-  /* 防外溢：不得定义行首 .af-*（与设置面板共享原语只许后代覆盖）。 */
+-  const afDefs = styles.CSS.split('\n').filter((l: string) => l.trim().startsWith('.af-'));
+-  assert.equal(afDefs.length, 0, '不得定义 .af-*');
++  /* 行首 .af-* 定义由本文件既有两处守卫覆盖（styles 命名空间测试），此处不重复。 */
+ });
+

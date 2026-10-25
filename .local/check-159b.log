@@ -1,0 +1,1278 @@
+
+> dsh-im-companion@0.2.19 check
+> npm run build && npm run typecheck && npm run verify && npm run guard
+
+
+> dsh-im-companion@0.2.19 build
+> npm run build:host && npm run build:client
+
+
+> dsh-im-companion@0.2.19 build:host
+> tsc -p tsconfig.json
+
+
+> dsh-im-companion@0.2.19 build:client
+> tsdown
+
+ℹ tsdown v0.22.14 powered by rolldown v1.2.6
+ℹ config file: D:\dsh-plugin\dsh-im-companion\tsdown.config.ts 
+ℹ entry: src/client/index.ts
+ℹ tsconfig: tsconfig.json
+ℹ Build start
+ℹ Hint: consider adding deps.onlyBundle option to avoid unintended bundling of dependencies, or set deps.onlyBundle: false to disable this hint.
+See more at https://tsdown.dev/options/dependencies#deps-onlybundle
+Detected dependencies in bundle:
+- dsh-log
+- dsh-plugin-update
+ℹ lib\client.js      1.10 MB
+ℹ lib\client.js.map  1.97 MB
+ℹ 2 files, total: 3.07 MB
+✔ Build complete in 400ms
+
+> dsh-im-companion@0.2.19 typecheck
+> tsc -p tsconfig.client.json
+
+
+> dsh-im-companion@0.2.19 verify
+> node tools/verify/render-client.ts && node --test tools/verify/features/first-view.ts && node --test tools/verify/features/left-badges.ts && node --test tools/verify/features/detail-drawer.ts && node --test tools/verify/features/left-filter.ts && node --test tools/verify/features/adopt.ts && node --test tools/verify/features/presence.ts && node --test tools/verify/features/presence-host.ts && node --test tools/verify/features/welcome-banner.ts && node --test tools/verify/features/fleet-radar.ts && node --test tools/verify/features/session-header-model.ts && node --test tools/verify/features/session-header-assistant.ts && node tools/verify/features/session-header-render.ts && node --test tools/verify/features/connect-qr.ts && node --test tools/verify/features/truth-flags.ts && node --test tools/verify/features/session-marks.ts && node --test tools/verify/features/design-preview.ts && node --test tools/verify/features/rpc-dual-transport.ts && node --test tools/verify/features/log-trace-bridge.ts && node --test tools/verify/host-entry.ts && node --test tools/verify/features/update-host.ts && node --test tools/verify/features/update-center.ts && node --test tools/verify/features/home-steel.ts && node --test tools/verify/features/home-seed-fallback.ts && node --test tools/verify/features/home-degrade.ts && node --test tools/verify/features/home-create-flow.ts && node --test tools/verify/features/config-yaml.ts && node --test tools/verify/features/home-avatar.ts && node --test tools/verify/features/home-row-strip.ts && node --test tools/verify/features/home-store.ts && node --test tools/verify/log-pipeline.ts && node --test tools/verify/log-truth.ts && node --test tools/verify/separator-retired.ts && node --test tools/verify/features/star-history.ts
+
+LOADED id = dsh-im-companion
+inject = ["slots","connection","uiWorkspace"]
+registered label = IM机器人增强
+---- L1 rendered text (first 700) ----
+IM机器人增强v0.2.19dsh-im 4.39.0家4 个家（每个家对应一个工作区）L1家›L2助理小帅窝›L3机器人小帅·飞书小小帅窝小小帅·飞书小小帅·微信2 助理星星火星星火·飞书1 助理WEwechat微微信小号1 助理空空房间＋ 建助理新建家作者其他插件dsh-mattpocock-skills-deckMattpocock SKILLS 在DSH中增强插件。开发伴侣☕️。›dsh-opencode-paletteOpenCode 配色盘›
+---- L1 head ---- 家4 个家（每个家对应一个工作区）
+---- L1 crumbs ---- L1家 | L2助理小帅窝 | L3机器人小帅·飞书
+PASS  顶部标题 IM机器人增强(#56)
+PASS  搜索框与分段已退场（上部只留标题行 + 绿框页头）
+PASS  面板动作簇在绿框页头里（船 / 串门搬家 / 配置 / 刷新 4 枚）
+PASS  无按工作区(已砍)
+PASS  页头 家 + N 个家（每个家对应一个工作区）（原型 fhead）
+PASS  L1 面包屑三级 chip（L1 家 / L2 助理 · … / L3 机器人 · …）
+PASS  L1 家名（工作区标题回落）
+PASS  L1 家名（空标题回落目录基名）
+PASS  L1 空家直接成行（无折叠行）
+PASS  L1 空家行可见（零态＝「＋ 建助理」，不再写「0 位助理」）
+PASS  头像字形：CJK 单字 / 拉丁两词首字母（dsh-* 不再全是 d）
+PASS  L1 行动作已启用（T6b #114：重命名/更多不再 planned）
+PASS  L1 助理计数（末端 N 助理徽章）
+PASS  L1 默认命名规则不再提示（跟随工作区名/跟随目录名退役）
+PASS  L1 助理清单改芯片（一助理一芯片，带名字）
+PASS  L1 每助理一状态点进了芯片（绿在线/红离线/空心未绑定）
+PASS  L1 无“未命名”
+PASS  L1 家行 4 枚（钻取锚点 data-open=L2）
+PASS  L1 底部主操作＝新建家（随层）
+PASS  点家行进入 L2（钻取，非展开树）
+PASS  L2 页头标题＝家名
+PASS  L2 页头副标＝N 位助理（回落来源）
+PASS  L2 面包屑当前层在 L2
+PASS  L2 助理行两枚（一对一不合并）
+PASS  L2 渠道标签 飞书
+PASS  L2 已绑状态章
+PASS  L2 行内「更换机器人」钮常显（owner 2026-10-17；行上不再有接入钮，精确口径见 home-steel）
+PASS  L2 底部主操作＝新建助理（随层）
+PASS  L3 详情卡存在（原型 .detail）
+PASS  L3 详情卡不继承列表行 hover 隐藏
+PASS  L3 机器人 id 与只接一个渠道
+PASS  L3 命名链三段（你取的名/机器人名/家名）
+PASS  L3 页头标题＝助理名 + 副标回落来源
+PASS  L3 行动作启用集＝更换机器人,详情,改名与头像,删除助理,换工作区,移除渠道（T6c 实做）
+PASS  L3 待实现清单退场（#115 落地，无假按钮）
+PASS  L3 底部主操作＝返回助理列表（已绑）
+PASS  头部返回键回 L2
+PASS  面包屑 L1 章回 L1
+PASS  空家空态卡（原型 .empty）
+PASS  建家弹层＝锚定 popover（非底部弹窗）
+PASS  建家弹层＝选目录支路（T10 #124 分段退场）
+PASS  建家写入家表（4→5）
+PASS  建家后落到新家的 L2
+PASS  建助理弹层含空闲机器人与可用「以后再绑」（T6b 占位）
+PASS  建助理写入助理表（4→5）
+PASS  建助理后落到该助理 L3 详情
+PASS  建助理·以后再绑写入未绑行（无号不占号）
+PASS  建助理·以后再绑落到该助理 L3 未绑详情
+PASS  旧 A1 列表行 DOM 已退出绿框
+PASS  绿框样式表已装（.home-ui 命名空间 + hu- 前缀）
+PASS  引流关联卡 P2(#26)
+PASS  自家版本胶囊 紫(#82)
+PASS  上游胶囊 dsh-im(#82)
+PASS  宿主胶囊已删(2026-10-01)
+PASS  副标已删(#82)
+PASS  页面干净-无解释词
+PASS  家表经种子落盘（一区一家 4 行）
+PASS  助理经种子落盘（有归属 4 枚）
+PASS  种子不建未绑定行（空 workspace 不进表，T6b 占位只走显式创建）
+==== ALL PASS ====
+✔ Xiao 系取特征音节（A 前两字母 Xi 证伪后的 D 方案） (1.9783ms)
+✔ 非 Xiao 系维持首字母（含中文与空值） (0.3635ms)
+✔ 莫兰迪兜底只染 Xiao 系（自定义头像走 img 层，本函数只定渐变类） (0.3392ms)
+✔ 中文文案 = 赢家口径（增强标题 / 按助理 / 按渠道 / ghost 同级） (0.2474ms)
+✔ #82 三色胶囊文案：颜色即身份，胶囊只留轴名 + 版本号（前缀进悬停） (0.2663ms)
+✔ #82 顶部宽度预算：胶囊文案纯 ASCII + 10px 字号（省略号零容忍的机械代理） (0.3045ms)
+✔ #78 顶部单行硬约束：.af-hd 不换行 + 右组不压缩 + 左块先让位 (0.2186ms)
+✔ 英文文案成套（实现侧以 key 提供两套，不做切换器） (0.2267ms)
+✔ 语言跟随 documentElement.lang（en 开头即英文） (0.3694ms)
+✔ 样式命名空间与关键规则（新增类 only，既有零改动） (0.3073ms)
+✔ #27 三态说人话（旧 Agent 名词禁回潮） (0.2156ms)
+✔ T4 双模式 8 键中文（T2 定稿一字不差） (0.1727ms)
+✔ T4 双模式 8 键英文（自然语序） (0.1531ms)
+✔ T4 前置提示零硬门 + 脱敏分级 helper (0.1658ms)
+✔ T4 既有三态一字不动（8 键只新增，不回写旧页） (0.0757ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3671.5598
+features/left-badges: ALL PASS
+✔ stream：失败渠道保留旧快照（stale+冻结），ok:false 不保留 (4.1269ms)
+✔ stream：stale 保留与恢复（时间冻结/更新） (8.6523ms)
+✔ stream：订阅即时首拍 + 广播 + 退订 (2.9875ms)
+✔ bindings：四态 + tooltip 最后检测 + 暂无占位 (123.7642ms)
+✔ view：resolveWorkspace 名称匹配（basename/Bot名/大小写）+ 未解析哨兵 (16.3739ms)
+✔ #154 view：默认工作区按行身份解析（本地化显示名 ⇒ 绑定路径） (1.5485ms)
+✔ registry：left-badges 在列，带样式与槽位 (0.4596ms)
+✔ styles：命名空间前缀，不占 .af- (0.2272ms)
+✔ styles：悬浮卡桥接 --hu-*（色脸在左栏也有色） (0.5458ms)
+✔ view：行属性徽标 + 悬停标题 + 复写幂等 (2.5675ms)
+✔ view：老代挂载在新代出现后不覆盖（代际哨兵） (0.6704ms)
+✔ view：未绑定无属性且行内不写节点 (0.3796ms)
+✔ hover-card：卡片数据（未绑定null/渠道行/时间） (1.8644ms)
+✔ fleet-api：botDisplayLabel（有名优先/超长截断/占位不空） (0.2006ms)
+✔ hover-card：每行带 Bot 标识（同渠道可辨别/占位） (0.927ms)
+✔ hover-card：同渠道组内槽位均分（#33v2，构造错开不靠运气） (0.6755ms)
+✔ hover-card：悬浮卡三飞书绿点 animationDelay 端到端错开（#33） (22.5937ms)
+✔ hover-card：行四段（渠道logo/助理脸/助理名/右侧圆点） (38.3535ms)
+✔ assistant-face：matchAssistant（精确/兜底/同路家/无） (1.1525ms)
+✔ assistant-face：faceFor 优先级（上传图>色脸>渠道图>首字） (0.5415ms)
+✔ assistant-face：视觉 parity（色相/字形与面板一致） (0.6641ms)
+✔ assistant-face：paintFace（img/色脸） (0.3697ms)
+✔ assistant-face：mountAssistantFaces（home.list + avatar.get，rpc 空回落） (0.4473ms)
+✔ assistant-face：homeFaceFor（顶栏工作区脸：上传图>色脸>无家首字） (0.408ms)
+✔ hover-card：顶栏工作区头像（脸+名，数据直通） (0.8138ms)
+✔ hover-card：顶栏两段（头像+工作区名，头像在前） (32.8633ms)
+✔ assistant-face：mountAssistantFaces 兼取家图 + homeFaceOf (0.6221ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2771.5562
+✔ host：非法预设/强度静默忽略，合法落盘且重载仍在 (3684.7922ms)
+✔ fleet-api：上游预设/上下文/目录归一化 (0.6111ms)
+✔ data：预设/上下文 payload 与盲写守卫 (0.6048ms)
+✔ data：抽屉模型派生自上游真值（一致/混合/未读/未知键/路由 seat 空） (24.9135ms)
+✔ client meta：Rpc/Local 双实现走通 preset/ctx (0.9769ms)
+✔ manifest：detail-drawer 注册进 FEATURES，样式命名空间干净 (0.7459ms)
+✔ view：A' 渲染含动态目录 + 双开关 + 只读区 + 空路由席位 (3.6621ms)
+✔ view：路由行渲染全显映射 + 幽灵告警 + 复制按钮 (1.3621ms)
+✔ view：多渠道不一致渲染占位且可继续操作 (1.6823ms)
+✔ view：弹窗内无省略号——引导语全文换行展示 (1.2306ms)
+✔ paint：同构快照指纹稳定，真变才变（15s 轮询不抖动） (1.3745ms)
+✔ drawer：抽屉占满面板几何（视口右沿兜底） (0.3355ms)
+✔ drawer：可见矩形裁剪——内容高于面板时底边锁面板底（#9 真机根因） (0.4203ms)
+✔ model：按渠道视图优先用户头像（与按Agent一致） (1.3663ms)
+✔ actions：逐渠道写透部分失败点名渠道 (1.0855ms)
+✔ dir-picker：列出子目录并可取消 (161.8761ms)
+✔ dir-picker：原生优先（成功/取消类抛错静默，真故障回退内置） (49.416ms)
+✔ data：性格预填一致回填、分歧置空 (0.4273ms)
+✔ actions：性格应用覆盖各渠道引导语且保留字段开关 (0.6094ms)
+✔ data：路由取数经自有通道，失败静默空数组 (0.5663ms)
+✔ view：渠道行自带发送测试按钮（分渠道直发） (1.4667ms)
+✔ routes：落盘解析只收字符串映射，其余丢弃 (0.2834ms)
+✔ routes：自展面板全显（用户决议 2026-09-03） (0.185ms)
+✔ routes：候选路径按上游落盘规则（bots 下 + 飞书 legacy） (0.3514ms)
+✔ routes：聚合读盘跳过缺失/损坏，direct 标幽灵 (2192.7779ms)
+✔ routes.list：端点只读聚合，缺席不炸 (2694.1709ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 17977.7875
+✔ model：行数口径计数 + 三态放行（stale 仍算绑定） (4.3069ms)
+✔ model：助理名牌（去重/渠道/无助理） (0.557ms)
+✔ model：名称映射（basename/Bot名/大小写/搜索归属包含）+ 未解析哨兵 (0.8545ms)
+✔ #154：默认工作区按行身份解析（显示名本地化 ≠ 绑定路径） (0.5289ms)
+✔ registry：left-filter 在列，order 11，带样式与槽位 (0.2898ms)
+✔ styles：命名空间前缀，不占 .af- (0.221ms)
+✔ #154 view：默认工作区组行（本地化显示名 + 行身份）在「有助理」下留得住 (5.8888ms)
+✔ view：条带挂载 + 三段计数 + 整组藏显 + 卸载还原 (10.596ms)
+✔ view：搜索态结果行按归属 AND 过滤 + 空提示 (1.4164ms)
+✔ view：老代挂载在新代出现后不覆盖（代际哨兵） (1.3545ms)
+✔ header-btn：多级上行定位（列表与头栏隔多层容器） (0.4591ms)
+✔ header-btn：循环三态 + tooltip 三数 + 原生按钮不动 (0.206ms)
+✔ view：头栏第 4 按钮挂载 + 点击循环 + 卸载摘除 (1.2295ms)
+✔ view：嵌套包一层（悬停卡片）整组藏，会话跟随 (0.8368ms)
+✔ view：扁平列表退化（组行+后续会话兄弟，遇下组即停） (0.9835ms)
+✔ view：无头栏时只留条带（fail-closed 头按钮） (0.493ms)
+✔ view：容器混入头栏按钮即猜大→藏条带（首装全宽回归） (1.7276ms)
+✔ dom锚点：行内按钮不算混入，行外原生按钮才算（真机回归） (0.4823ms)
+✔ view：容器猜大时条带藏但漏斗照常挂（头钮常在） (1.1135ms)
+✔ view：条带挂出后不被认成头栏（自匹配回归） (1.1397ms)
+✔ view：空提示（分组全藏时出现，恢复时消失） (0.9209ms)
+✔ collapse-all：只收可见展开组（藏起/已收/血统不动） (0.7407ms)
+✔ view：收起钮随条带同行挂载 + 点击只收可见组 + 卸载无残留 (1.3184ms)
+✔ styles：收起钮命名空间 + 条带同行不溢出（flex） (0.2555ms)
+✔ #94 单组树：条带仍锚在 role="tree" 列表里，且藏的是组而不是整页 (0.7509ms)
+✔ styles：#159 条带不吃 360 封顶（宽度跟随容器），三段 hover/active 只做左栏命名空间后代覆盖 (0.3467ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5192.9749
+✔ 未绑定 Bot 放到分组 → 直绑 (2.0527ms)
+✔ 已属 A 的 Bot 放到 B → 二次确认换绑 (0.2357ms)
+✔ 放到空白处 → 拒绝且关系不变 (0.6609ms)
+✔ 放回自己所在分组 → 无操作 (0.13ms)
+✔ 撤销窗口为 5 秒（走查 verdict） (0.1854ms)
+✔ 撤销口径：换绑可撤销（回到 from），新绑无无损落点（上游要求非空路径） (0.1833ms)
+✔ 面板分组：未分配置顶（无则省略）+ 按归属聚合保序 (0.5936ms)
+✔ 家单：有人家首见序 + 无人之家追尾去重 (0.2019ms)
+✔ 门牌：设置中文名优先，头像字与色板稳定 (0.7408ms)
+✔ 签名池：绿灯个性签名稳定认领，条条够短不断行 (0.3654ms)
+✔ manifest 注册：workspace-rail 槽位 + 进 FEATURES (0.2996ms)
+✔ 样式命名空间 adopt- 且不占用 .af- 私有约定 (0.9044ms)
+✔ 视图暴露挂载入口 (0.0994ms)
+✔ view：头栏安装串门入口，点击开面板（家 + 巷子口） (20.8542ms)
+✔ view：面板内组间拖放 → 确认后换绑 + 撤销滚回 (90.0815ms)
+✔ view：巷子口歇脚——有家暂存不写，关面板送回 (52.7767ms)
+✔ view：巷子口上悬停 → 允许放下（禁行标是 bug） (2.9147ms)
+✔ view：全已分配 → 无未分配组；组内放下 → 不写 (29.7132ms)
+✔ view：无人之家上墙 + 拖入直接绑定 (51.1641ms)
+✔ view：面板空白处放下 → 拒绝且不写；拿起无放下 → 静默回原位 (65.4534ms)
+✔ view：按住熔断重绘 + 内容不变跳过 (75.6747ms)
+✔ view：巷子口→他家确认换绑成功——刷新后即时归位（#39） (75.5582ms)
+✔ view：巷子口→他家换绑失败——暂存保留仍在巷子口（#39） (76.5909ms)
+✔ view：撤销窗过期 → 落定提示且窗消失 (34.0521ms)
+✔ toolbar：串门搬家按钮与舰队/新增同组，只派发不直引特性 (7.4228ms)
+✔ adopt：监听工具栏事件自开面板，卸载即退订 (0.5436ms)
+✔ toolbar：home 图标与悬浮文案 (5.4208ms)
+✔ 助理落点判定：跨家 move／同家 noop／空位未知家未知助理 reject (0.4666ms)
+✔ 机器人反查唯一绑定助理：渠道＋编号双命中才认 (0.1429ms)
+✔ 无主机器人：被助理认领的排除，未认领进巷子口 (0.193ms)
+✔ 按家分组：保家序，悬空 homeId 不渲染（fail-closed） (0.257ms)
+✔ 家表拉取失败回空（旧面板回落，不抛） (0.5651ms)
+✔ 助理头像脸：img: 标记才取图，首字恒定同脸 (0.1893ms)
+✔ view：有家表换助理棋盘（家卡带 data-adopt-home，行带 data-adopt-assistant） (56.934ms)
+✔ view：助理拖到他家 → 远端先行＋落表（诚实键 fromHomeId/followBot）＋撤销窗 (75.7045ms)
+✔ view：未绑定助理搬家只换表（不碰远端） (77.1591ms)
+✔ view：助理放回自己家 → 不写服务器 (53.4333ms)
+✔ view：助理落表失败 → 远端回滚（两边都不脏） (69.7896ms)
+ℹ tests 38
+ℹ suites 0
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8423.0929
+features/presence: ALL PASS
+✔ motion：分级真值表（full/reduced/static） (2.6161ms)
+✔ motion：非浏览器环境 systemReduced() 为 false (0.2295ms)
+✔ registry：presence 已注册（源码文本）+ manifest 字段正确 (0.188ms)
+✔ styles：#98 绿点两态 + 悬浮层退役 + 档位覆盖，keyframe 零新增 (0.397ms)
+✔ prefs：#98 偏好读写走契约通道（meta.get 读 / meta.motion.set 写） (14.6486ms)
+✔ #98 prefs：重启语义——meta 未就绪时直读宿主真值（绕开 metaCache 竞态） (8.3128ms)
+✔ #98 prefs：双写——host 盘 + MetaStore 本地镜像（fire-and-forget，失败不抛） (17.9954ms)
+✔ #98 client/meta：Local 降级也有 motion 镜像（host 不可用时同 profile 重启仍在） (0.9185ms)
+✔ view：resolveWorkspace 名称匹配（basename/Bot名/大小写） (1.018ms)
+✔ #154 view：默认工作区按行身份解析（有助理行数不再漏计） (22.6662ms)
+✔ #98 view：绿点挂筛选条内、收起钮左侧；body 不挂开关、行零写入 (3.2766ms)
+✔ #98 view：点击翻转 → static/灰点 + 落盘；再点恢复 + 落盘 false (2.7312ms)
+✔ #98 view：偏好回填（meta.get 说出已关 → 挂载即 static + 灰点） (2.9517ms)
+✔ #98 view：重启语义——meta 未就绪（抛错）但直读宿主有值 → 照样回填已关（根因回归） (8.7873ms)
+✔ #98 view：未知态不误定稿——首帧读不到保持开，下次快照读到即跟回；用户先动手不再被覆盖 (45.4852ms)
+✔ #98 view：宿主是旧代码 / 写失败（rpc reject 或没有 rpc）→ 开关照翻、绝不抛 (31.4355ms)
+✔ #98 view：条带缺席 → fail-closed（不画绿点、不报错、档位照常） (2.9235ms)
+✔ #98 view：对家重建条带 → 下一次重绘绿点自动跟回 (0.9988ms)
+✔ view：>20 实例自动 reduced（此处验 body 档位，慢呼吸由覆盖规则承载） (2.3833ms)
+✔ view：21 行全未绑定 → 计数 0 → 仍 full（衰减语义由 B1 原生承担） (2.8374ms)
+✔ #98 view：dispose 卸载即净（绿点摘除、body 档位清除、行零触碰） (10.0779ms)
+ℹ tests 21
+ℹ suites 0
+ℹ pass 21
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2734.4883
+features/presence-host: ALL PASS
+✔ #98 host：默认值单点——没写过偏好即动效开（false） (10.2936ms)
+✔ #98 host：旧 meta.json 无 motion 段 → 折回默认 false（不报错、不 undefined） (40.901ms)
+✔ #98 host：写 → 读 → 盘上真值（meta.motion.set + meta.get） (724.5992ms)
+✔ #98 host：非法值回 bad-request 且不动盘（校验与 meta.update.set 同款） (9.0235ms)
+✔ #98 host：换一个 store 实例重读同一文件 → 偏好仍在（跨进程/重启语义） (16.9556ms)
+✔ #98 契约对齐：客户端写的端点名 = 宿主的 case 名（字符串钉） (27.4101ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 6696.0628
+✔ 时段映射边界（凌晨≠深夜） (4.2393ms)
+✔ 路由计数只按脱敏前缀 (1.0829ms)
+✔ copyFor 归一化与回绕 (0.3613ms)
+✔ 副标题零分隔符：切分器退役、文案自带整句（#140） (0.3353ms)
+✔ PH 十五句完整性（原型冻结文案锁死） (0.2868ms)
+✔ 横幅模型映射身份与上游标签 (19.6182ms)
+✔ 横幅模型缺席回 null（调用方零 UI） (0.7284ms)
+✔ 预设未读到不展示该行 (0.5538ms)
+✔ 跟随默认与多预设 (1.6406ms)
+✔ 路由读取静默失败 (1.0642ms)
+✔ 样式命名空间 wb- (0.5423ms)
+✔ manifest 与注册表收录 (0.1985ms)
+✔ 渲染 P 弹窗（遮罩+面板+标题+进门） (2.2695ms)
+✔ 未绑定工作区零绘制（纯净原生空态） (45.2326ms)
+✔ 渲染类名全在 wb- 命名空间 (1.4996ms)
+✔ label 反查路径（歧义宁缺勿错配） (0.3118ms)
+✔ hero 三信号确认 (0.3525ms)
+✔ hero chip 文本读取 (0.1856ms)
+✔ 挂载永不抛错（ hostile 环境全静默） (0.8929ms)
+✔ 顶层弹窗挂载：hero 门控、body 挂载、卸载即净 (49.3821ms)
+✔ 藏起来的 hero 不绘制（有消息会话不打扰） (38.695ms)
+✔ copyFor 同段回绕（数据层） (3.083ms)
+✔ welcomedOf 旧快照兜底 (0.2571ms)
+✔ pruneWelcomed 只清无机器人的家 (0.1324ms)
+✔ 播种零绘制：欢迎过的家不再出现 (42.0071ms)
+✔ 进门持久化：点击回家即记 welcomed (46.9686ms)
+✔ 删光重现：解绑清记忆，重绑再欢迎 (123.3158ms)
+✔ 切换工作区清扫孤儿卡 (90.0525ms)
+✔ 同拍重放不重绘（防15s闪刷） (110.6518ms)
+✔ 中文新版三处（门口迎+进门办事） (0.2586ms)
+✔ 门口迎定稿全量（13处改后锁定；#140 去品牌前缀） (0.1942ms)
+✔ homeLangOf 跟随 DSH 系统语言 (0.1181ms)
+✔ viewName 路径归一化兜底（大小写/斜杠/末尾斜杠） (2.1202ms)
+✔ dailyIdx 每日一句轮换（零UI，十五句全活） (0.2583ms)
+✔ EN 十五句完整性（结构对齐中文） (0.306ms)
+✔ 改名即时生效：名表后到，弹窗自动纠名 (101.4319ms)
+ℹ tests 36
+ℹ suites 0
+ℹ pass 36
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3660.5546
+✔ 列固定 9 序（CHANNEL_ORDER），与共享配置同源 (2.1787ms)
+✔ 行排序：在线 > 待确认 > 离线 > 未绑定，组内按名 (21.0493ms)
+✔ 格语义：有 bot 取健康 + 行级绑定；无 bot 为 empty (0.9452ms)
+✔ 空态：0 行 + 计数归零；全空列仅在有行时计算 (0.7514ms)
+✔ 钻取载荷：事件名即 DetailDrawer 抽屉订阅的 OPEN_DRAWER_EVENT (0.2546ms)
+✔ 家矩阵：行＝家；墓碑与悬空 homeId 不渲染；同家同渠道多助理合并 (1.1053ms)
+✔ 悬浮明细带取图键：id＋avatar 透传（img 标记才取图，无标记回落首字块） (0.2677ms)
+✔ 家矩阵：空家沉底＋行汇总文案（助理构成/待绑/失联） (0.4349ms)
+✔ 状态文案：健康 label + 未绑定后缀（单元格/汇总共用；#140 逗号口径） (0.248ms)
+✔ 双语：字典/状态词/渠道名 EN（默认 zh 保持旧断言） (1.0391ms)
+✔ 语言跟随：langOf 归一（DSH 只发 zh/en，空按中文兜底） (0.2354ms)
+✔ LOGO：9 渠道全覆盖 + 未知回退（dsh-im 同款 glyph） (0.324ms)
+✔ 大弹窗装配：矩阵自管模态 + 装配层零感知 + A1 船按钮间距（源码断言） (23.7989ms)
+✔ 家行装配：家表主路径＋回落＋钻取 drillKey（源码断言） (0.9745ms)
+✔ 格悬浮：助理明细 popover 接线（home-row-tip 纪律：fixed 盒/延迟/拆盒/量后亮） (0.8173ms)
+✔ 空格不可点：渠道无机器人 ⇒ 纯展示 span，不进详情抽屉；悬浮头像与名字同高 (0.4735ms)
+✔ LOGO 洗白：单色 7 渠道白 glyph + feishu/wecom 豁免（BUG #30 根因锁） (1.7506ms)
+✔ 注册：id/槽位目标 + 样式命名空间（转译已过，此处源码断言） (0.3171ms)
+ℹ tests 18
+ℹ suites 0
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2209.6201
+header-overlay-model: ALL PASS
+✔ resolveWorkspacePath：session 反查 workspace（官方同款语义） (1.1961ms)
+✔ headerOverlayFor：时机三态 (18.2627ms)
+✔ headerOverlayFor：可达性与 B1 同 verdict（任一在线即在线） (1.0573ms)
+✔ chooseBot：优先在线绑定，否则首个绑定，无绑定为 null (0.4017ms)
+✔ buildTestText：固定前缀 + Agent 可识别 (0.2245ms)
+✔ SEND_TEST_EVENT：命名空间事件名 (0.234ms)
+✔ listTargets：解包 value.targets；ok:false 抛码 (1.0691ms)
+✔ sendTestMessage：成功透传 sent；失败抛码；无目标不调用 rpc (0.5841ms)
+✔ runTestSend：全路径如实（无 rpc/无 bot/无目标/成功/失败） (1.2225ms)
+✔ mergeStaleBots：失败渠道保留旧快照标 stale；权威空不保留 (0.5363ms)
+✔ runTestSend：离线/待确认预检 direct 返回，不调 rpc (0.2836ms)
+✔ headerOverlayFor：自定义名与面板一致（全路径优先，旧键兼容） (0.9093ms)
+✔ 草稿测试流：建议列举/草稿发送/展示名 (0.6523ms)
+✔ runTestSend 无目标分支：1 个直发 / N 个回列表 / 0 个给指引 (3.1453ms)
+✔ channelsOf：多渠道成行，同渠道取最优，stale 按待确认 (1.0918ms)
+✔ 同名目录不串名：全路径键隔离，旧 basename 键兼容 (4.4509ms)
+✔ channelGlyphSvg：九渠道全覆盖，未知回 null（回退首字徽标） (0.6612ms)
+✔ chooseBot 传渠道：只在该渠道内选 (0.2671ms)
+✔ botsInChannel：同渠道全量（#32 第二步选择），按工作区隔离 (0.4212ms)
+✔ 多渠道发送：显式 Bot 决定走谁的目标 (0.3386ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 782.3149
+✔ 匹配优先级：同渠道+botId 精确命中优先于跨渠道 botId 兜底 (1.0446ms)
+✔ 命名链：用户改名 > 机器人名（#31 截断） > 家名 > 未命名助理 (0.9746ms)
+✔ 状态映射：在线/待确认(stale)/离线/未绑定（无 bot 占位） (0.3743ms)
+✔ 脸回落：上传图（已到） > 机器人头像 > 色脸首字；未到图不空等 (0.36ms)
+✔ 工作区隔离：墓碑家/悬空 homeId/异路助理不渲染，按 createdAt 保序 (0.8769ms)
+✔ 诚实渠道行：无 Bot 助理不借用同渠道在线（#144 追修） (0.3387ms)
+✔ fetchAssistBriefs：home.list + avatar.get 接线；rpc 缺失回 [] (0.53ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1026.3256
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+Maximum update depth exceeded. This can happen when a component calls setState inside useEffect, but useEffect either doesn't have a dependency array, or one of the dependencies changes on every render.
+PASS  header 槽位已注册
+PASS  样式含呼吸 keyframes（防回归）
+PASS  header 槽名正确
+PASS  settings 面板注册未受影响
+PASS  full 态渲染呼吸点
+PASS  full 态标题带 Agent
+PASS  full 态标题带在线
+PASS  unbound 态渲染呼吸点
+PASS  unbound 态标题未绑定
+PASS  hidden 态零渲染
+==== ALL PASS ====
+✔ fmtCountdown 向上取整：到零才 0:00 (1.2148ms)
+✔ normalizeProvisionTiming 单位归一与回退 (0.3611ms)
+✔ connect-flow 回归钉：三根因不复发 (10.451ms)
+✔ #143 渠道菜单：锚点＝被点的按钮 ＋ 品牌 logo ＋ 能力注解 (3.4003ms)
+✔ #147 渠道菜单落点：从原弹层顶部往下展开（menuAtTop ⇒ 卡片左上角对齐） (9.4318ms)
+✔ #49 resolveNewBotId：prov 优先、单 fresh 兜底、多 fresh 不认 (0.3795ms)
+✔ #49 旧分叉移除：调用方统一到共享选择器 (37.0413ms)
+✔ #49 openDirPicker：工作区文案覆盖且默认不变 (96.1023ms)
+✔ #49 ctxNativePicker：直连优先、get 透传、无则 undefined (0.7056ms)
+✔ #49 commitBinding：落定/失败/取消/已绑/关联失败 (217.6387ms)
+✔ #49 家落 local：host 落盘＋双 Store 写透 (596.4677ms)
+✔ #49 无机器人选家：只落家不绑 bot (91.4197ms)
+✔ #49 有家空壳展示家路径 (0.7259ms)
+✔ #62 canConnect：无家不可接入、有家可接入 (0.1216ms)
+✔ #62 create：无工作区拒绝创建、有工作区原子落家 (0.568ms)
+✔ #62 create：同名已存在不覆写其家 (0.1936ms)
+✔ #62 create：存储未就绪不空报创建 (0.1625ms)
+✔ #62 connect：无家阻断扫码并引导选家 (70.5532ms)
+✔ #62 connect：有家仍走扫码菜单（回归） (82.0554ms)
+✔ #62 compose-bar：选家前不提交、选家后原子提交 (66.7068ms)
+✔ #62 compose-bar：编排失败留单保现场 (128.7521ms)
+✔ #62 agent-row：无家接入置灰、有家可用 (1.167ms)
+✔ #62 connect-flow：扫码成功后直绑、不再弹二次选家 (0.3152ms)
+✔ #62 commitBinding：空工作区提示须指向真能补绑的卡 (0.1777ms)
+✔ #62 创建接线：面板创建表单必带选家（T6a 起改钉「建家选已有区」同款硬约束） (457.2157ms)
+✔ T4 矩阵显隐与直达规则：4 双支持 / 2 仅扫码 / 3 仅手动 (0.2206ms)
+✔ T4 键名归一 + TG/DC 对称 + FORBIDDEN 分级 (0.259ms)
+✔ T4 resolveManualBotId：直带优先、单 fresh 兜底、多新不认 (0.3522ms)
+✔ T4 connect-flow 分支钉：只加分支，renderQr/poll 原样 (0.3104ms)
+✔ T4 手动表单钉：走 bind-credentials + 复用落定，禁扫码链 (47.6935ms)
+✔ T4 取消语义钉：未 submitted 才 cancel，已提交保留 (145.446ms)
+✔ T4 样式与 Added-only：dm- 命名空间，旧文件不动既有 (113.9344ms)
+ℹ tests 32
+ℹ suites 0
+ℹ pass 32
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12750.0454
+features/truth-flags: ALL PASS
+✔ open真=>blue（running） (1.2484ms)
+✔ 402=>red（forbidden402） (0.2477ms)
+✔ aborted=>red (0.1448ms)
+✔ completed闭合=>none（平静；绿点必黄由 DOM 主路径管，flags 不产） (0.1724ms)
+✔ completed+open 重试中=>blue（running） (0.1352ms)
+✔ error收尾=>red（unknown-default：异常即处理，不看水位——水位已退役） (0.1173ms)
+✔ interrupted=>red（unknown-default：E4 未知收尾，异常语义） (0.1588ms)
+✔ approval 等弹窗=>yellow 非 red（P1 废） (0.1338ms)
+✔ approval 压 open=>yellow（弹窗阻塞等你拍板） (0.1446ms)
+✔ kind空（解码无收尾/无信号）=>none diag=nosig0 (0.2429ms)
+✔ titleHit 假=>none+diag null（无标题默认无色） (0.128ms)
+✔ 红环：flags 纯逻辑（无 DOM、无 Node API、无样式、无水位残留字段） (0.2338ms)
+✔ dom-state：ongoing/warning/done 直读 data-state (0.1758ms)
+✔ dom-state：无点/未知值/异常一律空串（fail-soft） (0.1128ms)
+✔ dom-state 红环：只读行内属性，不碰全局 DOM (0.1163ms)
+✔ manifest：id truth-flags，slots 空数组，仅注册逻辑 (0.1369ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2393.6294
+features/session-marks: ALL PASS
+✔ 蓝不变量：原生 ongoing 行蓝 ⇒ 组蓝 (1.9828ms)
+✔ 黄不变量：原生 warning 行黄 ⇒ 组黄 (0.3953ms)
+✔ 红不变量：402 真相行红 ⇒ 组红（无原生点=无完成提醒，走真相路径） (0.5177ms)
+✔ 清孤儿蓝：组旧蓝 + 已完成闭合（无原生提醒点） ⇒ 组条清除 (0.854ms)
+✔ 清孤儿黄：组旧黄 + 全无色会话 ⇒ 组条清除 (0.2773ms)
+✔ 收起例外：无会话行 + 无缓存 ⇒ 组旧色不动 (0.1858ms)
+✔ 诊断保留：nosig 组 + 全无色会话 ⇒ nosig 不动 (0.1639ms)
+✔ 角标残环清理（角标已删）：组条清（孤儿）⇒ 组条清除，无角标残留可断言 (0.1728ms)
+✔ 绿点必黄：原生 done（官方完成提醒）⇒ 行黄+组黄（#497 真机：绿点无条；绿点=官方待看信号，不看水位看绿点） (0.406ms)
+✔ 折叠缓存 B 方案：展开组蓝→收起（无行）⇒ 组条保持蓝非黄（截图实锤：展开蓝→收起黄） (0.3048ms)
+✔ 折叠缓存 B 方案·清：展开组平静→收起⇒ 组条清（缓存空色生效，不残留旧蓝） (0.225ms)
+✔ 折叠缓存 B 方案·首见收起：无缓存⇒不动（留 paint 初稿，不擅自改色） (0.1185ms)
+✔ 组级优先级：红>黄>蓝（2026-09-07 用户裁定；原为红>蓝>黄，黄被蓝压没——组有待看即显黄） (0.2544ms)
+✔ 组级优先级·三蓝一黄仍黄：黄行存在⇒黄，蓝行再多也压不过 (0.1395ms)
+✔ 真相红压绿点黄：原生 done + 窗内解码 kind=error ⇒ 行红+组红（2026-09-07 用户裁定：磁盘红>官方黄；时间久≠已看） (0.1592ms)
+✔ 真相红压绿点黄·402 同理 (0.1411ms)
+✔ #57 展开组零归因行+磁盘平静 ⇒ 旧蓝清除（红回路转正：ilife lingering） (0.1637ms)
+✔ #57 tiebreaker：展开组零归因行+磁盘仍exec ⇒ 保留 paint 初稿（防展开闪灭） (0.1182ms)
+✔ #57 收起显式 false+无行 ⇒ 保持缓存蓝（B 方案映射锁定） (0.1392ms)
+✔ 绿点兜底黄保持：原生 done + 窗内解码 kind=completed ⇒ 行黄（无异常真相时绿点必黄不被削弱） (0.1194ms)
+✔ 绿点兜底黄保持·窗内无数据：原生 done + 无 top ⇒ 行黄（真相缺席不剥夺绿点语义） (0.1889ms)
+✔ 同名串扰修复·绿点行唯一命中才压红：同名双候选（1 error + 1 completed）⇒ 黄（不冒险染红） (0.1536ms)
+✔ 同名串扰修复·无点行唯一命中才生效：同名多候选 ⇒ 不染（诚实无色，宁可漏不可错） (0.1068ms)
+✔ 同名串扰修复·唯一命中仍生效：单候选 ⇒ 正常染（不破坏真相红压绿点黄） (0.125ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5893.3715
+features/design-preview: ALL PASS
+✔ nosig0 永不使用异常红（error 系禁止出现在 nosig0 规则，#151 token 化） (1.4952ms)
+✔ nosig0 与平静一致无条（陈旧属性兜底 display:none） (0.2762ms)
+✔ sink 分支不再置 nosig0 act（无竖条，诊断 tip 保留供 devtools） (0.1746ms)
+✔ 红/黄/蓝语义不变（402/aborted/未知收尾红实线闪烁，执行中蓝，待看黄） (0.2472ms)
+✔ nosig 灰点诊断保留（未匹配行仍灰色 dotted，不受 #61 影响） (0.2333ms)
+✔ 红线：design-preview 单文件 ≤300 行（规模红线，非解耦检查） (1.063ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 633.9902
+T5-PROOF outerHTML-1 PASS 组行=<div role="treeitem" aria-expanded="true" data-lb-kind="online" data-lb-label="在线"><span class="twisty"></span>xiaoshuai</div> 会话行未装饰
+T5-PROOF outerHTML-2 PASS 本名绑定在线，拼串未绑定
+T5-PROOF outerHTML-3 PASS 前缀改写前后 label=在线
+T5-PROOF quad-new PASS {"ch":"/api","ep":"dsh-im/feishu","p":{"method":"connection.status","payload":{}}}
+T5-PROOF quad-old PASS 回退形状 ch=/weixin ep=connection.status，次轮单打旧路
+T5-PROOF quad-timeout PASS TimeoutError 回退旧路
+T5-PROOF quad-abort PASS AbortError 单打重抛
+T5-PROOF conservative-okfalse PASS ok:false 原样返回，单打
+T5-PROOF recover PASS 升级后方向回正为新路
+T5-PROOF passthrough PASS 自有桥与 delivery 均经新载体
+T5-PROOF bridge-fail-both PASS 首选与换路原文都在 message 里
+T5-PROOF contract PASS 旧直调一次，新载体一次，无连接返回 null
+✔ T5 outerHTML(1/3)：分组行无嵌套会话行——paint 只装饰组行 (30.1955ms)
+✔ T5 outerHTML(2/3)：textContent 非 concat——拼串 key 不绑定 (1.2179ms)
+✔ T5 outerHTML(3/3)：加前缀前后 key 稳定——会话标题改写不污染组行 (1.6266ms)
+✔ T5 quad-新：新 DSH 首打新载体一次命中（contract 新断言） (2.3591ms)
+✔ T5 quad-旧：旧 DSH 传输 reject 回退旧直调并记忆方向（contract 旧断言） (0.9724ms)
+✔ T5 quad-超时：新路超时 reject 回退旧路 (1.6398ms)
+✔ T5 quad-Abort：调用方取消永不回退（单打即抛） (1.2537ms)
+✔ T5 conservative：ok:false 是权威答复，永不回退 (0.455ms)
+✔ T5 recover：旧恢复后回得来（环境升级方向回正） (0.4709ms)
+✔ T5 passthrough：/im-companion 经新载体（/api + im-companion）+ delivery 翻译 (1.5364ms)
+✔ T9 #123 桥双失败：两条原文都进 message（退役老路由不许盖掉首选真因） (0.9119ms)
+✔ T5 contract：冻结 extractRpc 仍旧直调一次 / extractRpcV2 走新载体一次 (1.0432ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4435.5654
+T9-PROOF V0 traceId=4954e07bccf4075a PASS
+✔ 第一枪：真客户端实例在真实桥接后产出 16 位十六进制链 id（why().traceId 非 null） (1.4814ms)
+T9-PROOF V4 样本(客户端行)={"v":3,"ts":1792593487810,"level":"info","event":"home.action","fields":{"action":"update","homeId":"no-such-home-#125","ok":false,"message":"","traceId":"4954e07bccf4075a","spanId":"d8c0cc2c","seq":1}}
+T9-PROOF V4 样本(宿主语义行)={"v":3,"ts":1792593487809,"level":"error","event":"home.update","fields":{"homeId":"no-such-home-#125","changed":"name","ok":false,"message":"家不存在","traceId":"4954e07bccf4075a"}}
+T9-PROOF V3 changed=name traceId=4954e07bccf4075a PASS
+✔ V4/V3 贯通：业务 RPC 带链 id → 宿主摘键进日志（真请求、真落盘、真读回） (257.827ms)
+T9-PROOF V5 events=["home.update","host.rpc.fail","client.log.init","home.action"] PASS
+T9-PROOF V1 shapes=[{"ch":"/api","ep":"im-companion","p":{"method":"home.update","payload":{"id":"h1","traceId":"feedfacecafebeef"}}},{"ch":"/api","ep":"im-companion","p":{"method":"home.update","payload":{"id":"h1","traceId":"explicit-keep-me"}}},{"ch":"/api","ep":"im-companion","p":{"method":"dsh-im-companion.logGetSwitch","payload":{}}},{"ch":"/api","ep":"im-companion","p":{"method":"home.update","payload":{"id":"h1"}}},{"ch":"/api","ep":"dsh-im/feishu","p":{"method":"send","payload":{"text":"x"}}}] PASS
+T9-PROOF V2 events={"call":["method","ok","latencyMs","code","traceId"],"fail":["method","ok","latencyMs","code","message","traceId"]} PASS
+✔ V5 读侧：经桥 logQuery({traceId}) 一次取回该动作的客户端行与宿主行 (41.3904ms)
+✔ V1 注入面：业务端点加键、显式键不覆盖、日志电话不加、无链不加、dsh-im 渠道不加 (0.7913ms)
+✔ V2 清单：两条 rpc 事件的 fields 声明含 traceId（漂移由 log-pipeline.ts 双向核对） (0.3999ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9477.0889
+#79-PROOF inject=["connection"] PASS
+✔ inject 只声明 connection（不再需要 webServer） (2.2596ms)
+#79-PROOF timer-removed armed=[] PASS
+#79-PROOF apply-ok routes=["/api/im-companion"] PASS
+#79-PROOF envelope={"type":"server-response","rpcId":"x1","result":{"ok":true,"value":{"pong":1792593493104}}} PASS
+#79-PROOF method-guard PASS
+#79-PROOF yield-on-duplicate PASS
+#79-PROOF missing-fetch-register-fails PASS
+#79-PROOF host-requirement >=0.1.2-alpha.2 <0.3.0-0 PASS
+✔ inject 不再含 timer：M5 删调度器后冷启动零定时器 (70.559ms)
+✔ 装配通过，并经 fetch.register 注册 /api/im-companion (1.8265ms)
+✔ 路由 fetch 说 DSH 信封：client-request → server-response + result (4.8315ms)
+✔ 方法守卫：handler 自身只答 POST（不依赖宿主派发实现） (1.0979ms)
+✔ 重装配退让：宿主报 already registered 时只 warn、不抛、不重复注册 (0.4124ms)
+✔ 回归钉：宿主不提供 fetch.register 时装配必须失败（证明测试盯着新载体） (0.4928ms)
+✔ 宿主要求：engines.dsh 与 dshCompat.range 同字，下界 = fetch.register 引入版 (0.3388ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4771.8467
+T7-PROOF native-resolve PASS 零解析 override ⇒ installedVersion/runningVersion/profileName 全对
+✔ T7-0 0.9.0 原生解析：不喂 runningVersion/profileDir/readInstalled，仍认得出使用范围与版本 (1194.3605ms)
+T7-PROOF endpoints PASS 五端点派发 + 原样字段 + 失败码 check-expired 透传（无 autoCheck）
+T7-PROOF logAppend PASS 第五电话可达 + 成功信封 + 原样载荷
+T7-PROOF changelog PASS 第四电话可达 + 形态合法 + 未知端点对照
+✔ T7-1 五通电话可经 rpc.ts 派发，回包是本仓信封且包字段一个不少（无 autoCheck） (4168.187ms)
+✔ T7-1c logAppend 电话已接线：经 rpc.ts 可达，成功按成功信封进 value（不走失败通道） (39.9041ms)
+✔ T7-1b changelog 电话已接线：经 rpc.ts 可达，回包形态合法 (7.9498ms)
+T7-PROOF snapshot-nine PASS 三电话 snapshot 恰九字段
+✔ T7-2 snapshot 恰好九字段（快照三电话同源；changelog 无 snapshot 不在列） (2813.409ms)
+T7-PROOF source-install PASS link: ⇒ source-install/manual=null；版本号 ⇒ 给命令；越界 ⇒ dev-source（+profileDir 口子）
+✔ T7-3 link: 说明符 → source-install 且 manual 为 null；版本号说明符对照给得出手工命令 (1595.5025ms)
+T7-PROOF precheck PASS dev-source 判定 + 与包真行为双向钉住 + 留痕一次 + 失败语义不变 + 可用形态零触发
+✔ T7-3b 只读预检：dev-source 时判出「开发态实装」并留痕一次，失败仍原样透传 (582.1364ms)
+T7-PROOF prefs-retained PASS 偏好只落盘、无调度器副作用
+✔ T7-4 偏好落盘保留：meta.update.set 写盘 + meta.get 可读，不排任何定时器 (22.9075ms)
+T7-PROOF assembly-yield PASS already registered ⇒ 0 路由 / 0 受管定时器
+✔ T7-5a 装配点·让位分支：宿主报 already registered ⇒ 零受管定时器在册 (280.3596ms)
+T7-PROOF assembly-zero PASS 正常装配 0 句柄；改偏好后仍 0 句柄
+✔ T7-5b 装配点·正常路径：零在册句柄；经真路由改偏好后仍零句柄 (448.9865ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 20144.6672
+T5-PROOF manifest PASS order 24 / settings.section / 无自产样式
+T5-PROOF thin-mount PASS button+always+mount+default / 事件制 / 电话桥
+T5-PROOF deleted PASS 11 旧文件 + 生成器已删
+T5-PROOF host-5phones PASS 宿主文本层含 changelog 与 logAppend（运行时见 update-host.ts T7-1/T7-1b/T7-1c）
+T5-PROOF bundle PASS 含薄层挂载点、不含旧自画标记
+T5-PROOF reply-envelope PASS 拆 value + 失败还原包载荷 + 缺 value 落失败 + 非信封直通 + 产物咬调用点
+T5-PROOF host-in-header PASS 页头右上组 star 左侧 / id+类名+派发不变
+✔ T5-1 manifest 薄层注册：order 24 / settings.section / 事件制，无自产样式 (1.9182ms)
+✔ T5-2 view 是 mountUpdateEntry 薄挂载（button+always+mount+default，事件制原样） (0.9179ms)
+✔ T5-3 旧自画 11 文件已删（仅 manifest+view 存活） (2.7724ms)
+✔ T5-4 宿主五电话文本对齐（update.ts 端点表 + rpc.ts case 含 changelog 与 logAppend） (26.2259ms)
+✔ T5-5 浏览器产物含薄层挂载点、不含旧自画弹窗标记 (4.9882ms)
+✔ T5-6 toPackageReply：信封拆 value + 失败还原包载荷（直返信封 = 面板永远读取中） (139.0965ms)
+✔ T5-7 挂载点在页头右上组 star 左侧（id/类名/派发不变） (0.8198ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1505.5732
+features/home-steel: ALL PASS
+✔ 家命名回落：用户手改 > 工作区标题 > 目录基名（T3 Q3） (22.4874ms)
+✔ 家冻结：手改后工作区再改名也不跟（T3 冻结） (0.4438ms)
+✔ 助理命名回落：用户 > 机器人名 > 家名 > 缺省（T3 Q3） (0.7269ms)
+✔ 助理冻结：手改后机器人/家改名也不跟 (0.1397ms)
+✔ 严格一对一：同一机器人不许进两家（T3 Q2） (1.0897ms)
+✔ 建家：选已有区即成功，空入参拒绝（验收①） (0.9392ms)
+✔ 建助理：选绑机器人即成功，一对一绑上（验收②） (0.3291ms)
+✔ 三级列表一次点开：家→助理→机器人名字按默认规则显示（验收③） (0.231ms)
+✔ 空闲集合：已占用工作区/机器人不再列出（下拉口径） (0.5244ms)
+✔ 种子迁移：一区一家含无人之家＋有归属各一助理＋旧名优先（T3 故事20-22） (0.9424ms)
+✔ 种子幂等键：同规范路径（大小写/斜杠差异）不翻倍 (0.2486ms)
+✔ 缺口判定：任一工作区缺家→补；齐→静默；「绑了机器人但没有助理行」不再是缺口（#141） (0.3099ms)
+✔ #141 抢跑回归：对账不许替「无主机器人」补行，也不许复活删掉的绑定助理 (0.382ms)
+✔ T6b 改名配图纯逻辑：user 覆盖/恢复默认/非法拒收（验收①②） (0.4296ms)
+✔ T6b 未绑定占位纯逻辑：channel 必填、无号不占号（验收③） (0.1716ms)
+✔ T6b 占位绑定纯逻辑：只收未绑、一对一、user 名保留（验收③④） (0.2828ms)
+✔ T6b 宿主改名配图/占位/绑定/删除：落盘真写、删不断连（验收①③④） (1750.8399ms)
+✔ T6b 绿框呈现：纯头像弹层＋行内改名（owner 2026-10-17 口径） (34.4701ms)
+✔ 头像预置色：DeepSeek 蓝白/黑白＋实色高对比＋色块放大（owner 2026-10-17） (1.1637ms)
+✔ L2 助理行＝L1 家行（owner 2026-10-17）：「更多」退场＋铅笔就地改名＋头像开纯换头像弹层 (4.2054ms)
+✔ owner 2026-10-17②：弹层类改名把确认挪到顶部变异（不改基样式） (14.8133ms)
+✔ owner 2026-10-17③：改名提示锚在被改的控件正上方（反色令牌保对比度），焦点只点亮边框 (71.7744ms)
+✔ T6b 两步删除：首点布防、次点真删且只走行删除（验收④） (33.422ms)
+✔ 全程只走 T3 模型，不另发明字段（验收④）：产出行与落盘行的键集合都钉死（可执行） (36.4955ms)
+✔ 宿主：建家幂等 + 建助理一对一 + 落盘可读 (439.2882ms)
+✔ 宿主：加载保留 unbound/orphan/tombstone（T6b/c 数据不丢） (51.7108ms)
+✔ 渠道诚实性（#138）：channelOf 三分支 + 空渠道未绑定行不许被丢（第 0 号风险） (186.3946ms)
+✔ 渠道诚实性（#138）＋显示规范（#139）：未绑定不露渠道，面板可见文案零分隔符 (2.3523ms)
+✔ 渠道视图（#138/#139 Q3）：待接入是显式一组，计数诚实，未绑定助理不从视野消失 (1.5199ms)
+✔ 宿主种子：批量落盘＋id 回填＋重跑不翻倍 (435.2232ms)
+✔ 宿主 RPC：四端点已追加且旧码不动（Added-only） (12.0546ms)
+✔ 宿主分发器真跑：ping → home.create → assistant.create → home.list → 一对一拒绝 → home.seed (211.7669ms)
+✔ 绿框归位：错误挂载已移除（左栏家按钮＋modal 特性注销） (0.8051ms)
+✔ 绿框呈现：body 三级钻取＋建单＋链路条（T4 原型 DOM，旧 buildModel 列表退役） (327.5734ms)
+✔ T7 #112 弹层三处加固：未选目录时创建显式禁用、宿主进 top layer、面板 dispose 回收悬空弹层 (6.3098ms)
+✔ T7 #112 弹层几何纯函数：贴底锚点翻上方、内容变矮不改横向落位、视口夹紧（真机跳位回归） (0.8732ms)
+✔ T7 #112 锚点被面板重建：弹层收掉，绝不兜底跳位（真机 bug 回归） (38.8152ms)
+✔ T8 #121 收养：workspaces.create({path}) → 等投影 → canonical 项（失败/超时不返回半成品） (335.3377ms)
+✔ T8 #121 新建家「新建工作区」支路：选目录 → 建区 → 落家（三步顺序；已占不写第二行） (353.0241ms)
+✔ 首屏骨架：家表未就绪时渲染等比例骨架（同框架 + 灰条行），顶部不出报错横条 (5.2845ms)
+✔ 顶栏吸顶（要求2）：页头＋面包屑包一层 sticky，列表未到底时粘住、到底后随页滑出 (1.2155ms)
+✔ 绑定空态打通接入：无空闲时创建禁用＋给接入出口（死胡同回归） (1.5271ms)
+✔ 上部区域定稿：搜索/分段退场，三个面板动作并进绿框页头，页头不再有 ＋ (28.6779ms)
+✔ 刷新：两个真相源各读一遍（渠道先、家表后），在途去重，忙态成对且失败不锁死 (2.6826ms)
+✔ 页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行（owner 2026-10-13） (0.92ms)
+✔ 旧面板能力保留：工具栏四钮顺序（T12 追加「配置」）＋事件制＋文案一字不动 (0.8335ms)
+✔ 解耦：新文件不引特性、不自开轮询、不直写 localStorage (35.2006ms)
+✔ 液签：FLIP 在三个 chip 之间滑动（换层真滑、同点零位移），宽高取自 chip 实测矩形 (2.2003ms)
+✔ 面包屑默认路径：无焦点时二级/三级 chip＝列表第一个且可点即进；没有下一级时显式留空 (3.7552ms)
+✔ T6c 搬家纯逻辑：只换家、目标须在且无墓碑、同家拒收（验收①） (0.3238ms)
+✔ T6c 解绑纯逻辑：只收已绑、user 名保留、bot 头像清零、orphan 留 boundAt（验收②） (0.2085ms)
+✔ T6c 孤儿判定：bound 失踪即回落、失败渠道不误伤、未绑不参（验收②） (0.2161ms)
+✔ T6c 宿主搬家/解绑：落盘真写、键集合仍是 T3、重复解绑拒收（验收①②④） (1498.5242ms)
+✔ T6c 宿主分发器真跑：assistant.move → assistant.unbind → 失败码（验收①②） (78.5285ms)
+✔ T6c 编排顺序：已绑先远端跟随再落表、写后先读表再刷新（验收①③） (0.9627ms)
+✔ T6c 换工作区弹层：点开列出别家、确认走搬家管道（验收①） (1.5745ms)
+✔ T10b #127 孤儿家：行内两动作只给孤儿家，重绑走 T8 收养链，删除家两步确认（验收①③④） (201.6709ms)
+✔ T10b #127 重绑/删家编排：失败一律 throw 带原文、重绑远端先跟随、写后先读表再刷新；#156 删家不写远端（验收②③） (5.4424ms)
+✔ #156 移除渠道/删除助理：不写远端工作区（解绑链没有可失败点） (0.5764ms)
+✔ T14 #136 孤儿置顶：工作区不存在的家排在 L1 最顶部（红卡＋警示行跟着一起上去） (0.5597ms)
+✔ 在线一律绿（owner 2026-10-17）：圆点 / 在线胶囊 / 气泡状态字 / 列表副标同一个绿档 (24.3091ms)
+ℹ tests 61
+ℹ suites 0
+ℹ pass 61
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16138.2577
+features/home-seed-fallback: ALL PASS
+✔ 快路径：home.seed 可用即一次到位，返回该回包内容且不碰逐行端点 (3.0793ms)
+✔ 回落路径：旧宿主无 home.seed → 建家→list 取真 id→建助理→list，端点序与入参分流正确 (1.1939ms)
+✔ 回落幂等：already-exists / already-bound 被吞，不重复插入、终态稳定 (1.0097ms)
+✔ 两种宿主等效：同一 buildSeed 输入，两条路家数/助理数一致 (0.6786ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2000.2953
+features/home-degrade: ALL PASS
+✔ 降级①：自有桥家表/落盘都不可用 → 内存临时呈现，volatile 且三级有料（不塌成空态） (37.5404ms)
+✔ 降级②渲染：volatile 时 L1 顶部出「家表未落盘」，4 个家名与三级链路条照常（不是空态） (61.6287ms)
+✔ 恢复③（家表可读）：volatile 摘掉、换宿主真 id、一区一家不翻倍 (3.2162ms)
+✔ 恢复④（home.seed 真落盘）：重试前先清内存临时行 → 宿主真行、一区一家、不翻倍 (4.3752ms)
+✔ 恢复⑤（家表可读、工作区名单暂空）：volatile 由读表路径自己清掉，不许靠落盘重试兜底 (3.8408ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5246.2193
+features/home-create-flow: ALL PASS
+✔ ①建家点击级：L1 底部「新建家」→ 选目录（DSH 建区＋等投影）→「创建」 → rpc 带 canonical 区、宿主多一行、L1 出现新家名 (1866.0585ms)
+✔ ②建助理点击级：点家钻进 L2→「新建助理」→弹层点选未绑机器人→「创建」 → 先绑工作区再落家真 id、宿主多一行、L2 出现 (1439.3684ms)
+✔ ③点击级幂等：同一目录重提 → DSH 侧复用（created:false）＋客户端查表拒绝，行数不翻倍 (4817.843ms)
+✔ ④一对一：已被绑走的机器人不进新建助理候选（候选集合精确断言） (2398.2285ms)
+✔ ⑤选目录点击级：有原生选择器就不开内置浏览；用户取消 ⇒ 静默（不报错、不发请求、弹层照旧） (1749.449ms)
+✔ ⑥建区失败点击级：DSH 建工作区失败 ⇒ 弹层不关、灰字原文留在弹层、按钮可重试、一行没写 (700.4437ms)
+✔ ⑦落盘失败点击级：DSH 建区成功但家落盘失败 ⇒ 灰字原文留在弹层、按钮可重试、一行没写、DSH 侧新区不回滚 (2649.9815ms)
+✔ ⑧远端兜底点击级：无原生选择器 ⇒ 内置浏览出现；点进 brandnew →「选择此目录」→ 路径回填 → 建区＋落家 (853.4301ms)
+✔ ⑨投影超时点击级：DSH 建区成功但 8s 等不到投影 ⇒ 灰字原文留在弹层、一行没写 (9494.2349ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 35196.66
+features/config-yaml: ALL PASS
+✔ #129 迁移幂等：homes.json → homes.yaml（数据一分不丢、旧文件留 .bak、重跑不重复迁移） (556.9746ms)
+✔ #129 回落读＋诚实兜底：迁移没跑完时读旧 .json；旧文件坏了既不猜也不删 (267.6939ms)
+✔ #129 注释权威：手改注释 + 手改结构字段 → 写回时注释被整块恢复、数据字段听用户的 (308.7306ms)
+✔ #129 原子写：tmp→rename；写失败不脏（目标原样、无半截文件） (379.1396ms)
+✔ #129 长标量不折行：data URL round-trip 无损（lineWidth:0 不是装饰） (1.8824ms)
+✔ #129 三系统 opener 配方＋假 spawn：成功 / error / 抛 / 未知平台 / 空路径 全路径 (30.5958ms)
+✔ #129 面板「配置」入口：目录取自宿主、复制路径走剪贴板、在文件浏览器打开只发意图（同一份客户端代码） (103.4417ms)
+✔ #129 契约对齐：客户端写的电话名 = 宿主的 case 名（字符串钉，迁移后仍是一处真相） (112.7407ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 8934.6828
+features/home-avatar: ALL PASS
+✔ T11 #128 上传：先校验再落盘、行改指 img: 标记、重读不清洗（值域唯一放行口） (884.1803ms)
+✔ T11 #128 取图：批量 get 只回「有标记且文件真在」的；缺参/空数组明文拒 (1160.7598ms)
+✔ T11 #128 清图：行回落预设色、旧文件删掉、再 get 为空 (565.2158ms)
+✔ T11 #128 改名不改图（验收②）：只带 name 的补丁不碰 avatar，图与文件都还在 (823.4568ms)
+✔ T11 #128 拒绝口径：非图/超限/缺参一律 bad-request，且一个脏文件都不留 (1068.1195ms)
+✔ T11 #128 删家不级联删图：墓碑 ＋ 级联删助理行，图片文件原样保留 (127.937ms)
+✔ T11 #128 值域钉子：img: 只走 avatar.set；update 仍只收 1-9；seed 清洗不放目录穿越 (2013.5727ms)
+✔ T11 #128 真分发器：avatar.set/get/clear 经 rpc.ts 真 switch 可达，未知端点没被族路由吞掉 (1015.5736ms)
+✔ T11 #128 客户端接线钉子：面板装配 transport、行/弹层共用一个取图口（不许各自实现） (83.5864ms)
+✔ T11 #128 客户端三道闸真跑：超 2 MB 早拒、空文件拒、按字节认格式、存盘上限拒，成功只走 avatar.set (2.0874ms)
+✔ T11 #128 写后重读：上传/清图都通知装配方，且装配方那一行必须重读家表（不是重画旧快照） (0.9516ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 12029.9166
+✔ T13 #135 条带三形态：空家＝＋建助理（走 item-act）、有助理＝芯片＋计数徽章、孤儿＝红色警示行 (3.2214ms)
+✔ T13 #135 三级降级：完整 → 收起（只留头像＋点）→ 裁剪（末端徽章报总数） (2.6381ms)
+✔ T13 #135 窗宽跟随 refitStrips：活条带一起重判，游离条带只摘不判 (1.6857ms)
+✔ T13 #136 气泡不滞留：锚点游离不画、单盒、样式掉了重装、收起拆盒、旧盒清扫 (1656.2834ms)
+✔ T13 #135 样式：新表以独立 id 注册、全部规则挂 .home-ui（契约 §6）、类前缀 hu- (39.6108ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5321.2332
+features/home-store: ALL PASS
+✔ #122 事故复盘：首装（missing）可写，且 dirty 守卫消掉「每 5 分钟一次无意义重写」 (262.3236ms)
+✔ #122 事故复盘：解析不出（parse-failed）⇒ 三条写路径全拒，损坏文件一字不动 (317.0435ms)
+✔ #122 事故复盘：存在但读不出（read-failed）⇒ 拒写，不许把读不到的权威表覆盖成空表 (4.2442ms)
+✔ #122 事故复盘：日志出口未注入时静默降级（日志绝不许改变控制流） (288.605ms)
+✔ #122 事故复盘：清单声明与调用点对齐（config.io / config.write.reject 都在单点清单里） (162.5617ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3374.2103
+✔ 事件清单：包能解析、resident 非空、每条声明形状对 (7.5105ms)
+✔ 调用点与清单双向不漂移：没有「埋了点没进清单」，也没有死条目 (669.421ms)
+✔ 语义映射（明细类）：成功按声明级别，字段全在清单内 (0.5871ms)
+✔ 语义映射：成功 info、失败 error＋原文，字段全在清单声明内 (0.736ms)
+✔ 语义映射：纯读端点不产生语义行（只留 host.rpc.call 明细） (0.2268ms)
+✔ resident：关键 info 在开关关着时也放行；未声明事件不落盘；error 恒放行 (1.2812ms)
+✔ 客户端适配器：无桥时 logLine/flush/logOn 全不抛 (2.6995ms)
+✔ 真落盘：<dshHome>/logs/dsh-im-companion/<日期>.log 里能读到 resident 行（v:3） (119.6026ms)
+✔ 开关：启动不覆盖磁盘上已有的调试开关（保住用户的选择） (23.8608ms)
+✔ withRpcLog：成功记 debug 明细、失败记 error＋原因码，语义行同时产出 (1.5936ms)
+✔ 接缝：rpc.ts 分发日志电话、index.ts 让位分支之后才建库 (0.7111ms)
+✔ 日志纪律：取径只记一次、resident 行立刻冲刷（2026-10-15 真机日志实证） (0.4665ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 5901.5925
+✔ 构建身份①：格式统一 `<版本>@<UTC 秒>`；缺段不编造，取值不抛 (1.2906ms)
+✔ 构建身份②：宿主侧取值＝入口产物 mtime ＋ 包版本；产物不在盘上也不抛 (1.2835ms)
+✔ 构建身份③：两侧接线与清单声明（改回去即红） (2.9797ms)
+✔ 构建身份④：交付产物里两条身份都已折成字面量（验的是 lib/，不是源） (21.6477ms)
+✔ 构建身份⑤：真产物真落盘后用 `dsh-log tail` 的人话渲染能直接读到 build (767.9194ms)
+✔ panel.load 不撒谎：总账在家表读完**之后**记，数字取自读回的家表 (37.1668ms)
+✔ 敏感性自证：顺序契约一破，总账当场变成假 0（本门禁不是恒绿） (1.2026ms)
+✔ 接线不许改回去：panel.ts 首屏把 loadHomes 交进 load 的 afterHomes (0.541ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2813.6149
+✔ 渲染文案零中点（#139/#140）：注释之外 src 全域不许再出现 ·，例外逐条钉名 (137.6832ms)
+✔ 例外清单不腐烂：EXEMPT 里的文件确实还在、且确实含 · (0.7082ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 515.9596
+✔ 聚合：空输入、UTC 日、跨日合并 (3.7652ms)
+✔ 合并：增量追加 vs 全量回溯 (10.8408ms)
+✔ SVG：同数据同主题必须字节一致（否则每日 Action 会刷噪声提交） (17.7224ms)
+✔ SVG：标题唯一、坐标齐全、视口固定 (0.9828ms)
+✔ SVG：双 Y 轴契约 —— 左读 Total、右读 Daily，两侧数字各染系列色 (0.6713ms)
+✔ SVG：一个系列一个色值；浅色主题整体压深保证 13px 小字过 AA (0.3198ms)
+✔ SVG：默认字色必须落在根 <svg> 的 fill 属性上（写进 <style> 会盖掉所有元素自己的 fill） (0.5976ms)
+✔ SVG：峰值标注必须来自数据（防止写死） (0.4524ms)
+✔ SVG：每日新增曲线平滑且不越过两端取值（不许造出数据里没有的波峰） (1.1186ms)
+✔ 产物：docs/star-history.json 必须是合法且自洽的日聚合 (11.474ms)
+✔ 产物：两张 SVG 必须与当前数据一致（数据改了没重画，必须红） (19.1281ms)
+✔ 接线：README 与英文 README 都要内嵌这张图（且带缓存戳） (24.6201ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 509.5977
+
+> dsh-im-companion@0.2.19 guard
+> node tools/guard/check-lines.ts
+
+  35  src/build-id.ts
+ 150  src/client/components/agent-row.ts
+ 129  src/client/components/compose-bar.ts
+  22  src/client/components/config-pop-styles.ts
+ 138  src/client/components/config-pop.ts
+ 296  src/client/components/connect-flow.ts
+  84  src/client/components/dual-mode-copy.ts
+ 135  src/client/components/dual-mode-flow.ts
+  52  src/client/components/dual-mode-styles.ts
+ 190  src/client/components/first-view-copy.ts
+ 131  src/client/components/first-view-styles.ts
+  29  src/client/components/home-avatar-act.ts
+ 161  src/client/components/home-avatar-form.ts
+ 174  src/client/components/home-avatar.ts
+ 109  src/client/components/home-bind-forms.ts
+  32  src/client/components/home-btns.ts
+  26  src/client/components/home-create-act.ts
+ 118  src/client/components/home-detail.ts
+  65  src/client/components/home-dir-form.ts
+ 144  src/client/components/home-dir.ts
+ 299  src/client/components/home-forms.ts
+ 195  src/client/components/home-frame.ts
+  49  src/client/components/home-icons.ts
+  68  src/client/components/home-identity.ts
+  72  src/client/components/home-index.ts
+  52  src/client/components/home-meta.ts
+  76  src/client/components/home-move-forms.ts
+ 186  src/client/components/home-move-ops.ts
+ 300  src/client/components/home-ops.ts
+ 137  src/client/components/home-orphan-forms.ts
+  21  src/client/components/home-orphan-row.ts
+  60  src/client/components/home-place.ts
+ 286  src/client/components/home-pop.ts
+  53  src/client/components/home-refresh.ts
+  58  src/client/components/home-row-edit.ts
+ 166  src/client/components/home-row-strip.ts
+ 246  src/client/components/home-row-styles.ts
+ 184  src/client/components/home-row-tip.ts
+ 296  src/client/components/home-rows.ts
+ 198  src/client/components/home-stage.ts
+  74  src/client/components/home-toast.ts
+ 300  src/client/components/home-ui-styles.ts
+ 182  src/client/components/manual-form.ts
+ 263  src/client/components/panel-actions.ts
+ 300  src/client/components/panel-body.ts
+ 298  src/client/components/panel-data.ts
+ 300  src/client/components/panel.ts
+  59  src/client/components/row-actions.ts
+ 218  src/client/data/activity.ts
+ 104  src/client/data/binding-commit.ts
+  69  src/client/data/bindings.ts
+  74  src/client/data/config.ts
+ 115  src/client/data/connection-stream.ts
+ 141  src/client/data/dual-mode-capabilities.ts
+ 299  src/client/data/fleet-api.ts
+ 299  src/client/data/header-overlay.ts
+  25  src/client/data/home-channel.ts
+ 104  src/client/data/home-edit.ts
+ 295  src/client/data/home-model.ts
+  50  src/client/data/home-move.ts
+  16  src/client/data/home-orphan.ts
+ 231  src/client/data/meta.ts
+ 250  src/client/data/model.ts
+ 130  src/client/data/rpc.ts
+ 185  src/client/data/workspace-index.ts
+ 252  src/client/dom.ts
+  71  src/client/icons.ts
+ 154  src/client/index.ts
+  79  src/client/log.ts
+ 300  src/client/theme.ts
+  29  src/client/ui/avatar.ts
+  48  src/client/ui/button.ts
+ 248  src/client/ui/dir-picker.ts
+  17  src/client/ui/empty.ts
+  56  src/client/ui/field.ts
+  39  src/client/ui/list.ts
+  92  src/client/ui/menu.ts
+  31  src/client/ui/modal.ts
+  64  src/client/ui/segmented.ts
+  36  src/client/ui/sheet.ts
+  36  src/client/ui/toast.ts
+ 139  src/dev/preview-host.ts
+ 152  src/features/adopt/acts.ts
+ 278  src/features/adopt/assistant-acts.ts
+  44  src/features/adopt/entry.ts
+  13  src/features/adopt/manifest.ts
+ 207  src/features/adopt/model.ts
+ 231  src/features/adopt/panel.ts
+  58  src/features/adopt/styles.ts
+ 292  src/features/adopt/view.ts
+ 205  src/features/design-preview/demo.ts
+  13  src/features/design-preview/manifest.ts
+ 223  src/features/design-preview/sessions.ts
+  28  src/features/design-preview/styles.ts
+  75  src/features/detail-drawer/actions.ts
+ 231  src/features/detail-drawer/data.ts
+ 291  src/features/detail-drawer/drawer.ts
+  14  src/features/detail-drawer/manifest.ts
+  54  src/features/detail-drawer/styles.ts
+ 275  src/features/detail-drawer/view.ts
+ 202  src/features/fleet-radar/cell-pop.ts
+ 254  src/features/fleet-radar/data.ts
+ 113  src/features/fleet-radar/home-matrix.ts
+  15  src/features/fleet-radar/manifest.ts
+  51  src/features/fleet-radar/styles.ts
+ 300  src/features/fleet-radar/view.ts
+  16  src/features/index.ts
+ 147  src/features/left-badges/assistant-face.ts
+ 289  src/features/left-badges/hover-card.ts
+  13  src/features/left-badges/manifest.ts
+  51  src/features/left-badges/styles.ts
+ 273  src/features/left-badges/view.ts
+ 185  src/features/left-filter/collapse-all.ts
+ 138  src/features/left-filter/dom-scope.ts
+  63  src/features/left-filter/header-btn.ts
+  13  src/features/left-filter/manifest.ts
+ 110  src/features/left-filter/model.ts
+  26  src/features/left-filter/resolve-log.ts
+  25  src/features/left-filter/styles.ts
+ 286  src/features/left-filter/view.ts
+  13  src/features/presence/manifest.ts
+  39  src/features/presence/motion.ts
+ 106  src/features/presence/prefs.ts
+  25  src/features/presence/styles.ts
+ 263  src/features/presence/view.ts
+  45  src/features/protocol.ts
+ 156  src/features/session-header/assistants.ts
+  14  src/features/session-header/manifest.ts
+ 282  src/features/session-header/panel.ts
+ 120  src/features/session-header/pickers.ts
+  53  src/features/session-header/styles.ts
+  80  src/features/session-header/view.ts
+  15  src/features/truth-flags/dom-state.ts
+  87  src/features/truth-flags/flags.ts
+   9  src/features/truth-flags/manifest.ts
+  15  src/features/update-center/manifest.ts
+ 138  src/features/update-center/view.ts
+  83  src/features/welcome-banner/anchor.ts
+  40  src/features/welcome-banner/copy-en.ts
+ 274  src/features/welcome-banner/data.ts
+  20  src/features/welcome-banner/manifest.ts
+ 295  src/features/welcome-banner/overlay.ts
+  66  src/features/welcome-banner/styles.ts
+  96  src/features/welcome-banner/view.ts
+ 153  src/host/activity.ts
+  28  src/host/build-id.ts
+  69  src/host/config-migrate.ts
+  99  src/host/config-yaml.ts
+ 224  src/host/home-avatar.ts
+ 135  src/host/home-edit.ts
+  47  src/host/home-move.ts
+  65  src/host/home-orphan.ts
+ 214  src/host/home-store-io.ts
+ 205  src/host/home-store.ts
+ 109  src/host/log-sites.ts
+  97  src/host/log.ts
+ 289  src/host/meta-store.ts
+  76  src/host/open-dir.ts
+ 119  src/host/routes.ts
+ 106  src/host/rpc-meta.ts
+ 246  src/host/rpc.ts
+  86  src/host/truth-decode.ts
+   5  src/host/truth-types.ts
+   2  src/host/truth.ts
+  69  src/host/update-precheck.ts
+ 142  src/host/update.ts
+ 173  src/index.ts
+ 107  src/log-events.ts
+  21  src/workspace-default.ts
+guard: 169 files, max 300 lines, limit 300 — PASS

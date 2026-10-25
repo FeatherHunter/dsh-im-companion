@@ -1,0 +1,13 @@
+fix(left-filter): 条带宽度跟随容器 + 三分段悬停/按下反馈（#159）
+
+- 去掉 .left-filter-strip 的 max-width:360px 与居中 margin，宽度跟随侧栏容器（264–420 全档不再两侧露出下层内容）
+- 三分段 hover/active 写进 left-filter 命名空间（复用共享 af-seg 原语，不定义 .af-*，不改 first-view 安装点）
+  - hover = 文字提亮 + DSH 标准悬停底药丸（--dsw-alias-interactive-bg-hover）+ 150ms 过渡；真机验收第一轮反馈「纯文字提亮太轻、看不到特效」，故比设置面板 first-view 多一层底药丸
+- tools/verify/features/left-filter.ts 增加 #159 回归断言（先红后绿；锁「条带不得有 max-width」这一类别而非 360 字面量；锁 hover 规则含 background）
+- npm run check 全绿（build + typecheck + verify 26/26 + guard 169 files / 300 行）
+  - 真机旧版日志曾记「hover 命中但计算色未变」，系 transition 起始值：进入瞬间 getComputedStyle 读到的仍是旧色，非规则未命中
+- 构建产物（2026-10-21 23:16 +08，真机运行的就是这一份）已热部署到 desktop profile（真目录，非 junction；未重启 DSH）
+  - lib/client.js sha256 A1244B5E0A65E24050BFABD8A176C0A879D8FE9B754F2208E4CD6FA32A15494E，1,101,920 B
+  - lib/index.js sha256 ADAFE3128ADCE6983557EEB20F30897816966ED960FE433BAB39930EEC6A04F6，11,876 B
+- 真机验收（维护者 2026-10-21 23:15 确认通过）：264/280/360/380/420 五档条带贴满不露底；hover 出现灰底药丸 + 文字提亮；选中段按设计不变
+- #130 pin：D:\Temp\159-pin-2026-10-21\（产物 + 本提交 patch + 验收证据）
