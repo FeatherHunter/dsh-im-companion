@@ -11,7 +11,12 @@ import { flushLogs, initLog, logLine, reconcileLogSwitch } from './log'
 import { formatBuildId } from '../build-id'
 import { installI18n } from './i18n/install'
 import { onLocaleChange, t } from './i18n'
-import { ContactRow } from './base-ui'
+import { HeaderActions } from './base-ui'
+/* 页头三件套的容器在命令式面板里（.af-hd-actions），由本组件树经 createPortal 渲染进去＝同一棵 React 树。
+ * @types/react-dom 未进 devDependencies（仓库只垫了 react-dom/client 的 createRoot 两符号），故声明式绕过；
+ * 运行时真实现由宿主 module registry 提供（tsdown.config.ts 的 CLIENT_EXTERNALS 已含 react-dom）。 */
+// @ts-expect-error 无 @types/react-dom：本文件只用到 createPortal（external，宿主提供真实现）
+import * as ReactDOM from 'react-dom'
 
 /* #130 构建身份：版本与打包时刻都在打包期注入（tsdown define），与宿主侧同形（`<版本>@<时刻>`）。
  * 两段都取不到（源码直引 / harness 打包）⇒ 回空串，绝不编造一个假版本。 */
@@ -96,6 +101,8 @@ export function apply(ctx: any): void {
 
   const FleetSettingsTab: React.FC = () => {
     const ref = React.useRef<HTMLDivElement | null>(null)
+    /* 页头三件套挂载点：命令式面板建壳时经 FleetPanel opts 回报（在 React 树外），到这里再 portal 进去。 */
+    const [actionsHost, setActionsHost] = React.useState<HTMLElement | null>(null)
     /* #184：语言切换即重挂设置面板（命令式面板整体重建，避免逐点补订阅）。 */
     const [localeTick, bumpLocale] = React.useState(0)
     React.useEffect(() => onLocaleChange(() => bumpLocale((v) => v + 1)), [])
@@ -105,7 +112,7 @@ export function apply(ctx: any): void {
       let panel: HTMLElement | null = null
       try {
         mount.replaceChildren()
-        panel = FleetPanel(ctx)
+        panel = FleetPanel(ctx, { onHeaderActionsHost: (host) => { if (host) setActionsHost(host) } })
         mount.appendChild(panel)
       } catch (e) {
         /* 不再 console：统一走 dsh-log（T9 #123），面板里另有可见的失败卡。 */
@@ -124,11 +131,11 @@ export function apply(ctx: any): void {
         mount.replaceChildren()
       }
     }, [localeTick])
-    /* 面板底部：base 共享联系入口（唯一真源 = dsh-featherhunter-plugin-base/client），
-     * 点击弹 base 联系弹窗；本仓不再自绘群二维码/群链接。 */
+    /* 页头三件套：挂进面板 .af-hd-actions 容器的 portal（与设置面板壳共用一棵 React 树）。
+     * 0.1.2 票 05：面板底部 ContactRow 整行退场——联系入口只在页头出现一次。 */
     return React.createElement('div', { style: { background: 'transparent' } },
       React.createElement('div', { ref, style: { background: 'transparent' } }),
-      React.createElement('div', { className: 'af-contact' }, React.createElement(ContactRow)),
+      actionsHost ? ReactDOM.createPortal(React.createElement(HeaderActions), actionsHost) : null,
     )
   }
 

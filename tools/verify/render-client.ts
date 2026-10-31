@@ -26,6 +26,7 @@ for (const name of ['HTMLElement','HTMLIFrameElement','HTMLInputElement','HTMLTe
 try { (globalThis as any).navigator = win.navigator; } catch { /* read-only */ }
 
 const React = req('react'); // 本仓 devDependency（package.json）
+const ReactDOM = req('react-dom'); // createPortal 用（页头三件套挂进命令式面板容器＝同一棵 React 树）
 const ReactDOMClient = req('react-dom/client');
 
 let loaded: { id: string; exports: any } | null = null;
@@ -33,7 +34,7 @@ let loaded: { id: string; exports: any } | null = null;
   load({ id, factory }: { id: string; factory: (r: (name: string) => unknown) => unknown }) {
     loaded = { id, exports: factory((name: string) => {
       if (name === 'react') return React;
-      if (name === 'react-dom') return ReactDOMClient;
+      if (name === 'react-dom') return ReactDOM;
       if (name === 'react-dom/client') return ReactDOMClient;
       throw new Error('unexpected require ' + name);
     }) as any };
@@ -538,18 +539,33 @@ const checks: [string, boolean][] = [
   ['旧 A1 列表行 DOM 已退出绿框', !l1Dump.includes('af-row') && !l1Dump.includes('af-actions')],
   ['绿框样式表已装（.home-ui 命名空间 + hu- 前缀）', css.includes('.home-ui .hu-row') && css.includes('.home-ui .hu-detail') && css.includes('.home-ui .hu-pop')],
   ['引流关联卡 P2(#26)', String((container as any).textContent).includes('作者其他插件')],
-  /* base 接入（唯一真源）：联系入口是 base 的 ContactRow（class 前缀 dsh-base-），文案也由 base 给。 */
-  ['联系入口＝base ContactRow（唯一真源）', !!q1('.af-contact')?.querySelector?.('.dsh-base-contact-row') && String(q1('.af-contact')?.textContent ?? '').includes('联系我们')],
-  /* base 0.1.1 页头三件套：ActionGroup 胶囊（联系 / Star / Issue），旧自绘 star+feedback 两枚图标钮退场。 */
-  ['页头三件套＝base ActionGroup 胶囊（组内 3 枚动作）', (() => {
-    const group = q1('.af-hd-actions')?.querySelector?.('.dsh-base-actions--group');
-    return !!group && group.querySelectorAll('.dsh-base-icon-action').length === 3;
+  /* base 接入（唯一真源）：页头三件套＝base 0.1.2 ActionCluster 静默簇（联系 / Star / Issue 三枚独立彩色图标钮）。
+   * 联系入口只在页头出现一次：面板底部 ContactRow 整行随票 05 退场（base 组件本身仍在包里，本仓不用）。 */
+  ['底部 ContactRow 已退场（联系只在页头，入口不重复）', !q1('.af-contact') && !l1Dump.includes('dsh-base-contact-row')],
+  ['页头三件套＝base ActionCluster（组内 3 枚独立动作钮）', (() => {
+    const cluster = q1('.af-hd-actions')?.querySelector?.('.dsh-base-cluster');
+    return !!cluster && cluster.getAttribute?.('role') === 'group' && cluster.querySelectorAll('.dsh-base-cluster__btn').length === 3;
   })()],
-  ['页头三件套语义：role=group + aria-label 由 base 文案给', (() => {
-    const group = q1('.af-hd-actions')?.querySelector?.('.dsh-base-actions--group');
-    return String(group?.getAttribute?.('role') ?? '') === 'group' && String(group?.getAttribute?.('aria-label') ?? '').includes('联系');
+  ['页头三件套语义：每钮 aria-label 由 base 文案给（联系 / Star / Issue）', (() => {
+    const cluster = q1('.af-hd-actions')?.querySelector?.('.dsh-base-cluster');
+    const labels = Array.from((cluster?.querySelectorAll?.('.dsh-base-cluster__btn') as any) ?? []).map((b: any) => String(b.getAttribute?.('aria-label') ?? ''));
+    const groupLabel = String(cluster?.getAttribute?.('aria-label') ?? '');
+    return groupLabel.length > 0 && labels.length === 3 && labels.every((l) => l.length > 0)
+      && labels.some((l) => l.includes('联系')) && labels.some((l) => l.includes('Star')) && labels.some((l) => l.toLowerCase().includes('issue'));
   })()],
-  ['页头三件套样式随挂载注入（base ensureBaseStyles）', css.includes('.dsh-base-icon-action') && css.includes('.dsh-base-actions--group')],
+  ['页头三件套＝彩色 16px 图标（svg 带渐变）', (() => {
+    const cluster = q1('.af-hd-actions')?.querySelector?.('.dsh-base-cluster');
+    const html = cluster ? ser(cluster) : '';
+    return /<svg\b/.test(html) && /lineargradient|radialgradient/i.test(html);
+  })()],
+  ['Issue 去处＝issues 列表页（0.1.2 口径，不再直落 /issues/new）', (() => {
+    const cluster = q1('.af-hd-actions')?.querySelector?.('.dsh-base-cluster');
+    /* dom-shim 的选择器只认 .class / [attr]，不认标签名：用 [href] 取两枚外链。 */
+    const hrefs = Array.from((cluster?.querySelectorAll?.('[href]') as any) ?? []).map((a: any) => String(a.getAttribute?.('href') ?? ''));
+    return hrefs.some((h) => h.endsWith('/issues')) && !hrefs.some((h) => h.includes('/issues/new'));
+  })()],
+  ['页头三件套样式随挂载注入（base ensureBaseStyles）', css.includes('.dsh-base-cluster') && css.includes('.dsh-base-cluster__btn')],
+  ['旧 ActionGroup 胶囊已退场（不重复挂载）', !l1Dump.includes('dsh-base-actions--group') && !l1Dump.includes('dsh-base-icon-action')],
   ['旧自绘星标/反馈钮已退场（入口不重复）', !l1Dump.includes('af-icon-btn af-star')],
   ['旧自绘联系图已清（bundle 不引用老二维码资源）', !code.includes('contact-feishu-permanent') && !code.includes('contact-qq-permanent') && !code.includes('contact-wechat-weekly') && !code.includes('DSH插件交流群-飞书二维码')],
   ['自家版本胶囊 紫(#82)', pluginVersion !== '' && String((container as any).textContent).includes('v' + pluginVersion)],

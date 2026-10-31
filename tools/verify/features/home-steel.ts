@@ -1767,13 +1767,16 @@ test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行
   const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
   assert.ok(!panel.includes('flex-wrap:wrap') && !panel.includes("'af-hd-right', style:"),
     '页头不得再写行内 flex 覆盖：行内 style 曾把 CSS 的 nowrap 顶成 wrap（真机两行的直接原因）');
-  /* 2026-10-31 base 0.1.1 页头三件套：旧两枚自绘 32px 图标钮（70px）换成 ActionGroup 胶囊
-   * （3×28 + 2px 内边 + 2px 边 = 88×32，+18px）；size 16 是预算的唯一来源，改大即溢出单行。 */
+  /* 2026-10-31 base 0.1.2 页头三件套：旧两枚自绘 32px 图标钮（70px）换成 ActionCluster 静默簇
+   * （3×28 + 2×4 间距 = 92×28，+22px）；size 16 是预算的唯一来源，改大即溢出单行。 */
   const baseUi = readFileSync(join(CLIENT, 'base-ui.ts'), 'utf8');
-  assert.ok(baseUi.includes('ActionGroup, { size: 16 }'),
-    '页头三件套必须用 base 页头默认 16px 图标（单枚 28×28 ⇒ 胶囊 88×32；18px 会到 100px，单行预算不够）');
-  assert.ok(panel.includes('mountHeaderActions(baseActions)'),
-    '三件套必须挂进命令式面板的 React root（不是另建一份自绘按钮）');
+  assert.ok(baseUi.includes('ActionCluster, { size: 16 }'),
+    '页头三件套必须用 base ActionCluster 的 16px 图标（单枚 28×28 ⇒ 一簇 92px；18px 会到 100px+，单行预算不够）');
+  const index = readFileSync(join(CLIENT, 'index.ts'), 'utf8');
+  assert.ok(panel.includes('onHeaderActionsHost') && index.includes('createPortal') && index.includes('HeaderActions'),
+    '三件套必须挂进**同一棵 React 树**（面板只建 .af-hd-actions 壳，index.ts 装配壳用 createPortal 渲染），不许再自建独立 root');
+  assert.ok(!panel.includes('mountHeaderActions') && !baseUi.includes('createRoot('),
+    '旧的自建 React root 挂法必须退场（两棵树共享同一入口 ⇒ 切页/热重载生命周期互相抢）');
   assert.ok(panel.includes("className: 'af-hd-actions'"), '三件套容器类名保留（样式表靠它定位）');
   assert.ok(fv.includes('.af-hd-actions { display: inline-flex; align-items: center; flex: none; }'),
     '三件套容器自身不压缩不换行（右组 flex:none 的一部分）；换行＝回潮');
@@ -1781,6 +1784,8 @@ test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行
     '旧自绘 star/feedback 两枚图标钮必须退场（否则同一入口出现两次）');
   assert.ok(baseUi.includes('repoUrl: REPO_HREF') && baseUi.includes('issuesUrl: ISSUES_HREF'),
     'Star / Issue 的去处＝仓库地址唯一真相（first-view-copy 导出的 REPO_HREF / ISSUES_HREF，面板侧不另存一份）');
+  assert.ok(!index.includes('createElement(ContactRow)') && !index.includes("className: 'af-contact'") && !baseUi.includes('function ContactRow'),
+    '面板底部 ContactRow 整行退场（0.1.2 票 05：联系入口只在页头出现一次；注释里留历史说明不算）');
 });
 
 test('旧面板能力保留：工具栏四钮顺序（T12 追加「配置」）＋事件制＋文案一字不动', () => {
