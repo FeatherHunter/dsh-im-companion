@@ -48,7 +48,7 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 /* #82 右组收紧：间隙 8→6、右上按钮 36→32（与工具栏同尺寸）——548px 下单行余量才够英文界面 */
 .af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .af-hd-right .af-icon-btn { width: 32px; height: 32px; border-radius: 10px; flex: none; }
-/* base 0.1.3 页头三件套（ActionCluster：联系 / Star / Issue 三枚 28×28 彩色图标钮，静默簇无外框）的
+/* base 0.1.4 页头三件套（ActionCluster：联系 / Star / Issue 三枚 28×28 彩色图标钮，静默簇无外框）的
  * portal 挂载点：右组内不压缩、不换行；按钮自身尺寸 / 五态 / 悬浮柔光与动效全由 base 的 ensureBaseStyles 注入，
  * 这里只给挂载点定位（92×28 的三枚簇）。 */
 .af-hd-actions { display: inline-flex; align-items: center; flex: none; }

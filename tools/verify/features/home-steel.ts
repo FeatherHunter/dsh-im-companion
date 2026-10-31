@@ -1767,7 +1767,7 @@ test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行
   const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
   assert.ok(!panel.includes('flex-wrap:wrap') && !panel.includes("'af-hd-right', style:"),
     '页头不得再写行内 flex 覆盖：行内 style 曾把 CSS 的 nowrap 顶成 wrap（真机两行的直接原因）');
-  /* 2026-10-31 base 0.1.3 页头三件套：旧两枚自绘 32px 图标钮（70px）换成 ActionCluster 静默簇
+  /* 2026-10-31 base 0.1.4 页头三件套：旧两枚自绘 32px 图标钮（70px）换成 ActionCluster 静默簇
    * （3×28 + 2×4 间距 = 92×28，+22px）；size 16 是预算的唯一来源，改大即溢出单行。 */
   const baseUi = readFileSync(join(CLIENT, 'base-ui.ts'), 'utf8');
   assert.ok(baseUi.includes('ActionCluster, { size: 16 }'),

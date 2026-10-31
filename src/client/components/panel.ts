@@ -100,7 +100,7 @@ export function FleetPanel(
    * owner 2026-10-10 裁定：从「工具栏之后、撰写条之前」挪到**页头右上组、star 左侧**
    * （原 2026-09-12 位置作废）。仍只挪这一个空容器节点：类名 / id / 派发 / 特性侧零改。 */
   const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host', style: 'min-width:0' })
-  /* base 0.1.3 页头三件套（ActionCluster：联系 / Star / Issue 三枚独立 28×28 彩色图标钮，无外框静默簇）：
+  /* base 0.1.4 页头三件套（ActionCluster：联系 / Star / Issue 三枚独立 28×28 彩色图标钮，无外框静默簇）：
    * 替换旧自绘 star+feedback 两枚 32px 图标钮（合计 70px ⇒ 3×28+2×4=92px，宽 +22px，单行预算仍够，见下方页头注释）。
    * 容器是命令式面板里的**纯壳**：这里只建 div，ActionCluster 由 index.ts 的装配壳经 createPortal 渲染进
    * 这棵同一棵 React 树（不再像 0.1.1 那样自建独立 root，切页/热重载不会有两棵树抢生命周期）。 */

@@ -152,7 +152,7 @@ test('T5-6 toPackageReply：信封拆 value + 失败还原包载荷（直返信�
 
 /* ---------- ⑦ 挂载点位置（#120）：页头右上组、页头动作组左侧，其余契约零改 ----------
  * 位置是 owner 裁定（2026-10-10）：从「工具栏之后、撰写条之前」挪进 af-hd-right。
- * 2026-10-31 base 0.1.3 接入：旧自绘 star/feedback 两枚图标钮换成 base ActionCluster 静默簇（本仓 baseActions
+ * 2026-10-31 base 0.1.4 接入：旧自绘 star/feedback 两枚图标钮换成 base ActionCluster 静默簇（本仓 baseActions
  * 容器 = 只建壳，由 index.ts 装配壳 portal 进同一棵 React 树），挂载点相对位置不变——仍在页头动作组左侧。
  * 容器节点只挪位置——id（P0-b 认领把手）/ 类名前缀 / 事件派发三项一律不变，故这里同时钉住「没被顺手改坏」。 */
 test('T5-7 挂载点在页头右上组 base 三件套左侧（id/类名/派发不变）', () => {
