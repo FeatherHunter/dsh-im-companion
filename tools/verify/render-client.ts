@@ -547,7 +547,7 @@ const checks: [string, boolean][] = [
     const rows = card?.querySelectorAll?.('.dsh-base-plugins__item') ?? [];
     return !!card && text.includes('作者的其他插件') && rows.length === 4 && !text.includes('给 dsh-im 加了');
   })()],
-  /* base 接入（唯一真源）：页头三件套＝base 0.1.4 ActionCluster 静默簇（联系 / Star / Issue 三枚独立彩色图标钮）。
+  /* base 接入（唯一真源）：页头三件套＝base 0.1.5 ActionCluster 静默簇（联系 / Star / Issue 三枚独立彩色图标钮）。
    * 联系入口只在页头出现一次：面板底部 ContactRow 整行随票 05 退场（base 组件本身仍在包里，本仓不用）。 */
   ['底部 ContactRow 已退场（联系只在页头，入口不重复）', !q1('.af-contact') && !l1Dump.includes('dsh-base-contact-row')],
   ['页头三件套＝base ActionCluster（组内 3 枚独立动作钮）', (() => {
@@ -566,7 +566,7 @@ const checks: [string, boolean][] = [
     const html = cluster ? ser(cluster) : '';
     return /<svg\b/.test(html) && /lineargradient|radialgradient/i.test(html);
   })()],
-  ['Issue 去处＝issues 列表页（0.1.4 口径，不再直落 /issues/new）', (() => {
+  ['Issue 去处＝issues 列表页（0.1.5 口径，不再直落 /issues/new）', (() => {
     const cluster = q1('.af-hd-actions')?.querySelector?.('.dsh-base-cluster');
     /* dom-shim 的选择器只认 .class / [attr]，不认标签名：用 [href] 取两枚外链。 */
     const hrefs = Array.from((cluster?.querySelectorAll?.('[href]') as any) ?? []).map((a: any) => String(a.getAttribute?.('href') ?? ''));

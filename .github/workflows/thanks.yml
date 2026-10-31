@@ -33,7 +33,7 @@ jobs:
           node scripts/update-thanks.mts
       # 数据变了，README 的中英致谢表交给 base 包同源渲染（不再由 update-thanks 自己画表）。
       - name: Sync managed README blocks
-        run: npx -y dsh-featherhunter-plugin-base@0.1.4 readme:sync --repo .
+        run: npx -y dsh-featherhunter-plugin-base@0.1.5 readme:sync --repo .
       # 同步之后再验：门禁比的是「README 里的表 vs 数据」，渲染没跑就必然对不上。
       - name: Verify thanks consistency
         run: node --test tools/verify/features/thanks-table.ts

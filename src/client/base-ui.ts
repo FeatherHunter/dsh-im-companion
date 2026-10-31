@@ -35,7 +35,7 @@ function ensureBaseStylesOnce(): void {
   if (typeof document !== 'undefined') ensureBaseStyles(document)
 }
 
-/** 页头三件套（联系 / Star / Issue）：base 0.1.4 ActionCluster 静默簇，size 16 = 单枚 28×28。
+/** 页头三件套（联系 / Star / Issue）：base 0.1.5 ActionCluster 静默簇，size 16 = 单枚 28×28。
  *  由 index.ts 的装配壳经 createPortal 渲染进命令式面板的 .af-hd-actions 容器——同一棵 React 树，
  *  不再像 0.1.1 那样在面板里自建独立 root（切页 / 热重载只剩一棵树要收）。 */
 export function HeaderActions(): React.ReactElement {
