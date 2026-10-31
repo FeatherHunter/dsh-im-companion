@@ -11,6 +11,7 @@ import { flushLogs, initLog, logLine, reconcileLogSwitch } from './log'
 import { formatBuildId } from '../build-id'
 import { installI18n } from './i18n/install'
 import { onLocaleChange, t } from './i18n'
+import { ContactRow } from './base-ui'
 
 /* #130 构建身份：版本与打包时刻都在打包期注入（tsdown define），与宿主侧同形（`<版本>@<时刻>`）。
  * 两段都取不到（源码直引 / harness 打包）⇒ 回空串，绝不编造一个假版本。 */
@@ -123,7 +124,12 @@ export function apply(ctx: any): void {
         mount.replaceChildren()
       }
     }, [localeTick])
-    return React.createElement('div', { ref, style: { background: 'transparent' } })
+    /* 面板底部：base 共享联系入口（唯一真源 = dsh-featherhunter-plugin-base/client），
+     * 点击弹 base 联系弹窗；本仓不再自绘群二维码/群链接。 */
+    return React.createElement('div', { style: { background: 'transparent' } },
+      React.createElement('div', { ref, style: { background: 'transparent' } }),
+      React.createElement('div', { className: 'af-contact' }, React.createElement(ContactRow)),
+    )
   }
 
   ctx.effect(() => () => {

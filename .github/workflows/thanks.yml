@@ -31,6 +31,10 @@ jobs:
           # 议题拿不到、第一页是空的，脚本直接退出，一个字节都不写。
           # 本仓讨论区未开，讨论那一路失败只跳过，不阻断议题表更新。
           node scripts/update-thanks.mts
+      # 数据变了，README 的中英致谢表交给 base 包同源渲染（不再由 update-thanks 自己画表）。
+      - name: Sync managed README blocks
+        run: npx -y dsh-featherhunter-plugin-base@0.0.2 readme:sync --repo .
+      # 同步之后再验：门禁比的是「README 里的表 vs 数据」，渲染没跑就必然对不上。
       - name: Verify thanks consistency
         run: node --test tools/verify/features/thanks-table.ts
       - name: Commit if changed

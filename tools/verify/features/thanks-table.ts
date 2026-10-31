@@ -4,7 +4,7 @@
  * 只按本仓风格改写（node:test + 中文失败说明），断言口径不变：
  *   1. 数据自洽（游标不比数据小、数组有序无重复、最后活跃时间真是最大值）；
  *   2. 进位规则钉死（1/9/10/11/99/100/123/1000/10000 的花串写死，改规则先改这里）；
- *   3. 表格就是渲染结果（两处标记之间的正文与 renderTable 逐字节一致，
+ *   3. 表格就是渲染结果（两处标记之间的正文与 base 的 renderThanksBlock 逐字节一致，
  *      中英两表行序、花串、链接一一对上）。
  * 不守「有没有漏掉新贡献」——那是联网脚本与每日任务的事，离线门禁够不着。
  *
@@ -26,8 +26,10 @@ import {
   itemsOf,
   totalOf,
   orderedLogins,
-  renderTable,
 } from '../../../scripts/update-thanks.mts'
+// 表格的渲染真源是 base 包（与 README 自动同步用的是同一个渲染器）：
+// 本仓不再自己画表，门禁直接比「README 里的表 vs base 的渲染结果」。
+import { renderThanksBlock } from 'dsh-featherhunter-plugin-base/node'
 
 const REPO = process.cwd()
 const zhText: string = readFileSync(join(REPO, 'README.md'), 'utf8')
@@ -97,9 +99,18 @@ test('进位规则钉死：1/9/10/11/99/100/123/1000/10000', () => {
   for (const [total, want] of cases) assert.equal(rosesFor(total), want, `${total} 张票的花串应该是 ${want}`)
 })
 
-test('表格就是渲染结果：中英两表与 renderTable 逐字节一致', () => {
-  assert.equal(zhTable, renderTable(DATA.authors, true), '中文 README 的致谢表不是当前数据的渲染结果（跑 node scripts/update-thanks.mts --render-only 重画）')
-  assert.equal(enTable, renderTable(DATA.authors, false), '英文 README 的致谢表不是当前数据的渲染结果')
+test('表格就是渲染结果：中英两表与 base 的 renderThanksBlock 逐字节一致', () => {
+  const authors = DATA.authors as unknown as Parameters<typeof renderThanksBlock>[0]['thanks']['authors']
+  assert.equal(
+    zhTable,
+    renderThanksBlock({ thanks: { repo: 'FeatherHunter/dsh-im-companion', authors }, lang: 'zh' }),
+    '中文 README 的致谢表不是当前数据的渲染结果（跑 npm run readme:sync 重画）',
+  )
+  assert.equal(
+    enTable,
+    renderThanksBlock({ thanks: { repo: 'FeatherHunter/dsh-im-companion', authors }, lang: 'en' }),
+    '英文 README 的致谢表不是当前数据的渲染结果（跑 npm run readme:sync 重画）',
+  )
 })
 
 test('行序、花串、中英对等、链接逐一对上', () => {

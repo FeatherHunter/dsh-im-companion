@@ -49,6 +49,10 @@ let loaded: { id: string; exports: any } | null = null;
 const sandbox = vm.createContext({
   ...win, window: win, document: doc, console, setTimeout, clearTimeout, setInterval, clearInterval,
   AbortSignal, navigator: {}, location: { protocol: 'http:', host: 'x' },
+  /* base 客户端包顶层就建 TextEncoder（真浏览器恒有）⇒ 桩沙箱补齐同类 Web 全局，缺一个就整包加载失败。 */
+  TextEncoder, TextDecoder, URL, URLSearchParams,
+  btoa: (s: string) => Buffer.from(s, 'binary').toString('base64'),
+  atob: (s: string) => Buffer.from(s, 'base64').toString('binary'),
 });
 vm.runInContext(code, sandbox);
 

@@ -46,6 +46,7 @@
   "devDependencies": {
     "@types/node": "26.4.1",
     "@types/react": "19.2.18",
+    "dsh-featherhunter-plugin-base": "0.0.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsdown": "0.22.14",
@@ -59,6 +60,9 @@
     "sync:update-pkg": "node scripts/sync-update-pkg.mjs --apply",
     "star-history": "node tools/star-history/generate-svg.ts",
     "thanks:update": "node scripts/update-thanks.mts",
+    "readme:init": "node node_modules/dsh-featherhunter-plugin-base/dist/node/cli.js readme:init --repo .",
+    "readme:sync": "node node_modules/dsh-featherhunter-plugin-base/dist/node/cli.js readme:sync --repo .",
+    "readme:check": "node node_modules/dsh-featherhunter-plugin-base/dist/node/cli.js readme:sync --repo . --check",
     "typecheck": "tsc -p tsconfig.client.json",
     "verify": "node tools/verify/render-client.ts && node --test tools/verify/i18n.ts && node --test tools/verify/features/first-view.ts && node --test tools/verify/features/left-badges.ts && node --test tools/verify/features/detail-panel.ts && node --test tools/verify/features/left-filter.ts && node --test tools/verify/features/adopt.ts && node --test tools/verify/features/presence.ts && node --test tools/verify/features/presence-host.ts && node --test tools/verify/features/welcome-banner.ts && node --test tools/verify/features/fleet-radar.ts && node --test tools/verify/features/session-header-model.ts && node --test tools/verify/features/session-header-assistant.ts && node tools/verify/features/session-header-render.ts && node --test tools/verify/features/connect-qr.ts && node --test tools/verify/features/truth-flags.ts && node --test tools/verify/features/session-marks.ts && node --test tools/verify/features/design-preview.ts && node --test tools/verify/features/rpc-dual-transport.ts && node --test tools/verify/features/log-trace-bridge.ts && node --test tools/verify/host-entry.ts && node --test tools/verify/features/update-host.ts && node --test tools/verify/features/update-center.ts && node --test tools/verify/features/home-steel.ts && node --test tools/verify/features/home-seed-fallback.ts && node --test tools/verify/features/home-degrade.ts && node --test tools/verify/features/home-create-flow.ts && node --test tools/verify/features/config-yaml.ts && node --test tools/verify/features/home-avatar.ts && node --test tools/verify/features/home-row-strip.ts && node --test tools/verify/features/home-store.ts && node --test tools/verify/features/assistant-fields.ts && node --test tools/verify/log-pipeline.ts && node --test tools/verify/log-truth.ts && node --test tools/verify/separator-retired.ts && node --test tools/verify/features/star-history.ts && node --test tools/verify/features/thanks-table.ts && node --test tools/verify/features/compat-claim.ts && node --test tools/verify/features/persona-inject.ts && node --test tools/verify/features/home-assistant-profile.ts",
     "guard": "node tools/guard/check-lines.ts",

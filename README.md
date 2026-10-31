@@ -198,21 +198,23 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 </details>
 
+<!-- MORE-START -->
 <h2 align="center"><sub>MORE</sub><br>作者的其他作品</h2>
-
-<div align="center">
 
 <div align="left">
 
-**[dsh-opencode-palette](https://github.com/FeatherHunter/dsh-opencode-palette)** —— 38 款 opencode 经典配色 + 20+自定义主题 一键换装 DSH
+喜欢这个插件的话，这些可能你也用得上：
 
 **[dsh-mattpocock-skills-deck](https://github.com/FeatherHunter/dsh-mattpocock-skills-deck)** —— 近 30 万 star 的 mattpocock/skills 整套预置好（27 个技能），装好即用。
 
 **[dsh-prompt](https://github.com/FeatherHunter/dsh-prompt)** —— 经常反复重复的模板化提示词，存成自定义模板，选中后直接注入，不再需要耗费精力。
 
-**[ilife](https://github.com/FeatherHunter/ilife)** —— 爱生活：居家生活套件，记账、运动、饮食、体重、食谱、物品管理、作息规划、备忘录等。⚠️建设中⚠️待正式发布
+**[dsh-opencode-palette](https://github.com/FeatherHunter/dsh-opencode-palette)** —— 38 款 opencode 经典配色 + 20+自定义主题 一键换装 DSH。
+
+**[ilife](https://github.com/FeatherHunter/ilife)** —— ⚠️建设中⚠️爱生活：居家生活套件，记账、运动、饮食、体重、食谱、物品管理、作息规划、备忘录等。
 
 </div>
+<!-- MORE-END -->
 
 ---
 
@@ -238,25 +240,29 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 </div>
 
+<!-- CONTACT-START -->
 <h2 align="center"><sub>CONNECT</sub><br>反馈与联系</h2>
 
 <div align="center">
 
 👏欢迎提交PR、ISSUE。星星之火可以燎原🔥有任何建议、意见、想法、吐槽、idea都可以进群交流。
 
-<table align="center"><tr><td align="center"><b>飞书群（主）</b></td><td align="center"><b>QQ群（新）</b></td><td align="center"><b>微信群（新）</b></td></tr><tr><td><img src="assets/contact-feishu-permanent.png" width="260" alt="DSH 插件交流群 飞书群二维码" /></td><td><img src="assets/contact-qq-permanent.jpg" width="260" alt="DSH 插件交流群 QQ 群二维码" /></td><td><img src="assets/contact-wechat-weekly.png" width="260" alt="DSH 插件交流群微信群二维码" /></td></tr></table>
+<table align="center"><tr><td align="center"><b>飞书群（主）</b></td><td align="center"><b>QQ群（新）</b></td><td align="center"><b>微信群（新）</b></td></tr><tr><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.0.2/data/img/card-feishu.png" width="260" alt="DSH 插件交流群 飞书群二维码" /></td><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.0.2/data/img/card-qq.png" width="260" alt="DSH 插件交流群 QQ 群二维码" /></td><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.0.2/data/img/card-wechat-2026-10-23.png?v=20261023" width="260" alt="DSH 插件交流群微信群二维码" /></td></tr></table>
 
 </div>
+<!-- CONTACT-END -->
 ---
 
+<!-- STAR-HISTORY-START -->
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=20261030" />
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261030" />
-  <img alt="Star History Chart" width="720" src="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261030" />
-</picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=202610290000" />
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=202610290000" />
+  <img alt="Star History Chart" width="720" src="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=202610290000" />
+  </picture>
 
 <sub>左轴读总星标（Total Stars），右轴读每日新增（Daily New），每天自动更新。</sub>
 
-</div>>>>>>>> origin/master
+</div>
+<!-- STAR-HISTORY-END -->

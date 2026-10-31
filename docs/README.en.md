@@ -198,21 +198,23 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 </details>
 
+<!-- MORE-START -->
 <h2 align="center"><sub>MORE</sub><br>More by the author</h2>
-
-<div align="center">
 
 <div align="left">
 
-**[dsh-opencode-palette](https://github.com/FeatherHunter/dsh-opencode-palette)** —— 38 classic opencode themes + 20+ custom themes, one-click DSH restyle
+If you like this plugin, these might help too:
 
-**[dsh-mattpocock-skills-deck](https://github.com/FeatherHunter/dsh-mattpocock-skills-deck)** —— the full mattpocock/skills deck (~300k stars) preinstalled: 27 skills, ready to use.
+**[dsh-mattpocock-skills-deck](https://github.com/FeatherHunter/dsh-mattpocock-skills-deck)** — The whole mattpocock/skills set (nearly 300k stars) preinstalled — 27 skills, ready as soon as it is installed.
 
-**[dsh-prompt](https://github.com/FeatherHunter/dsh-prompt)** —— save those prompt templates you keep retyping as custom templates and inject them on selection - no more wasted effort.
+**[dsh-prompt](https://github.com/FeatherHunter/dsh-prompt)** — The boilerplate prompts you keep retyping, saved as custom templates and injected on selection — no more wasted effort.
 
-**[ilife](https://github.com/FeatherHunter/ilife)** —— love life: a home-life suite - bookkeeping, exercise, diet, weight, recipes, item management, schedule planning, notes and more. ⚠️Under construction⚠️ pending official release
+**[dsh-opencode-palette](https://github.com/FeatherHunter/dsh-opencode-palette)** — 38 classic opencode themes + 20+ custom themes — reskin DSH in one click.
+
+**[ilife](https://github.com/FeatherHunter/ilife)** — ⚠️Work in progress⚠️ iLife, the home-life suite: bookkeeping, exercise, diet, weight, recipes, item management, schedule planning, memos and more.
 
 </div>
+<!-- MORE-END -->
 
 ---
 
@@ -238,24 +240,28 @@ Also thanks to upstream [dsh-im](https://github.com/xmanrui/dsh-im): no core, no
 
 </div>
 
+<!-- CONTACT-START -->
 <h2 align="center"><sub>CONNECT</sub><br>Feedback and Contact</h2>
 
 <div align="center">
 
 👏Welcome PRs and issues. A single spark can start a prairie fire 🔥. Any suggestion, opinion, idea or rant — come join the group and talk.
 
-<table align="center"><tr><td align="center"><b>Feishu Group (Main)</b></td><td align="center"><b>QQ Group (New)</b></td><td align="center"><b>WeChat Group (New)</b></td></tr><tr><td><img src="../assets/contact-feishu-permanent.png" width="260" alt="DSH plugin community group Feishu QR code" /></td><td><img src="../assets/contact-qq-permanent.jpg" width="260" alt="DSH plugin community group QQ QR code" /></td><td><img src="../assets/contact-wechat-weekly.png" width="260" alt="DSH plugin community group WeChat QR code" /></td></tr></table>
+<table align="center"><tr><td align="center"><b>Feishu Group (Main)</b></td><td align="center"><b>QQ Group (New)</b></td><td align="center"><b>WeChat Group (New)</b></td></tr><tr><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.0.2/data/img/card-feishu.png" width="260" alt="DSH plugin community group Feishu QR code" /></td><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.0.2/data/img/card-qq.png" width="260" alt="DSH plugin community group QQ QR code" /></td><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.0.2/data/img/card-wechat-2026-10-23.png?v=20261023" width="260" alt="DSH plugin community group WeChat QR code" /></td></tr></table>
 
 </div>
+<!-- CONTACT-END -->
 
+<!-- STAR-HISTORY-START -->
 <div align="center">
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=20261030" />
-  <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261030" />
-  <img alt="Star History Chart" width="720" src="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=20261030" />
-</picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-dark.svg?v=202610290000" />
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=202610290000" />
+  <img alt="Star History Chart" width="720" src="https://raw.githubusercontent.com/FeatherHunter/dsh-im-companion/master/docs/star-history-light.svg?v=202610290000" />
+  </picture>
 
 <sub>Left axis reads Total Stars, right axis reads Daily New. Refreshed every day.</sub>
 
 </div>
+<!-- STAR-HISTORY-END -->

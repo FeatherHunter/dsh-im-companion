@@ -43,6 +43,10 @@ let loaded: { id: string; exports: any } | null = null;
 const sandbox = vm.createContext({
   ...win, window: win, document: doc, console, setTimeout, clearTimeout, setInterval, clearInterval,
   AbortSignal, navigator: {}, location: { protocol: 'http:', host: 'x' },
+  /* base 客户端包顶层就建 TextEncoder（真浏览器恒有）⇒ 桩沙箱补齐同类 Web 全局，缺一个就整包加载失败。 */
+  TextEncoder, TextDecoder, URL, URLSearchParams,
+  btoa: (s: string) => Buffer.from(s, 'binary').toString('base64'),
+  atob: (s: string) => Buffer.from(s, 'base64').toString('binary'),
   requestAnimationFrame: (fn: any) => setTimeout(fn, 0), cancelAnimationFrame: (id: any) => clearTimeout(id),
 });
 vm.runInContext(code, sandbox);
@@ -534,6 +538,9 @@ const checks: [string, boolean][] = [
   ['旧 A1 列表行 DOM 已退出绿框', !l1Dump.includes('af-row') && !l1Dump.includes('af-actions')],
   ['绿框样式表已装（.home-ui 命名空间 + hu- 前缀）', css.includes('.home-ui .hu-row') && css.includes('.home-ui .hu-detail') && css.includes('.home-ui .hu-pop')],
   ['引流关联卡 P2(#26)', String((container as any).textContent).includes('作者其他插件')],
+  /* base 接入（唯一真源）：联系入口是 base 的 ContactRow（class 前缀 dsh-base-），文案也由 base 给。 */
+  ['联系入口＝base ContactRow（唯一真源）', !!q1('.af-contact')?.querySelector?.('.dsh-base-contact-row') && String(q1('.af-contact')?.textContent ?? '').includes('联系我们')],
+  ['旧自绘联系图已清（bundle 不引用老二维码资源）', !code.includes('contact-feishu-permanent') && !code.includes('contact-qq-permanent') && !code.includes('contact-wechat-weekly') && !code.includes('DSH插件交流群-飞书二维码')],
   ['自家版本胶囊 紫(#82)', pluginVersion !== '' && String((container as any).textContent).includes('v' + pluginVersion)],
   ['上游胶囊 dsh-im(#82)', dshImCompatVerified !== '' && String((container as any).textContent).includes('dsh-im ' + dshImCompatVerified)],
   ['宿主胶囊已删(2026-10-01)', dshCompatVerified === '' || !String((container as any).textContent).includes('dsh ' + dshCompatVerified)],

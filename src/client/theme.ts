@@ -35,7 +35,7 @@ const CSS = `
   max-width: 780px;
   padding: 6px 4px 56px;
 }
-.af-root * { box-sizing: border-box; }
+.af-root * { box-sizing: border-box; } /* base ContactRow 是唯一真源：面板尾部留白交给 .af-contact 统一收口 */ .af-root { padding-bottom: 12px; } .af-contact { max-width: 780px; padding: 0 4px 44px; }
 
 /* ---- 头部：Apple 大标题 ---- */
 .af-hd { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 0 0; }

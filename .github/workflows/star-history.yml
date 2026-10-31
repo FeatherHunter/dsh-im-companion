@@ -40,20 +40,13 @@ jobs:
             exit 1
           fi
           node tools/star-history/generate-svg.ts
+      # README 的四块（联系 / 星图 / 致谢 / 作者作品）统一由 base 包渲染：
+      # 星图 ?v= 取 docs/star-history.json 末条日期（YYYYMMDDHHmm），图换了缓存戳自动跟着换。
+      - name: Sync managed README blocks
+        run: npx -y dsh-featherhunter-plugin-base@0.0.2 readme:sync --repo .
+      # 同步之后再验：门禁比的是「README 里的缓存戳/角注 vs 数据文件」，渲染没跑就必然对不上。
       - name: Verify chart consistency
         run: node --test tools/verify/features/star-history.ts
-      - name: Bump README cache stamp
-        run: |
-          node -e "
-            const fs = require('fs');
-            const stamp = new Date().toISOString().slice(0,10).replace(/-/g,'');
-            for (const f of ['README.md','docs/README.en.md']) {
-              let s = fs.readFileSync(f,'utf8');
-              s = s.replace(/(star-history-(?:dark|light)[.]svg[?]v=)[0-9]+/g, (m, p1) => p1 + stamp);
-              fs.writeFileSync(f, s);
-            }
-            console.log('cache stamp:', stamp);
-          "
       - name: Commit if changed
         run: |
           if git diff --quiet docs/star-history.json docs/star-history-dark.svg docs/star-history-light.svg README.md docs/README.en.md; then echo "No change"; exit 0; fi

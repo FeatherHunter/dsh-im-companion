@@ -185,17 +185,32 @@ test('产物：两张 SVG 必须与当前数据一致（数据改了没重画，
   )
 })
 
-test('接线：README 与英文 README 都要内嵌这张图（且带缓存戳）', () => {
-  for (const file of ['README.md', join('docs', 'README.en.md')]) {
+test('接线：README 与英文 README 都要内嵌这张图（base 渲染：12 位缓存戳 + width 720 + 角注）', () => {
+  /* 缓存戳口径由 base 的 readme:sync 定：docs/star-history.json 末条日期去掉短横线 + '0000'
+   * （分钟级 12 位）。别再按「今天 YYYYMMDD」自己算 —— 数据没变时戳也不该变。 */
+  const data = JSON.parse(readFileSync(join(DOCS, 'star-history.json'), 'utf8')) as Array<{ date: string }>
+  const stamp = String(data[data.length - 1].date).replace(/-/g, '') + '0000'
+  const notes: Record<string, string> = {
+    'README.md': '左轴读总星标（Total Stars），右轴读每日新增（Daily New），每天自动更新。',
+    [join('docs', 'README.en.md')]: 'Left axis reads Total Stars, right axis reads Daily New. Refreshed every day.',
+  }
+  for (const [file, note] of Object.entries(notes)) {
     const text = readFileSync(join(REPO, file), 'utf8')
     assert.ok(
-      /star-history-dark\.svg\?v=\d{8}/.test(text),
-      `${file} 必须内嵌深色星标图（带 ?v=YYYYMMDD 缓存戳）`,
+      text.includes(`star-history-dark.svg?v=${stamp}`),
+      `${file} 必须内嵌深色星标图（12 位缓存戳 ?v=${stamp}，由 base readme:sync 从数据末条日期生成）`,
     )
     assert.ok(
-      /star-history-light\.svg\?v=\d{8}/.test(text),
-      `${file} 必须内嵌浅色星标图（带 ?v=YYYYMMDD 缓存戳）`,
+      text.includes(`star-history-light.svg?v=${stamp}`),
+      `${file} 必须内嵌浅色星标图（12 位缓存戳 ?v=${stamp}）`,
     )
+    assert.ok(text.includes('width="720"'), `${file} 的星标图必须按 720 宽内嵌（im 专用尺寸）`)
+    assert.ok(text.includes(note), `${file} 的星标图下必须有角注：${note}`)
+    /* 联系块也归 base 管：群码是 base 的 CDN 整卡（card-feishu.png），星图必须落在它后面。 */
+    const contactAt = text.search(/data\/img\/card-feishu\.png/)
+    const chartAt = text.indexOf('star-history-dark.svg')
+    assert.ok(contactAt > -1, `${file} 应有 base CDN 交流群整卡（card-feishu.png）`)
+    assert.ok(contactAt < chartAt, `${file} 的星标图应落在交流群二维码之后`)
   }
 })
 

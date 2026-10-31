@@ -113,10 +113,22 @@ export class El {
   remove() { if (this.parentNode) this.parentNode.removeChild(this); }
   get style() { return this._style; }
   set style(v: unknown) { if (typeof v === 'string') { this._style.cssText = v; } else Object.assign(this._style, v as object); }
-  setAttribute(k: string, v: unknown) { this.attributes.set(String(k), String(v)); }
+  /* class 的两套视图必须同步：React 18 对 className 走 setAttribute('class') 而不是
+   * className 属性（实测），而选择器与序列化只认 classList —— 不同步的话 React 渲染的节点
+   * 既查不到 .class、也序列化不出 class（base 的 ContactRow 就是这么被漏掉的）。 */
+  _syncClass(v: string) { this.classList = new ClassList(this); for (const c of v.split(/\s+/)) if (c) this.classList.add(c); }
+  setAttribute(k: string, v: unknown) {
+    const key = String(k);
+    this.attributes.set(key, String(v));
+    if (key.toLowerCase() === 'class') this._syncClass(String(v));
+  }
   getAttribute(k: string) { return this.attributes.has(String(k)) ? this.attributes.get(String(k))! : null; }
   hasAttribute(k: string) { return this.attributes.has(String(k)); }
-  removeAttribute(k: string) { this.attributes.delete(String(k)); }
+  removeAttribute(k: string) {
+    const key = String(k);
+    this.attributes.delete(key);
+    if (key.toLowerCase() === 'class') this._syncClass('');
+  }
   addEventListener(t: string, fn: Function) { const key = String(t); if (!this._listeners.has(key)) this._listeners.set(key, new Set()); this._listeners.get(key)!.add(fn); }
   removeEventListener(t: string, fn: Function) { this._listeners.get(String(t))?.delete(fn); }
   dispatchEvent(ev: any) {
@@ -133,7 +145,7 @@ export class El {
   get checked() { return this.hasAttribute('checked'); }
   set checked(v: unknown) { if (v) this.setAttribute('checked', ''); else this.removeAttribute('checked'); }
   get className() { return this.classList.toString(); }
-  set className(v: unknown) { this.classList = new ClassList(this); if (typeof v === 'string') for (const c of v.split(/\s+/)) if (c) this.classList.add(c); }
+  set className(v: unknown) { this._syncClass(typeof v === 'string' ? v : ''); this.attributes.set('class', this.classList.toString()); }
   querySelector(sel: string) {
     if (sel.startsWith('.')) {
       const cls = sel.slice(1);
@@ -194,6 +206,9 @@ export function createDocument() {
   doc.nodeName = '#document';
   const body = new El('body', doc);
   const head = new El('head', doc);
+  /* 真浏览器 document.documentElement 恒存在；base 包的 detectLang 会读它的 lang
+   * （即使调用方显式传 lang 也先取这个提示）⇒ 桩里补一个 <html>，否则渲染 ContactRow 抛。 */
+  doc.documentElement = new El('html', doc);
   doc.body = body; doc.head = head;
   doc.childNodes = [head, body];
   body.parentNode = doc; head.parentNode = doc;
