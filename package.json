@@ -44,7 +44,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "26.4.1",
+    "@types/node": "26.6.5",
     "@types/react": "19.2.18",
     "dsh-featherhunter-plugin-base": "0.1.5",
     "react": "^19.2.8",
