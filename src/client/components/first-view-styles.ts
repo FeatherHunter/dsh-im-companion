@@ -52,6 +52,9 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 /* #82 右组收紧：间隙 8→6、右上按钮 36→32（与工具栏同尺寸）——548px 下单行余量才够英文界面 */
 .af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .af-hd-right .af-icon-btn { width: 32px; height: 32px; border-radius: 10px; flex: none; }
+/* base 0.1.1 页头三件套（联系 / Star / Issue 胶囊）的 React root 容器：右组内不压缩、不换行；
+ * 胶囊自身 88×32 与 hover/focus 样式全由 base 的 ensureBaseStyles 注入，这里只给挂载点定位。 */
+.af-hd-actions { display: inline-flex; align-items: center; flex: none; }
 /* 2026-10-13 真机（owner）：页头必须单行装得下。两处让位，谁也不许把谁挤到第二行：
  *   ① 标题 30px→20px（theme 本体）：30px 是 hero 尺寸，在 ~543px 的窄面板里独占 1/3 行宽，
  *      与「版本胶囊 + 更新状态 + 两枚动作」争位 ⇒ 只能靠换行收场（真机就是两行）。

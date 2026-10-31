@@ -150,19 +150,21 @@ test('T5-6 toPackageReply：信封拆 value + 失败还原包载荷（直返信�
   proof('reply-envelope', '拆 value + 失败还原包载荷 + 缺 value 落失败 + 非信封直通 + 产物咬调用点');
 });
 
-/* ---------- ⑦ 挂载点位置（#120）：页头右上组、star 左侧，其余契约零改 ----------
+/* ---------- ⑦ 挂载点位置（#120）：页头右上组、页头动作组左侧，其余契约零改 ----------
  * 位置是 owner 裁定（2026-10-10）：从「工具栏之后、撰写条之前」挪进 af-hd-right。
- * 容器节点只挪位置——id（P0-b 认领把手）/ 类名前缀 / 事件派发三项一律不变，故这里同时钉住「没被顺手改坏」。 */
-test('T5-7 挂载点在页头右上组 star 左侧（id/类名/派发不变）', () => {
+ * 2026-10-31 base 0.1.1 接入：旧自绘 star/feedback 两枚图标钮换成 base ActionGroup 胶囊（本仓 baseActions
+ * 容器），挂载点相对位置不变——仍在页头动作组左侧。容器节点只挪位置——id（P0-b 认领把手）/ 类名前缀 /
+ * 事件派发三项一律不变，故这里同时钉住「没被顺手改坏」。 */
+test('T5-7 挂载点在页头右上组 base 三件套左侧（id/类名/派发不变）', () => {
   const panel = read('src/client/components/panel.ts');
   const hdRightLine = panel.split('\n').find((l) => l.includes("className: 'af-hd-right'")) ?? '';
   assert.ok(hdRightLine.includes('updateCenterHost'), '右上组必须含更新挂载点');
-  assert.ok(hdRightLine.indexOf('updateCenterHost') < hdRightLine.indexOf('starLink'), '挂载点必须在 starLink 左侧');
+  assert.ok(hdRightLine.indexOf('updateCenterHost') < hdRightLine.indexOf('baseActions'), '挂载点必须在页头动作组（base 三件套）左侧');
   assert.ok(panel.indexOf("const updateCenterHost = h('div'") < panel.indexOf('const hdRight ='), '容器必须先建好再进右上组');
   const rootLine = panel.split('\n').find((l) => l.includes("className: 'af-root'")) ?? '';
   assert.equal(rootLine.includes('updateCenterHost'), false, 'root 序列里不再出现（已挪进页头）');
   assert.match(panel, /id: 'imc-update-center'/, 'id 保留（P0-b：事件无重放，靠它主动认领）');
   assert.match(panel, /className: 'update-center-host'/, '类名走 <feature>-* 前缀契约');
   assert.match(panel, /emitUpdateCenterHost\(updateCenterHost\)/, '容器仍经事件广播（A1 对特性零感知）');
-  proof('host-in-header', '页头右上组 star 左侧 / id+类名+派发不变');
+  proof('host-in-header', '页头右上组 base 三件套左侧 / id+类名+派发不变');
 });

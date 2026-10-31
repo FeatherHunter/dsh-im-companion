@@ -1767,6 +1767,20 @@ test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行
   const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
   assert.ok(!panel.includes('flex-wrap:wrap') && !panel.includes("'af-hd-right', style:"),
     '页头不得再写行内 flex 覆盖：行内 style 曾把 CSS 的 nowrap 顶成 wrap（真机两行的直接原因）');
+  /* 2026-10-31 base 0.1.1 页头三件套：旧两枚自绘 32px 图标钮（70px）换成 ActionGroup 胶囊
+   * （3×28 + 2px 内边 + 2px 边 = 88×32，+18px）；size 16 是预算的唯一来源，改大即溢出单行。 */
+  const baseUi = readFileSync(join(CLIENT, 'base-ui.ts'), 'utf8');
+  assert.ok(baseUi.includes('ActionGroup, { size: 16 }'),
+    '页头三件套必须用 base 页头默认 16px 图标（单枚 28×28 ⇒ 胶囊 88×32；18px 会到 100px，单行预算不够）');
+  assert.ok(panel.includes('mountHeaderActions(baseActions)'),
+    '三件套必须挂进命令式面板的 React root（不是另建一份自绘按钮）');
+  assert.ok(panel.includes("className: 'af-hd-actions'"), '三件套容器类名保留（样式表靠它定位）');
+  assert.ok(fv.includes('.af-hd-actions { display: inline-flex; align-items: center; flex: none; }'),
+    '三件套容器自身不压缩不换行（右组 flex:none 的一部分）；换行＝回潮');
+  assert.ok(!panel.includes("className: 'af-icon-btn af-star'"),
+    '旧自绘 star/feedback 两枚图标钮必须退场（否则同一入口出现两次）');
+  assert.ok(baseUi.includes('repoUrl: REPO_HREF') && baseUi.includes('issuesUrl: ISSUES_HREF'),
+    'Star / Issue 的去处＝仓库地址唯一真相（first-view-copy 导出的 REPO_HREF / ISSUES_HREF，面板侧不另存一份）');
 });
 
 test('旧面板能力保留：工具栏四钮顺序（T12 追加「配置」）＋事件制＋文案一字不动', () => {

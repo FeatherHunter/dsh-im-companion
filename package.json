@@ -46,7 +46,7 @@
   "devDependencies": {
     "@types/node": "26.4.1",
     "@types/react": "19.2.18",
-    "dsh-featherhunter-plugin-base": "0.0.2",
+    "dsh-featherhunter-plugin-base": "0.1.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsdown": "0.22.14",

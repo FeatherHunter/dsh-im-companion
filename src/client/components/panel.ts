@@ -5,7 +5,7 @@ import { h } from '../dom'
 import type { RpcCall } from '../data/fleet-api'
 import { extractRpcV2 as extractRpc } from '../data/rpc'
 import { ADOPT_VIEW_EVENT, FLEET_VIEW_EVENT, UPDATE_CENTER_HOST_EVENT, type FleetViewDetail, type UpdateCenterHostDetail } from '../data/config'
-import { icon } from '../icons'
+import { mountHeaderActions } from '../base-ui'
 import { makeIconButton } from '../ui/button'
 import { toast } from '../ui/toast'
 import { firstViewCopy } from './first-view-copy'
@@ -92,30 +92,19 @@ export function FleetPanel(ctx: unknown): HTMLElement {
    * owner 2026-10-10 裁定：从「工具栏之后、撰写条之前」挪到**页头右上组、star 左侧**
    * （原 2026-09-12 位置作废）。仍只挪这一个空容器节点：类名 / id / 派发 / 特性侧零改。 */
   const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host', style: 'min-width:0' })
-  /* P2 引流星标：ghost 虚线风，新开页跳 companion 仓库点 Star（右上角，＋原位）。 */
-  const starLink = h('a', {
-    className: 'af-icon-btn af-star',
-    href: copy.starHref,
-    target: '_blank',
-    rel: 'noopener',
-    title: copy.starTitle,
-    'aria-label': copy.starTitle,
-  }, icon('star', 18))
-  const feedbackLink = h('a', {
-    className: 'af-icon-btn af-star',
-    href: copy.feedbackHref,
-    target: '_blank',
-    rel: 'noopener',
-    title: copy.feedbackTitle,
-    'aria-label': copy.feedbackTitle,
-  }, icon('feedback', 18))
+  /* base 0.1.1 页头三件套（ActionGroup：联系 / Star / Issue 一枚胶囊）：替换旧自绘 star+feedback 两枚
+   * 32px 图标钮（合计 70px ⇒ 胶囊 88×32，宽 +18px，单行预算仍够，见下方页头注释）。容器是命令式面板里的
+   * React 挂载点：mountHeaderActions 自建 root（base 样式由 ensureBaseStyles 一次性注入），卸载时 unmount。 */
+  const baseActions = h('div', { className: 'af-hd-actions' })
+  const stopBaseActions = mountHeaderActions(baseActions)
   /* 页头是**防御性布局**：标题是身份（不许被压），徽标带是附加信息（不许换行、不许把标题挤没）。
    * 2026-10-13 真机两连（owner）：① 更新失败横幅 + 两枚版本胶囊把「IM机器人增强」压成「IM 机器人⋯」；
    * ② 我当时的处置（标题 flex:0 0 auto + 右组可换行）换来的是**页头变两行**，owner 直接否掉：
    * 「需要做到一行装得下，文字也不会变成省略号（起码标题不能变）」。正解不是让谁换行，而是**把单行预算做够**：
    * #78 的「不换行」不变、右组仍 flex:none、左块仍留 ellipsis 兜底，预算从内容侧省（标题 20px、
-   * .af-hd-right .dsh-upd-entry-btn 收紧）；真机 ~543px 实测单行余量 ≈74px。故这里不写任何行内 flex 覆盖。 */
-  const hdRight = h('div', { className: 'af-hd-right' }, verBox, updateCenterHost, starLink, feedbackLink)
+   * .af-hd-right .dsh-upd-entry-btn 收紧）；真机 ~543px 实测单行余量 ≈74px，换 base 三件套胶囊后
+   * （旧两枚 32px 钮 70px ⇒ 胶囊 88px，+18px）余量 ≈56px，仍单行。故这里不写任何行内 flex 覆盖。 */
+  const hdRight = h('div', { className: 'af-hd-right' }, verBox, updateCenterHost, baseActions)
   const hd = h('div', { className: 'af-hd' },
     h('div', { className: 'af-hd-left' }, title, titleMeta), hdRight)
 
@@ -244,6 +233,7 @@ export function FleetPanel(ctx: unknown): HTMLElement {
     /* 面板卸载（切走设置页 / 热重载）：退订、收 portal、清样式；只留一句「确实拆过」。 */
     if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'dispose', ok: true, message: '' })
     emitUpdateCenterHost(null)
+    try { stopBaseActions() } catch { /* 卸 React root 失败不影响面板回收 */ }
     try { bodyModule.dispose() } catch { /* 收掉挂 document.body 的 portal 弹层：不随面板 DOM 消失，切走设置页会留悬空层 */ }
     try { data.dispose() } catch { /* 清理失败忽略 */ }
     try {

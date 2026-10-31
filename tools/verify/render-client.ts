@@ -540,6 +540,17 @@ const checks: [string, boolean][] = [
   ['引流关联卡 P2(#26)', String((container as any).textContent).includes('作者其他插件')],
   /* base 接入（唯一真源）：联系入口是 base 的 ContactRow（class 前缀 dsh-base-），文案也由 base 给。 */
   ['联系入口＝base ContactRow（唯一真源）', !!q1('.af-contact')?.querySelector?.('.dsh-base-contact-row') && String(q1('.af-contact')?.textContent ?? '').includes('联系我们')],
+  /* base 0.1.1 页头三件套：ActionGroup 胶囊（联系 / Star / Issue），旧自绘 star+feedback 两枚图标钮退场。 */
+  ['页头三件套＝base ActionGroup 胶囊（组内 3 枚动作）', (() => {
+    const group = q1('.af-hd-actions')?.querySelector?.('.dsh-base-actions--group');
+    return !!group && group.querySelectorAll('.dsh-base-icon-action').length === 3;
+  })()],
+  ['页头三件套语义：role=group + aria-label 由 base 文案给', (() => {
+    const group = q1('.af-hd-actions')?.querySelector?.('.dsh-base-actions--group');
+    return String(group?.getAttribute?.('role') ?? '') === 'group' && String(group?.getAttribute?.('aria-label') ?? '').includes('联系');
+  })()],
+  ['页头三件套样式随挂载注入（base ensureBaseStyles）', css.includes('.dsh-base-icon-action') && css.includes('.dsh-base-actions--group')],
+  ['旧自绘星标/反馈钮已退场（入口不重复）', !l1Dump.includes('af-icon-btn af-star')],
   ['旧自绘联系图已清（bundle 不引用老二维码资源）', !code.includes('contact-feishu-permanent') && !code.includes('contact-qq-permanent') && !code.includes('contact-wechat-weekly') && !code.includes('DSH插件交流群-飞书二维码')],
   ['自家版本胶囊 紫(#82)', pluginVersion !== '' && String((container as any).textContent).includes('v' + pluginVersion)],
   ['上游胶囊 dsh-im(#82)', dshImCompatVerified !== '' && String((container as any).textContent).includes('dsh-im ' + dshImCompatVerified)],

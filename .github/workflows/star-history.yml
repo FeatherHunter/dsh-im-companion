@@ -43,7 +43,7 @@ jobs:
       # README 的四块（联系 / 星图 / 致谢 / 作者作品）统一由 base 包渲染：
       # 星图 ?v= 取 docs/star-history.json 末条日期（YYYYMMDDHHmm），图换了缓存戳自动跟着换。
       - name: Sync managed README blocks
-        run: npx -y dsh-featherhunter-plugin-base@0.0.2 readme:sync --repo .
+        run: npx -y dsh-featherhunter-plugin-base@0.1.1 readme:sync --repo .
       # 同步之后再验：门禁比的是「README 里的缓存戳/角注 vs 数据文件」，渲染没跑就必然对不上。
       - name: Verify chart consistency
         run: node --test tools/verify/features/star-history.ts

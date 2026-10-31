@@ -79,9 +79,10 @@ export interface FirstViewStates {
 
 const NS = 'first-view'
 
-/** 语言无关的链接（两种语言同一地址；compatHref 中英不同，故进词条表）。 */
-const REPO_HREF = 'https://github.com/FeatherHunter/dsh-im-companion'
-const ISSUES_HREF = 'https://github.com/FeatherHunter/dsh-im-companion/issues/new'
+/** 语言无关的链接（两种语言同一地址；compatHref 中英不同，故进词条表）。
+ *  export 出去给 base-ui 的页头三件套用（Star 去处 / Issue 去处）：仓库地址全仓只此一份真相。 */
+export const REPO_HREF = 'https://github.com/FeatherHunter/dsh-im-companion'
+export const ISSUES_HREF = 'https://github.com/FeatherHunter/dsh-im-companion/issues/new'
 
 function copyFor(lang: FirstViewLang): FirstViewCopy {
   const tr = (key: string, params?: Record<string, string | number>): string => translate(lang, NS, key, params)
