@@ -33,14 +33,10 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 .af-icon-btn.af-star { background: transparent; border: 1px dashed var(--af-hairline-strong); text-decoration: none; }
 .af-icon-btn.af-star:hover { background: color-mix(in srgb, var(--af-accent) 14%, transparent); border: 1px solid var(--af-accent); color: var(--af-accent); }
 
-/* P2 底部关联卡：名 + 一句话 + 右箭头，新开页 */
-.af-promo { margin-top: 12px; background: var(--af-surface); border: 1px dashed var(--af-hairline-strong); border-radius: 12px; padding: 10px 14px; }
-.af-promo-title { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--af-secondary); }
-.af-promo-item { display: flex; gap: 8px; align-items: center; padding: 8px 2px; color: var(--af-primary); text-decoration: none; font-size: 13px; border-top: 1px solid var(--af-hairline); }
-.af-promo-item:first-of-type { border-top: 0; }
-.af-promo-item b { font-weight: 600; }
-.af-promo-item span { color: var(--af-secondary); font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.af-promo-item i { color: var(--af-accent); font-style: normal; }
+/* 底部「作者的其他插件」纯壳：卡片本体（标题 / 五条推荐 / 外框 .dsh-base-plugins）由 base 包统一渲染，
+ * 这里只给挂载点与上方主体的间距。旧自绘 .af-promo 卡退场：它只有两行、与包内五条不同源，
+ * 卡壳还会和包自带外框叠成双层（owner 2026-10-31 真机指出「外面多了一个容器」）。 */
+.af-base-plugins-host { margin-top: 12px; }
 
 /* #56 右上组（对标 deck dsws-cfg-head：右组 margin-left:auto 推右；版本组 11px→10px 胶囊可点）。
  * #78 顶部必须单行（用户裁定）：.af-hd 不换行，右组 flex:none 不压缩，左块 min-width:0 先让位
@@ -52,8 +48,9 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 /* #82 右组收紧：间隙 8→6、右上按钮 36→32（与工具栏同尺寸）——548px 下单行余量才够英文界面 */
 .af-hd-right { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex: none; }
 .af-hd-right .af-icon-btn { width: 32px; height: 32px; border-radius: 10px; flex: none; }
-/* base 0.1.1 页头三件套（联系 / Star / Issue 胶囊）的 React root 容器：右组内不压缩、不换行；
- * 胶囊自身 88×32 与 hover/focus 样式全由 base 的 ensureBaseStyles 注入，这里只给挂载点定位。 */
+/* base 0.1.3 页头三件套（ActionCluster：联系 / Star / Issue 三枚 28×28 彩色图标钮，静默簇无外框）的
+ * portal 挂载点：右组内不压缩、不换行；按钮自身尺寸 / 五态 / 悬浮柔光与动效全由 base 的 ensureBaseStyles 注入，
+ * 这里只给挂载点定位（92×28 的三枚簇）。 */
 .af-hd-actions { display: inline-flex; align-items: center; flex: none; }
 /* 2026-10-13 真机（owner）：页头必须单行装得下。两处让位，谁也不许把谁挤到第二行：
  *   ① 标题 30px→20px（theme 本体）：30px 是 hero 尺寸，在 ~543px 的窄面板里独占 1/3 行宽，
@@ -108,9 +105,8 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 
 /* ==== 交互反馈补全（owner 2026-10-17：「所有可点控件都要让人在悬停/点击时感到交互」）====
  * 基表 theme.ts 已 300 行顶格（契约 §5 规模红线）⇒ 只在这里追加缺失的伪态，既有规则一字不改、可整段移除。
- * 补的是两类缺口：① 有悬停没按下（图标钮/更多钮/菜单项/改名笔/目录项/行/版本胶囊/推广位）② 悬停都没有（分段 tab）。
+ * 补的是两类缺口：① 有悬停没按下（图标钮/更多钮/菜单项/改名笔/目录项/行/版本胶囊）② 悬停都没有（分段 tab）。
  * 说明：.af-seg-item:hover 限定 :not(.active)，否则会与 .af-seg-item.active 同特异性互踩；
- * .af-promo-item 是 a 链接，UA 只给 pointer 光标，不给任何悬停变化；
  * **.af-avatar 故意不在这里**：它是可点行 .af-row 的子部件（头像本身没挂处理器），
  * 反馈归行（.af-row:hover / .af-row:active），给它单独加 hover 会出现「行＋头像」双高亮。
  * （本段是模板字符串，注释里一律不写反引号——反引号会提前结束整个 CSS 字符串。） */
@@ -123,9 +119,6 @@ export const FIRST_VIEW_CSS = `/* D 标题：中文大标题（#82：英文小�
 .af-diritem:active { background: color-mix(in srgb, var(--af-primary) 14%, transparent); }
 .af-row:active { background: color-mix(in srgb, var(--af-primary) 8%, transparent); }
 .af-cap:active { transform: scale(.94); }
-.af-promo-item { transition: background .12s ease; }
-.af-promo-item:hover { background: color-mix(in srgb, var(--af-accent) 8%, transparent); }
-.af-promo-item:active { background: color-mix(in srgb, var(--af-accent) 15%, transparent); }
 `;
 
 /** 安装首屏赢家样式（幂等，热重载安全）；返回清理函数，面板卸载时调用。 */

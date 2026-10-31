@@ -45,8 +45,15 @@ function pluginCompat(): { verified: string; range: string } {
 }
 
 /** opts 是纯展示的装配切口（可选，命令式面板的核心行为不依赖它）：
- *  onHeaderActionsHost：页头三件套容器建好（/ 卸载 null）时回报给 React 装配壳，壳用 portal 渲染进同一棵树。 */
-export function FleetPanel(ctx: unknown, opts?: { onHeaderActionsHost?: (host: HTMLElement | null) => void }): HTMLElement {
+ *  onHeaderActionsHost：页头三件套容器建好（/ 卸载 null）时回报给 React 装配壳，壳用 portal 渲染进同一棵树。
+ *  onAuthorPluginsHost：底部作者插件卡的纯壳，同样回报给装配壳（卡片由 base 包渲染，本仓不再自绘）。 */
+export function FleetPanel(
+  ctx: unknown,
+  opts?: {
+    onHeaderActionsHost?: (host: HTMLElement | null) => void
+    onAuthorPluginsHost?: (host: HTMLElement | null) => void
+  },
+): HTMLElement {
   const rpc: RpcCall | null = extractRpc(ctx)
   const data = createPanelData(rpc)
   const copy = firstViewCopy()
@@ -93,7 +100,7 @@ export function FleetPanel(ctx: unknown, opts?: { onHeaderActionsHost?: (host: H
    * owner 2026-10-10 裁定：从「工具栏之后、撰写条之前」挪到**页头右上组、star 左侧**
    * （原 2026-09-12 位置作废）。仍只挪这一个空容器节点：类名 / id / 派发 / 特性侧零改。 */
   const updateCenterHost = h('div', { id: 'imc-update-center', className: 'update-center-host', style: 'min-width:0' })
-  /* base 0.1.2 页头三件套（ActionCluster：联系 / Star / Issue 三枚独立 28×28 彩色图标钮，无外框静默簇）：
+  /* base 0.1.3 页头三件套（ActionCluster：联系 / Star / Issue 三枚独立 28×28 彩色图标钮，无外框静默簇）：
    * 替换旧自绘 star+feedback 两枚 32px 图标钮（合计 70px ⇒ 3×28+2×4=92px，宽 +22px，单行预算仍够，见下方页头注释）。
    * 容器是命令式面板里的**纯壳**：这里只建 div，ActionCluster 由 index.ts 的装配壳经 createPortal 渲染进
    * 这棵同一棵 React 树（不再像 0.1.1 那样自建独立 root，切页/热重载不会有两棵树抢生命周期）。 */
@@ -149,15 +156,14 @@ export function FleetPanel(ctx: unknown, opts?: { onHeaderActionsHost?: (host: H
   /* T6a 钢线：＋ 按当前钻取层级开建单（L1 建家选已有区 / L2 建助理选绑机器人）；
    * 旧 compose 新建条（LocalAgent）退役，文件保留供 connect-qr 回归钉。 */
   const body = h('div', { className: 'af-body' })
-  /* P2 底部关联卡：名 + 一句话 + 右箭头，新开页（常驻；点击不记数）。 */
-  const promo = h('div', { className: 'af-promo' },
-    h('h4', { className: 'af-promo-title' }, copy.promoTitle),
-    promoItem(copy.promoDeck, copy.promoDeckDesc, 'https://github.com/FeatherHunter/dsh-mattpocock-skills-deck'),
-    promoItem(copy.promoPal, copy.promoPalDesc, 'https://github.com/FeatherHunter/dsh-opencode-palette'),
-  )
+  /* 底部「作者的其他插件」挂载点：卡片由 base 包统一渲染（标题 / 条目 / 外框都是包的，卡自带 .dsh-base-plugins），
+   * 这里只出一个无样式纯壳（与上方的间距走 .af-base-plugins-host 的 margin-top）。本仓不再自绘 .af-promo 卡：
+   * 自绘版只有两行、和包内五条推荐不同源，卡壳还会与包自带外框叠成双层（owner 2026-10-31 真机指出）。 */
+  const pluginsHost = h('div', { className: 'af-base-plugins-host' })
+  opts?.onAuthorPluginsHost?.(pluginsHost)
   /* T6（#89）更新中心挂载点原位置（工具栏之后、撰写条之前）已作废：容器改建在页头右上组里（见上）。
-   * root 序列＝hd → body → promo（工具栏行随搜索/分段一并退场，动作并进绿框页头）。 */
-  const root = h('div', { className: 'af-root' }, hd, body, promo)
+   * root 序列＝hd → body → 作者插件卡纯壳（工具栏行随搜索/分段一并退场，动作并进绿框页头）。 */
+  const root = h('div', { className: 'af-root' }, hd, body, pluginsHost)
 
   emitUpdateCenterHost(updateCenterHost)
   /* 装配成功＝骨架已建成、容器已广播（此后才有 load/渲染失败可言）；失败路径由 index.ts 的 panel.mount.fail 记。 */
@@ -236,6 +242,7 @@ export function FleetPanel(ctx: unknown, opts?: { onHeaderActionsHost?: (host: H
     if (logOn('debug')) logLine('debug', 'ui.action', { area: 'panel', action: 'dispose', ok: true, message: '' })
     emitUpdateCenterHost(null)
     try { opts?.onHeaderActionsHost?.(null) } catch { /* 通知装配壳收 portal 失败不影响面板回收 */ }
+    try { opts?.onAuthorPluginsHost?.(null) } catch { /* 同上：底部作者插件卡的 portal 也要收 */ }
     try { bodyModule.dispose() } catch { /* 收掉挂 document.body 的 portal 弹层：不随面板 DOM 消失，切走设置页会留悬空层 */ }
     try { data.dispose() } catch { /* 清理失败忽略 */ }
     try {
@@ -250,15 +257,6 @@ export function FleetPanel(ctx: unknown, opts?: { onHeaderActionsHost?: (host: H
     }
   }
   return root
-}
-
-function promoItem(name: string, desc: string, href: string): HTMLAnchorElement {
-  return h('a', {
-    className: 'af-promo-item',
-    href,
-    target: '_blank',
-    rel: 'noopener',
-  }, h('b', null, name), h('span', null, desc), h('i', null, '›'))
 }
 
 /* T6（#89）挂载点：事件名单点真相在 data/config.ts（feature 只读该导出，不引本私有文件）；

@@ -88,8 +88,7 @@ test("中文文案 = 赢家口径（增强标题 / 按助理 / 按渠道 / ghost
   assert.equal(zh.radar, "扬帆远航！");
   assert.equal(zh.adopt, "串门搬家");
   assert.equal(zh.starHref, "https://github.com/FeatherHunter/dsh-im-companion");
-  assert.equal(zh.promoDeck, "dsh-mattpocock-skills-deck");
-  assert.equal(zh.promoPal, "dsh-opencode-palette");
+  assert.equal(zh.feedbackHref, "https://github.com/FeatherHunter/dsh-im-companion/issues");
 });
 
 test("#82 三色胶囊文案：颜色即身份，胶囊只留轴名 + 版本号（前缀进悬停）", () => {
@@ -143,7 +142,6 @@ test("英文文案成套（实现侧以 key 提供两套，不做切换器）", 
   assert.equal(en.detail, "Details");
   assert.equal(en.radar, "Set sail!");
   assert.equal(en.adopt, "Visit & move");
-  assert.equal(en.promoTitle, "Related projects");
 });
 
 test("语言跟随 documentElement.lang（en 开头即英文）", () => {
@@ -156,7 +154,7 @@ test("语言跟随 documentElement.lang（en 开头即英文）", () => {
 test("样式命名空间与关键规则（新增类 only，既有零改动）", () => {
   const css: string = styles.FIRST_VIEW_CSS;
   assert.equal(styles.FIRST_VIEW_STYLE_ID, "first-view");
-  for (const cls of [".af-cap--self", ".af-cap--im", ".af-tap", ".af-av-m0", ".af-av-m3", ".af-star", ".af-promo", ".af-promo-item", ".af-verbox", ".af-cap"]) {
+  for (const cls of [".af-cap--self", ".af-cap--im", ".af-tap", ".af-av-m0", ".af-av-m3", ".af-star", ".af-base-plugins-host", ".af-verbox", ".af-cap"]) {
     assert.ok(css.indexOf(cls) >= 0, "赢家样式缺失：" + cls);
   }
   assert.ok(css.indexOf(":focus-within") >= 0, "键盘 focus-within 显现必须存在");

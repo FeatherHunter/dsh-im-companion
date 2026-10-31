@@ -1474,7 +1474,7 @@ test('T8 #121 新建家「新建工作区」支路：选目录 → 建区 → �
     'hu-ibtn', 'hu-back', 'hu-crumb', 'hu-row', 'hu-ract', 'hu-abtn', 'hu-pbtn', 'hu-pbtn-s',
     'hu-dirpath', 'hu-opt', 'hu-avopt', 'hu-plink', 'hu-add',
     'af-btn', 'af-icon-btn', 'af-more-btn', 'af-menu-item', 'af-rename', 'af-seg-item',
-    'af-diritem', 'af-row', 'af-cap', 'af-promo-item', 'dm-opt',
+    'af-diritem', 'af-row', 'af-cap', 'dm-opt',
   ];
   for (const cls of clickables) {
     assert.ok(hasState(cls, 'hover'), '可点控件缺悬停反馈：' + cls);
@@ -1767,7 +1767,7 @@ test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行
   const panel = readFileSync(join(COMP, 'panel.ts'), 'utf8');
   assert.ok(!panel.includes('flex-wrap:wrap') && !panel.includes("'af-hd-right', style:"),
     '页头不得再写行内 flex 覆盖：行内 style 曾把 CSS 的 nowrap 顶成 wrap（真机两行的直接原因）');
-  /* 2026-10-31 base 0.1.2 页头三件套：旧两枚自绘 32px 图标钮（70px）换成 ActionCluster 静默簇
+  /* 2026-10-31 base 0.1.3 页头三件套：旧两枚自绘 32px 图标钮（70px）换成 ActionCluster 静默簇
    * （3×28 + 2×4 间距 = 92×28，+22px）；size 16 是预算的唯一来源，改大即溢出单行。 */
   const baseUi = readFileSync(join(CLIENT, 'base-ui.ts'), 'utf8');
   assert.ok(baseUi.includes('ActionCluster, { size: 16 }'),
@@ -1785,7 +1785,15 @@ test('页头单行预算：标题 20px + 更新入口收紧 + 不许行内换行
   assert.ok(baseUi.includes('repoUrl: REPO_HREF') && baseUi.includes('issuesUrl: ISSUES_HREF'),
     'Star / Issue 的去处＝仓库地址唯一真相（first-view-copy 导出的 REPO_HREF / ISSUES_HREF，面板侧不另存一份）');
   assert.ok(!index.includes('createElement(ContactRow)') && !index.includes("className: 'af-contact'") && !baseUi.includes('function ContactRow'),
-    '面板底部 ContactRow 整行退场（0.1.2 票 05：联系入口只在页头出现一次；注释里留历史说明不算）');
+    '面板底部 ContactRow 整行退场（票 05：联系入口只在页头出现一次；注释里留历史说明不算）');
+  /* 2026-10-31 owner 真机：底部「作者的其他插件」必须走 base 公共 AuthorPlugins，不再自绘 .af-promo。
+   * 自绘版只有 deck/palette 两行、与包内五条推荐不同源，外框还会和包自带 .dsh-base-plugins 叠成双层。 */
+  assert.ok(panel.includes('onAuthorPluginsHost') && index.includes('AuthorPluginsCard') && index.includes('createPortal'),
+    '底部作者插件卡必须走 base 公共组件：面板只建纯壳并回报宿主，装配壳经 createPortal 渲进同一棵 React 树');
+  assert.ok(panel.includes("className: 'af-base-plugins-host'"), '底部卡挂载点类名保留（上方间距靠它定位）');
+  assert.ok(!panel.includes("className: 'af-promo'") && !index.includes('promoTitle') && !fv.includes('.af-promo {'),
+    '自绘 .af-promo 卡必须退场（卡壳 / 两行推荐 / 文案键都不得回潮；注释里的历史说明不算）');
+  assert.ok(baseUi.includes('AuthorPlugins'), '公共卡由 base-ui 导出（ensureBaseStyles 同一条注入路径）');
 });
 
 test('旧面板能力保留：工具栏四钮顺序（T12 追加「配置」）＋事件制＋文案一字不动', () => {

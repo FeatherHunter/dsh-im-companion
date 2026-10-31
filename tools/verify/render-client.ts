@@ -538,8 +538,16 @@ const checks: [string, boolean][] = [
   ['建助理·以后再绑落到该助理 L3 未绑详情', l3UnboundText.includes('还没绑机器人') && l3UnboundFoot.includes('绑定机器人')],
   ['旧 A1 列表行 DOM 已退出绿框', !l1Dump.includes('af-row') && !l1Dump.includes('af-actions')],
   ['绿框样式表已装（.home-ui 命名空间 + hu- 前缀）', css.includes('.home-ui .hu-row') && css.includes('.home-ui .hu-detail') && css.includes('.home-ui .hu-pop')],
-  ['引流关联卡 P2(#26)', String((container as any).textContent).includes('作者其他插件')],
-  /* base 接入（唯一真源）：页头三件套＝base 0.1.2 ActionCluster 静默簇（联系 / Star / Issue 三枚独立彩色图标钮）。
+  /* 2026-10-31 owner 真机：底部改用 base 公共 AuthorPlugins 卡（自带 .dsh-base-plugins 外框，宿主不再包卡壳），
+   * 自绘 .af-promo 卡退场；selfId 必须是清单短 id「im」⇒ 卡里剩 deck/prompt/palette/ilife 四条、不出现自己。 */
+  ['引流关联卡 P2(#26)＝base 公共 AuthorPlugins', (() => {
+    const host = q1('.af-base-plugins-host');
+    const card = host?.querySelector?.('.dsh-base-plugins');
+    const text = card ? String(card.textContent) : '';
+    const rows = card?.querySelectorAll?.('.dsh-base-plugins__item') ?? [];
+    return !!card && text.includes('作者的其他插件') && rows.length === 4 && !text.includes('给 dsh-im 加了');
+  })()],
+  /* base 接入（唯一真源）：页头三件套＝base 0.1.3 ActionCluster 静默簇（联系 / Star / Issue 三枚独立彩色图标钮）。
    * 联系入口只在页头出现一次：面板底部 ContactRow 整行随票 05 退场（base 组件本身仍在包里，本仓不用）。 */
   ['底部 ContactRow 已退场（联系只在页头，入口不重复）', !q1('.af-contact') && !l1Dump.includes('dsh-base-contact-row')],
   ['页头三件套＝base ActionCluster（组内 3 枚独立动作钮）', (() => {
@@ -558,7 +566,7 @@ const checks: [string, boolean][] = [
     const html = cluster ? ser(cluster) : '';
     return /<svg\b/.test(html) && /lineargradient|radialgradient/i.test(html);
   })()],
-  ['Issue 去处＝issues 列表页（0.1.2 口径，不再直落 /issues/new）', (() => {
+  ['Issue 去处＝issues 列表页（0.1.3 口径，不再直落 /issues/new）', (() => {
     const cluster = q1('.af-hd-actions')?.querySelector?.('.dsh-base-cluster');
     /* dom-shim 的选择器只认 .class / [attr]，不认标签名：用 [href] 取两枚外链。 */
     const hrefs = Array.from((cluster?.querySelectorAll?.('[href]') as any) ?? []).map((a: any) => String(a.getAttribute?.('href') ?? ''));
