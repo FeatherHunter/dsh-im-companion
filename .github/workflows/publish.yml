@@ -1,0 +1,109 @@
+name: publish
+
+# 发版入口（workflow_dispatch）：npm 官方源 + GitHub Release 一次跑完。
+# 本机对 registry.npmjs.org 的 TLS 被拦，发布动作改在 GitHub Actions 上跑：
+#   ① npm ci / build / check / readme:check 与本机门禁同口径；
+#   ② 幂等：registry 已有该版本则跳过 npm publish，Release 已存在则 edit + 覆盖上传；
+#   ③ 打 annotated tag v<版本>（不存在时）并从 CHANGELOG.md 抽取该版本段做 Release notes；
+#   ④ 资产：npm pack 出的 dsh-im-companion-<版本>.tgz。
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'npm dist-tag（默认 latest）'
+        required: false
+        default: latest
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # tag 需要完整历史
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.x'
+          registry-url: https://registry.npmjs.org
+          cache: npm
+      - run: npm ci
+      - name: 构建
+        run: npm run build
+      - name: 门禁（build + typecheck + verify + guard）
+        run: npm run check
+      - name: README 同步检查
+        run: npm run readme:check
+      - name: 读取版本
+        id: v
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: npm publish（幂等）
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.v.outputs.version }}"
+          if npm view "dsh-im-companion@$V" version >/dev/null 2>&1; then
+            echo "dsh-im-companion@$V 已在 npm 上，跳过发布"
+            exit 0
+          fi
+          npm publish --access public --tag "$TAG"
+      - name: 打包发布资产
+        run: |
+          set -euo pipefail
+          V="${{ steps.v.outputs.version }}"
+          rm -rf dist-pkg
+          mkdir -p dist-pkg
+          # 在包目录内打包：从仓库根用相对路径 npm pack 会被当成 GitHub 简写（ssh://git@github.com/...）。
+          npm pack ./ --pack-destination dist-pkg
+          ls -l dist-pkg
+      - name: 从 CHANGELOG 抽取发布说明
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.v.outputs.version }}" node -e '
+            const fs = require("fs");
+            const v = process.env.VERSION;
+            const lines = fs.readFileSync("CHANGELOG.md", "utf8").split(/\r?\n/);
+            const out = [];
+            let on = false;
+            for (const line of lines) {
+              if (/^## \[/.test(line)) {
+                if (on) break;
+                if (line.startsWith("## [" + v + "]")) { on = true; out.push(line); continue; }
+              }
+              if (on) out.push(line);
+            }
+            if (!on) { console.error("CHANGELOG 缺少 " + v + " 节"); process.exit(1); }
+            fs.writeFileSync("release-notes.md", out.join("\n").trim() + "\n");
+          '
+          head -n 5 release-notes.md
+      - name: 打 tag 并发布 GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          V="${{ steps.v.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git rev-parse -q --verify "refs/tags/v$V" >/dev/null; then
+            echo "tag v$V 已存在"
+          else
+            git tag -a "v$V" -m "v$V" "$GITHUB_SHA"
+            git push origin "refs/tags/v$V"
+          fi
+          if gh release view "v$V" >/dev/null 2>&1; then
+            gh release edit "v$V" --notes-file release-notes.md --latest
+            gh release upload "v$V" dist-pkg/*.tgz --clobber
+          else
+            gh release create "v$V" --title "v$V" --notes-file release-notes.md --latest dist-pkg/*.tgz
+          fi

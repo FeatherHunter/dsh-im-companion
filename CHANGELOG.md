@@ -5,22 +5,30 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
-## [Unreleased]
+## [0.2.26] - 2026-11-01
 
-主题：**i18n 双语地基 + first-view / left-filter 试点**（#184）——插件 UI 文案改由 YAML 词条单一来源（同一份文件内 zh/en 两棵），按 DSH 语言服务当前语言查词，切换即时生效（无需刷新页面）；宿主诊断日志仍保持中文。
+主题：**页头彩色快捷操作簇（base 0.1.5）+ i18n 双语地基**——页头「联系 / Star / Issue」改用 base 的 ActionCluster 静默簇（16px 三枚 28×28 彩色图标钮），作者插件卡改用 base 共享 AuthorPlugins／HoverTip；同时带上 0.2.25 之后未发布的 i18n 双语地基（#184）与详情面板命名对齐（#189）。
 
 ### Added
+- **页头彩色快捷操作簇（ActionCluster）**：页头「联系 / Star / Issue」三件套改用 base 0.1.5 的 `ActionCluster` 静默簇（size 16＝单枚 28×28 彩色图标钮，间距 4、无外框），替换旧自绘两枚 32px 图标钮；Issue 去处＝issues 列表页（不再直落 /issues/new）。
+- **作者插件卡 tooltip（base 共享 HoverTip）**：设置面板「作者插件」卡改用 base 的 `createTipController`，行悬停显示插件说明；新文案含 `contactTip` 结尾 🎉 与 `issueTip`「任何功能需求、故障、建议、意见都可以提ISSUE问题单🙏」。
 - **i18n 共享层**（`src/client/i18n/`）：`core.ts` 纯逻辑（词条三层表 ns→语言→键、查词回退链「当前→en→zh→键名」、`{name}` 插值、语言切换订阅与修订号）；`install.ts` 接线 DSH `locale` 服务（`ctx.get('locale')` 的 `getSnapshot().active` 与 `subscribe`，缺失时回退 `documentElement.lang` → `navigator.language` → 中文）；`index.ts` 只导出 core（不把构建期虚拟模块拖进普通导入）。
 - **YAML 词条单一来源＋构建期注入**：`scripts/i18n-locales.mjs` 扫描 `src` 下所有 `locales.yaml`（ns 唯一、zh/en 键集一致、值非空）并校验；`tsdown.config.ts` 经 `virtual:imc-locales` 把词条注入客户端包（校验失败＝构建直接失败）。本次落三份：`common`（3 键）、`first-view`（38 键）、`left-filter`（11 键）。
 - **门禁**：新增 `tools/verify/i18n.ts`（词条校验 / 查词回退插值 / zh↔en 键集一致 / 订阅语义）；`first-view`、`left-filter` 门禁补中英切换断言（三段条、行悬停、空提示、收起钮、面板标题）。
 
 ### Changed
+- **base 升 0.1.5**：`dsh-featherhunter-plugin-base` 0.1.4 → 精确 0.1.5，重建 `lib/client.js`（产物 banner `/*! dsh-featherhunter-plugin-base v0.1.5 */`）；CI readme:sync 工作流同步指向 `@0.1.5`。
+- **删面板底部联系整行**：设置面板底部不再自绘推广卡，联系入口统一由 base 公共作者插件卡承载。
+- **im 作者卡走 base AuthorPluginsCard + portal**：`base-ui.ts` 新增 `AuthorPluginsCard`（`SELF_ID='im'` 排除自身），`index.ts` 与页头同树 `createPortal` 渲染，`panel.ts` 只留 `.af-base-plugins-host` 壳。
+- `package.json` / `package-lock.json` 版本号 0.2.25 → 0.2.26；`README.md` / `docs/README.en.md` 安装示例同步到 0.2.26。
 - **first-view 文案**：`first-view-copy.ts` 内联的 ZH/EN 字典改为查词条（导出与接口不变；`firstViewLang()` 跟随当前语言，显式传 doc 的老测试形态保留）；`dual-mode-copy.ts` 未改，经 `firstViewLang()` 自动跟随。
 - **left-filter 文案**：三段条 / 漏斗悬停 / 行悬停 / 空提示 / 收起钮改查词条；`view.ts` 在语言切换时强制重绘（重绘签名并入词条修订号）。
 - **设置面板**：标题与挂载失败文案走词条；换语时面板重挂（订阅 `locale` 服务）。
 - **代码命名对齐「详情面板」（#189）**：纯改名（对外行为不变）——feature 目录 `detail-drawer/` → `detail-panel/`（`drawer.ts` → `panel.ts`，feature id / CSS 前缀 / 验证器 `detail-panel.ts` 同步）；A1 私有件 `home-asst-create.ts` / `home-asst-fields.ts` / `home-asst-profile-act.ts` / `home-assist-edit-listen.ts` → `home-assistant-create.ts` / `home-assistant-profile-fields.ts` / `home-assistant-profile-act.ts` / `home-assistant-profile-edit-listen.ts`；跨功能事件 `OPEN_DRAWER_EVENT` → `OPEN_DETAIL_PANEL_EVENT`、`OPEN_ASSIST_EDIT_EVENT` → `OPEN_ASSISTANT_PROFILE_EDIT_EVENT`（`docs/features-contract.md` 契约先行同步）；验证器 `home-asst-profile.ts` → `home-assistant-profile.ts`；截图资产同批改名。内部 window 事件字面量随常量改名（`'dsh-im-companion:open-drawer'` → `'…:open-detail-panel'`、`'…:open-assist-edit'` → `'…:open-assistant-profile-edit'`，派发/监听同批、同一 bundle 自洽），字面量登记见 `docs/features-contract.md` §4。改动前 `npm run check` 与改动后逐项等价（test 语义未动）。
 
 ### Fixed
+- **弹窗二维码不居中**：联系作者弹窗内二维码图加 `box-sizing:border-box`（随 base 0.1.5 修复；产物内联 CSS 含 `.dsh-base-modal__qr{box-sizing:border-box;…}`）。
+- **「最后一天」文案**：更新面板剩余天数的「最后一天」提示随 base 0.1.5 修正。
 - **英文三段条标签被截断**：切 English 后全称（With assistants / Without assistants）在三段等宽（每段约 90px）里必被 ellipsis；英文词条改短词 **All / Assigned / Unassigned**（12px 粗体含计数约 80px 内可读），漏斗与行悬停仍是完整英文句；中文词条不动。
 - **换语言后左栏头两枚插件钮消失**：DSH 换语重建左栏头时节点被带走——漏斗钮因「重绘签名只记头栏找得到」永久短路（看着像要重启 DSH），串门入口只靠 ≤15s 快照兜底。修法：头节点身份变化强制重绘、重绘签名并入「头内有无漏斗钮」位并按**挂后真值**重记，串门入口用 MutationObserver 盯 body 下一帧补挂（零新增轮询/订阅）。
 
