@@ -52,8 +52,8 @@ dsh plugin --profile desktop add dsh-im-companion
 #     或者
 dsh plugin --profile web add dsh-im-companion
 
-# 锁定版本更稳（当前 0.2.26）
-dsh plugin --profile desktop add dsh-im-companion@0.2.26 --registry https://registry.npmjs.org
+# 锁定版本更稳（当前 0.2.27）
+dsh plugin --profile desktop add dsh-im-companion@0.2.27 --registry https://registry.npmjs.org
 ```
 
 <div align="center">
@@ -82,7 +82,7 @@ dsh plugin --profile desktop add dsh-im-companion@0.2.26 --registry https://regi
 下面以 desktop 为例，web 用户请把 --profile desktop 换成 --profile web：
 
 ```bash
-dsh plugin --profile desktop add dsh-im-companion@0.2.26 --registry https://registry.npmjs.org
+dsh plugin --profile desktop add dsh-im-companion@0.2.27 --registry https://registry.npmjs.org
 npx --yes @deepseek-ai/dsh plugin --profile desktop add dsh-im-companion
 dsh plugin --profile desktop add dsh-im-companion@latest --registry https://registry.npmjs.org
 ```
@@ -247,7 +247,7 @@ dsh plugin --profile desktop add dsh-im-companion@latest --registry https://regi
 
 👏欢迎提交PR、ISSUE。星星之火可以燎原🔥有任何建议、意见、想法、吐槽、idea都可以进群交流。
 
-<table align="center"><tr><td align="center"><b>飞书群（主）</b></td><td align="center"><b>QQ群（新）</b></td><td align="center"><b>微信群（新）</b></td></tr><tr><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.1.7/data/img/card-feishu.png" width="260" alt="DSH 插件交流群 飞书群二维码" /></td><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.1.7/data/img/card-qq.png" width="260" alt="DSH 插件交流群 QQ 群二维码" /></td><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.1.7/data/img/card-wechat-2026-10-31.png?v=20261031" width="260" alt="DSH 插件交流群微信群二维码" /></td></tr></table>
+<table align="center"><tr><td align="center"><b>飞书群（主）</b></td><td align="center"><b>QQ群（新）</b></td><td align="center"><b>微信群（新）</b></td></tr><tr><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.1.8/data/img/card-feishu.png" width="260" alt="DSH 插件交流群 飞书群二维码" /></td><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.1.8/data/img/card-qq.png" width="260" alt="DSH 插件交流群 QQ 群二维码" /></td><td><img src="https://cdn.jsdelivr.net/npm/dsh-featherhunter-plugin-base@0.1.8/data/img/card-wechat-2026-10-31.png?v=20261031" width="260" alt="DSH 插件交流群微信群二维码" /></td></tr></table>
 
 </div>
 <!-- CONTACT-END -->

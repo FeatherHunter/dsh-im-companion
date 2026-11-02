@@ -5,6 +5,15 @@
 > 面板读不出版本节即忽略，不影响展示。附带效应：`validateChangelog()`（更新包导出的发布前校验，本仓未接门禁）会对旧节
 > 报 `E_BULLET_ORPHAN`——旧节条目本就不在 `### 分类` 下，属预期，不是发布门禁红灯。
 
+## [0.2.27] - 2026-11-03
+
+主题：**内嵌 base 升到 0.1.8**——上游补丁版（README 联系块标题居中、渠道徽标布局细节）随包同步；无功能变更。
+
+### Changed
+- **base 升 0.1.8**：`dsh-featherhunter-plugin-base` 0.1.7 → 精确 0.1.8，重建客户端产物（banner `dsh-featherhunter-plugin-base v0.1.8`）；README 受管块由 `readme:sync` 重生成。
+- `package.json` / `package-lock.json` 版本号 0.2.26 → 0.2.27；`README.md` / `docs/README.en.md` 安装示例与联系块同步到 0.2.27。
+- **兼容声明不变**：dsh-im **5.1.0**（范围 `>=5.1.0 <6`）；#175 升级回归钉子照旧有效（6.0 之前重跑 T1/T2 两份取证、`bots/` 与 `accounts/` 双路径，#170 的 persona 注入 verify 引用照旧）。
+
 ## [0.2.26] - 2026-11-01
 
 主题：**页头彩色快捷操作簇（base 0.1.5）+ i18n 双语地基**——页头「联系 / Star / Issue」改用 base 的 ActionCluster 静默簇（16px 三枚 28×28 彩色图标钮），作者插件卡改用 base 共享 AuthorPlugins／HoverTip；同时带上 0.2.25 之后未发布的 i18n 双语地基（#184）与详情面板命名对齐（#189）。
