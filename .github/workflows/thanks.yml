@@ -17,7 +17,7 @@ jobs:
       # 第三方步骤统一固定到提交哈希：井号后面的版本只给人看，实际跑的是前面的哈希。标签会被覆盖，哈希不会；
       # 以后升级走 Dependabot 的更新请求，不要手工改回标签。
       - uses: actions/checkout@3d4c36df804253a7cd5ad1261727da5d2aae17a8 # v7.0.1
-      - uses: actions/setup-node@82070675649c2d0c77cf0a89d19156091d63a06e # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.0.0
         with:
           # 仓库脚本是 .mts（Node 原生剥类型），Node 22.18 起才默认剥类型；
           # 本仓与 Star History 对齐用 24，剥类型默认开启，这个下限别退回 20。
